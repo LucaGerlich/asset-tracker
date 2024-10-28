@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model accessorieCategoryType {
+  accessoriecategorytypeid   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  accessoriecategorytypename String        @db.VarChar
+  accessories                accessories[]
+}
+
+model accessories {
+  accessorieid             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  accessoriename           String                 @db.VarChar
+  accessorietag            String                 @db.VarChar
+  purchaseprice            Decimal?               @db.Decimal(10, 2)
+  purchasedate             DateTime?              @db.Date
+  requestable              Boolean?
+  manufacturerid           String                 @db.Uuid
+  statustypeid             String                 @db.Uuid
+  accessoriecategorytypeid String                 @db.Uuid
+  locationid               String                 @db.Uuid
+  supplierid               String                 @db.Uuid
+  modelid                  String                 @db.Uuid
+  creation_date            DateTime               @default(now()) @db.Timestamp(6)
+  change_date              DateTime?              @db.Timestamp(6)
+  accessorieCategoryType   accessorieCategoryType @relation(fields: [accessoriecategorytypeid], references: [accessoriecategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_accessoriecategorytype_c_accessoriecategorytypei")
+  location                 location               @relation(fields: [locationid], references: [locationid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_location_c_locationid")
+  manufacturer             manufacturer           @relation(fields: [manufacturerid], references: [manufacturerid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_manufacturer_c_manufacturerid")
+  model                    model                  @relation(fields: [modelid], references: [modelid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_model_c_modelid")
+  statusType               statusType             @relation(fields: [statustypeid], references: [statustypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_statustype_c_statustypeid")
+  supplier                 supplier               @relation(fields: [supplierid], references: [supplierid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_supplier_c_supplierid")
+  userAccessoires          userAccessoires[]
+}
+
+model asset {
+  assetid             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetname           String             @db.VarChar
+  assettag            String             @unique @db.VarChar
+  serialnumber        String             @unique @db.VarChar
+  modelid             String?            @db.Uuid
+  specs               String?
+  notes               String?
+  purchaseprice       Decimal?           @db.Decimal(10, 2)
+  purchasedate        DateTime?          @db.Date
+  mobile              Boolean?
+  requestable         Boolean?
+  assetcategorytypeid String?            @db.Uuid
+  statustypeid        String?            @db.Uuid
+  supplierid          String?            @db.Uuid
+  locationid          String?            @db.Uuid
+  manufacturerid      String?            @db.Uuid
+  creation_date       DateTime           @default(now()) @db.Timestamp(6)
+  change_date         DateTime?          @db.Timestamp(6)
+  assetCategoryType   assetCategoryType? @relation(fields: [assetcategorytypeid], references: [assetcategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_assetcategorytype_c_assetcategorytypeid")
+  location            location?          @relation(fields: [locationid], references: [locationid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_location_c_locationid")
+  manufacturer        manufacturer?      @relation(fields: [manufacturerid], references: [manufacturerid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_manufacturer_c_manufacturerid")
+  model               model?             @relation(fields: [modelid], references: [modelid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_model_c_modelid")
+  statusType          statusType?        @relation(fields: [statustypeid], references: [statustypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_statustype_c_statustypeid")
+  supplier            supplier?          @relation(fields: [supplierid], references: [supplierid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_supplier_c_supplierid")
+  userAssets          userAssets[]
+}
+
+model assetCategoryType {
+  assetcategorytypeid   String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetcategorytypename String  @db.VarChar
+  asset                 asset[]
+}
+
+model consumable {
+  consumableid             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  consumablename           String                 @db.VarChar
+  consumablecategorytypeid String                 @db.Uuid
+  manufacturerid           String                 @db.Uuid
+  supplierid               String                 @db.Uuid
+  purchaseprice            Decimal?               @db.Decimal(10, 2)
+  purchasedate             DateTime?              @db.Date
+  creation_date            DateTime               @default(now()) @db.Timestamp(6)
+  change_date              DateTime?              @db.Timestamp(6)
+  consumableCategoryType   consumableCategoryType @relation(fields: [consumablecategorytypeid], references: [consumablecategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_consumable_consumablecategorytype_c_consumablecategorytypeid")
+  manufacturer             manufacturer           @relation(fields: [manufacturerid], references: [manufacturerid], onDelete: NoAction, onUpdate: NoAction, map: "fk_consumable_manufacturer_c_manufacturerid")
+  supplier                 supplier               @relation(fields: [supplierid], references: [supplierid], onDelete: NoAction, onUpdate: NoAction, map: "fk_consumable_supplier_c_supplierid")
+}
+
+model consumableCategoryType {
+  consumablecategorytypeid   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  consumablecategorytypename String       @db.VarChar
+  consumable                 consumable[]
+}
+
+model licence {
+  licenceid             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  licencekey            String?             @unique @db.VarChar
+  licenceduserid        String?             @db.Uuid
+  licensedtoemail       String?             @db.VarChar
+  purchaseprice         Decimal?            @db.Decimal(10, 2)
+  purchasedate          DateTime?           @db.Date
+  expirationdate        DateTime?           @db.Date
+  notes                 String?
+  requestable           Boolean?
+  licencecategorytypeid String              @db.Uuid
+  manufacturerid        String              @db.Uuid
+  supplierid            String              @db.Uuid
+  creation_date         DateTime            @default(now()) @db.Timestamp(6)
+  change_date           DateTime?           @db.Timestamp(6)
+  licenceCategoryType   licenceCategoryType @relation(fields: [licencecategorytypeid], references: [licencecategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_licencecategorytype_c_licencecategorytypeid")
+  manufacturer          manufacturer        @relation(fields: [manufacturerid], references: [manufacturerid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_manufacturer_c_manufacturerid")
+  supplier              supplier            @relation(fields: [supplierid], references: [supplierid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_supplier_c_supplierid")
+  user                  user?               @relation(fields: [licenceduserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_user_c_licenceduser_userid")
+}
+
+model licenceCategoryType {
+  licencecategorytypeid   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  licencecategorytypename String    @db.VarChar
+  licence                 licence[]
+}
+
+model location {
+  locationid    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationname  String?       @db.VarChar
+  street        String?       @db.VarChar
+  housenumber   String?       @db.VarChar
+  city          String?       @db.VarChar
+  country       String?       @db.VarChar
+  creation_date DateTime      @default(now()) @db.Timestamp(6)
+  change_date   DateTime?     @db.Timestamp(6)
+  accessories   accessories[]
+  asset         asset[]
+}
+
+model manufacturer {
+  manufacturerid   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  manufacturername String        @db.VarChar
+  creation_date    DateTime      @default(now()) @db.Timestamp(6)
+  change_date      DateTime?     @db.Timestamp(6)
+  accessories      accessories[]
+  asset            asset[]
+  consumable       consumable[]
+  licence          licence[]
+}
+
+model model {
+  modelid       String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  modelname     String        @db.VarChar
+  modelnumber   String?       @db.VarChar
+  creation_date DateTime      @default(now()) @db.Timestamp(6)
+  change_date   DateTime?     @db.Timestamp(6)
+  accessories   accessories[]
+  asset         asset[]
+}
+
+model statusType {
+  statustypeid   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  statustypename String        @db.VarChar
+  accessories    accessories[]
+  asset          asset[]
+}
+
+model supplier {
+  supplierid    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  suppliername  String        @db.VarChar
+  lastname      String?       @db.VarChar
+  firstname     String?       @db.VarChar
+  salutation    String?       @db.VarChar
+  email         String?       @db.VarChar
+  phonenumber   String?       @db.VarChar
+  creation_date DateTime      @default(now()) @db.Timestamp(6)
+  change_date   DateTime?     @db.Timestamp(6)
+  accessories   accessories[]
+  asset         asset[]
+  consumable    consumable[]
+  licence       licence[]
+}
+
+model user {
+  userid          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username        String?           @unique @db.VarChar
+  isadmin         Boolean
+  canrequest      Boolean
+  lastname        String            @db.VarChar
+  firstname       String            @db.VarChar
+  email           String?           @unique @db.VarChar
+  lan             String?           @db.VarChar
+  password        String            @db.VarChar
+  creation_date   DateTime          @default(now()) @db.Timestamp(6)
+  change_date     DateTime?         @db.Timestamp(6)
+  licence         licence[]
+  userAccessoires userAccessoires[]
+  userAssets      userAssets[]
+}
+
+model userAccessoires {
+  useraccessoiresid String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userid            String      @db.Uuid
+  accessorieid      String      @db.Uuid
+  creation_date     DateTime    @default(now()) @db.Timestamp(6)
+  change_date       DateTime?   @db.Timestamp(6)
+  accessories       accessories @relation(fields: [accessorieid], references: [accessorieid], onDelete: NoAction, onUpdate: NoAction, map: "fk_useraccessoires_accessories_c_accessorieid")
+  user              user        @relation(fields: [userid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_useraccessoires_user_c_userid")
+}
+
+model userAssets {
+  userassetsid  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userid        String    @db.Uuid
+  assetid       String    @unique @db.Uuid
+  creation_date DateTime  @default(now()) @db.Timestamp(6)
+  change_date   DateTime? @db.Timestamp(6)
+  asset         asset     @relation(fields: [assetid], references: [assetid], onDelete: NoAction, onUpdate: NoAction, map: "fk_userassets_asset_c_assetid")
+  user          user      @relation(fields: [userid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_userassets_user_c_userid")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model userHistory {
+  historyid      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referenceid    String?   @db.Uuid
+  referencetable String?   @db.VarChar(20)
+  actionname     String    @db.VarChar
+  updatedate     DateTime? @db.Date
+  checkedout     DateTime? @db.Date
+  checkedin      DateTime? @db.Date
+  creation_date  DateTime  @default(now()) @db.Timestamp(6)
+  change_date    DateTime? @db.Timestamp(6)
+}
