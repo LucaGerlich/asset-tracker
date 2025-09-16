@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import {
   Navbar,
   NavbarBrand,
@@ -31,6 +32,7 @@ import { usePathname } from "next/navigation";
 import ThemeSwitcher from "./ThemeSwitcher.jsx";
 
 function Navigation({ userName }) {
+  const { data: session, status } = useSession();
   const route = usePathname();
   const [activeMenu, setActiveMenu] = useState("");
 
@@ -187,9 +189,6 @@ function Navigation({ userName }) {
               >
                 <div className="flex flex-row items-center gap-6  justify-between">
                   <span>An asset got assigned</span>
-                  {/* <Link onClick={console.log("CLEAR")} color="danger">
-                    clear
-                  </Link> */}
                 </div>
               </DropdownItem>
             </DropdownSection>
@@ -202,43 +201,54 @@ function Navigation({ userName }) {
           </DropdownMenu>
         </Dropdown>
         <ThemeSwitcher></ThemeSwitcher>
-        <Dropdown placement="bottom-end">
-          <DropdownTrigger>
-            <Avatar
-              //as="button"
-              className="transition-transform cursor-pointer"
-              color="secondary"
-              showFallback
-              name="Luca Gerlich"
-              size="md"
-              src="https://images.unsplash.com/broken"
-            />
-          </DropdownTrigger>
-          <DropdownMenu aria-label="Profile Actions" variant="flat">
-            <DropdownItem
-              href={"/user/123/edit"}
-              key="profile"
-              textValue="profile"
-              className="h-14 gap-2"
-            >
-              <p className="font-semibold">Signed in as</p>
-              <p className="font-semibold">{userName}</p>
-            </DropdownItem>
-            <DropdownItem href={"/user/123"} key="items" textValue="items">
-              My Items
-            </DropdownItem>
-            <DropdownItem
-              href={"/user/123/settings"}
-              key="settings"
-              textValue="settings"
-            >
-              My Settings
-            </DropdownItem>
-            <DropdownItem key="logout" color="danger" textValue="logout">
-              Log Out
-            </DropdownItem>
-          </DropdownMenu>
-        </Dropdown>
+
+        {status === "authenticated" ? (
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              <Avatar
+                className="transition-transform cursor-pointer"
+                color="secondary"
+                showFallback
+                name={session?.user?.name || userName || "User"}
+                size="md"
+                src="https://images.unsplash.com/broken"
+              />
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Profile Actions" variant="flat">
+              <DropdownItem
+                href={"/user/123/edit"}
+                key="profile"
+                textValue="profile"
+                className="h-14 gap-2"
+              >
+                <p className="font-semibold">Signed in as</p>
+                <p className="font-semibold">{session?.user?.name || userName}</p>
+              </DropdownItem>
+              <DropdownItem href={"/user/123"} key="items" textValue="items">
+                My Items
+              </DropdownItem>
+              <DropdownItem
+                href={"/user/123/settings"}
+                key="settings"
+                textValue="settings"
+              >
+                My Settings
+              </DropdownItem>
+              <DropdownItem
+                key="logout"
+                color="danger"
+                textValue="logout"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+              >
+                Log Out
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        ) : (
+          <Button color="primary" variant="flat" onClick={() => signIn(undefined, { callbackUrl: "/" })}>
+            Log In
+          </Button>
+        )}
       </NavbarContent>
     </Navbar>
   );

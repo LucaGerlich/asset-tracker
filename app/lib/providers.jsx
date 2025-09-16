@@ -4,6 +4,7 @@
 import { NextUIProvider } from "@nextui-org/react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { useRouter } from "next/navigation";
+import { SessionProvider } from "next-auth/react";
 
 export function Providers({ children }) {
   return (
@@ -13,7 +14,7 @@ export function Providers({ children }) {
         defaultTheme="light"
         enableSystem={true}
       >
-        {children}
+        <SessionProvider>{children}</SessionProvider>
       </NextThemesProvider>
     </NextUIProvider>
   );
