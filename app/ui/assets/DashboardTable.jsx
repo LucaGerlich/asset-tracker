@@ -126,6 +126,30 @@ export default function App({
   } = useDisclosure();
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
+  const handleStatusUpdate = useCallback(
+    async (assetId, statusId) => {
+      try {
+        const res = await fetch("/api/asset/updateStatus", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assetId, statusTypeId: statusId }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error || "Failed to update status");
+        }
+        const updated = await res.json();
+        toast.success("Status updated", { description: updated.assettag });
+        setAssetsData((prev) =>
+          prev.map((a) => (a.assetid === assetId ? { ...a, statustypeid: updated.statustypeid } : a))
+        );
+      } catch (e) {
+        console.error(e);
+        toast.error("Status update failed", { description: e.message });
+      }
+    },
+    [setAssetsData]
+  );
 
   const hasSearchFilter = Boolean(filterValue);
 
@@ -1146,11 +1170,9 @@ export default function App({
                   <Button
                     color="primary"
                     isDisabled={!selectedUser}
-                    onPress={() => {
-                      //handleAssign(selectedAsset?.assetid, selectedUser);
-                      setTimeout(() => {
-                        setSelectedUser(null);
-                      }, 500);
+                    onPress={async () => {
+                      await handleStatusUpdate(selectedAsset?.assetid, selectedUser);
+                      setTimeout(() => setSelectedUser(null), 300);
                       onClose();
                     }}
                   >

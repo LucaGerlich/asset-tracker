@@ -1,8 +1,9 @@
 import prisma from "../../../lib/prisma";
 
+// GET /api/userAssets/findByAssetId?assetId=<id>
 export async function GET(req) {
   try {
-    const { assetId } = await req.json();
+    const assetId = req.nextUrl.searchParams.get("assetId");
 
     if (!assetId) {
       return new Response(JSON.stringify({ error: "Asset ID is required" }), {

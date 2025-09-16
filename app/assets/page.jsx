@@ -1,5 +1,7 @@
 import React from "react";
 import DashboardTable from "../ui/assets/DashboardTable";
+import Link from "next/link";
+import { PlusIcon } from "../ui/Icons";
 import {
   getAssets,
   getLocation,
@@ -55,6 +57,16 @@ export default async function Page() {
 
   return (
     <div>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-semibold">Assets</h1>
+        <Link
+          href="/assets/create"
+          className="inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium shadow hover:opacity-90"
+        >
+          <PlusIcon />
+          Create Asset
+        </Link>
+      </div>
       <DashboardTable
         data={databaseAssets}
         locations={location}

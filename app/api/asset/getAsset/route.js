@@ -1,15 +1,25 @@
 import prisma from "../../../lib/prisma";
 
-export async function GET() {
+// GET /api/asset/getAsset?id=<assetid>
+export async function GET(req) {
   try {
-    await prisma.asset.findMany({});
+    const id = req.nextUrl.searchParams.get("id");
+    if (id) {
+      const asset = await prisma.asset.findUnique({ where: { assetid: id } });
+      if (!asset) {
+        return new Response(
+          JSON.stringify({ error: `Asset with id ${id} not found` }),
+          { status: 404 }
+        );
+      }
+      return new Response(JSON.stringify(asset), { status: 200 });
+    }
 
-    return new Response(JSON.stringify({ message: "Get Asset successfully" }), {
-      status: 200,
-    });
+    const assets = await prisma.asset.findMany({});
+    return new Response(JSON.stringify(assets), { status: 200 });
   } catch (error) {
-    console.error("Error deleting asset:", error);
-    return new Response(JSON.stringify({ error: "Error deleting asset" }), {
+    console.error("Error fetching asset(s):", error);
+    return new Response(JSON.stringify({ error: "Error fetching asset(s)" }), {
       status: 500,
     });
   }

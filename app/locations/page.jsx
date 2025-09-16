@@ -1,10 +1,18 @@
 import React from "react";
-import PropTypes from "prop-types";
+import LocationsTable from "../ui/locations/LocationsTable";
+import { getLocation } from "@/app/lib/data";
 
-const page = (props) => {
-  return <div>locations</div>;
+export const metadata = {
+  title: "Asset Tracker - Locations",
+  description: "Asset management tool",
 };
 
-page.propTypes = {};
-
-export default page;
+export default async function Page() {
+  const locations = await getLocation();
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold mb-4">Locations</h1>
+      <LocationsTable items={locations} />
+    </div>
+  );
+}

@@ -13,6 +13,17 @@ export async function DELETE(req) {
       );
     }
 
+    // Resolve the "Available" status id (case-insensitive)
+    const availableStatus = await prisma.statusType.findFirst({
+      where: { statustypename: { equals: "Available", mode: "insensitive" } },
+    });
+    if (!availableStatus) {
+      return new Response(
+        JSON.stringify({ error: "Status 'Available' not found in statusType" }),
+        { status: 500 }
+      );
+    }
+
     const deletedAsset = await prisma.userAssets.deleteMany({
       where: {
         assetid: assetId,
@@ -22,7 +33,7 @@ export async function DELETE(req) {
 
     await prisma.asset.update({
       where: { assetid: assetId },
-      data: { statustypeid: "b4cf2691-370f-491e-8765-cab33a2314d4" },
+      data: { statustypeid: availableStatus.statustypeid },
     });
 
     return new Response(

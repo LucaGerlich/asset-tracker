@@ -65,6 +65,36 @@ export async function getAccessories() {
   return accessories;
 }
 
+export async function getSuppliers() {
+  const suppliers = await prisma.supplier.findMany({});
+  return suppliers;
+}
+
+export async function getConsumables() {
+  const consumables = await prisma.consumable.findMany({});
+  return consumables;
+}
+
+export async function getConsumableCategories() {
+  const cats = await prisma.consumableCategoryType.findMany({});
+  return cats;
+}
+
+export async function getAccessoryCategories() {
+  const cats = await prisma.accessorieCategoryType.findMany({});
+  return cats;
+}
+
+export async function getLicences() {
+  const licences = await prisma.licence.findMany({});
+  return licences;
+}
+
+export async function getLicenceCategories() {
+  const cats = await prisma.licenceCategoryType.findMany({});
+  return cats;
+}
+
 export async function getModel() {
   const model = await prisma.model.findMany({});
   return model;
@@ -81,9 +111,10 @@ export async function getUserAssets() {
 }
 
 export async function updateUserAsset(user, asset) {
+  // DEPRECATED SIGNATURE: update by userAssetsId and new userId
   const res = await prisma.userAssets.update({
-    where: { assetid: user },
-    data: { userid: asset },
+    where: { userassetsid: user },
+    data: { userid: asset, change_date: new Date() },
   });
   return res;
 }
@@ -91,7 +122,7 @@ export async function updateUserAsset(user, asset) {
 export async function getUserById(id) {
   const user = await prisma.user.findUnique({
     where: {
-      id: parseInt(id),
+      userid: id,
     },
   });
   return user;
@@ -100,7 +131,7 @@ export async function getUserById(id) {
 export async function updateUser(id, data) {
   const user = await prisma.user.update({
     where: {
-      id: parseInt(id),
+      userid: id,
     },
     data,
   });
@@ -114,11 +145,6 @@ export async function deleteUser(id) {
 }
 
 export async function postData(request) {
-  const res = await request.json();
-  const { title, content } = res;
-  const result = await prisma.user.create({
-    user: {},
-  });
-
-  return NextResponse.json({ result });
+  // Not used; kept for backward compatibility. Prefer API routes.
+  throw new Error("postData is deprecated. Use API routes instead.");
 }
