@@ -2,7 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { Button } from "@nextui-org/react";
+import { Button } from "@heroui/react";
 import { LightModeIcon, DarkModeIcon } from "../ui/Icons.jsx";
 
 const ThemeSwitcher = () => {

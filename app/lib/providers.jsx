@@ -1,13 +1,13 @@
 // app/providers.tsx
 "use client";
 
-import { NextUIProvider } from "@nextui-org/react";
+import { HeroUIProvider } from "@heroui/react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { useRouter } from "next/navigation";
 
 export function Providers({ children }) {
   return (
-    <NextUIProvider>
+    <HeroUIProvider>
       <NextThemesProvider
         attribute="class"
         defaultTheme="light"
@@ -15,6 +15,6 @@ export function Providers({ children }) {
       >
         {children}
       </NextThemesProvider>
-    </NextUIProvider>
+    </HeroUIProvider>
   );
 }

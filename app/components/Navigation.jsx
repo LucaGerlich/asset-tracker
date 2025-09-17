@@ -1,34 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  Navbar,
-  NavbarBrand,
-  NavbarContent,
-  NavbarItem,
-  Link,
-  Button,
-  Input,
-  DropdownItem,
-  DropdownTrigger,
-  Dropdown,
-  DropdownMenu,
-  DropdownSection,
-  Badge,
-  Avatar,
-} from "@nextui-org/react";
-import {
-  ChevronDown,
-  Lock,
-  Activity,
-  Flash,
-  Server,
-  NotificationIcon,
-  TagUser,
-  Scale,
-} from "../ui/Icons.jsx";
+import React, { useEffect, useState } from "react";
+import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeSwitcher from "./ThemeSwitcher.jsx";
+import { ChevronDown, Scale, Lock, Activity, Flash, Server, TagUser } from "../ui/Icons.jsx";
+import { Link, Button, Navbar, NavbarBrand, NavbarContent, NavbarItem, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection, Badge, Avatar } from "@heroui/react";
+import { NotificationIcon, Status } from "../ui/Icons.jsx";
+
 
 function Navigation({ userName }) {
   const route = usePathname();

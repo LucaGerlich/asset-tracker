@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import Breadcrumb from "../../components/Breadcrumb";
-import { Divider } from "@nextui-org/divider";
+import { Divider } from "@heroui/divider";
 import {
   getAssetById,
   getLocationById,
@@ -35,8 +35,16 @@ function booleanPill(val) {
   );
 }
 
-export default async function Page({ params }) {
-  const asset = await getAssetById(params.id);
+export default async function Page(props) {
+  const params = await props.params;
+  const assetRaw = await getAssetById(params.id);
+  const asset = {
+    ...assetRaw,
+    purchaseprice:
+      assetRaw.purchaseprice !== null && assetRaw.purchaseprice !== undefined
+        ? Number(assetRaw.purchaseprice)
+        : null,
+  };
   const location = asset?.locationid ? await getLocationById(asset.locationid) : null;
   const users = await getUsers();
   const status = await getStatus();

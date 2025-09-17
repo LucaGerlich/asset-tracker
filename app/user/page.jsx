@@ -1,9 +1,8 @@
 import React from "react";
-import DashboardTable from "../ui/user/DashboardTable";
 import { getUsers } from "@/app/lib/data";
-import { Button } from "../lib/nextui";
 import { PlusIcon } from "../ui/Icons";
 import Link from "next/link";
+import UsersTableClient from "./ui/UsersTableClient";
 
 // export const metadata = {
 //   title: "Asset Tracker - User",
@@ -28,15 +27,14 @@ export default async function Page() {
 
   return (
     <div>
-      <DashboardTable
-        data={databaseUsers}
-        columns={columnName}
-      ></DashboardTable>
+      <UsersTableClient data={databaseUsers} columns={columnName} />
       <div className="flex flex-row justify-end mt-4">
-        <Link href="/user/create/">
-          <Button color="primary" startContent={icons.plus}>
-            Add User
-          </Button>
+        <Link
+          href="/user/create/"
+          className="inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium shadow hover:opacity-90"
+        >
+          {icons.plus}
+          Add User
         </Link>
       </div>
     </div>

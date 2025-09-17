@@ -11,7 +11,7 @@ import {
   Chip,
   Tooltip,
   getKeyValue,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { EditIcon, DeleteIcon, EyeIcon } from "../ui/Icons.jsx";
 
 const statusColorMap = {

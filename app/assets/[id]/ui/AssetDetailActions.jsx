@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useCallback, useRef } from "react";
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from "@nextui-org/react";
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from "@heroui/react";
 import { QRCodeCanvas } from "qrcode.react";
 import { Toaster, toast } from "sonner";
 
