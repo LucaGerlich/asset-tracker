@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Input, Checkbox, Select, SelectItem, Textarea, Divider } from "@nextui-org/react";
+import { Button, Input, Checkbox, Select, SelectItem, Textarea, Divider } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from "sonner";
 

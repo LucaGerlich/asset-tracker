@@ -11,7 +11,7 @@ import {
   Chip,
   Tooltip,
   getKeyValue,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import { EditIcon, DeleteIcon, EyeIcon } from "../Icons.jsx";
 import Link from "next/link";
 

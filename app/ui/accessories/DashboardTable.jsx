@@ -22,7 +22,7 @@ import {
   SelectSection,
   Tooltip,
   SelectItem,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import Link from "next/link";
 import {
   AssignIcon,
@@ -410,11 +410,9 @@ export default function App({
                   <EditIcon />
                 </span>
               </Link>
-
               <span className="text-lg text-danger cursor-pointer active:opacity-50">
                 <DeleteIcon />
               </span>
-
               <Link href={`assets/${asset.assetid}/edit`}>
                 <span className="text-lg text-default-400 cursor-pointer active:opacity-50">
                   <AssignIcon />

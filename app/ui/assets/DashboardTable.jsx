@@ -23,7 +23,7 @@ import {
   ModalBody,
   ModalFooter,
   useDisclosure,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import Link from "next/link";
 import {
   AssignIcon,
@@ -741,7 +741,7 @@ export default function App({
                     Delete Item
                   </DropdownItem>
                   <DropdownItem
-                    key="label"
+                    key="change-status"
                     startContent={<Status />}
                     onClick={() => handleOpenModal(asset, "status")}
                     //onClick={() => handleQrCode(asset.assetid)}
@@ -757,7 +757,7 @@ export default function App({
                     Genereate QR-Code
                   </DropdownItem>
                   <DropdownItem
-                    key="label"
+                    key="generate-label"
                     startContent={<Label />}
                     onClick={() => handleOpenModal(asset, "label")}
                     //onClick={() => handleQrCode(asset.assetid)}

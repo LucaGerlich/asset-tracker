@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import UserResources from "./ui/UserResources";
 import Breadcrumb from "@/app/components/Breadcrumb";
-import { Divider } from "@nextui-org/divider";
+import { Divider } from "@heroui/divider";
 import {
   getUserById,
   getUserAssets,
@@ -18,9 +18,10 @@ export const metadata = {
   description: "Asset management tool",
 };
 
-export default async function Page({ params }) {
+export default async function Page(props) {
+  const params = await props.params;
   const user = await getUserById(params.id);
-  const [allAssets, links, statuses, allAccessories, userAccLinks, licences] = await Promise.all([
+  const [allAssets, links, statuses, allAccessoriesRaw, userAccLinks, licencesRaw] = await Promise.all([
     getAssets(),
     getUserAssets(),
     getStatus(),
@@ -28,6 +29,14 @@ export default async function Page({ params }) {
     getUserAccessoires(),
     getLicences(),
   ]);
+  const allAccessories = allAccessoriesRaw.map((a) => ({
+    ...a,
+    purchaseprice: a.purchaseprice != null ? Number(a.purchaseprice) : null,
+  }));
+  const licences = licencesRaw.map((l) => ({
+    ...l,
+    purchaseprice: l.purchaseprice != null ? Number(l.purchaseprice) : null,
+  }));
   const myAssetLinks = links.filter((l) => l.userid === user.userid);
   const myAssets = myAssetLinks
     .map((l) => allAssets.find((a) => a.assetid === l.assetid))

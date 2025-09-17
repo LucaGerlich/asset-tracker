@@ -1,5 +1,5 @@
 import React from "react";
-import DashboardTable from "../ui/assets/DashboardTable";
+import AssetsTableClient from "./ui/AssetsTableClient";
 import Link from "next/link";
 import { PlusIcon } from "../ui/Icons";
 import {
@@ -46,7 +46,12 @@ export default async function Page() {
     { value: "100", label: "100" },
   ];
 
-  const databaseAssets = await getAssets();
+  const databaseAssetsRaw = await getAssets();
+  // Sanitize Prisma Decimals (purchaseprice) for client component props
+  const databaseAssets = databaseAssetsRaw.map((a) => ({
+    ...a,
+    purchaseprice: a.purchaseprice !== null && a.purchaseprice !== undefined ? Number(a.purchaseprice) : null,
+  }));
   const location = await getLocation();
   const user = await getUsers();
   const status = await getStatus();
@@ -67,7 +72,7 @@ export default async function Page() {
           Create Asset
         </Link>
       </div> */}
-      <DashboardTable
+      <AssetsTableClient
         data={databaseAssets}
         locations={location}
         user={user}
@@ -78,7 +83,7 @@ export default async function Page() {
         columns={columns}
         selectOptions={selectOptions}
         userAssets={userAssets}
-      ></DashboardTable>
+      ></AssetsTableClient>
     </div>
   );
 }

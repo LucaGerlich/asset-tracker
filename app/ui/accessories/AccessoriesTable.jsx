@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip } from "@nextui-org/react";
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Chip } from "@heroui/react";
 
 export default function AccessoriesTable({ items, manuById, modelById, statusById, categoryById, locationById, supplierById }) {
   return (
