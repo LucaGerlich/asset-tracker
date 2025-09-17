@@ -1,11 +1,5 @@
 "use client";
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   Table,
   TableHeader,
@@ -102,6 +96,11 @@ export default function App({
   );
   const [statusFilter, setStatusFilter] = useState("all");
   const [assetsData, setAssetsData] = useState(data);
+  const [userAssetsData, setUserAssetsData] = useState(userAssets);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [now, setNow] = useState(null);
+  const [mounted, setMounted] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(selectOptions[0].value);
   const [sortDescriptor, setSortDescriptor] = useState({
     column: "assettag",
@@ -124,8 +123,15 @@ export default function App({
     onOpen: onStatusModalOpen,
     onOpenChange: onStatusModalOpenChange,
   } = useDisclosure();
+  const {
+    isOpen: isDeleteModalOpen,
+    onOpen: onDeleteModalOpen,
+    onOpenChange: onDeleteModalOpenChange,
+  } = useDisclosure();
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [deleteMode, setDeleteMode] = useState("single");
+  const [confirmAssigned, setConfirmAssigned] = useState(false);
   const handleStatusUpdate = useCallback(
     async (assetId, statusId) => {
       try {
@@ -176,15 +182,14 @@ export default function App({
           description: `${assetId} deleted successfully`,
         });
 
-        setAssetsData((prevItems) =>
-          prevItems.filter((item) => item.assetid !== assetId)
-        );
+        setAssetsData((prevItems) => prevItems.filter((item) => item.assetid !== assetId));
+        setUserAssetsData((prev) => prev.filter((ua) => ua.assetid !== assetId));
       } catch (error) {
         toast.error("Error deleting asset", { description: error });
         console.error(error);
       }
     },
-    [setAssetsData]
+    [setAssetsData, setUserAssetsData]
   );
 
   const handleAssign = useCallback(
@@ -209,15 +214,37 @@ export default function App({
         const result = await response.json();
         console.log(result.message);
         toast.success("Entry assigned successfully");
-
-        setAssetsData((prevItems) =>
-          prevItems.filter((item) => item.assetid !== assetId)
-        );
+        // Update local userAssets mapping so UI reflects change immediately
+        setUserAssetsData((prev) => {
+          const existing = prev.find((ua) => ua.assetid === assetId);
+          if (existing) {
+            return prev.map((ua) =>
+              ua.assetid === assetId ? { ...ua, userid: userId, change_date: new Date().toISOString() } : ua
+            );
+          }
+          return [
+            ...prev,
+            {
+              userassetsid: result?.userAsset?.userassetsid || `${assetId}-${userId}`,
+              assetid: assetId,
+              userid: userId,
+              creation_date: new Date().toISOString(),
+              change_date: new Date().toISOString(),
+            },
+          ];
+        });
+        // Also reflect status = Active locally if we can resolve it
+        const active = status.find((s) => s.statustypename?.toLowerCase() === "active");
+        if (active) {
+          setAssetsData((prev) =>
+            prev.map((a) => (a.assetid === assetId ? { ...a, statustypeid: active.statustypeid } : a))
+          );
+        }
       } catch (error) {
         console.error("Error:", error);
       }
     },
-    [setAssetsData]
+    [setAssetsData, setUserAssetsData, status]
   );
 
   // DELETE IF NOT NEEDED
@@ -284,15 +311,20 @@ export default function App({
 
         const result = await response.json();
         console.log(result.message);
-
-        setAssetsData((prevItems) =>
-          prevItems.filter((item) => item.assetid !== assetId)
-        );
+        // Remove mapping locally
+        setUserAssetsData((prev) => prev.filter((ua) => ua.assetid !== assetId));
+        // Reflect status = Available locally if we can resolve it
+        const available = status.find((s) => s.statustypename?.toLowerCase() === "available");
+        if (available) {
+          setAssetsData((prev) =>
+            prev.map((a) => (a.assetid === assetId ? { ...a, statustypeid: available.statustypeid } : a))
+          );
+        }
       } catch (error) {
         console.error("Error:", error);
       }
     },
-    [setAssetsData]
+    [setAssetsData, setUserAssetsData, status]
   );
 
   const handleUserSelection = (value) => {
@@ -337,6 +369,16 @@ export default function App({
           setSelectedAsset(asset);
           onStatusModalOpen();
           break;
+        case "delete":
+          setSelectedAsset(asset);
+          setDeleteMode("single");
+          onDeleteModalOpen();
+          break;
+        case "delete-bulk":
+          setSelectedAsset(null);
+          setDeleteMode("bulk");
+          onDeleteModalOpen();
+          break;
         case "qrcode":
           setSelectedAsset(asset);
           onQRCodeModalOpen();
@@ -347,7 +389,7 @@ export default function App({
           break;
       }
     },
-    [onAssignModalOpen, onQRCodeModalOpen, onStatusModalOpen]
+    [onAssignModalOpen, onQRCodeModalOpen, onStatusModalOpen, onDeleteModalOpen]
   );
 
   const headerColumns = useMemo(() => {
@@ -511,7 +553,7 @@ export default function App({
             </div>
           );
         case "belongsto":
-          const userAssetEntry = userAssets.find(
+          const userAssetEntry = userAssetsData.find(
             (ua) => ua.assetid === asset.assetid
           );
           if (!userAssetEntry) {
@@ -569,16 +611,17 @@ export default function App({
           );
         case "statustypeid":
           const stat = status.find(
-            (stat) => stat.statustypeid === asset.statustypeid
+            (s) => s.statustypeid === asset.statustypeid
           );
+          const chipColor = statusColorMap[stat?.statustypename] || "default";
           return (
             <Chip
               className="capitalize"
-              color={statusColorMap[stat.statustypename]}
+              color={chipColor}
               size="sm"
               variant="flat"
             >
-              {stat ? stat.statustypename : "Unknown"}
+              {stat?.statustypename || "Unknown"}
             </Chip>
           );
         case "assetcategorytypeid":
@@ -693,7 +736,7 @@ export default function App({
                     color="danger"
                     className="text-danger"
                     startContent={<DeleteIcon />}
-                    onClick={() => handleDelete(asset.assetid)}
+                    onClick={() => handleOpenModal(asset, "delete")}
                   >
                     Delete Item
                   </DropdownItem>
@@ -736,7 +779,7 @@ export default function App({
       models,
       categories,
       user,
-      userAssets,
+      userAssetsData,
       handleDelete,
       handleOpenModal,
     ]
@@ -755,6 +798,87 @@ export default function App({
   const onClear = useCallback(() => {
     setFilterValue("");
     setPage(1);
+  }, []);
+
+  const refreshData = useCallback(async (auto = false) => {
+    try {
+      setIsRefreshing(true);
+      const [assetsRes, userAssetsRes] = await Promise.all([
+        fetch("/api/asset"),
+        fetch("/api/userAssets"),
+      ]);
+      if (!assetsRes.ok) throw new Error("Failed to refresh assets");
+      if (!userAssetsRes.ok) throw new Error("Failed to refresh assignments");
+      const [assetsJson, userAssetsJson] = await Promise.all([
+        assetsRes.json(),
+        userAssetsRes.json(),
+      ]);
+      setAssetsData(assetsJson || []);
+      setUserAssetsData(userAssetsJson || []);
+      setLastUpdated(new Date());
+      if (auto) {
+        toast("Table refreshed");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Refresh failed", { description: e.message });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Auto refresh when returning to tab or when page becomes visible
+  useEffect(() => {
+    const onFocus = () => refreshData(true);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refreshData(true);
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refreshData]);
+
+  // Initialize lastUpdated and mount flag on client
+  useEffect(() => {
+    setLastUpdated(new Date());
+    setMounted(true);
+  }, []);
+
+  // Keep a ticking clock for relative time display
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Keyboard shortcut: press "r" to refresh (ignored while typing in inputs)
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "r" && e.key !== "R") return;
+      const target = e.target;
+      const tag = target?.tagName?.toLowerCase();
+      const isEditable = target?.isContentEditable || tag === "input" || tag === "textarea" || tag === "select";
+      if (isEditable) return;
+      e.preventDefault();
+      refreshData();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [refreshData]);
+
+  const formatRelativeTime = useCallback((from, to) => {
+    if (!from) return "-";
+    const diff = Math.max(0, Math.floor((to - from) / 1000)); // seconds
+    if (diff < 5) return "just now";
+    if (diff < 60) return `${diff}s ago`;
+    const mins = Math.floor(diff / 60);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   }, []);
 
   const topContent = useMemo(() => {
@@ -835,12 +959,19 @@ export default function App({
                   key="delete"
                   className="text-danger"
                   color="danger"
-                  onClick={() => handleDelete(asset.assetid)}
+                  onClick={() => handleOpenModal(null, "delete-bulk")}
                 >
                   Delete Entries
                 </DropdownItem>
               </DropdownMenu>
             </Dropdown>
+            <Button
+              variant="flat"
+              isLoading={isRefreshing}
+              onPress={refreshData}
+            >
+              Refresh
+            </Button>
             <Button
               color="primary"
               endContent={<PlusIcon />}
@@ -854,6 +985,9 @@ export default function App({
         <div className="flex justify-between items-center">
           <span className="text-default-400 text-small">
             Total: {assetsData.length} Entries
+          </span>
+          <span className="text-default-400 text-small" suppressHydrationWarning>
+            Last updated: {mounted && now ? formatRelativeTime(lastUpdated, now) : "-"}
           </span>
           <Select
             items={selectOptions}
@@ -964,7 +1098,7 @@ export default function App({
             {
               console.log(selectedAsset);
             }
-            const assignedUser = userAssets.find(
+            const assignedUser = userAssetsData.find(
               (ua) => ua.assetid === selectedAsset?.assetid
             );
             const assignedUserId = assignedUser ? assignedUser.userid : null;
@@ -1053,6 +1187,80 @@ export default function App({
         </ModalContent>
       </Modal>
       <Modal
+        isOpen={isDeleteModalOpen}
+        onOpenChange={onDeleteModalOpenChange}
+        backdrop="blur"
+        isKeyboardDismissDisabled
+        hideCloseButton
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                {deleteMode === "bulk"
+                  ? `Delete ${selectedKeys === "all" ? assetsData.length : selectedKeys.size} selected item(s)?`
+                  : `Delete ${selectedAsset?.assetname || "this item"}?`}
+              </ModalHeader>
+              <ModalBody>
+                <p className="text-sm text-default-500">
+                  This action permanently removes the asset and its user assignment. This cannot be undone.
+                </p>
+                {deleteMode === "single" && selectedAsset ? (() => {
+                  const assigned = userAssetsData.find((ua) => ua.assetid === selectedAsset.assetid);
+                  if (!assigned) return null;
+                  const u = user.find((x) => x.userid === assigned.userid);
+                  return (
+                    <p className="text-sm text-danger-500">This asset is currently assigned to {u ? `${u.firstname} ${u.lastname}` : "a user"}.</p>
+                  );
+                })() : null}
+                {deleteMode === "bulk" ? (() => {
+                  const ids = selectedKeys === "all" ? assetsData.map((a) => a.assetid) : Array.from(selectedKeys);
+                  const assignedCount = userAssetsData.filter((ua) => ids.includes(ua.assetid)).length;
+                  if (!assignedCount) return null;
+                  return (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-sm text-danger-500">{assignedCount} selected item(s) are currently assigned to users.</p>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={confirmAssigned} onChange={(e) => setConfirmAssigned(e.target.checked)} />
+                        I understand and want to delete them anyway
+                      </label>
+                    </div>
+                  );
+                })() : null}
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" onPress={onClose}>
+                  Cancel
+                </Button>
+                <Button
+                  color="danger"
+                  isDisabled={deleteMode === "bulk" && (() => {
+                    const ids = selectedKeys === "all" ? assetsData.map((a) => a.assetid) : Array.from(selectedKeys);
+                    const assignedCount = userAssetsData.filter((ua) => ids.includes(ua.assetid)).length;
+                    return assignedCount > 0 && !confirmAssigned;
+                  })()}
+                  onPress={async () => {
+                    if (deleteMode === "bulk") {
+                      const ids = selectedKeys === "all" ? assetsData.map((a) => a.assetid) : Array.from(selectedKeys);
+                      for (const id of ids) {
+                        await handleDelete(id);
+                      }
+                      setSelectedKeys(new Set());
+                      setConfirmAssigned(false);
+                    } else if (selectedAsset) {
+                      await handleDelete(selectedAsset.assetid);
+                    }
+                    onClose();
+                  }}
+                >
+                  Delete
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+      <Modal
         isOpen={isQRCodeModalOpen}
         size="sm"
         onOpenChange={onQRCodeModalOpenChange}
@@ -1103,7 +1311,7 @@ export default function App({
               (stat) => stat.statustypeid === selectedAsset?.statustypeid
             );
 
-            const assignedUser = userAssets.find(
+            const assignedUser = userAssetsData.find(
               (ua) => ua.assetid === selectedAsset?.assetid
             );
 
@@ -1148,10 +1356,10 @@ export default function App({
                     {(status) => (
                       <SelectItem
                         key={status.statustypeid}
-                        className={`text-${statusColorMap[status.statustypename]}`}
-                        color={statusColorMap[status.statustypename]}
+                        className={`text-${statusColorMap[status?.statustypename] || "default"}`}
+                        color={statusColorMap[status?.statustypename] || "default"}
                       >
-                        {status.statustypename}
+                        {status?.statustypename || "Unknown"}
                       </SelectItem>
                     )}
                   </Select>

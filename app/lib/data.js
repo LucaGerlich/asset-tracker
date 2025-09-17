@@ -110,6 +110,11 @@ export async function getUserAssets() {
   return accessories;
 }
 
+export async function getUserAccessoires() {
+  const res = await prisma.userAccessoires.findMany({});
+  return res;
+}
+
 export async function updateUserAsset(user, asset) {
   // DEPRECATED SIGNATURE: update by userAssetsId and new userId
   const res = await prisma.userAssets.update({

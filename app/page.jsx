@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Card, CardBody, CardHeader } from "./lib/nextui";
+import dynamic from "next/dynamic";
 import { getAssets, getUsers, getAccessories } from "@/app/lib/data";
+import StatCard from "./components/StatCard";
 
 export default async function Home() {
   const user = await getUsers();
@@ -12,40 +13,21 @@ export default async function Home() {
       <h1 className="text-3xl">Dashboard</h1>
       <br />
       <div className="flex flex-row gap-8">
-        <Link href="/assets" className="w-full h-28">
-          <Card>
-            <CardHeader>Total Assets</CardHeader>
-            <CardBody className="text-5xl text-primary">
-              {assets.length}
-            </CardBody>
-          </Card>
-        </Link>
-        <Link href="/accessories" className="w-full h-28">
-          <Card>
-            <CardHeader>Total Accessories</CardHeader>
-            <CardBody className="text-5xl text-primary">
-              {accessories.length}
-            </CardBody>
-          </Card>
-        </Link>
-        <Link href="/user" className="w-full h-28">
-          <Card>
-            <CardHeader>Total User</CardHeader>
-            <CardBody className="text-5xl text-primary">{user.length}</CardBody>
-          </Card>
-        </Link>
+        <StatCard href="/assets" title="Total Assets" value={assets.length} />
+        <StatCard href="/accessories" title="Total Accessories" value={accessories.length} />
+        <StatCard href="/user" title="Total User" value={user.length} />
       </div>
       <br />
       <br />
       <div className="flex flex-row gap-8">
-        <Card className="w-2/3 h-72">
-          <CardHeader>Latest Activity</CardHeader>
-          <CardBody className="text-5xl text-primary"></CardBody>
-        </Card>
-        <Card className="w-1/3 h-72">
-          <CardHeader>Statistics</CardHeader>
-          <CardBody className="text-5xl text-primary"></CardBody>
-        </Card>
+        <section className="w-2/3 h-72 rounded-lg border border-default-200">
+          <div className="px-4 py-3 border-b border-default-200 font-medium">Latest Activity</div>
+          <div className="p-4 text-5xl text-primary"></div>
+        </section>
+        <section className="w-1/3 h-72 rounded-lg border border-default-200">
+          <div className="px-4 py-3 border-b border-default-200 font-medium">Statistics</div>
+          <div className="p-4 text-5xl text-primary"></div>
+        </section>
       </div>
       {/* {user.map((user) => (
         <h1 key={user.userid}>{user.lastname}</h1>

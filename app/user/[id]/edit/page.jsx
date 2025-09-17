@@ -1,8 +1,8 @@
 import React from "react";
+import { getUserById } from "@/app/lib/data";
+import UserEditForm from "./ui/UserEditForm";
 
-function Page({ params }) {
-  console.log("Params:", params.id);
-  return <div>Edit user: {params.id}</div>;
+export default async function Page({ params }) {
+  const user = await getUserById(params.id);
+  return <UserEditForm initial={user} />;
 }
-
-export default Page;

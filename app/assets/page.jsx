@@ -57,7 +57,7 @@ export default async function Page() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      {/* <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold">Assets</h1>
         <Link
           href="/assets/create"
@@ -66,7 +66,7 @@ export default async function Page() {
           <PlusIcon />
           Create Asset
         </Link>
-      </div>
+      </div> */}
       <DashboardTable
         data={databaseAssets}
         locations={location}

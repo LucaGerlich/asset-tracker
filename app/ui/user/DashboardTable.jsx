@@ -21,12 +21,23 @@ const statusColorMap = {
   vacation: "warning",
 };
 
+function formatDateStable(value) {
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return "N/A";
+    // ISO is stable across server/client; trim 'Z' and keep seconds
+    return d.toISOString().replace("T", " ").replace("Z", "");
+  } catch {
+    return "N/A";
+  }
+}
+
 function DashboardTable({ data, columns }) {
   const renderCell = useCallback((user, columnKey) => {
     const cellValue = user[columnKey];
 
     if (columnKey === "creation_date" || columnKey === "change_date") {
-      return cellValue ? cellValue.toLocaleString() : "N/A";
+      return cellValue ? formatDateStable(cellValue) : "N/A";
     }
 
     switch (columnKey) {

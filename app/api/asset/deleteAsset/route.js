@@ -10,9 +10,11 @@ export async function DELETE(req) {
       });
     }
 
-    await prisma.asset.delete({
-      where: { assetid: assetId },
-    });
+    // Remove dependent relations first to satisfy FK constraints
+    await prisma.$transaction([
+      prisma.userAssets.deleteMany({ where: { assetid: assetId } }),
+      prisma.asset.delete({ where: { assetid: assetId } }),
+    ]);
 
     return new Response(
       JSON.stringify({ message: "Asset deleted successfully" }),
