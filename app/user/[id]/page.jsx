@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import UserResources from "./ui/UserResources";
 import Breadcrumb from "@/app/components/Breadcrumb";
-import { Divider } from "@heroui/divider";
+import { Separator } from "@/components/ui/separator";
 import {
   getUserById,
   getUserAssets,
@@ -85,7 +85,7 @@ export default async function Page(props) {
             </Link>
           </div>
         </div>
-        <Divider className="my-4" />
+        <Separator className="my-4" />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <section className="col-span-1 rounded-lg border border-default-200 p-4">

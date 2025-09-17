@@ -1,16 +1,24 @@
 "use client";
 import React from "react";
-import { Tabs, Tab, Card, CardBody } from "../lib/nextui";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
-const TabsComponent = (props) => {
+const TabsComponent = ({ tabs = [] }) => {
+  const first = tabs[0]?.key || "tab1";
   return (
-    <div className="flex w-full flex-col">
-      <Tabs aria-label="Options">
-        {props.map((tab) => (
-          <Tab key={tab.key} title={tab.title}></Tab>
+    <Tabs defaultValue={first} className="w-full">
+      <TabsList>
+        {tabs.map((t) => (
+          <TabsTrigger key={t.key} value={t.key}>
+            {t.title}
+          </TabsTrigger>
         ))}
-      </Tabs>
-    </div>
+      </TabsList>
+      {tabs.map((t) => (
+        <TabsContent key={t.key} value={t.key}>
+          {t.content || null}
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 };
 

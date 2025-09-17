@@ -1,29 +1,41 @@
 "use client";
 import React from "react";
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/react";
+import { DataTable } from "@/components/ui/data-table";
+import { createColumnHelper } from "@tanstack/react-table";
 
 export default function LocationsTable({ items }) {
-  return (
-    <Table aria-label="Locations table" isStriped>
-      <TableHeader>
-        <TableColumn>Name</TableColumn>
-        <TableColumn>Street</TableColumn>
-        <TableColumn>City</TableColumn>
-        <TableColumn>Country</TableColumn>
-      </TableHeader>
-      <TableBody emptyContent="No locations found" items={items}>
-        {(item) => (
-          <TableRow key={item.locationid}>
-            <TableCell>{item.locationname}</TableCell>
-            <TableCell>
-              {item.street ? `${item.street} ${item.housenumber ?? ""}`.trim() : "-"}
-            </TableCell>
-            <TableCell>{item.city ?? "-"}</TableCell>
-            <TableCell>{item.country ?? "-"}</TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
-  );
-}
+  const col = createColumnHelper();
+  const toOptions = React.useCallback((values) => {
+    const unique = [];
+    const seen = new Set();
+    values.forEach((value) => {
+      if (!value) return;
+      if (seen.has(value)) return;
+      seen.add(value);
+      unique.push({ value, label: value });
+    });
+    return unique;
+  }, []);
+  const columns = [
+    col.accessor((r) => r.locationname, { id: "locationname", header: "Name" }),
+    col.accessor((r) => (r.street ? `${r.street} ${r.housenumber ?? ""}`.trim() : "-"), { id: "street", header: "Street" }),
+    col.accessor((r) => r.city ?? "-", { id: "city", header: "City" }),
+    col.accessor((r) => r.country ?? "-", { id: "country", header: "Country" }),
+  ];
+  const filters = React.useMemo(() => (
+    [
+      {
+        columnId: "city",
+        title: "City",
+        options: toOptions(items.map((r) => r.city ?? "")),
+      },
+      {
+        columnId: "country",
+        title: "Country",
+        options: toOptions(items.map((r) => r.country ?? "")),
+      },
+    ].filter((f) => f.options.length)
+  ), [items, toOptions]);
 
+  return <DataTable columns={columns} data={items} searchableColumn="locationname" filters={filters} />;
+}

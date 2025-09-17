@@ -1,5 +1,8 @@
 import React from "react";
 import AccessoriesTable from "../ui/accessories/AccessoriesTable";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { PlusIcon } from "../ui/Icons";
 import {
   getAccessories,
   getManufacturers,
@@ -56,7 +59,15 @@ export default async function Page() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-4">Accessories</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Accessories</h1>
+        <Button asChild>
+          <Link href="/accessories/create" className="inline-flex items-center gap-2">
+            <PlusIcon className="h-4 w-4" />
+            Create Accessory
+          </Link>
+        </Button>
+      </div>
       <AccessoriesTable
         items={accessories}
         manuById={manuById}

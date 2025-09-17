@@ -2,6 +2,7 @@ import React from "react";
 import AssetsTableClient from "./ui/AssetsTableClient";
 import Link from "next/link";
 import { PlusIcon } from "../ui/Icons";
+import { Button } from "@/components/ui/button";
 import {
   getAssets,
   getLocation,
@@ -62,16 +63,15 @@ export default async function Page() {
 
   return (
     <div>
-      {/* <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <h1 className="text-2xl font-semibold">Assets</h1>
-        <Link
-          href="/assets/create"
-          className="inline-flex items-center gap-2 rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium shadow hover:opacity-90"
-        >
-          <PlusIcon />
-          Create Asset
-        </Link>
-      </div> */}
+        <Button asChild>
+          <Link href="/assets/create" className="inline-flex items-center gap-2">
+            <PlusIcon className="h-4 w-4" />
+            Create Asset
+          </Link>
+        </Button>
+      </div>
       <AssetsTableClient
         data={databaseAssets}
         locations={location}

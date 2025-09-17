@@ -1,33 +1,46 @@
 "use client";
 import React from "react";
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/react";
+import { DataTable } from "@/components/ui/data-table";
+import { createColumnHelper } from "@tanstack/react-table";
 
 export default function ConsumablesTable({ items, catById, manuById, supplierById }) {
-  return (
-    <Table aria-label="Consumables table" isStriped>
-      <TableHeader>
-        <TableColumn>Name</TableColumn>
-        <TableColumn>Category</TableColumn>
-        <TableColumn>Manufacturer</TableColumn>
-        <TableColumn>Supplier</TableColumn>
-        <TableColumn>Price</TableColumn>
-        <TableColumn>Purchased</TableColumn>
-      </TableHeader>
-      <TableBody emptyContent="No consumables found" items={items}>
-        {(item) => (
-          <TableRow key={item.consumableid}>
-            <TableCell>{item.consumablename}</TableCell>
-            <TableCell>{catById.get(item.consumablecategorytypeid) ?? "-"}</TableCell>
-            <TableCell>{manuById.get(item.manufacturerid) ?? "-"}</TableCell>
-            <TableCell>{supplierById.get(item.supplierid) ?? "-"}</TableCell>
-            <TableCell>{item.purchaseprice ?? "-"}</TableCell>
-            <TableCell>
-              {item.purchasedate ? new Date(item.purchasedate).toLocaleDateString() : "-"}
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
-  );
-}
+  const col = createColumnHelper();
+  const optionsFromMap = React.useCallback((map) => {
+    if (!map) return [];
+    return Array.from(map.values()).reduce((acc, value) => {
+      if (!value) return acc;
+      if (acc.some((opt) => opt.value === value)) return acc;
+      acc.push({ value, label: value });
+      return acc;
+    }, []);
+  }, []);
+  const columns = [
+    col.accessor((r) => r.consumablename, { id: "consumablename", header: "Name" }),
+    col.accessor((r) => catById.get(r.consumablecategorytypeid) ?? "-", { id: "category", header: "Category" }),
+    col.accessor((r) => manuById.get(r.manufacturerid) ?? "-", { id: "manufacturer", header: "Manufacturer" }),
+    col.accessor((r) => supplierById.get(r.supplierid) ?? "-", { id: "supplier", header: "Supplier" }),
+    col.accessor((r) => r.purchaseprice ?? "-", { id: "price", header: "Price" }),
+    col.accessor((r) => (r.purchasedate ? new Date(r.purchasedate).toLocaleDateString() : "-"), { id: "purchased", header: "Purchased" }),
+  ];
+  const filters = React.useMemo(() => (
+    [
+      {
+        columnId: "category",
+        title: "Category",
+        options: optionsFromMap(catById),
+      },
+      {
+        columnId: "manufacturer",
+        title: "Manufacturer",
+        options: optionsFromMap(manuById),
+      },
+      {
+        columnId: "supplier",
+        title: "Supplier",
+        options: optionsFromMap(supplierById),
+      },
+    ].filter((f) => f.options.length)
+  ), [optionsFromMap, catById, manuById, supplierById]);
 
+  return <DataTable columns={columns} data={items} searchableColumn="consumablename" filters={filters} />;
+}

@@ -1,6 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Button, Input, Checkbox, Divider } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from "sonner";
 
@@ -97,27 +100,26 @@ export default function Page() {
             <p className="text-sm text-foreground-500 mt-1">Fill out details below</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button type="button" variant="light" onPress={() => router.back()}>Cancel</Button>
-            <Button color="primary" type="submit" isLoading={submitting}>Create</Button>
+            <Button type="button" variant="light" onClick={() => router.back()}>Cancel</Button>
+            <Button type="submit" disabled={submitting}>{submitting ? "Creating..." : "Create"}</Button>
           </div>
         </div>
-        <Divider />
+        <Separator />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <section className="col-span-1 rounded-lg border border-default-200 p-4">
                 <h2 className="text-sm font-semibold text-foreground-600 mb-3">Profile</h2>
                 <div className="grid grid-cols-1 gap-3">
-                  <Input label="First Name" name="firstname" value={form.firstname} onChange={onChange} isRequired />
-                  <Input label="Last Name" name="lastname" value={form.lastname} onChange={onChange} isRequired />
+                  <Input name="firstname" value={form.firstname} onChange={onChange} placeholder="First Name" required />
+                  <Input name="lastname" value={form.lastname} onChange={onChange} placeholder="Last Name" required />
                   <Input
-                    label="Username"
+                    placeholder="Username"
                     name="username"
                     value={form.username}
                     onChange={onChange}
-                    isInvalid={usernameTaken}
-                    errorMessage={usernameTaken ? "Username already exists" : undefined}
+                    aria-invalid={usernameTaken}
                   />
-                  <Input label="Language" name="lan" value={form.lan} onChange={onChange} />
+                  <Input name="lan" value={form.lan} onChange={onChange} placeholder="Language" />
                 </div>
               </section>
 
@@ -125,13 +127,11 @@ export default function Page() {
                 <h2 className="text-sm font-semibold text-foreground-600 mb-3">Contact</h2>
                 <div className="grid grid-cols-1 gap-3">
                   <Input
-                    label="Email"
                     name="email"
                     type="email"
                     value={form.email}
                     onChange={onChange}
-                    isInvalid={emailTaken}
-                    errorMessage={emailTaken ? "Email already exists" : undefined}
+                    aria-invalid={emailTaken}
                   />
                 </div>
               </section>
@@ -140,13 +140,13 @@ export default function Page() {
                 <h2 className="text-sm font-semibold text-foreground-600 mb-3">Permissions</h2>
                 <div className="flex flex-col gap-3">
                   <div className="flex gap-2">
-                    <Button size="sm" variant={!form.isadmin && !form.canrequest ? "solid" : "flat"} onPress={() => setForm((f) => ({ ...f, isadmin: false, canrequest: false }))}>Deactivated</Button>
-                    <Button size="sm" variant={!form.isadmin && form.canrequest ? "solid" : "flat"} onPress={() => setForm((f) => ({ ...f, isadmin: false, canrequest: true }))}>Requester</Button>
-                    <Button size="sm" variant={form.isadmin ? "solid" : "flat"} onPress={() => setForm((f) => ({ ...f, isadmin: true, canrequest: true }))}>Admin</Button>
+                    <Button size="sm" onClick={() => setForm((f) => ({ ...f, isadmin: false, canrequest: false }))}>Deactivated</Button>
+                    <Button size="sm" onClick={() => setForm((f) => ({ ...f, isadmin: false, canrequest: true }))}>Requester</Button>
+                    <Button size="sm" onClick={() => setForm((f) => ({ ...f, isadmin: true, canrequest: true }))}>Admin</Button>
                   </div>
                   <div className="flex gap-6">
-                    <Checkbox isSelected={form.isadmin} onValueChange={(v) => setForm((f) => ({ ...f, isadmin: v }))}>Admin</Checkbox>
-                    <Checkbox isSelected={form.canrequest} onValueChange={(v) => setForm((f) => ({ ...f, canrequest: v }))}>Can Request</Checkbox>
+                    <Checkbox checked={form.isadmin} onChange={(e) => setForm((f) => ({ ...f, isadmin: e.target.checked }))}>Admin</Checkbox>
+                    <Checkbox checked={form.canrequest} onChange={(e) => setForm((f) => ({ ...f, canrequest: e.target.checked }))}>Can Request</Checkbox>
                   </div>
                 </div>
               </section>
@@ -156,7 +156,7 @@ export default function Page() {
           <section className="col-span-1 rounded-lg border border-default-200 p-4">
             <h2 className="text-sm font-semibold text-foreground-600 mb-3">Security</h2>
             <div className="grid grid-cols-1 gap-3">
-              <Input label="Password" name="password" type="password" value={form.password} onChange={onChange} isRequired />
+              <Input name="password" type="password" value={form.password} onChange={onChange} required placeholder="Password" />
             </div>
           </section>
         </div>
@@ -167,8 +167,8 @@ export default function Page() {
           </p>
         )}
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="light" onPress={() => router.back()}>Cancel</Button>
-          <Button color="primary" type="submit" isLoading={submitting} isDisabled={usernameTaken || emailTaken}>Create</Button>
+          <Button type="button" variant="light" onClick={() => router.back()}>Cancel</Button>
+          <Button type="submit" disabled={submitting || usernameTaken || emailTaken}>{submitting ? "Creating..." : "Create"}</Button>
         </div>
       </form>
     </div>

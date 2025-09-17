@@ -20,6 +20,9 @@ This is build using [Next.js](https://nextjs.org/), [Prisma](https://prisma.io/)
 - **User Management**: Assign users to assets and manage user information.
 - **Filtering and Sorting**: Filter assets by various criteria and sort them as needed.
 - **Pagination**: Efficiently handle large datasets with pagination.
+- **Column Controls**: Toggle column visibility, apply per-column select filters, and choose page size (25/50/100) directly in any table toolbar.
+- **Row Actions**: Dropdown menus on asset rows consolidate view/edit/delete, user assignment, and QR-code display.
+- **Create Flows**: Dedicated creation screens exist for assets, accessories, consumables, licences, locations, manufacturers, suppliers, and users.
 - **Responsive Design**: Fully responsive design for mobile and desktop views.
 - **Search Functionality**: Quickly search for assets using the search bar.
 - **User Onboarding**: Intuitive user onboarding with guided tours and tooltips.
@@ -65,6 +68,32 @@ npx prisma migrate dev --name init
 ```
 
 ## usage
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| POST | `/api/accessories` | Create an accessory (requires manufacturer, model, status, category, location, supplier). |
+| POST | `/api/asset` | Create an asset with optional model/category/location/supplier/manufacturer metadata. |
+| POST | `/api/consumable` | Create a consumable record. |
+| POST | `/api/licence` | Create a licence and optionally assign it to a user. |
+| POST | `/api/location` | Create a location entry (name required, address optional). |
+| POST | `/api/manufacturer` | Create a manufacturer entry. |
+| POST | `/api/supplier` | Create a supplier entry with optional contact information. |
+| POST | `/api/user/addUser` | Create a user with admin/requester flags. |
+| POST | `/api/userAssets/assign` | Assign an asset to a user. |
+| POST | `/api/userAccessoires/assign` | Assign an accessory to a user. |
+| DELETE | `/api/asset/deleteAsset` | Delete an asset by ID. |
+| GET | `/api/accessories` | Fetch accessories. |
+| GET | `/api/asset` | Fetch assets or a single asset via `?id=`. |
+| GET | `/api/consumable` | Fetch consumables. |
+| GET | `/api/licence` | Fetch licences. |
+| GET | `/api/location` | Fetch locations. |
+| GET | `/api/manufacturer` | Fetch manufacturers. |
+| GET | `/api/supplier` | Fetch suppliers. |
+| GET | `/api/user` | Fetch users. |
+| DELETE | `/api/user` | Delete a user. |
+| PUT | `/api/user` | Update a user. |
 
 ## Database Schema
 

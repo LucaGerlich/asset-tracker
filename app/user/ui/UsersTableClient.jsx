@@ -1,12 +1,8 @@
 "use client";
-
 import dynamic from "next/dynamic";
 
-const DashboardTable = dynamic(() => import("../../ui/user/DashboardTable"), {
-  ssr: false,
-});
+const UsersDataTable = dynamic(() => import("../../ui/user/UsersDataTable"), { ssr: false });
 
 export default function UsersTableClient(props) {
-  return <DashboardTable {...props} />;
+  return <UsersDataTable {...props} />;
 }
-

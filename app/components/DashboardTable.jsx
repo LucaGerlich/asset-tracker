@@ -1,17 +1,6 @@
 "use client";
 import React, { useCallback } from "react";
-import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
-  User,
-  Chip,
-  Tooltip,
-  getKeyValue,
-} from "@heroui/react";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { EditIcon, DeleteIcon, EyeIcon } from "../ui/Icons.jsx";
 
 const statusColorMap = {
@@ -83,29 +72,22 @@ function DashboardTable({ data, columns }) {
   }, []);
 
   return (
-    <Table
-      isStriped
-      aria-label="Example table with custom cells"
-      selectionMode="multiple"
-    >
-      <TableHeader columns={columns}>
-        {(column) => (
-          <TableColumn
-            key={column.uid}
-            align={column.uid === "actions" ? "center" : "start"}
-          >
-            {column.name}
-          </TableColumn>
-        )}
+    <Table>
+      <TableHeader>
+        <TableRow>
+          {columns.map((c) => (
+            <TableHead key={c.uid}>{c.name}</TableHead>
+          ))}
+        </TableRow>
       </TableHeader>
-      <TableBody items={data}>
-        {(item) => (
+      <TableBody>
+        {data.map((item) => (
           <TableRow key={item.id}>
-            {(columnKey) => (
-              <TableCell>{renderCell(item, columnKey)}</TableCell>
-            )}
+            {columns.map((c) => (
+              <TableCell key={c.uid}>{renderCell(item, c.uid)}</TableCell>
+            ))}
           </TableRow>
-        )}
+        ))}
       </TableBody>
     </Table>
   );

@@ -1,6 +1,8 @@
 "use client";
 import React, { useMemo, useState } from "react";
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectItem } from "@/components/ui/select";
 import { Toaster, toast } from "sonner";
 
 export default function UserResources({ user, accessories, licences, allAccessories, allLicences }) {
@@ -142,7 +144,7 @@ export default function UserResources({ user, accessories, licences, allAccessor
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-foreground-600">Accessories</h2>
           <div className="flex gap-2">
-            <Button size="sm" variant="flat" onPress={() => setAssignAccOpen(true)}>Assign</Button>
+            <Button size="sm" variant="light" onClick={() => setAssignAccOpen(true)}>Assign</Button>
           </div>
         </div>
         {accList.length === 0 ? (
@@ -165,7 +167,7 @@ export default function UserResources({ user, accessories, licences, allAccessor
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-foreground-600">Licences</h2>
           <div className="flex gap-2">
-            <Button size="sm" variant="flat" onPress={() => setAssignLicOpen(true)}>Assign</Button>
+            <Button size="sm" variant="light" onClick={() => setAssignLicOpen(true)}>Assign</Button>
           </div>
         </div>
         {licList.length === 0 ? (
@@ -187,59 +189,45 @@ export default function UserResources({ user, accessories, licences, allAccessor
         )}
       </section>
 
-      <Modal isOpen={assignAccOpen} onOpenChange={setAssignAccOpen} backdrop="blur">
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader>Assign Accessory</ModalHeader>
-              <ModalBody>
-                <Select
-                  items={availableAccessories}
-                  placeholder="Select an accessory"
-                  aria-label="Select an accessory"
-                  selectedKeys={new Set(selectedAcc ? [selectedAcc] : [])}
-                  onSelectionChange={(keys) => setSelectedAcc(Array.from(keys)[0])}
-                >
-                  {(a) => (
-                    <SelectItem key={a.accessorieid}>{a.accessoriename} ({a.accessorietag})</SelectItem>
-                  )}
-                </Select>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="light" onPress={onClose}>Cancel</Button>
-                <Button color="primary" isDisabled={!selectedAcc} onPress={assignAcc}>Assign</Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      <Dialog open={assignAccOpen} onOpenChange={setAssignAccOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Accessory</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <Select value={selectedAcc || ""} onChange={(e)=> setSelectedAcc(e.target.value)}>
+              <option value="">Select an accessory</option>
+              {availableAccessories.map((a) => (
+                <SelectItem key={a.accessorieid} value={a.accessorieid}>{a.accessoriename} ({a.accessorietag})</SelectItem>
+              ))}
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="light" onClick={() => setAssignAccOpen(false)}>Cancel</Button>
+            <Button disabled={!selectedAcc} onClick={assignAcc}>Assign</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <Modal isOpen={assignLicOpen} onOpenChange={setAssignLicOpen} backdrop="blur">
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader>Assign Licence</ModalHeader>
-              <ModalBody>
-                <Select
-                  items={availableLicences}
-                  placeholder="Select a licence"
-                  aria-label="Select a licence"
-                  selectedKeys={new Set(selectedLic ? [selectedLic] : [])}
-                  onSelectionChange={(keys) => setSelectedLic(Array.from(keys)[0])}
-                >
-                  {(l) => (
-                    <SelectItem key={l.licenceid}>{l.licencekey || l.licenceid}</SelectItem>
-                  )}
-                </Select>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="light" onPress={onClose}>Cancel</Button>
-                <Button color="primary" isDisabled={!selectedLic} onPress={assignLic}>Assign</Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      <Dialog open={assignLicOpen} onOpenChange={setAssignLicOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Licence</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <Select value={selectedLic || ""} onChange={(e)=> setSelectedLic(e.target.value)}>
+              <option value="">Select a licence</option>
+              {availableLicences.map((l) => (
+                <SelectItem key={l.licenceid} value={l.licenceid}>{l.licencekey || l.licenceid}</SelectItem>
+              ))}
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="light" onClick={() => setAssignLicOpen(false)}>Cancel</Button>
+            <Button disabled={!selectedLic} onClick={assignLic}>Assign</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import Breadcrumb from "../../components/Breadcrumb";
-import { Divider } from "@heroui/divider";
+import { Separator } from "@/components/ui/separator";
 import {
   getAssetById,
   getLocationById,
@@ -74,7 +74,7 @@ export default async function Page(props) {
       <Breadcrumb options={breadcrumbOptions} />
       <div className="flex flex-col w-full h-full overflow-hidden">
         <AssetDetailHeader asset={asset} statuses={status} users={users} userAssets={userAssets} />
-        <Divider className="my-4" />
+        <Separator className="my-4" />
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <section className="col-span-1 rounded-lg border border-default-200 p-4">
@@ -137,7 +137,7 @@ export default async function Page(props) {
 
         <div className="mt-10">
           <h2 className="text-lg font-semibold">Asset History</h2>
-          <Divider className="my-3" />
+          <Separator className="my-3" />
           <p className="text-sm text-foreground-500">No history available yet.</p>
         </div>
       </div>

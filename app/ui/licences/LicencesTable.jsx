@@ -1,33 +1,46 @@
 "use client";
 import React from "react";
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/react";
+import { DataTable } from "@/components/ui/data-table";
+import { createColumnHelper } from "@tanstack/react-table";
 
 export default function LicencesTable({ items, catById, manuById, supplierById }) {
-  return (
-    <Table aria-label="Licences table" isStriped>
-      <TableHeader>
-        <TableColumn>Key</TableColumn>
-        <TableColumn>Licensed To</TableColumn>
-        <TableColumn>Category</TableColumn>
-        <TableColumn>Manufacturer</TableColumn>
-        <TableColumn>Supplier</TableColumn>
-        <TableColumn>Expires</TableColumn>
-      </TableHeader>
-      <TableBody emptyContent="No licences found" items={items}>
-        {(item) => (
-          <TableRow key={item.licenceid}>
-            <TableCell>{item.licencekey ?? "-"}</TableCell>
-            <TableCell>{item.licensedtoemail ?? "-"}</TableCell>
-            <TableCell>{catById.get(item.licencecategorytypeid) ?? "-"}</TableCell>
-            <TableCell>{manuById.get(item.manufacturerid) ?? "-"}</TableCell>
-            <TableCell>{supplierById.get(item.supplierid) ?? "-"}</TableCell>
-            <TableCell>
-              {item.expirationdate ? new Date(item.expirationdate).toLocaleDateString() : "-"}
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
-  );
-}
+  const col = createColumnHelper();
+  const optionsFromMap = React.useCallback((map) => {
+    if (!map) return [];
+    return Array.from(map.values()).reduce((acc, value) => {
+      if (!value) return acc;
+      if (acc.some((opt) => opt.value === value)) return acc;
+      acc.push({ value, label: value });
+      return acc;
+    }, []);
+  }, []);
+  const columns = [
+    col.accessor((r) => r.licencekey ?? "-", { id: "licencekey", header: "Key" }),
+    col.accessor((r) => r.licensedtoemail ?? "-", { id: "licensedtoemail", header: "Licensed To" }),
+    col.accessor((r) => catById.get(r.licencecategorytypeid) ?? "-", { id: "category", header: "Category" }),
+    col.accessor((r) => manuById.get(r.manufacturerid) ?? "-", { id: "manufacturer", header: "Manufacturer" }),
+    col.accessor((r) => supplierById.get(r.supplierid) ?? "-", { id: "supplier", header: "Supplier" }),
+    col.accessor((r) => (r.expirationdate ? new Date(r.expirationdate).toLocaleDateString() : "-"), { id: "expires", header: "Expires" }),
+  ];
+  const filters = React.useMemo(() => (
+    [
+      {
+        columnId: "category",
+        title: "Category",
+        options: optionsFromMap(catById),
+      },
+      {
+        columnId: "manufacturer",
+        title: "Manufacturer",
+        options: optionsFromMap(manuById),
+      },
+      {
+        columnId: "supplier",
+        title: "Supplier",
+        options: optionsFromMap(supplierById),
+      },
+    ].filter((f) => f.options.length)
+  ), [optionsFromMap, catById, manuById, supplierById]);
 
+  return <DataTable columns={columns} data={items} searchableColumn="licencekey" filters={filters} />;
+}
