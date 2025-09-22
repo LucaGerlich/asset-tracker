@@ -8,7 +8,12 @@ export const metadata = {
 };
 
 export default async function Page() {
-  const manufacturers = await getManufacturers();
+  const manufacturersRaw = await getManufacturers();
+  const manufacturers = manufacturersRaw.map((item) => ({
+    ...item,
+    creation_date: item.creation_date ? item.creation_date.toISOString() : null,
+    change_date: item.change_date ? item.change_date.toISOString() : null,
+  }));
   return (
     <div>
       <ManufacturersTable items={manufacturers} />

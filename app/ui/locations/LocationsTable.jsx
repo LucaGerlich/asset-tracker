@@ -149,6 +149,7 @@ export default function LocationsTable({ items }) {
         <TableColumn>Street</TableColumn>
         <TableColumn>City</TableColumn>
         <TableColumn>Country</TableColumn>
+        <TableColumn>Actions</TableColumn>
       </TableHeader>
       <TableBody emptyContent="No locations found" items={paginatedItems}>
         {(item) => (
@@ -159,10 +160,19 @@ export default function LocationsTable({ items }) {
             </TableCell>
             <TableCell>{item.city ?? "-"}</TableCell>
             <TableCell>{item.country ?? "-"}</TableCell>
+            <TableCell>
+              <Button
+                as={Link}
+                href={`/locations/${item.locationid}/edit`}
+                size="sm"
+                variant="light"
+              >
+                Edit
+              </Button>
+            </TableCell>
           </TableRow>
         )}
       </TableBody>
     </Table>
   );
 }
-

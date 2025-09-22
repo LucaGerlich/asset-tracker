@@ -17,7 +17,7 @@ export const metadata = {
 
 export default async function Page() {
   const [
-    accessories,
+    accessoriesRaw,
     manufacturers,
     models,
     statuses,
@@ -37,7 +37,16 @@ export default async function Page() {
   return (
     <div>
       <AccessoriesTable
-        items={accessories}
+        items={accessoriesRaw.map((item) => ({
+          ...item,
+          purchaseprice:
+            item.purchaseprice !== null && item.purchaseprice !== undefined
+              ? Number(item.purchaseprice)
+              : null,
+          purchasedate: item.purchasedate ? item.purchasedate.toISOString() : null,
+          creation_date: item.creation_date ? item.creation_date.toISOString() : null,
+          change_date: item.change_date ? item.change_date.toISOString() : null,
+        }))}
         manufacturers={manufacturers}
         models={models}
         statuses={statuses}

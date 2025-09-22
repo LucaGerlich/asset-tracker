@@ -8,12 +8,23 @@ export const metadata = {
 };
 
 export default async function Page() {
-  const [items, categories, manufacturers, suppliers] = await Promise.all([
+  const [itemsRaw, categories, manufacturers, suppliers] = await Promise.all([
     getConsumables(),
     getConsumableCategories(),
     getManufacturers(),
     getSuppliers(),
   ]);
+
+  const items = itemsRaw.map((item) => ({
+    ...item,
+    purchaseprice:
+      item.purchaseprice !== null && item.purchaseprice !== undefined
+        ? Number(item.purchaseprice)
+        : null,
+    purchasedate: item.purchasedate ? item.purchasedate.toISOString() : null,
+    creation_date: item.creation_date ? item.creation_date.toISOString() : null,
+    change_date: item.change_date ? item.change_date.toISOString() : null,
+  }));
 
   return (
     <div>

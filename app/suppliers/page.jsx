@@ -8,7 +8,12 @@ export const metadata = {
 };
 
 export default async function Page() {
-  const suppliers = await getSuppliers();
+  const suppliersRaw = await getSuppliers();
+  const suppliers = suppliersRaw.map((item) => ({
+    ...item,
+    creation_date: item.creation_date ? item.creation_date.toISOString() : null,
+    change_date: item.change_date ? item.change_date.toISOString() : null,
+  }));
 
   return (
     <div>

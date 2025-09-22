@@ -251,6 +251,7 @@ export default function LicencesTable({
         <TableColumn>Manufacturer</TableColumn>
         <TableColumn>Supplier</TableColumn>
         <TableColumn>Expires</TableColumn>
+        <TableColumn>Actions</TableColumn>
       </TableHeader>
       <TableBody emptyContent="No licences found" items={paginatedItems}>
         {(item) => (
@@ -261,10 +262,19 @@ export default function LicencesTable({
             <TableCell>{manufacturerById.get(item.manufacturerid) ?? "-"}</TableCell>
             <TableCell>{supplierById.get(item.supplierid) ?? "-"}</TableCell>
             <TableCell>{formatDate(item.expirationdate)}</TableCell>
+            <TableCell>
+              <Button
+                as={Link}
+                href={`/licences/${item.licenceid}/edit`}
+                size="sm"
+                variant="light"
+              >
+                Edit
+              </Button>
+            </TableCell>
           </TableRow>
         )}
       </TableBody>
     </Table>
   );
 }
-

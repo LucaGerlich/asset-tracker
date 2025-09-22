@@ -258,6 +258,7 @@ export default function AccessoriesTable({
         <TableColumn>Location</TableColumn>
         <TableColumn>Supplier</TableColumn>
         <TableColumn>Requestable</TableColumn>
+        <TableColumn>Actions</TableColumn>
       </TableHeader>
       <TableBody emptyContent="No accessories found" items={paginatedItems}>
         {(item) => (
@@ -286,6 +287,16 @@ export default function AccessoriesTable({
               >
                 {item.requestable ? "Yes" : "No"}
               </Chip>
+            </TableCell>
+            <TableCell>
+              <Button
+                as={Link}
+                href={`/accessories/${item.accessorieid}/edit`}
+                size="sm"
+                variant="light"
+              >
+                Edit
+              </Button>
             </TableCell>
           </TableRow>
         )}

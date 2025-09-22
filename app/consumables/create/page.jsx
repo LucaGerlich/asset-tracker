@@ -1,18 +1,28 @@
-import Link from "next/link";
+import React from "react";
+import ConsumableCreateForm from "./ui/ConsumableCreateForm";
+import {
+  getConsumableCategories,
+  getManufacturers,
+  getSuppliers,
+} from "@/app/lib/data";
 
-export default function Page() {
+export const metadata = {
+  title: "Asset Tracker - Create Consumable",
+};
+
+export default async function Page() {
+  const [categories, manufacturers, suppliers] = await Promise.all([
+    getConsumableCategories(),
+    getManufacturers(),
+    getSuppliers(),
+  ]);
+
   return (
-    <div className="max-w-xl space-y-4">
-      <h1 className="text-2xl font-semibold">Create Consumable</h1>
-      <p className="text-default-500">
-        Replace this placeholder with the consumable onboarding form when ready.
-      </p>
-      <Link
-        href="/consumables"
-        className="inline-flex items-center rounded-md border border-default-300 px-3 py-2 text-sm font-medium text-foreground hover:bg-default-100"
-      >
-        Back to Consumables
-      </Link>
-    </div>
+    <ConsumableCreateForm
+      categories={categories}
+      manufacturers={manufacturers}
+      suppliers={suppliers}
+    />
   );
 }
+

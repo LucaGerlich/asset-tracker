@@ -1,18 +1,37 @@
-import Link from "next/link";
+import React from "react";
+import AccessoryCreateForm from "./ui/AccessoryCreateForm";
+import {
+  getAccessoryCategories,
+  getLocation,
+  getManufacturers,
+  getModel,
+  getStatus,
+  getSuppliers,
+} from "@/app/lib/data";
 
-export default function Page() {
+export const metadata = {
+  title: "Asset Tracker - Create Accessory",
+};
+
+export default async function Page() {
+  const [categories, locations, manufacturers, models, statuses, suppliers] = await Promise.all([
+    getAccessoryCategories(),
+    getLocation(),
+    getManufacturers(),
+    getModel(),
+    getStatus(),
+    getSuppliers(),
+  ]);
+
   return (
-    <div className="max-w-xl space-y-4">
-      <h1 className="text-2xl font-semibold">Create Accessory</h1>
-      <p className="text-default-500">
-        This placeholder page is ready for the accessory creation form.
-      </p>
-      <Link
-        href="/accessories"
-        className="inline-flex items-center rounded-md border border-default-300 px-3 py-2 text-sm font-medium text-foreground hover:bg-default-100"
-      >
-        Back to Accessories
-      </Link>
-    </div>
+    <AccessoryCreateForm
+      categories={categories}
+      locations={locations}
+      manufacturers={manufacturers}
+      models={models}
+      statuses={statuses}
+      suppliers={suppliers}
+    />
   );
 }
+

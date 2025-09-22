@@ -225,6 +225,7 @@ export default function ConsumablesTable({
         <TableColumn>Supplier</TableColumn>
         <TableColumn>Price</TableColumn>
         <TableColumn>Purchased</TableColumn>
+        <TableColumn>Actions</TableColumn>
       </TableHeader>
       <TableBody emptyContent="No consumables found" items={paginatedItems}>
         {(item) => (
@@ -235,10 +236,19 @@ export default function ConsumablesTable({
             <TableCell>{supplierById.get(item.supplierid) ?? "-"}</TableCell>
             <TableCell>{formatPrice(item.purchaseprice)}</TableCell>
             <TableCell>{formatDate(item.purchasedate)}</TableCell>
+            <TableCell>
+              <Button
+                as={Link}
+                href={`/consumables/${item.consumableid}/edit`}
+                size="sm"
+                variant="light"
+              >
+                Edit
+              </Button>
+            </TableCell>
           </TableRow>
         )}
       </TableBody>
     </Table>
   );
 }
-

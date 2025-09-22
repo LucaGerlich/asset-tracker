@@ -1,18 +1,31 @@
-import Link from "next/link";
+import React from "react";
+import LicenceCreateForm from "./ui/LicenceCreateForm";
+import {
+  getLicenceCategories,
+  getManufacturers,
+  getSuppliers,
+  getUsers,
+} from "@/app/lib/data";
 
-export default function Page() {
+export const metadata = {
+  title: "Asset Tracker - Create Licence",
+};
+
+export default async function Page() {
+  const [categories, manufacturers, suppliers, users] = await Promise.all([
+    getLicenceCategories(),
+    getManufacturers(),
+    getSuppliers(),
+    getUsers(),
+  ]);
+
   return (
-    <div className="max-w-xl space-y-4">
-      <h1 className="text-2xl font-semibold">Create Licence</h1>
-      <p className="text-default-500">
-        Build out the licence creation workflow here when requirements are clear.
-      </p>
-      <Link
-        href="/licences"
-        className="inline-flex items-center rounded-md border border-default-300 px-3 py-2 text-sm font-medium text-foreground hover:bg-default-100"
-      >
-        Back to Licences
-      </Link>
-    </div>
+    <LicenceCreateForm
+      categories={categories}
+      manufacturers={manufacturers}
+      suppliers={suppliers}
+      users={users}
+    />
   );
 }
+

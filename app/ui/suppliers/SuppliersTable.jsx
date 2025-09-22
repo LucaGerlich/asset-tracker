@@ -186,6 +186,7 @@ export default function SuppliersTable({ items }) {
         <TableColumn>Email</TableColumn>
         <TableColumn>Phone</TableColumn>
         <TableColumn>Created</TableColumn>
+        <TableColumn>Actions</TableColumn>
       </TableHeader>
       <TableBody emptyContent="No suppliers found" items={paginatedItems}>
         {(item) => {
@@ -197,6 +198,16 @@ export default function SuppliersTable({ items }) {
               <TableCell>{item.email ?? "-"}</TableCell>
               <TableCell>{item.phonenumber ?? "-"}</TableCell>
               <TableCell>{formatDate(item.creation_date)}</TableCell>
+              <TableCell>
+                <Button
+                  as={Link}
+                  href={`/suppliers/${item.supplierid}/edit`}
+                  size="sm"
+                  variant="light"
+                >
+                  Edit
+                </Button>
+              </TableCell>
             </TableRow>
           );
         }}
@@ -204,4 +215,3 @@ export default function SuppliersTable({ items }) {
     </Table>
   );
 }
-

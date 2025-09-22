@@ -60,9 +60,41 @@ export async function getManufacturers() {
   return manufacturer;
 }
 
+export async function getManufacturerById(id) {
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const manufacturer = await prisma.manufacturer.findUnique({
+    where: { manufacturerid: id },
+  });
+
+  if (!manufacturer) {
+    throw new Error(`Manufacturer with ID ${id} not found`);
+  }
+
+  return manufacturer;
+}
+
 export async function getAccessories() {
   const accessories = await prisma.accessories.findMany({});
   return accessories;
+}
+
+export async function getAccessoryById(id) {
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const accessory = await prisma.accessories.findUnique({
+    where: { accessorieid: id },
+  });
+
+  if (!accessory) {
+    throw new Error(`Accessory with ID ${id} not found`);
+  }
+
+  return accessory;
 }
 
 export async function getSuppliers() {
@@ -70,9 +102,41 @@ export async function getSuppliers() {
   return suppliers;
 }
 
+export async function getSupplierById(id) {
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const supplier = await prisma.supplier.findUnique({
+    where: { supplierid: id },
+  });
+
+  if (!supplier) {
+    throw new Error(`Supplier with ID ${id} not found`);
+  }
+
+  return supplier;
+}
+
 export async function getConsumables() {
   const consumables = await prisma.consumable.findMany({});
   return consumables;
+}
+
+export async function getConsumableById(id) {
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const consumable = await prisma.consumable.findUnique({
+    where: { consumableid: id },
+  });
+
+  if (!consumable) {
+    throw new Error(`Consumable with ID ${id} not found`);
+  }
+
+  return consumable;
 }
 
 export async function getConsumableCategories() {
@@ -88,6 +152,22 @@ export async function getAccessoryCategories() {
 export async function getLicences() {
   const licences = await prisma.licence.findMany({});
   return licences;
+}
+
+export async function getLicenceById(id) {
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const licence = await prisma.licence.findUnique({
+    where: { licenceid: id },
+  });
+
+  if (!licence) {
+    throw new Error(`Licence with ID ${id} not found`);
+  }
+
+  return licence;
 }
 
 export async function getLicenceCategories() {

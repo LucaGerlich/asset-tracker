@@ -9,7 +9,7 @@ import { Link, Button, Navbar, NavbarBrand, NavbarContent, NavbarItem, Dropdown,
 import { NotificationIcon, Status } from "../ui/Icons.jsx";
 
 
-function Navigation({ userName }) {
+function Navigation({ userName = "Guest", userId = "" }) {
   const route = usePathname();
   const [activeMenu, setActiveMenu] = useState("");
 
@@ -195,7 +195,8 @@ function Navigation({ userName }) {
           </DropdownTrigger>
           <DropdownMenu aria-label="Profile Actions" variant="flat">
             <DropdownItem
-              href={"/user/123/edit"}
+              href={userId ? `/user/${userId}/edit` : "/user"}
+              isDisabled={!userId}
               key="profile"
               textValue="profile"
               className="h-14 gap-2"
@@ -203,11 +204,16 @@ function Navigation({ userName }) {
               <p className="font-semibold">Signed in as</p>
               <p className="font-semibold">{userName}</p>
             </DropdownItem>
-            <DropdownItem href={"/user/123"} key="items" textValue="items">
+            <DropdownItem
+              href={userId ? `/user/${userId}` : "/user"}
+              key="items"
+              textValue="items"
+            >
               My Items
             </DropdownItem>
             <DropdownItem
-              href={"/user/123/settings"}
+              href={userId ? `/user/${userId}/settings` : "/user"}
+              isDisabled={!userId}
               key="settings"
               textValue="settings"
             >

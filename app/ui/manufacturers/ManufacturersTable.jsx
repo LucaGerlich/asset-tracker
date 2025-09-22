@@ -152,16 +152,26 @@ export default function ManufacturersTable({ items }) {
       <TableHeader>
         <TableColumn>Name</TableColumn>
         <TableColumn>Created</TableColumn>
+        <TableColumn>Actions</TableColumn>
       </TableHeader>
       <TableBody emptyContent="No manufacturers found" items={paginatedItems}>
         {(item) => (
           <TableRow key={item.manufacturerid}>
             <TableCell>{item.manufacturername}</TableCell>
             <TableCell>{formatDate(item.creation_date)}</TableCell>
+            <TableCell>
+              <Button
+                as={Link}
+                href={`/manufacturers/${item.manufacturerid}/edit`}
+                size="sm"
+                variant="light"
+              >
+                Edit
+              </Button>
+            </TableCell>
           </TableRow>
         )}
       </TableBody>
     </Table>
   );
 }
-

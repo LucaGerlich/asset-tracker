@@ -692,7 +692,7 @@ export default function App({
                 isIconOnly
                 variant="light"
               >
-                <EyeIcon />
+                <EyeIcon/>
               </Button>
               <Button
                 className="text-lg text-default-400 cursor-pointer active:opacity-50 h-6 w-6"
@@ -974,7 +974,7 @@ export default function App({
             </Button>
             <Button
               color="primary"
-              endContent={<PlusIcon />}
+              endContent={<PlusIcon color={"currentColor"}/>}
               href={`assets/create/`}
               as={Link}
             >

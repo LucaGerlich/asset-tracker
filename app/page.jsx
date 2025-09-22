@@ -29,10 +29,6 @@ export default async function Home() {
           <div className="p-4 text-5xl text-primary"></div>
         </section>
       </div>
-      {/* {user.map((user) => (
-        <h1 key={user.userid}>{user.lastname}</h1>
-      ))} */}
-      {/* <DashboardTable /> */}
     </main>
   );
 }

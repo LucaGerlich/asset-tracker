@@ -99,19 +99,23 @@ function DashboardTable({ data, columns }) {
       case "actions":
         return (
           <div className="relative flex items-center gap-2">
-            <Link href={`user/${user.userid}/`}>
-              <span className="text-lg text-default-400 cursor-pointer active:opacity-50">
+            <Link href={`/user/${user.userid}/`} className="text-default-400 hover:text-default-500">
+              <span className="text-lg cursor-pointer active:opacity-50">
                 <EyeIcon />
               </span>
             </Link>
-            <Link href={`user/${user.userid}/edit/`}>
-              <span className="text-lg text-default-400 cursor-pointer active:opacity-50">
+            <Link href={`/user/${user.userid}/edit/`} className="text-default-400 hover:text-default-500">
+              <span className="text-lg cursor-pointer active:opacity-50">
                 <EditIcon />
               </span>
             </Link>
-            <span className="text-lg text-danger cursor-pointer active:opacity-50">
+            <button
+              type="button"
+              className="text-lg text-danger cursor-pointer active:opacity-50"
+              aria-label="Delete user"
+            >
               <DeleteIcon />
-            </span>
+            </button>
           </div>
         );
       default:
