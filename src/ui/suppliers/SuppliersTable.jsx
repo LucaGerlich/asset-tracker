@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@heroui/react";
 import { PlusIcon, SearchIcon } from "../Icons";
+import { formatDateISO } from "@/utils/utils";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 const contactOptions = [
@@ -23,13 +24,6 @@ const contactOptions = [
   { key: "with", label: "Has Contact" },
   { key: "without", label: "No Contact" },
 ];
-
-function formatDate(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString();
-}
 
 function getYear(value) {
   if (!value) return null;
@@ -197,7 +191,7 @@ export default function SuppliersTable({ items }) {
               <TableCell>{fullName || "-"}</TableCell>
               <TableCell>{item.email ?? "-"}</TableCell>
               <TableCell>{item.phonenumber ?? "-"}</TableCell>
-              <TableCell>{formatDate(item.creation_date)}</TableCell>
+            <TableCell>{formatDateISO(item.creation_date)}</TableCell>
               <TableCell>
                 <Button
                   as={Link}

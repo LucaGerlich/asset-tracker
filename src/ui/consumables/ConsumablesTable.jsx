@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@heroui/react";
 import { PlusIcon, SearchIcon } from "../Icons";
+import { formatDateISO } from "@/utils/utils";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
@@ -24,13 +25,6 @@ function formatPrice(value) {
   if (typeof value === "number") return value.toFixed(2);
   const num = Number(value);
   return Number.isFinite(num) ? num.toFixed(2) : String(value);
-}
-
-function formatDate(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString();
 }
 
 export default function ConsumablesTable({
@@ -235,7 +229,7 @@ export default function ConsumablesTable({
             <TableCell>{manufacturerById.get(item.manufacturerid) ?? "-"}</TableCell>
             <TableCell>{supplierById.get(item.supplierid) ?? "-"}</TableCell>
             <TableCell>{formatPrice(item.purchaseprice)}</TableCell>
-            <TableCell>{formatDate(item.purchasedate)}</TableCell>
+            <TableCell>{formatDateISO(item.purchasedate)}</TableCell>
             <TableCell>
               <Button
                 as={Link}

@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@heroui/react";
 import { PlusIcon, SearchIcon } from "../Icons";
+import { formatDateISO } from "@/utils/utils";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 const expirationOptions = [
@@ -23,13 +24,6 @@ const expirationOptions = [
   { key: "active", label: "Active" },
   { key: "expired", label: "Expired" },
 ];
-
-function formatDate(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString();
-}
 
 export default function LicencesTable({
   items,
@@ -261,7 +255,7 @@ export default function LicencesTable({
             <TableCell>{categoryById.get(item.licencecategorytypeid) ?? "-"}</TableCell>
             <TableCell>{manufacturerById.get(item.manufacturerid) ?? "-"}</TableCell>
             <TableCell>{supplierById.get(item.supplierid) ?? "-"}</TableCell>
-            <TableCell>{formatDate(item.expirationdate)}</TableCell>
+            <TableCell>{formatDateISO(item.expirationdate)}</TableCell>
             <TableCell>
               <Button
                 as={Link}

@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from "react";
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from "@heroui/react";
 import { Toaster, toast } from "sonner";
+import { formatDateISO } from "@/utils/utils";
 
 export default function UserResources({ user, accessories, licences, allAccessories, allLicences }) {
   const [accList, setAccList] = useState(accessories);
@@ -177,7 +178,7 @@ export default function UserResources({ user, accessories, licences, allAccessor
                 <span>
                   {lic.licencekey || lic.licenceid}
                   {lic.expirationdate ? (
-                    <span className="text-foreground-500"> • Expires {new Date(lic.expirationdate).toLocaleDateString()}</span>
+                    <span className="text-foreground-500"> • Expires {formatDateISO(lic.expirationdate)}</span>
                   ) : null}
                 </span>
                 <Button size="sm" variant="light" color="danger" onPress={() => unassignLic(lic.licenceid)}>Unassign</Button>
