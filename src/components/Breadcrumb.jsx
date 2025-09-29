@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Breadcrumbs, BreadcrumbItem } from "../../lib/nextui";
+import { Breadcrumbs, BreadcrumbItem } from "../lib/nextui";
 
 const Breadcrumb = ({ options }) => {
   return (

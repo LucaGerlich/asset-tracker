@@ -1,12 +1,35 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { getAssets, getUsers, getAccessories } from "@/lib/data";
+import { getAssets, getUsers, getAccessories, getStatus } from "@/lib/data";
 import StatCard from "../components/StatCard";
+import AssetStatusChart from "@/components/charts/AssetStatusChart";
 
 export default async function Home() {
-  const user = await getUsers();
-  const assets = await getAssets();
-  const accessories = await getAccessories();
+  const [user, assets, accessories, statuses] = await Promise.all([
+    getUsers(),
+    getAssets(),
+    getAccessories(),
+    getStatus(),
+  ]);
+
+  const statusCounts = new Map();
+
+  assets.forEach((asset) => {
+    const key = asset.statustypeid ?? "__unassigned";
+    statusCounts.set(key, (statusCounts.get(key) ?? 0) + 1);
+  });
+
+  const chartData = [];
+
+  statuses.forEach((status) => {
+    const count = statusCounts.get(status.statustypeid) ?? 0;
+    chartData.push({ name: status.statustypename ?? "Unknown", value: count });
+  });
+
+  const unassignedCount = statusCounts.get("__unassigned");
+  if (unassignedCount) {
+    chartData.push({ name: "Unassigned", value: unassignedCount });
+  }
 
   return (
     <main>
@@ -18,17 +41,7 @@ export default async function Home() {
         <StatCard href="/user" title="Total User" value={user.length} />
       </div>
       <br />
-      <br />
-      <div className="flex flex-row gap-8">
-        <section className="w-2/3 h-72 rounded-lg border border-default-200">
-          <div className="px-4 py-3 border-b border-default-200 font-medium">Latest Activity</div>
-          <div className="p-4 text-5xl text-primary"></div>
-        </section>
-        <section className="w-1/3 h-72 rounded-lg border border-default-200">
-          <div className="px-4 py-3 border-b border-default-200 font-medium">Statistics</div>
-          <div className="p-4 text-5xl text-primary"></div>
-        </section>
-      </div>
+      <AssetStatusChart data={chartData} />
     </main>
   );
 }

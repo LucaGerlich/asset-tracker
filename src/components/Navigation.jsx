@@ -4,7 +4,15 @@ import React, { useEffect, useState } from "react";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeSwitcher from "./ThemeSwitcher.jsx";
-import { ChevronDown, Scale, Lock, Activity, Flash, Server, TagUser } from "../ui/Icons.jsx";
+import {
+  ChevronDown,
+  Scale,
+  Lock,
+  Activity,
+  Flash,
+  Server,
+  TagUser,
+} from "../ui/Icons.jsx";
 import { Link, Button, Navbar, NavbarBrand, NavbarContent, NavbarItem, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, DropdownSection, Badge, Avatar } from "@heroui/react";
 import { NotificationIcon, Status } from "../ui/Icons.jsx";
 
@@ -37,7 +45,11 @@ function Navigation({ userName = "Guest", userId = "" }) {
   };
 
   return (
-    <Navbar>
+    <Navbar
+      isBordered
+      maxWidth="full"
+      className="sticky top-0 z-30 border-b border-default-200 bg-content1/80 backdrop-blur"
+    >
       <NavbarContent>
         <NavbarBrand>
           <Link href="/">
@@ -47,7 +59,7 @@ function Navigation({ userName = "Guest", userId = "" }) {
           </Link>
           {/* <AcmeLogo /> */}
         </NavbarBrand>
-        <NavbarContent className="hidden sm:flex gap-3">
+        <NavbarContent className="flex gap-3 md:hidden">
           <NavbarItem isActive={isActive("user")}>
             <Link
               href="/user"
@@ -136,7 +148,7 @@ function Navigation({ userName = "Guest", userId = "" }) {
         </NavbarContent>
       </NavbarContent>
 
-      <NavbarContent as="div" className="items-center" justify="end">
+      <NavbarContent as="div" className="items-center gap-2" justify="end">
         <Dropdown backdrop="blur" showArrow size="lg">
           <Badge
             content="99+"

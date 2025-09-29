@@ -17,6 +17,7 @@ import {
 } from "@heroui/react";
 import { PlusIcon, SearchIcon } from "../Icons";
 import { formatDateISO } from "@/utils/utils";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 const expirationOptions = [
@@ -31,12 +32,27 @@ export default function LicencesTable({
   manufacturers,
   suppliers,
 }) {
-  const [searchValue, setSearchValue] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [manufacturerFilter, setManufacturerFilter] = useState("all");
-  const [supplierFilter, setSupplierFilter] = useState("all");
-  const [expirationFilter, setExpirationFilter] = useState("all");
-  const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
+  const [searchValue, setSearchValue] = usePersistentState("filters:licences:search", "");
+  const [categoryFilter, setCategoryFilter] = usePersistentState(
+    "filters:licences:category",
+    "all"
+  );
+  const [manufacturerFilter, setManufacturerFilter] = usePersistentState(
+    "filters:licences:manufacturer",
+    "all"
+  );
+  const [supplierFilter, setSupplierFilter] = usePersistentState(
+    "filters:licences:supplier",
+    "all"
+  );
+  const [expirationFilter, setExpirationFilter] = usePersistentState(
+    "filters:licences:expiration",
+    "all"
+  );
+  const [rowsPerPage, setRowsPerPage] = usePersistentState(
+    "filters:licences:rowsPerPage",
+    Number(ROWS_PER_PAGE_OPTIONS[0])
+  );
   const [page, setPage] = useState(1);
 
   const categoryById = useMemo(

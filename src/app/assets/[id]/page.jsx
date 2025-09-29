@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import Breadcrumb from "../../components/Breadcrumb";
+import Breadcrumb from "../../../components/Breadcrumb";
 import { Divider } from "@heroui/divider";
 import {
   getAssetById,

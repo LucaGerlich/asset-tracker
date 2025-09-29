@@ -17,6 +17,7 @@ import {
 } from "@heroui/react";
 import { PlusIcon, SearchIcon } from "../Icons";
 import { formatDateISO } from "@/utils/utils";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
@@ -33,11 +34,23 @@ export default function ConsumablesTable({
   manufacturers,
   suppliers,
 }) {
-  const [searchValue, setSearchValue] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [manufacturerFilter, setManufacturerFilter] = useState("all");
-  const [supplierFilter, setSupplierFilter] = useState("all");
-  const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
+  const [searchValue, setSearchValue] = usePersistentState("filters:consumables:search", "");
+  const [categoryFilter, setCategoryFilter] = usePersistentState(
+    "filters:consumables:category",
+    "all"
+  );
+  const [manufacturerFilter, setManufacturerFilter] = usePersistentState(
+    "filters:consumables:manufacturer",
+    "all"
+  );
+  const [supplierFilter, setSupplierFilter] = usePersistentState(
+    "filters:consumables:supplier",
+    "all"
+  );
+  const [rowsPerPage, setRowsPerPage] = usePersistentState(
+    "filters:consumables:rowsPerPage",
+    Number(ROWS_PER_PAGE_OPTIONS[0])
+  );
   const [page, setPage] = useState(1);
 
   const categoryById = useMemo(

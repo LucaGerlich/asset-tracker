@@ -157,6 +157,7 @@ export default function Page() {
             <h2 className="text-sm font-semibold text-foreground-600 mb-3">Security</h2>
             <div className="grid grid-cols-1 gap-3">
               <Input label="Password" name="password" type="password" value={form.password} onChange={onChange} isRequired />
+              <Input label="Confirm Password" name="confirmPassword" type="password" value={form.confirmPassword} onChange={onChange} isRequired />
             </div>
           </section>
         </div>

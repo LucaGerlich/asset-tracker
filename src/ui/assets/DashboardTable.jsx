@@ -44,6 +44,7 @@ import QRCode from "react-qr-code";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { Toaster, toast } from "sonner";
 import { asset } from "@/components/testData";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 const statusColorMap = {
   Active: "primary",
@@ -88,20 +89,49 @@ export default function App({
   selectOptions,
   userAssets,
 }) {
-  const [filterValue, setFilterValue] = useState("");
+  const [filterValue, setFilterValue] = usePersistentState("filters:assets:search", "");
   const [selectedKeys, setSelectedKeys] = useState(new Set([]));
   const [deleteButtonActive, setDeleteButtonActive] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState(
-    new Set(INITIAL_VISIBLE_COLUMNS)
+  const [visibleColumns, setVisibleColumns] = usePersistentState(
+    "filters:assets:columns",
+    new Set(INITIAL_VISIBLE_COLUMNS),
+    {
+      serialize: (value) => {
+        if (value === "all") return JSON.stringify({ type: "all" });
+        return JSON.stringify({ type: "set", value: Array.from(value) });
+      },
+      deserialize: (stored, defaultValue) => {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed?.type === "all") return "all";
+          if (parsed?.type === "set" && Array.isArray(parsed.value)) {
+            return new Set(parsed.value);
+          }
+        } catch (e) {
+          console.warn("Failed to restore assets visible columns", e);
+        }
+        return new Set(Array.from(defaultValue));
+      },
+    }
   );
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = usePersistentState("filters:assets:status", "all");
   const [assetsData, setAssetsData] = useState(data);
   const [userAssetsData, setUserAssetsData] = useState(userAssets);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [now, setNow] = useState(null);
   const [mounted, setMounted] = useState(false);
-  const [rowsPerPage, setRowsPerPage] = useState(selectOptions[0].value);
+  const [rowsPerPage, setRowsPerPage] = usePersistentState(
+    "filters:assets:rowsPerPage",
+    Number(selectOptions[0].value),
+    {
+      serialize: (value) => JSON.stringify(Number(value)),
+      deserialize: (stored, defaultValue) => {
+        const parsed = Number(JSON.parse(stored));
+        return Number.isFinite(parsed) ? parsed : defaultValue;
+      },
+    }
+  );
   const [sortDescriptor, setSortDescriptor] = useState({
     column: "assettag",
     direction: "ascending",
@@ -158,6 +188,16 @@ export default function App({
   );
 
   const hasSearchFilter = Boolean(filterValue);
+  const handleVisibleColumnsChange = useCallback(
+    (keys) => {
+      if (keys === "all") {
+        setVisibleColumns("all");
+      } else {
+        setVisibleColumns(new Set(keys));
+      }
+    },
+    [setVisibleColumns]
+  );
 
   const handleDelete = useCallback(
     async (assetId) => {
@@ -932,9 +972,9 @@ export default function App({
                 disallowEmptySelection
                 aria-label="Table Columns"
                 closeOnSelect={false}
-                selectedKeys={visibleColumns}
+                selectedKeys={visibleColumns === "all" ? new Set(INITIAL_VISIBLE_COLUMNS) : visibleColumns}
                 selectionMode="multiple"
-                onSelectionChange={setVisibleColumns}
+                onSelectionChange={handleVisibleColumnsChange}
               >
                 {columns.map((column) => (
                   <DropdownItem key={column.uid} className="capitalize">

@@ -17,6 +17,7 @@ import {
 } from "@heroui/react";
 import { PlusIcon, SearchIcon } from "../Icons";
 import { formatDateISO } from "@/utils/utils";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
@@ -28,9 +29,12 @@ function getYear(value) {
 }
 
 export default function ManufacturersTable({ items }) {
-  const [searchValue, setSearchValue] = useState("");
-  const [yearFilter, setYearFilter] = useState("all");
-  const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
+  const [searchValue, setSearchValue] = usePersistentState("filters:manufacturers:search", "");
+  const [yearFilter, setYearFilter] = usePersistentState("filters:manufacturers:year", "all");
+  const [rowsPerPage, setRowsPerPage] = usePersistentState(
+    "filters:manufacturers:rowsPerPage",
+    Number(ROWS_PER_PAGE_OPTIONS[0])
+  );
   const [page, setPage] = useState(1);
 
   const years = useMemo(() => {

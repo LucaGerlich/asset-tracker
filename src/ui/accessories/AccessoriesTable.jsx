@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@heroui/react";
 import { PlusIcon, SearchIcon } from "../Icons";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
@@ -35,12 +36,24 @@ export default function AccessoriesTable({
   locations,
   suppliers,
 }) {
-  const [searchValue, setSearchValue] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [locationFilter, setLocationFilter] = useState("all");
-  const [requestableFilter, setRequestableFilter] = useState("all");
-  const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
+  const [searchValue, setSearchValue] = usePersistentState("filters:accessories:search", "");
+  const [statusFilter, setStatusFilter] = usePersistentState("filters:accessories:status", "all");
+  const [categoryFilter, setCategoryFilter] = usePersistentState(
+    "filters:accessories:category",
+    "all"
+  );
+  const [locationFilter, setLocationFilter] = usePersistentState(
+    "filters:accessories:location",
+    "all"
+  );
+  const [requestableFilter, setRequestableFilter] = usePersistentState(
+    "filters:accessories:requestable",
+    "all"
+  );
+  const [rowsPerPage, setRowsPerPage] = usePersistentState(
+    "filters:accessories:rowsPerPage",
+    Number(ROWS_PER_PAGE_OPTIONS[0])
+  );
   const [page, setPage] = useState(1);
 
   const manufacturerById = useMemo(
