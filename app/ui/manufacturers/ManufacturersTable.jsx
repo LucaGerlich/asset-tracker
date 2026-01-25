@@ -2,19 +2,23 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Button,
-  Input,
-  Pagination,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
-  TableColumn,
+  TableHead,
   TableHeader,
   TableRow,
-} from "@heroui/react";
+} from "@/components/ui/table";
 import { PlusIcon, SearchIcon } from "../Icons";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
@@ -73,95 +77,105 @@ export default function ManufacturersTable({ items }) {
   }, [filteredItems, page, rowsPerPage]);
 
   return (
-    <Table
-      aria-label="Manufacturers table"
-      isStriped
-      topContentPlacement="outside"
-      bottomContentPlacement="outside"
-      topContent={
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">Manufacturers</h1>
-          </div>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="w-full space-y-4">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Manufacturers</h1>
+        </div>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="relative w-full lg:max-w-md">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              isClearable
-              className="w-full lg:max-w-md"
+              className="pl-9"
               placeholder="Search manufacturers"
-              startContent={<SearchIcon />}
               value={searchValue}
-              onClear={() => setSearchValue("")}
-              onValueChange={setSearchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
             />
-            <div className="flex flex-wrap gap-3">
-              <Select
-                aria-label="Filter by creation year"
-                label="Created"
-                selectedKeys={new Set([yearFilter])}
-                disallowEmptySelection
-                className="w-40"
-                onSelectionChange={(keys) => {
-                  const [key] = Array.from(keys);
-                  setYearFilter(key ?? "all");
-                }}
-              >
-                <SelectItem key="all">All years</SelectItem>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Select value={yearFilter} onValueChange={setYearFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Created" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All years</SelectItem>
                 {years.map((year) => (
-                  <SelectItem key={String(year)}>{year}</SelectItem>
+                  <SelectItem key={String(year)} value={String(year)}>{year}</SelectItem>
                 ))}
-              </Select>
-              <Button as={Link} color="primary" endContent={<PlusIcon />} href="/manufacturers/create">
-                Create
-              </Button>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-small text-default-500">
-              Showing {paginatedItems.length} of {filteredItems.length} manufacturers
-            </span>
-            <Select
-              aria-label="Rows per page"
-              label="Rows"
-              selectedKeys={new Set([String(rowsPerPage)])}
-              disallowEmptySelection
-              className="w-24"
-              onSelectionChange={(keys) => {
-                const [key] = Array.from(keys);
-                setRowsPerPage(Number(key ?? ROWS_PER_PAGE_OPTIONS[0]));
-              }}
-            >
-              {ROWS_PER_PAGE_OPTIONS.map((option) => (
-                <SelectItem key={option}>{option}</SelectItem>
-              ))}
+              </SelectContent>
             </Select>
+            <Button asChild>
+              <Link href="/manufacturers/create">
+                <PlusIcon className="mr-2 h-4 w-4" />
+                Create
+              </Link>
+            </Button>
           </div>
         </div>
-      }
-      bottomContent={
-        <div className="flex items-center justify-center p-2">
-          <Pagination
-            isDisabled={filteredItems.length === 0}
-            page={page}
-            total={pages}
-            showControls
-            onChange={setPage}
-          />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">
+            Showing {paginatedItems.length} of {filteredItems.length} manufacturers
+          </span>
+          <Select value={String(rowsPerPage)} onValueChange={(value) => setRowsPerPage(Number(value))}>
+            <SelectTrigger className="w-24">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROWS_PER_PAGE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      }
-    >
-      <TableHeader>
-        <TableColumn>Name</TableColumn>
-        <TableColumn>Created</TableColumn>
-      </TableHeader>
-      <TableBody emptyContent="No manufacturers found" items={paginatedItems}>
-        {(item) => (
-          <TableRow key={item.manufacturerid}>
-            <TableCell>{item.manufacturername}</TableCell>
-            <TableCell>{formatDate(item.creation_date)}</TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+      </div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Created</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedItems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={2} className="text-center">
+                  No manufacturers found
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedItems.map((item) => (
+                <TableRow key={item.manufacturerid}>
+                  <TableCell>{item.manufacturername}</TableCell>
+                  <TableCell>{formatDate(item.creation_date)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(Math.max(1, page - 1))}
+          disabled={page === 1 || filteredItems.length === 0}
+        >
+          Previous
+        </Button>
+        <span className="text-sm">
+          Page {page} of {pages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(Math.min(pages, page + 1))}
+          disabled={page === pages || filteredItems.length === 0}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
   );
 }
 

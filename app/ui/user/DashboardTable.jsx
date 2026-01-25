@@ -2,19 +2,23 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Button,
-  Input,
-  Pagination,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
-  TableColumn,
+  TableHead,
   TableHeader,
   TableRow,
-} from "@heroui/react";
+} from "@/components/ui/table";
 import { EditIcon, DeleteIcon, EyeIcon, PlusIcon, SearchIcon } from "../Icons.jsx";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
@@ -120,102 +124,111 @@ function DashboardTable({ data, columns }) {
   }, []);
 
   return (
-    <Table
-      isStriped
-      aria-label="Users table"
-      selectionMode="multiple"
-      topContentPlacement="outside"
-      bottomContentPlacement="outside"
-      topContent={
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">Users</h1>
-          </div>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="w-full space-y-4">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Users</h1>
+        </div>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="relative w-full lg:max-w-md">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              isClearable
-              className="w-full lg:max-w-md"
+              className="pl-9"
               placeholder="Search by name, username, or email"
-              startContent={<SearchIcon />}
               value={searchValue}
-              onClear={() => setSearchValue("")}
-              onValueChange={setSearchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
             />
-            <div className="flex flex-wrap gap-3">
-              <Select
-                aria-label="Filter by role"
-                label="Role"
-                selectedKeys={new Set([roleFilter])}
-                disallowEmptySelection
-                className="w-44"
-                onSelectionChange={(keys) => {
-                  const [key] = Array.from(keys);
-                  setRoleFilter(key ?? "all");
-                }}
-              >
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
                 {roleOptions.map((option) => (
-                  <SelectItem key={option.key}>{option.label}</SelectItem>
+                  <SelectItem key={option.key} value={option.key}>{option.label}</SelectItem>
                 ))}
-              </Select>
-              <Button as={Link} color="primary" endContent={<PlusIcon />} href="/user/create">
-                Create
-              </Button>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-small text-default-500">
-              Showing {paginatedUsers.length} of {filteredUsers.length} users
-            </span>
-            <Select
-              aria-label="Rows per page"
-              label="Rows"
-              selectedKeys={new Set([String(rowsPerPage)])}
-              disallowEmptySelection
-              className="w-24"
-              onSelectionChange={(keys) => {
-                const [key] = Array.from(keys);
-                setRowsPerPage(Number(key ?? ROWS_PER_PAGE_OPTIONS[0]));
-              }}
-            >
-              {ROWS_PER_PAGE_OPTIONS.map((option) => (
-                <SelectItem key={option}>{option}</SelectItem>
-              ))}
+              </SelectContent>
             </Select>
+            <Button asChild>
+              <Link href="/user/create">
+                <PlusIcon className="mr-2 h-4 w-4" />
+                Create
+              </Link>
+            </Button>
           </div>
         </div>
-      }
-      bottomContent={
-        <div className="flex items-center justify-center p-2">
-          <Pagination
-            isDisabled={filteredUsers.length === 0}
-            page={page}
-            total={pages}
-            showControls
-            onChange={setPage}
-          />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">
+            Showing {paginatedUsers.length} of {filteredUsers.length} users
+          </span>
+          <Select value={String(rowsPerPage)} onValueChange={(value) => setRowsPerPage(Number(value))}>
+            <SelectTrigger className="w-24">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROWS_PER_PAGE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      }
-    >
-      <TableHeader columns={columns}>
-        {(column) => (
-          <TableColumn
-            key={column.uid}
-            align={column.uid === "actions" ? "center" : "start"}
-          >
-            {column.name}
-          </TableColumn>
-        )}
-      </TableHeader>
-      <TableBody emptyContent="No users found" items={paginatedUsers}>
-        {(item) => (
-          <TableRow key={item.userid}>
-            {(columnKey) => (
-              <TableCell>{renderCell(item, columnKey)}</TableCell>
+      </div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {columns.map((column) => (
+                <TableHead
+                  key={column.uid}
+                  className={column.uid === "actions" ? "text-center" : ""}
+                >
+                  {column.name}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedUsers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="text-center">
+                  No users found
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedUsers.map((item) => (
+                <TableRow key={item.userid}>
+                  {columns.map((column) => (
+                    <TableCell key={column.uid}>{renderCell(item, column.uid)}</TableCell>
+                  ))}
+                </TableRow>
+              ))
             )}
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(Math.max(1, page - 1))}
+          disabled={page === 1 || filteredUsers.length === 0}
+        >
+          Previous
+        </Button>
+        <span className="text-sm">
+          Page {page} of {pages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(Math.min(pages, page + 1))}
+          disabled={page === pages || filteredUsers.length === 0}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
   );
 }
 

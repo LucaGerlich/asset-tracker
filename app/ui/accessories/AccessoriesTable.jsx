@@ -2,20 +2,24 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Button,
-  Chip,
-  Input,
-  Pagination,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
-  TableColumn,
+  TableHead,
   TableHeader,
   TableRow,
-} from "@heroui/react";
+} from "@/components/ui/table";
 import { PlusIcon, SearchIcon } from "../Icons";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
@@ -118,178 +122,168 @@ export default function AccessoriesTable({
   }, [filteredItems, page, rowsPerPage]);
 
   return (
-    <Table
-      aria-label="Accessories table"
-      isStriped
-      topContentPlacement="outside"
-      bottomContentPlacement="outside"
-      topContent={
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">Accessories</h1>
-          </div>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="w-full space-y-4">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Accessories</h1>
+        </div>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="relative w-full lg:max-w-md">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              isClearable
-              className="w-full lg:max-w-md"
+              className="pl-9"
               placeholder="Search by name, tag, manufacturer, or model"
-              startContent={<SearchIcon />}
               value={searchValue}
-              onClear={() => setSearchValue("")}
-              onValueChange={setSearchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
             />
-            <div className="flex flex-wrap gap-3">
-              <Select
-                aria-label="Filter by status"
-                label="Status"
-                selectedKeys={new Set([statusFilter])}
-                selectionMode="single"
-                disallowEmptySelection
-                className="w-40"
-                onSelectionChange={(keys) => {
-                  const [key] = Array.from(keys);
-                  setStatusFilter(key ?? "all");
-                }}
-              >
-                <SelectItem key="all">All</SelectItem>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
                 {statuses.map((status) => (
-                  <SelectItem key={String(status.statustypeid)}>
+                  <SelectItem key={String(status.statustypeid)} value={String(status.statustypeid)}>
                     {status.statustypename}
                   </SelectItem>
                 ))}
-              </Select>
-              <Select
-                aria-label="Filter by category"
-                label="Category"
-                selectedKeys={new Set([categoryFilter])}
-                disallowEmptySelection
-                className="w-44"
-                onSelectionChange={(keys) => {
-                  const [key] = Array.from(keys);
-                  setCategoryFilter(key ?? "all");
-                }}
-              >
-                <SelectItem key="all">All</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
                 {categories.map((category) => (
-                  <SelectItem key={String(category.accessoriecategorytypeid)}>
+                  <SelectItem key={String(category.accessoriecategorytypeid)} value={String(category.accessoriecategorytypeid)}>
                     {category.accessoriecategorytypename}
                   </SelectItem>
                 ))}
-              </Select>
-              <Select
-                aria-label="Filter by location"
-                label="Location"
-                selectedKeys={new Set([locationFilter])}
-                disallowEmptySelection
-                className="w-44"
-                onSelectionChange={(keys) => {
-                  const [key] = Array.from(keys);
-                  setLocationFilter(key ?? "all");
-                }}
-              >
-                <SelectItem key="all">All</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={locationFilter} onValueChange={setLocationFilter}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="Location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
                 {locations.map((location) => (
-                  <SelectItem key={String(location.locationid)}>
+                  <SelectItem key={String(location.locationid)} value={String(location.locationid)}>
                     {location.locationname}
                   </SelectItem>
                 ))}
-              </Select>
-              <Select
-                aria-label="Filter by requestable"
-                label="Requestable"
-                selectedKeys={new Set([requestableFilter])}
-                disallowEmptySelection
-                className="w-40"
-                onSelectionChange={(keys) => {
-                  const [key] = Array.from(keys);
-                  setRequestableFilter(key ?? "all");
-                }}
-              >
-                {requestableOptions.map((option) => (
-                  <SelectItem key={option.key}>{option.label}</SelectItem>
-                ))}
-              </Select>
-              <Button as={Link} color="primary" endContent={<PlusIcon />} href="/accessories/create">
-                Create
-              </Button>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-small text-default-500">
-              Showing {paginatedItems.length} of {filteredItems.length} accessories
-            </span>
-            <Select
-              aria-label="Rows per page"
-              label="Rows"
-              selectedKeys={new Set([String(rowsPerPage)])}
-              disallowEmptySelection
-              className="w-24"
-              onSelectionChange={(keys) => {
-                const [key] = Array.from(keys);
-                setRowsPerPage(Number(key ?? ROWS_PER_PAGE_OPTIONS[0]));
-              }}
-            >
-              {ROWS_PER_PAGE_OPTIONS.map((option) => (
-                <SelectItem key={option}>{option}</SelectItem>
-              ))}
+              </SelectContent>
             </Select>
+            <Select value={requestableFilter} onValueChange={setRequestableFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Requestable" />
+              </SelectTrigger>
+              <SelectContent>
+                {requestableOptions.map((option) => (
+                  <SelectItem key={option.key} value={option.key}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button asChild>
+              <Link href="/accessories/create">
+                <PlusIcon className="mr-2 h-4 w-4" />
+                Create
+              </Link>
+            </Button>
           </div>
         </div>
-      }
-      bottomContent={
-        <div className="flex items-center justify-center p-2">
-          <Pagination
-            isDisabled={filteredItems.length === 0}
-            page={page}
-            total={pages}
-            showControls
-            onChange={setPage}
-          />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-sm text-muted-foreground">
+            Showing {paginatedItems.length} of {filteredItems.length} accessories
+          </span>
+          <Select value={String(rowsPerPage)} onValueChange={(value) => setRowsPerPage(Number(value))}>
+            <SelectTrigger className="w-24">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROWS_PER_PAGE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      }
-    >
-      <TableHeader>
-        <TableColumn>Name</TableColumn>
-        <TableColumn>Tag</TableColumn>
-        <TableColumn>Manufacturer</TableColumn>
-        <TableColumn>Model</TableColumn>
-        <TableColumn>Status</TableColumn>
-        <TableColumn>Category</TableColumn>
-        <TableColumn>Location</TableColumn>
-        <TableColumn>Supplier</TableColumn>
-        <TableColumn>Requestable</TableColumn>
-      </TableHeader>
-      <TableBody emptyContent="No accessories found" items={paginatedItems}>
-        {(item) => (
-          <TableRow key={item.accessorieid}>
-            <TableCell>{item.accessoriename}</TableCell>
-            <TableCell>{item.accessorietag}</TableCell>
-            <TableCell>{manufacturerById.get(item.manufacturerid) ?? "-"}</TableCell>
-            <TableCell>{modelById.get(item.modelid) ?? "-"}</TableCell>
-            <TableCell>
-              {statusById.get(item.statustypeid) ? (
-                <Chip size="sm" color="primary" variant="flat">
-                  {statusById.get(item.statustypeid)}
-                </Chip>
-              ) : (
-                "-"
-              )}
-            </TableCell>
-            <TableCell>{categoryById.get(item.accessoriecategorytypeid) ?? "-"}</TableCell>
-            <TableCell>{locationById.get(item.locationid) ?? "-"}</TableCell>
-            <TableCell>{supplierById.get(item.supplierid) ?? "-"}</TableCell>
-            <TableCell>
-              <Chip
-                size="sm"
-                variant="flat"
-                color={item.requestable ? "success" : "default"}
-              >
-                {item.requestable ? "Yes" : "No"}
-              </Chip>
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+      </div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Tag</TableHead>
+              <TableHead>Manufacturer</TableHead>
+              <TableHead>Model</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Supplier</TableHead>
+              <TableHead>Requestable</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedItems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center">
+                  No accessories found
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedItems.map((item) => (
+                <TableRow key={item.accessorieid}>
+                  <TableCell>{item.accessoriename}</TableCell>
+                  <TableCell>{item.accessorietag}</TableCell>
+                  <TableCell>{manufacturerById.get(item.manufacturerid) ?? "-"}</TableCell>
+                  <TableCell>{modelById.get(item.modelid) ?? "-"}</TableCell>
+                  <TableCell>
+                    {statusById.get(item.statustypeid) ? (
+                      <Badge>
+                        {statusById.get(item.statustypeid)}
+                      </Badge>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                  <TableCell>{categoryById.get(item.accessoriecategorytypeid) ?? "-"}</TableCell>
+                  <TableCell>{locationById.get(item.locationid) ?? "-"}</TableCell>
+                  <TableCell>{supplierById.get(item.supplierid) ?? "-"}</TableCell>
+                  <TableCell>
+                    <Badge variant={item.requestable ? "default" : "secondary"}>
+                      {item.requestable ? "Yes" : "No"}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(Math.max(1, page - 1))}
+          disabled={page === 1 || filteredItems.length === 0}
+        >
+          Previous
+        </Button>
+        <span className="text-sm">
+          Page {page} of {pages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(Math.min(pages, page + 1))}
+          disabled={page === pages || filteredItems.length === 0}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
   );
 }

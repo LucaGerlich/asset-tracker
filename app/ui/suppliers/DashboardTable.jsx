@@ -1,23 +1,22 @@
 "use client";
 import React, { useCallback } from "react";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
-  TableHeader,
-  TableColumn,
   TableBody,
-  TableRow,
   TableCell,
-  User,
-  Chip,
-  Tooltip,
-  getKeyValue,
-} from "@heroui/react";
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EditIcon, DeleteIcon, EyeIcon } from "../Icons.jsx";
 
 const statusColorMap = {
-  active: "success",
-  paused: "danger",
-  vacation: "warning",
+  active: "default",
+  paused: "destructive",
+  vacation: "secondary",
 };
 
 function DashboardTable({ data, columns }) {
@@ -29,13 +28,16 @@ function DashboardTable({ data, columns }) {
     switch (columnKey) {
       case "name":
         return (
-          <User
-            avatarProps={{ radius: "lg", src: user.avatar }}
-            description={user.email}
-            name={cellValue}
-          >
-            {user.email}
-          </User>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={user.avatar} alt={cellValue} />
+              <AvatarFallback>{cellValue?.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="font-medium">{cellValue}</span>
+              <span className="text-sm text-muted-foreground">{user.email}</span>
+            </div>
+          </div>
         );
       case "role":
         return (
@@ -48,34 +50,40 @@ function DashboardTable({ data, columns }) {
         );
       case "status":
         return (
-          <Chip
-            className="capitalize"
-            color={statusColorMap[user.status]}
-            size="sm"
-            variant="flat"
-          >
+          <Badge className="capitalize" variant={statusColorMap[user.status]}>
             {cellValue}
-          </Chip>
+          </Badge>
         );
       case "actions":
         return (
-          <div className="relative flex items-center gap-2">
-            <Tooltip content="Details">
-              <span className="text-lg text-default-400 cursor-pointer active:opacity-50">
-                <EyeIcon />
-              </span>
-            </Tooltip>
-            <Tooltip content="Edit user">
-              <span className="text-lg text-default-400 cursor-pointer active:opacity-50">
-                <EditIcon />
-              </span>
-            </Tooltip>
-            <Tooltip color="danger" content="Delete user">
-              <span className="text-lg text-danger cursor-pointer active:opacity-50">
-                <DeleteIcon />
-              </span>
-            </Tooltip>
-          </div>
+          <TooltipProvider>
+            <div className="relative flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-lg text-muted-foreground cursor-pointer hover:opacity-80">
+                    <EyeIcon />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Details</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-lg text-muted-foreground cursor-pointer hover:opacity-80">
+                    <EditIcon />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Edit user</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-lg text-destructive cursor-pointer hover:opacity-80">
+                    <DeleteIcon />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Delete user</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
         );
       default:
         return cellValue;
@@ -83,31 +91,31 @@ function DashboardTable({ data, columns }) {
   }, []);
 
   return (
-    <Table
-      isStriped
-      aria-label="Example table with custom cells"
-      selectionMode="multiple"
-    >
-      <TableHeader columns={columns}>
-        {(column) => (
-          <TableColumn
-            key={column.uid}
-            align={column.uid === "actions" ? "center" : "start"}
-          >
-            {column.name}
-          </TableColumn>
-        )}
-      </TableHeader>
-      <TableBody items={data}>
-        {(item) => (
-          <TableRow key={item.id}>
-            {(columnKey) => (
-              <TableCell>{renderCell(item, columnKey)}</TableCell>
-            )}
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {columns.map((column) => (
+              <TableHead
+                key={column.uid}
+                className={column.uid === "actions" ? "text-center" : ""}
+              >
+                {column.name}
+              </TableHead>
+            ))}
           </TableRow>
-        )}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {data.map((item) => (
+            <TableRow key={item.id}>
+              {columns.map((column) => (
+                <TableCell key={column.uid}>{renderCell(item, column.uid)}</TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 

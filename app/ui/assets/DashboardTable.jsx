@@ -1,29 +1,37 @@
 "use client";
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
-  TableHeader,
-  TableColumn,
   TableBody,
-  TableRow,
   TableCell,
-  Input,
-  Button,
-  DropdownTrigger,
-  Dropdown,
-  DropdownMenu,
-  DropdownItem,
-  Chip,
-  Pagination,
-  Select,
-  SelectItem,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  useDisclosure,
-} from "@heroui/react";
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import Link from "next/link";
 import {
   AssignIcon,
@@ -46,12 +54,12 @@ import { Toaster, toast } from "sonner";
 import { asset } from "@/app/components/testData";
 
 const statusColorMap = {
-  Active: "primary",
-  Available: "success",
-  Pending: "warning",
-  "Lost/Stolen": "danger",
-  "Out for Repair": "default",
-  Archived: "default",
+  Active: "default",
+  Available: "default",
+  Pending: "secondary",
+  "Lost/Stolen": "destructive",
+  "Out for Repair": "secondary",
+  Archived: "secondary",
 };
 
 const statusOptions = [
@@ -107,27 +115,12 @@ export default function App({
     direction: "ascending",
   });
   const [page, setPage] = useState(1);
-  //const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const {
-    isOpen: isAssignModalOpen,
-    onOpen: onAssignModalOpen,
-    onOpenChange: onAssignModalOpenChange,
-  } = useDisclosure();
-  const {
-    isOpen: isQRCodeModalOpen,
-    onOpen: onQRCodeModalOpen,
-    onOpenChange: onQRCodeModalOpenChange,
-  } = useDisclosure();
-  const {
-    isOpen: isStatusModalOpen,
-    onOpen: onStatusModalOpen,
-    onOpenChange: onStatusModalOpenChange,
-  } = useDisclosure();
-  const {
-    isOpen: isDeleteModalOpen,
-    onOpen: onDeleteModalOpen,
-    onOpenChange: onDeleteModalOpenChange,
-  } = useDisclosure();
+  
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isQRCodeModalOpen, setIsQRCodeModalOpen] = useState(false);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [deleteMode, setDeleteMode] = useState("single");
@@ -363,25 +356,25 @@ export default function App({
       switch (target) {
         case "assign":
           setSelectedAsset(asset);
-          onAssignModalOpen();
+          setIsAssignModalOpen(true);
           break;
         case "status":
           setSelectedAsset(asset);
-          onStatusModalOpen();
+          setIsStatusModalOpen(true);
           break;
         case "delete":
           setSelectedAsset(asset);
           setDeleteMode("single");
-          onDeleteModalOpen();
+          setIsDeleteModalOpen(true);
           break;
         case "delete-bulk":
           setSelectedAsset(null);
           setDeleteMode("bulk");
-          onDeleteModalOpen();
+          setIsDeleteModalOpen(true);
           break;
         case "qrcode":
           setSelectedAsset(asset);
-          onQRCodeModalOpen();
+          setIsQRCodeModalOpen(true);
           break;
         case "label":
           break;
@@ -389,7 +382,7 @@ export default function App({
           break;
       }
     },
-    [onAssignModalOpen, onQRCodeModalOpen, onStatusModalOpen, onDeleteModalOpen]
+    []
   );
 
   const headerColumns = useMemo(() => {
@@ -613,16 +606,11 @@ export default function App({
           const stat = status.find(
             (s) => s.statustypeid === asset.statustypeid
           );
-          const chipColor = statusColorMap[stat?.statustypename] || "default";
+          const badgeVariant = statusColorMap[stat?.statustypename] || "default";
           return (
-            <Chip
-              className="capitalize"
-              color={chipColor}
-              size="sm"
-              variant="flat"
-            >
+            <Badge className="capitalize" variant={badgeVariant}>
               {stat?.statustypename || "Unknown"}
-            </Chip>
+            </Badge>
           );
         case "assetcategorytypeid":
           const cat = categories.find(
@@ -637,30 +625,15 @@ export default function App({
           );
         case "requestable":
           return (
-            <Chip
-              className="capitalize"
-              color={asset.requestable ? "success" : "danger"}
-              size="sm"
-              variant="flat"
-            >
+            <Badge variant={asset.requestable ? "default" : "destructive"}>
               {asset.requestable.toString()}
-            </Chip>
+            </Badge>
           );
         case "mobile":
           return (
-            // <div className="flex flex-col">
-            //   <p className="text-bold text-small capitalize">
-            //     {asset.mobile.toString()}
-            //   </p>
-            // </div>
-            <Chip
-              className="capitalize"
-              color={asset.mobile ? "success" : "danger"}
-              size="sm"
-              variant="flat"
-            >
+            <Badge variant={asset.mobile ? "default" : "destructive"}>
               {asset.mobile.toString()}
-            </Chip>
+            </Badge>
           );
         case "locationid":
           // Find the matching location object based on the asset's locationid
@@ -686,86 +659,72 @@ export default function App({
           return (
             <div className="relative flex items-center gap-0">
               <Button
-                className="text-lg text-default-400 cursor-pointer active:opacity-50 h-6 w-6"
-                href={`assets/${asset.assetid}/`}
-                as={Link}
-                isIconOnly
-                variant="light"
+                className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                asChild
+                size="icon"
+                variant="ghost"
               >
-                <EyeIcon />
+                <Link href={`assets/${asset.assetid}/`}>
+                  <EyeIcon />
+                </Link>
               </Button>
               <Button
-                className="text-lg text-default-400 cursor-pointer active:opacity-50 h-6 w-6"
-                href={`assets/${asset.assetid}/edit`}
-                as={Link}
-                isIconOnly
-                variant="light"
+                className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                asChild
+                size="icon"
+                variant="ghost"
               >
-                <EditIcon />
+                <Link href={`assets/${asset.assetid}/edit`}>
+                  <EditIcon />
+                </Link>
               </Button>
-              {/* <Button
-                className="text-lg text-danger cursor-pointer active:opacity-50 h-6 w-6"
-                onClick={() => handleDelete(asset.assetid)}
-                isIconOnly
-                variant="light"
-              >
-                <DeleteIcon />
-              </Button> */}
               <Button
-                className="text-lg text-default-400 cursor-pointer active:opacity-50 h-6 w-6"
-                isIconOnly
-                variant="light"
-                onPress={() => handleOpenModal(asset, "assign")}
-                isDisabled={!asset.requestable}
+                className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                size="icon"
+                variant="ghost"
+                onClick={() => handleOpenModal(asset, "assign")}
+                disabled={!asset.requestable}
               >
                 <AssignIcon />
               </Button>
-              <Dropdown placement="bottom-end">
-                <DropdownTrigger>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
-                    className="text-lg text-default-400 cursor-pointer active:opacity-50 h-6 w-6"
-                    isIconOnly
-                    variant="light"
+                    className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                    size="icon"
+                    variant="ghost"
                   >
                     <MoreVertical />
                   </Button>
-                </DropdownTrigger>
-                <DropdownMenu aria-label="Profile Actions" variant="flat">
-                  <DropdownItem
-                    key="delete"
-                    color="danger"
-                    className="text-danger"
-                    startContent={<DeleteIcon />}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
                     onClick={() => handleOpenModal(asset, "delete")}
                   >
+                    <DeleteIcon className="mr-2 h-4 w-4" />
                     Delete Item
-                  </DropdownItem>
-                  <DropdownItem
-                    key="change-status"
-                    startContent={<Status />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => handleOpenModal(asset, "status")}
-                    //onClick={() => handleQrCode(asset.assetid)}
                   >
+                    <Status className="mr-2 h-4 w-4" />
                     Change Status
-                  </DropdownItem>
-                  <DropdownItem
-                    key="qrcode"
-                    startContent={<QrCode />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => handleOpenModal(asset, "qrcode")}
-                    //onClick={() => handleQrCode(asset.assetid)}
                   >
-                    Genereate QR-Code
-                  </DropdownItem>
-                  <DropdownItem
-                    key="generate-label"
-                    startContent={<Label />}
+                    <QrCode className="mr-2 h-4 w-4" />
+                    Generate QR-Code
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => handleOpenModal(asset, "label")}
-                    //onClick={() => handleQrCode(asset.assetid)}
                   >
-                    Genereate Label
-                  </DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
+                    <Label className="mr-2 h-4 w-4" />
+                    Generate Label
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           );
         default:
