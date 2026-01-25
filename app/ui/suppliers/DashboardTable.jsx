@@ -31,7 +31,7 @@ function DashboardTable({ data, columns }) {
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
               <AvatarImage src={user.avatar} alt={cellValue} />
-              <AvatarFallback>{cellValue?.charAt(0)}</AvatarFallback>
+              <AvatarFallback>{cellValue?.charAt(0) || "?"}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
               <span className="font-medium">{cellValue}</span>

@@ -649,7 +649,7 @@ export default function App({
             {sortedItems.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={headerColumns.length} className="text-center">
-                  No users found
+                  No accessories found
                 </TableCell>
               </TableRow>
             ) : (
