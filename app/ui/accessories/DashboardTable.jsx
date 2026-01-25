@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -145,7 +146,7 @@ export default function App({
     return filteredAssets;
   }, [data, status, filterValue, statusFilter, hasSearchFilter]);
 
-  const pages = Math.max(1, Math.ceil(filteredItems.length / rowsPerPage));
+  const pages = Math.ceil(filteredItems.length / rowsPerPage);
 
   const items = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
@@ -451,6 +452,29 @@ export default function App({
   }, []);
 
   const topContent = useMemo(() => {
+    const handleStatusToggle = (statusUid) => {
+      const currentFilter = statusFilter === "all" ? new Set(statusOptions.map(s => s.uid)) : new Set(statusFilter);
+      if (currentFilter.has(statusUid)) {
+        currentFilter.delete(statusUid);
+      } else {
+        currentFilter.add(statusUid);
+      }
+      setStatusFilter(currentFilter.size === statusOptions.length ? "all" : currentFilter);
+    };
+
+    const handleColumnToggle = (columnUid) => {
+      const currentColumns = visibleColumns === "all" ? new Set(columns.map(c => c.uid)) : new Set(visibleColumns);
+      if (currentColumns.has(columnUid)) {
+        currentColumns.delete(columnUid);
+      } else {
+        currentColumns.add(columnUid);
+      }
+      setVisibleColumns(currentColumns.size === columns.length ? "all" : currentColumns);
+    };
+
+    const currentStatusSet = statusFilter === "all" ? new Set(statusOptions.map(s => s.uid)) : new Set(statusFilter);
+    const currentColumnsSet = visibleColumns === "all" ? new Set(columns.map(c => c.uid)) : new Set(visibleColumns);
+
     return (
       <div className="flex flex-col gap-4">
         <div className="flex justify-between gap-3 items-end">
@@ -471,9 +495,21 @@ export default function App({
                   <ChevronDownIcon className="ml-2 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent align="end" className="w-48">
                 {statusOptions.map((status) => (
-                  <DropdownMenuItem key={status.uid} className="capitalize">
+                  <DropdownMenuItem
+                    key={status.uid}
+                    className="capitalize"
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleStatusToggle(status.uid);
+                    }}
+                  >
+                    <Checkbox
+                      checked={currentStatusSet.has(status.uid)}
+                      onCheckedChange={() => handleStatusToggle(status.uid)}
+                      className="mr-2"
+                    />
                     {capitalize(status.name)}
                   </DropdownMenuItem>
                 ))}
@@ -486,9 +522,21 @@ export default function App({
                   <ChevronDownIcon className="ml-2 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent align="end" className="w-48">
                 {columns.map((column) => (
-                  <DropdownMenuItem key={column.uid} className="capitalize">
+                  <DropdownMenuItem
+                    key={column.uid}
+                    className="capitalize"
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleColumnToggle(column.uid);
+                    }}
+                  >
+                    <Checkbox
+                      checked={currentColumnsSet.has(column.uid)}
+                      onCheckedChange={() => handleColumnToggle(column.uid)}
+                      className="mr-2"
+                    />
                     {capitalize(column.name)}
                   </DropdownMenuItem>
                 ))}
@@ -501,7 +549,7 @@ export default function App({
                   <ChevronDownIcon className="ml-2 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem>Edit Entries</DropdownMenuItem>
                 <DropdownMenuItem className="text-destructive">
                   Delete Entries
@@ -535,6 +583,8 @@ export default function App({
     );
   }, [
     filterValue,
+    statusFilter,
+    visibleColumns,
     onRowsPerPageChange,
     data.length,
     onSearchChange,
