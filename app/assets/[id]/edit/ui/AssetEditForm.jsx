@@ -1,6 +1,12 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Input, Checkbox, Select, SelectItem, Textarea, Divider } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from "sonner";
 
@@ -68,8 +74,7 @@ export default function AssetEditForm({ initial, categories, locations, manufact
     setForm((f) => ({ ...f, [name]: value }));
   };
 
-  const onSelectChange = (name) => (keys) => {
-    const value = Array.from(keys)[0] || "";
+  const onSelectChange = (name) => (value) => {
     setForm((f) => ({ ...f, [name]: value }));
   };
 
@@ -121,35 +126,68 @@ export default function AssetEditForm({ initial, categories, locations, manufact
             <p className="text-sm text-foreground-500 mt-1">Asset Tag {initial.assettag} • Serial {initial.serialnumber}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button type="button" variant="light" onPress={() => router.back()}>Cancel</Button>
-            <Button color="primary" type="submit" isLoading={saving} isDisabled={assettagTaken || serialTaken}>Save</Button>
+            <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+            <Button variant="default" type="submit" disabled={saving || assettagTaken || serialTaken}>{saving ? "Saving..." : "Save"}</Button>
           </div>
         </div>
-        <Divider />
+        <Separator />
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <section className="col-span-1 rounded-lg border border-default-200 p-4">
             <h2 className="text-sm font-semibold text-foreground-600 mb-3">Summary</h2>
             <div className="grid grid-cols-1 gap-3">
-              <Input label="Asset Name" name="assetname" value={form.assetname} onChange={onChange} isRequired />
-              <Select label="Category" selectedKeys={new Set(form.assetcategorytypeid ? [form.assetcategorytypeid] : [])} onSelectionChange={onSelectChange("assetcategorytypeid")} placeholder="Select category">
-                {categories.map((c) => (
-                  <SelectItem key={c.assetcategorytypeid}>{c.assetcategorytypename}</SelectItem>
-                ))}
-              </Select>
-              <Select label="Status" selectedKeys={new Set(form.statustypeid ? [form.statustypeid] : [])} onSelectionChange={onSelectChange("statustypeid")} placeholder="Select status">
-                {statuses.map((s) => (
-                  <SelectItem key={s.statustypeid}>{s.statustypename}</SelectItem>
-                ))}
-              </Select>
-              <Select label="Location" selectedKeys={new Set(form.locationid ? [form.locationid] : [])} onSelectionChange={onSelectChange("locationid")} placeholder="Select location">
-                {locations.map((l) => (
-                  <SelectItem key={l.locationid}>{l.locationname}</SelectItem>
-                ))}
-              </Select>
+              <div>
+                <Label htmlFor="assetname">Asset Name *</Label>
+                <Input id="assetname" name="assetname" value={form.assetname} onChange={onChange} required />
+              </div>
+              <div>
+                <Label htmlFor="assetcategorytypeid">Category</Label>
+                <Select value={form.assetcategorytypeid} onValueChange={onSelectChange("assetcategorytypeid")}>
+                  <SelectTrigger id="assetcategorytypeid">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.assetcategorytypeid} value={c.assetcategorytypeid}>{c.assetcategorytypename}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="statustypeid">Status</Label>
+                <Select value={form.statustypeid} onValueChange={onSelectChange("statustypeid")}>
+                  <SelectTrigger id="statustypeid">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statuses.map((s) => (
+                      <SelectItem key={s.statustypeid} value={s.statustypeid}>{s.statustypename}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="locationid">Location</Label>
+                <Select value={form.locationid} onValueChange={onSelectChange("locationid")}>
+                  <SelectTrigger id="locationid">
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((l) => (
+                      <SelectItem key={l.locationid} value={l.locationid}>{l.locationname}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex gap-6">
-                <Checkbox isSelected={form.requestable} onValueChange={(v) => setForm((f) => ({ ...f, requestable: v }))}>Requestable</Checkbox>
-                <Checkbox isSelected={form.mobile} onValueChange={(v) => setForm((f) => ({ ...f, mobile: v }))}>Mobile</Checkbox>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="requestable" checked={form.requestable} onCheckedChange={(v) => setForm((f) => ({ ...f, requestable: v }))} />
+                  <Label htmlFor="requestable">Requestable</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="mobile" checked={form.mobile} onCheckedChange={(v) => setForm((f) => ({ ...f, mobile: v }))} />
+                  <Label htmlFor="mobile">Mobile</Label>
+                </div>
               </div>
             </div>
           </section>
@@ -157,31 +195,67 @@ export default function AssetEditForm({ initial, categories, locations, manufact
           <section className="col-span-1 rounded-lg border border-default-200 p-4">
             <h2 className="text-sm font-semibold text-foreground-600 mb-3">Specifications</h2>
             <div className="grid grid-cols-1 gap-3">
-              <Select label="Manufacturer" selectedKeys={new Set(form.manufacturerid ? [form.manufacturerid] : [])} onSelectionChange={onSelectChange("manufacturerid")} placeholder="Select manufacturer">
-                {manufacturers.map((m) => (
-                  <SelectItem key={m.manufacturerid}>{m.manufacturername}</SelectItem>
-                ))}
-              </Select>
-              <Select label="Model" selectedKeys={new Set(form.modelid ? [form.modelid] : [])} onSelectionChange={onSelectChange("modelid")} placeholder="Select model">
-                {models.map((m) => (
-                  <SelectItem key={m.modelid}>{m.modelname}</SelectItem>
-                ))}
-              </Select>
-              <Textarea label="Specs" name="specs" value={form.specs ?? ""} onChange={onChange} minRows={2} />
-              <Textarea label="Notes" name="notes" value={form.notes ?? ""} onChange={onChange} minRows={2} />
+              <div>
+                <Label htmlFor="manufacturerid">Manufacturer</Label>
+                <Select value={form.manufacturerid} onValueChange={onSelectChange("manufacturerid")}>
+                  <SelectTrigger id="manufacturerid">
+                    <SelectValue placeholder="Select manufacturer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {manufacturers.map((m) => (
+                      <SelectItem key={m.manufacturerid} value={m.manufacturerid}>{m.manufacturername}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="modelid">Model</Label>
+                <Select value={form.modelid} onValueChange={onSelectChange("modelid")}>
+                  <SelectTrigger id="modelid">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models.map((m) => (
+                      <SelectItem key={m.modelid} value={m.modelid}>{m.modelname}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="specs">Specs</Label>
+                <Textarea id="specs" name="specs" value={form.specs ?? ""} onChange={onChange} rows={2} />
+              </div>
+              <div>
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea id="notes" name="notes" value={form.notes ?? ""} onChange={onChange} rows={2} />
+              </div>
             </div>
           </section>
 
           <section className="col-span-1 rounded-lg border border-default-200 p-4">
             <h2 className="text-sm font-semibold text-foreground-600 mb-3">Procurement</h2>
             <div className="grid grid-cols-1 gap-3">
-              <Select label="Supplier" selectedKeys={new Set(form.supplierid ? [form.supplierid] : [])} onSelectionChange={onSelectChange("supplierid")} placeholder="Select supplier">
-                {suppliers.map((s) => (
-                  <SelectItem key={s.supplierid}>{s.suppliername}</SelectItem>
-                ))}
-              </Select>
-              <Input label="Purchase Price" name="purchaseprice" value={form.purchaseprice ?? ""} onChange={onChange} type="number" step="0.01" />
-              <Input label="Purchase Date" name="purchasedate" value={form.purchasedate ?? ""} onChange={onChange} type="date" />
+              <div>
+                <Label htmlFor="supplierid">Supplier</Label>
+                <Select value={form.supplierid} onValueChange={onSelectChange("supplierid")}>
+                  <SelectTrigger id="supplierid">
+                    <SelectValue placeholder="Select supplier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s.supplierid} value={s.supplierid}>{s.suppliername}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="purchaseprice">Purchase Price</Label>
+                <Input id="purchaseprice" name="purchaseprice" value={form.purchaseprice ?? ""} onChange={onChange} type="number" step="0.01" />
+              </div>
+              <div>
+                <Label htmlFor="purchasedate">Purchase Date</Label>
+                <Input id="purchasedate" name="purchasedate" value={form.purchasedate ?? ""} onChange={onChange} type="date" />
+              </div>
             </div>
           </section>
         </div>
@@ -190,50 +264,56 @@ export default function AssetEditForm({ initial, categories, locations, manufact
           <section className="col-span-1 rounded-lg border border-default-200 p-4">
             <h2 className="text-sm font-semibold text-foreground-600 mb-3">Identifiers</h2>
             <div className="grid grid-cols-1 gap-3">
-              <Input
-                label="Asset Tag"
-                name="assettag"
-                value={form.assettag}
-                onChange={onChange}
-                onBlur={async () => {
-                  if (!form.assettag || form.assettag === (initial.assettag ?? "")) return;
-                  try {
-                    const res = await fetch(`/api/asset/validate?assettag=${encodeURIComponent(form.assettag)}`);
-                    const data = await res.json();
-                    setAssettagTaken(Boolean(data?.assettag?.exists));
-                  } catch {}
-                }}
-                isInvalid={assettagTaken}
-                errorMessage={assettagTaken ? "Asset tag already exists" : undefined}
-                isRequired
-              />
-              <Input
-                label="Serial Number"
-                name="serialnumber"
-                value={form.serialnumber}
-                onChange={onChange}
-                onBlur={async () => {
-                  if (!form.serialnumber || form.serialnumber === (initial.serialnumber ?? "")) return;
-                  try {
-                    const res = await fetch(`/api/asset/validate?serialnumber=${encodeURIComponent(form.serialnumber)}`);
-                    const data = await res.json();
-                    setSerialTaken(Boolean(data?.serialnumber?.exists));
-                  } catch {}
-                }}
-                isInvalid={serialTaken}
-                errorMessage={serialTaken ? "Serial number already exists" : undefined}
-                isRequired
-              />
+              <div>
+                <Label htmlFor="assettag">Asset Tag *</Label>
+                <Input
+                  id="assettag"
+                  name="assettag"
+                  value={form.assettag}
+                  onChange={onChange}
+                  onBlur={async () => {
+                    if (!form.assettag || form.assettag === (initial.assettag ?? "")) return;
+                    try {
+                      const res = await fetch(`/api/asset/validate?assettag=${encodeURIComponent(form.assettag)}`);
+                      const data = await res.json();
+                      setAssettagTaken(Boolean(data?.assettag?.exists));
+                    } catch {}
+                  }}
+                  className={assettagTaken ? "border-red-500" : ""}
+                  required
+                />
+                {assettagTaken && <p className="text-sm text-red-500 mt-1">Asset tag already exists</p>}
+              </div>
+              <div>
+                <Label htmlFor="serialnumber">Serial Number *</Label>
+                <Input
+                  id="serialnumber"
+                  name="serialnumber"
+                  value={form.serialnumber}
+                  onChange={onChange}
+                  onBlur={async () => {
+                    if (!form.serialnumber || form.serialnumber === (initial.serialnumber ?? "")) return;
+                    try {
+                      const res = await fetch(`/api/asset/validate?serialnumber=${encodeURIComponent(form.serialnumber)}`);
+                      const data = await res.json();
+                      setSerialTaken(Boolean(data?.serialnumber?.exists));
+                    } catch {}
+                  }}
+                  className={serialTaken ? "border-red-500" : ""}
+                  required
+                />
+                {serialTaken && <p className="text-sm text-red-500 mt-1">Serial number already exists</p>}
+              </div>
             </div>
           </section>
         </div>
 
         {error && <p className="text-red-500 text-sm" role="alert">{error}</p>}
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="light" onPress={() => {
+          <Button type="button" variant="outline" onClick={() => {
             if (!isDirty || confirm("Discard unsaved changes?")) router.back();
           }}>Cancel</Button>
-          <Button color="primary" type="submit" isLoading={saving} isDisabled={assettagTaken || serialTaken}>Save</Button>
+          <Button variant="default" type="submit" disabled={saving || assettagTaken || serialTaken}>{saving ? "Saving..." : "Save"}</Button>
         </div>
       </form>
     </div>
