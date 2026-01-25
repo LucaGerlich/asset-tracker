@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useCallback, useRef } from "react";
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { QRCodeCanvas } from "qrcode.react";
 import { Toaster, toast } from "sonner";
 
@@ -45,54 +47,50 @@ export default function AssetDetailActions({ asset, users, userAssets, onAssigne
   return (
     <div className="flex gap-2">
       <Toaster position="bottom-right" />
-      <Button variant="flat" onPress={() => setAssignOpen(true)} isDisabled={!asset.requestable}>Assign User</Button>
-      <Button variant="flat" onPress={() => setQrOpen(true)}>Show QR Code</Button>
+      <Button variant="outline" onClick={() => setAssignOpen(true)} disabled={!asset.requestable}>Assign User</Button>
+      <Button variant="outline" onClick={() => setQrOpen(true)}>Show QR Code</Button>
 
-      <Modal isOpen={assignOpen} onOpenChange={setAssignOpen} backdrop="blur">
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader>Assign User {assignedUser ? `(current: ${assignedUser.firstname} ${assignedUser.lastname})` : ""}</ModalHeader>
-              <ModalBody>
-                <Select
-                  items={users}
-                  placeholder="Select a user"
-                  aria-label="Select a user"
-                  selectedKeys={new Set(selectedUser ? [selectedUser] : assignedUser ? [assignedUser.userid] : [])}
-                  onSelectionChange={(keys) => setSelectedUser(Array.from(keys)[0])}
-                >
-                  {(u) => (
-                    <SelectItem key={u.userid}>{u.firstname} {u.lastname}</SelectItem>
-                  )}
-                </Select>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="light" onPress={onClose}>Cancel</Button>
-                <Button color="primary" isDisabled={!selectedUser} onPress={handleAssign}>Assign</Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign User {assignedUser ? `(current: ${assignedUser.firstname} ${assignedUser.lastname})` : ""}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Select
+              value={selectedUser || (assignedUser ? assignedUser.userid : "")}
+              onValueChange={setSelectedUser}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a user" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((u) => (
+                  <SelectItem key={u.userid} value={u.userid}>{u.firstname} {u.lastname}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAssignOpen(false)}>Cancel</Button>
+            <Button disabled={!selectedUser} onClick={handleAssign}>Assign</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <Modal isOpen={qrOpen} onOpenChange={setQrOpen} backdrop="blur">
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader>QR-Code for {asset.assettag}</ModalHeader>
-              <ModalBody className="flex justify-center">
-                <div ref={qrRef}>
-                  <QRCodeCanvas value={`${typeof window !== "undefined" ? window.location.origin : ""}/assets/${asset.assetid}`} size={256} />
-                </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="light" onPress={onClose}>Close</Button>
-                <Button color="primary" onPress={handleDownload}>Download</Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>QR-Code for {asset.assettag}</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center py-4" ref={qrRef}>
+            <QRCodeCanvas value={`${typeof window !== "undefined" ? window.location.origin : ""}/assets/${asset.assetid}`} size={256} />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setQrOpen(false)}>Close</Button>
+            <Button onClick={handleDownload}>Download</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
