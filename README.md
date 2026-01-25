@@ -2,7 +2,7 @@
 
 This project is an Asset Management System designed to help organizations manage their assets efficiently. It includes features like assigning assets to users, updating asset information, unassigning assets, and filtering assets based on various criteria. The application is built with Next.js, React, and Prisma for the database interactions.
 
-This is build using [Next.js](https://nextjs.org/), [Prisma](https://prisma.io/), [PostgreSQL](https://postgresql.org/) and [NextUI](https://nextui.org/)
+This is build using [Next.js](https://nextjs.org/), [Prisma](https://prisma.io/), [PostgreSQL](https://postgresql.org/) and [shadcn/ui](https://ui.shadcn.com/)
 
 ## Table of Contents
 

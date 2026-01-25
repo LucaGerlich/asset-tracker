@@ -1,16 +1,30 @@
 "use client";
 import React from "react";
-import { Breadcrumbs, BreadcrumbItem } from "../lib/nextui";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const Breadcrumb = ({ options }) => {
   return (
-    <Breadcrumbs underline="hover" separator="/">
-      {options.map((option) => (
-        <BreadcrumbItem key={option.id} href={option.href}>
-          {option.label}
-        </BreadcrumbItem>
-      ))}
-    </Breadcrumbs>
+    <nav aria-label="breadcrumb">
+      <ol className="flex items-center gap-2 text-sm text-muted-foreground">
+        {options.map((option, index) => (
+          <li key={option.id} className="flex items-center gap-2">
+            {index > 0 && <ChevronRight className="h-4 w-4" />}
+            {index === options.length - 1 ? (
+              <span className="font-medium text-foreground">{option.label}</span>
+            ) : (
+              <Link 
+                href={option.href} 
+                className="hover:text-foreground transition-colors"
+              >
+                {option.label}
+              </Link>
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
   );
 };
 
