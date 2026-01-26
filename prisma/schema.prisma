@@ -26,7 +26,7 @@ model accessories {
   locationid               String                 @db.Uuid
   supplierid               String                 @db.Uuid
   modelid                  String                 @db.Uuid
-  creation_date            DateTime               @default(now()) @db.Timestamp(6)
+  creation_date            DateTime               @db.Timestamp(6)
   change_date              DateTime?              @db.Timestamp(6)
   accessorieCategoryType   accessorieCategoryType @relation(fields: [accessoriecategorytypeid], references: [accessoriecategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_accessoriecategorytype_c_accessoriecategorytypei")
   location                 location               @relation(fields: [locationid], references: [locationid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_location_c_locationid")
@@ -54,7 +54,7 @@ model asset {
   supplierid          String?            @db.Uuid
   locationid          String?            @db.Uuid
   manufacturerid      String?            @db.Uuid
-  creation_date       DateTime           @default(now()) @db.Timestamp(6)
+  creation_date       DateTime           @db.Timestamp(6)
   change_date         DateTime?          @db.Timestamp(6)
   assetCategoryType   assetCategoryType? @relation(fields: [assetcategorytypeid], references: [assetcategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_assetcategorytype_c_assetcategorytypeid")
   location            location?          @relation(fields: [locationid], references: [locationid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_location_c_locationid")
@@ -79,7 +79,7 @@ model consumable {
   supplierid               String                 @db.Uuid
   purchaseprice            Decimal?               @db.Decimal(10, 2)
   purchasedate             DateTime?              @db.Date
-  creation_date            DateTime               @default(now()) @db.Timestamp(6)
+  creation_date            DateTime               @db.Timestamp(6)
   change_date              DateTime?              @db.Timestamp(6)
   consumableCategoryType   consumableCategoryType @relation(fields: [consumablecategorytypeid], references: [consumablecategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_consumable_consumablecategorytype_c_consumablecategorytypeid")
   manufacturer             manufacturer           @relation(fields: [manufacturerid], references: [manufacturerid], onDelete: NoAction, onUpdate: NoAction, map: "fk_consumable_manufacturer_c_manufacturerid")
@@ -105,7 +105,7 @@ model licence {
   licencecategorytypeid String              @db.Uuid
   manufacturerid        String              @db.Uuid
   supplierid            String              @db.Uuid
-  creation_date         DateTime            @default(now()) @db.Timestamp(6)
+  creation_date         DateTime            @db.Timestamp(6)
   change_date           DateTime?           @db.Timestamp(6)
   licenceCategoryType   licenceCategoryType @relation(fields: [licencecategorytypeid], references: [licencecategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_licencecategorytype_c_licencecategorytypeid")
   manufacturer          manufacturer        @relation(fields: [manufacturerid], references: [manufacturerid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_manufacturer_c_manufacturerid")
@@ -126,7 +126,7 @@ model location {
   housenumber   String?       @db.VarChar
   city          String?       @db.VarChar
   country       String?       @db.VarChar
-  creation_date DateTime      @default(now()) @db.Timestamp(6)
+  creation_date DateTime      @db.Timestamp(6)
   change_date   DateTime?     @db.Timestamp(6)
   accessories   accessories[]
   asset         asset[]
@@ -135,7 +135,7 @@ model location {
 model manufacturer {
   manufacturerid   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   manufacturername String        @db.VarChar
-  creation_date    DateTime      @default(now()) @db.Timestamp(6)
+  creation_date    DateTime      @db.Timestamp(6)
   change_date      DateTime?     @db.Timestamp(6)
   accessories      accessories[]
   asset            asset[]
@@ -147,7 +147,7 @@ model model {
   modelid       String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   modelname     String        @db.VarChar
   modelnumber   String?       @db.VarChar
-  creation_date DateTime      @default(now()) @db.Timestamp(6)
+  creation_date DateTime      @db.Timestamp(6)
   change_date   DateTime?     @db.Timestamp(6)
   accessories   accessories[]
   asset         asset[]
@@ -168,7 +168,7 @@ model supplier {
   salutation    String?       @db.VarChar
   email         String?       @db.VarChar
   phonenumber   String?       @db.VarChar
-  creation_date DateTime      @default(now()) @db.Timestamp(6)
+  creation_date DateTime      @db.Timestamp(6)
   change_date   DateTime?     @db.Timestamp(6)
   accessories   accessories[]
   asset         asset[]
@@ -186,18 +186,19 @@ model user {
   email           String?           @unique @db.VarChar
   lan             String?           @db.VarChar
   password        String            @db.VarChar
-  creation_date   DateTime          @default(now()) @db.Timestamp(6)
+  creation_date   DateTime          @db.Timestamp(6)
   change_date     DateTime?         @db.Timestamp(6)
   licence         licence[]
   userAccessoires userAccessoires[]
   userAssets      userAssets[]
+  userHistory     userHistory[]
 }
 
 model userAccessoires {
   useraccessoiresid String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userid            String      @db.Uuid
   accessorieid      String      @db.Uuid
-  creation_date     DateTime    @default(now()) @db.Timestamp(6)
+  creation_date     DateTime    @db.Timestamp(6)
   change_date       DateTime?   @db.Timestamp(6)
   accessories       accessories @relation(fields: [accessorieid], references: [accessorieid], onDelete: NoAction, onUpdate: NoAction, map: "fk_useraccessoires_accessories_c_accessorieid")
   user              user        @relation(fields: [userid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_useraccessoires_user_c_userid")
@@ -206,8 +207,8 @@ model userAccessoires {
 model userAssets {
   userassetsid  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userid        String    @db.Uuid
-  assetid       String    @unique @db.Uuid
-  creation_date DateTime  @default(now()) @db.Timestamp(6)
+  assetid       String    @db.Uuid
+  creation_date DateTime  @db.Timestamp(6)
   change_date   DateTime? @db.Timestamp(6)
   asset         asset     @relation(fields: [assetid], references: [assetid], onDelete: NoAction, onUpdate: NoAction, map: "fk_userassets_asset_c_assetid")
   user          user      @relation(fields: [userid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_userassets_user_c_userid")
@@ -218,10 +219,12 @@ model userHistory {
   historyid      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   referenceid    String?   @db.Uuid
   referencetable String?   @db.VarChar(20)
+  userid         String    @db.Uuid
   actionname     String    @db.VarChar
   updatedate     DateTime? @db.Date
   checkedout     DateTime? @db.Date
   checkedin      DateTime? @db.Date
-  creation_date  DateTime  @default(now()) @db.Timestamp(6)
+  creation_date  DateTime  @db.Timestamp(6)
   change_date    DateTime? @db.Timestamp(6)
+  user           user      @relation(fields: [userid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_userhistory_user_c_userid")
 }
