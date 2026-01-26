@@ -988,7 +988,7 @@ export default function App({
   return (
     <div className="w-full space-y-4">
       {topContent}
-      <div className="rounded-md border">
+      <div className="w-full overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>

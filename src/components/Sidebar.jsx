@@ -88,7 +88,7 @@ const Sidebar = ({ initialCollapsed = false }) => {
     <TooltipProvider>
       <aside
         className={cx(
-          "hidden border-r border-default-200 bg-content1/60 backdrop-blur md:flex md:flex-col transition-[width] duration-300 ease-in-out",
+          "hidden border-r border-default-200 bg-content1/60 backdrop-blur lg:flex lg:flex-col transition-[width] duration-300 ease-in-out",
           collapsed ? "w-20" : "w-64"
         )}
       >

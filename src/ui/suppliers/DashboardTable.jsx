@@ -89,7 +89,7 @@ function DashboardTable({ data, columns }) {
   }, []);
 
   return (
-    <div className="rounded-md border">
+    <div className="w-full overflow-x-auto rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>

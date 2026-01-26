@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeSwitcher from "./ThemeSwitcher.jsx";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,8 +14,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import { NotificationIcon } from "../ui/Icons.jsx";
 import { cn } from "@/lib/utils";
 
@@ -36,11 +44,102 @@ function Navigation({ userName }) {
     <nav className="border-b">
       <div className="flex h-16 items-center px-4 md:px-6">
         <div className="flex items-center gap-6 flex-1">
+          {/* Mobile Menu */}
+          <Sheet>
+            <SheetTrigger asChild className="lg:hidden">
+              <Button variant="ghost" size="icon" aria-label="Open menu">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72">
+              <SheetHeader>
+                <SheetTitle className="text-left">Asset Tracker</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-4 mt-8">
+                <Link
+                  href="/user"
+                  className={cn(
+                    "text-lg font-medium hover:text-primary transition-colors",
+                    isActive("user") ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  Users
+                </Link>
+                <Link
+                  href="/assets"
+                  className={cn(
+                    "text-lg font-medium hover:text-primary transition-colors",
+                    isActive("assets") ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  Assets
+                </Link>
+                <Link
+                  href="/accessories"
+                  className={cn(
+                    "text-lg font-medium hover:text-primary transition-colors",
+                    isActive("accessories") ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  Accessories
+                </Link>
+                <Separator className="my-2" />
+                <p className="text-sm font-semibold text-muted-foreground">More Items</p>
+                <Link
+                  href="/locations"
+                  className={cn(
+                    "text-base font-medium hover:text-primary transition-colors pl-2",
+                    isActive("locations") ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  Locations
+                </Link>
+                <Link
+                  href="/manufacturers"
+                  className={cn(
+                    "text-base font-medium hover:text-primary transition-colors pl-2",
+                    isActive("manufacturers") ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  Manufacturers
+                </Link>
+                <Link
+                  href="/suppliers"
+                  className={cn(
+                    "text-base font-medium hover:text-primary transition-colors pl-2",
+                    isActive("suppliers") ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  Suppliers
+                </Link>
+                <Link
+                  href="/licences"
+                  className={cn(
+                    "text-base font-medium hover:text-primary transition-colors pl-2",
+                    isActive("licences") ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  Licences
+                </Link>
+                <Link
+                  href="/consumables"
+                  className={cn(
+                    "text-base font-medium hover:text-primary transition-colors pl-2",
+                    isActive("consumables") ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  Consumables
+                </Link>
+              </div>
+            </SheetContent>
+          </Sheet>
+
           <Link href="/" className="hidden sm:block font-bold text-lg">
             Asset Tracker
           </Link>
-          
-          <div className="hidden sm:flex gap-6">
+
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex gap-6">
             <Link
               href="/user"
               className={cn(
@@ -68,7 +167,7 @@ function Navigation({ userName }) {
             >
               Accessories
             </Link>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-1">
