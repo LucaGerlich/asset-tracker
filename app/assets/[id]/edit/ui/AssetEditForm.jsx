@@ -114,20 +114,20 @@ export default function AssetEditForm({ initial, categories, locations, manufact
   return (
     <div className="max-w-5xl">
       <Toaster position="bottom-right" />
-      <form onSubmit={onSubmit} className="flex flex-col gap-6">
-        <div className="flex items-start justify-between gap-4">
+      <form onSubmit={onSubmit} className="flex flex-col gap-4 sm:gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Edit: {initial.assetname}</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold">Edit: {initial.assetname}</h1>
             <p className="text-sm text-foreground-500 mt-1">Asset Tag {initial.assettag} • Serial {initial.serialnumber}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="light" onPress={() => router.back()}>Cancel</Button>
-            <Button color="primary" type="submit" isLoading={saving} isDisabled={assettagTaken || serialTaken}>Save</Button>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <Button type="button" variant="light" onPress={() => router.back()} className="w-full sm:w-auto">Cancel</Button>
+            <Button color="primary" type="submit" isLoading={saving} isDisabled={assettagTaken || serialTaken} className="w-full sm:w-auto">Save</Button>
           </div>
         </div>
         <Divider />
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <section className="col-span-1 rounded-lg border border-default-200 p-4">
             <h2 className="text-sm font-semibold text-foreground-600 mb-3">Summary</h2>
             <div className="grid grid-cols-1 gap-3">
@@ -186,7 +186,7 @@ export default function AssetEditForm({ initial, categories, locations, manufact
           </section>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <section className="col-span-1 rounded-lg border border-default-200 p-4">
             <h2 className="text-sm font-semibold text-foreground-600 mb-3">Identifiers</h2>
             <div className="grid grid-cols-1 gap-3">
@@ -229,11 +229,11 @@ export default function AssetEditForm({ initial, categories, locations, manufact
         </div>
 
         {error && <p className="text-red-500 text-sm" role="alert">{error}</p>}
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col sm:flex-row justify-end gap-2">
           <Button type="button" variant="light" onPress={() => {
             if (!isDirty || confirm("Discard unsaved changes?")) router.back();
-          }}>Cancel</Button>
-          <Button color="primary" type="submit" isLoading={saving} isDisabled={assettagTaken || serialTaken}>Save</Button>
+          }} className="w-full sm:w-auto">Cancel</Button>
+          <Button color="primary" type="submit" isLoading={saving} isDisabled={assettagTaken || serialTaken} className="w-full sm:w-auto">Save</Button>
         </div>
       </form>
     </div>

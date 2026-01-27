@@ -21,7 +21,7 @@ export default function RootLayout({ children }) {
         <Providers>
           <Navigation userName={"Luca Gerlich"} />
           <div className="flex h-fit flex-col md:flex-row overflow-hidden">
-            <div className="flex-grow p-6 md:p-8 overflow-hidden">
+            <div className="flex-grow p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 overflow-hidden">
               {children}
             </div>
           </div>
