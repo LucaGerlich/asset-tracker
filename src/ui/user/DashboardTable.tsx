@@ -11,14 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { EditIcon, DeleteIcon, EyeIcon, PlusIcon, SearchIcon } from "../Icons";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
@@ -45,7 +38,7 @@ function resolveRole(user) {
   return "deactivated";
 }
 
-function DashboardTable({ data, columns }) {
+function DashboardTable({ data, columns: propColumns }) {
   const [searchValue, setSearchValue] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
@@ -78,26 +71,35 @@ function DashboardTable({ data, columns }) {
     return filteredUsers.slice(start, start + rowsPerPage);
   }, [filteredUsers, page, rowsPerPage]);
 
-  const renderCell = useCallback((user, columnKey) => {
+  // Map columns from props to ResponsiveTable format
+  const columns = useMemo(() => 
+    propColumns.map((col: { uid: string; name: string }) => ({
+      key: col.uid,
+      label: col.name,
+    })),
+    [propColumns]
+  );
+
+  const renderCell = useCallback((user: Record<string, unknown>, columnKey: string) => {
     const cellValue = user[columnKey];
 
     if (columnKey === "creation_date" || columnKey === "change_date") {
-      return cellValue ? formatDateStable(cellValue) : "N/A";
+      return cellValue ? formatDateStable(cellValue as string) : "N/A";
     }
 
     switch (columnKey) {
       case "firstName":
-        return <span>{user.firstname}</span>;
+        return <span>{String(user.firstname ?? "")}</span>;
       case "lastName":
-        return <span>{user.lastname}</span>;
+        return <span>{String(user.lastname ?? "")}</span>;
       case "email":
         return (
           <div className="flex flex-col">
-            <span className="text-bold text-sm ">{user.email}</span>
+            <span className="text-bold text-sm">{String(user.email ?? "")}</span>
           </div>
         );
       case "userName":
-        return <span>{user.username}</span>;
+        return <span>{String(user.username ?? "")}</span>;
       case "role":
         return <span className="capitalize">{resolveRole(user)}</span>;
       case "actions":
@@ -123,7 +125,7 @@ function DashboardTable({ data, columns }) {
           </div>
         );
       default:
-        return cellValue;
+        return cellValue != null ? String(cellValue) : "";
     }
   }, []);
 
@@ -178,39 +180,14 @@ function DashboardTable({ data, columns }) {
           </Select>
         </div>
       </div>
-      <div className="w-full overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {columns.map((column) => (
-                <TableHead
-                  key={column.uid}
-                  className={column.uid === "actions" ? "text-center" : ""}
-                >
-                  {column.name}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center">
-                  No users found
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedUsers.map((item) => (
-                <TableRow key={item.userid}>
-                  {columns.map((column) => (
-                    <TableCell key={column.uid}>{renderCell(item, column.uid)}</TableCell>
-                  ))}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <ResponsiveTable
+        columns={columns}
+        data={paginatedUsers}
+        renderCell={renderCell}
+        keyExtractor={(item) => (item as Record<string, unknown>).userid as number}
+        emptyMessage="No users found"
+        mobileCardView={true}
+      />
       <div className="flex items-center justify-center gap-2">
         <Button
           variant="outline"
