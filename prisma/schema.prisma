@@ -187,6 +187,13 @@ model user {
   password        String            @db.VarChar
   creation_date   DateTime          @db.Timestamp(6)
   change_date     DateTime?         @db.Timestamp(6)
+  
+  // NextAuth relations
+  accounts        Account[]
+  sessions        Session[]
+  auditLogs       AuditLog[]
+  
+  // Existing relations
   licence         licence[]
   userAccessoires userAccessoires[]
   userAssets      userAssets[]
@@ -226,4 +233,61 @@ model userHistory {
   creation_date  DateTime  @db.Timestamp(6)
   change_date    DateTime? @db.Timestamp(6)
   user           user      @relation(fields: [userid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_userhistory_user_c_userid")
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user user @relation(fields: [userId], references: [userid], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+  user         user     @relation(fields: [userId], references: [userid], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Audit Log for security tracking
+model AuditLog {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?   @db.Uuid
+  action    String    @db.VarChar(50)
+  entity    String    @db.VarChar(50)
+  entityId  String?   @db.Uuid
+  details   String?
+  ipAddress String?   @db.VarChar(50)
+  userAgent String?
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+
+  user user? @relation(fields: [userId], references: [userid], onDelete: SetNull)
+
+  @@map("audit_logs")
 }

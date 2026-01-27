@@ -1,0 +1,640 @@
+{
+	"info": {
+		"_postman_id": "asset-tracker-collection",
+		"name": "Asset Tracker API",
+		"description": "API collection for Asset Tracker application. Includes endpoints for managing assets, users, accessories, licenses, and more.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "API Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api",
+							"host": ["{{baseUrl}}"],
+							"path": ["api"]
+						},
+						"description": "Check if the API is running"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Assets",
+			"item": [
+				{
+					"name": "Get All Assets",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/asset",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "asset"]
+						},
+						"description": "Retrieve all assets"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Asset by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/asset/getAsset?assetid={{assetId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "asset", "getAsset"],
+							"query": [
+								{
+									"key": "assetid",
+									"value": "{{assetId}}"
+								}
+							]
+						},
+						"description": "Get a specific asset by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Add New Asset",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"assetname\": \"MacBook Pro 16-inch\",\n    \"assettag\": \"MBP-NEW-001\",\n    \"serialnumber\": \"SN-NEW-001\",\n    \"specs\": \"16-inch, 16GB RAM, 1TB SSD\",\n    \"notes\": \"New laptop for development\",\n    \"purchaseprice\": 2499.99,\n    \"purchasedate\": \"2024-01-15\",\n    \"mobile\": true,\n    \"requestable\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/asset/addAsset",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "asset", "addAsset"]
+						},
+						"description": "Create a new asset"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Asset Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"assetid\": \"{{assetId}}\",\n    \"statustypeid\": \"{{statusTypeId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/asset/updateStatus",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "asset", "updateStatus"]
+						},
+						"description": "Update the status of an asset"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Asset",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"assetid\": \"{{assetId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/asset/deleteAsset",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "asset", "deleteAsset"]
+						},
+						"description": "Delete an asset"
+					},
+					"response": []
+				},
+				{
+					"name": "Validate Asset",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"assettag\": \"MBP-001\",\n    \"serialnumber\": \"SN001\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/asset/validate",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "asset", "validate"]
+						},
+						"description": "Validate asset tag and serial number uniqueness"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get All Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/user",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "user"]
+						},
+						"description": "Retrieve all users"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/user/getUser?userid={{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "user", "getUser"],
+							"query": [
+								{
+									"key": "userid",
+									"value": "{{userId}}"
+								}
+							]
+						},
+						"description": "Get a specific user by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Add New User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"john.doe\",\n    \"firstname\": \"John\",\n    \"lastname\": \"Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"securepassword123\",\n    \"isadmin\": false,\n    \"canrequest\": true,\n    \"lan\": \"en\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/user/addUser",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "user", "addUser"]
+						},
+						"description": "Create a new user"
+					},
+					"response": []
+				},
+				{
+					"name": "Validate User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"john.doe\",\n    \"email\": \"john.doe@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/user/validate",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "user", "validate"]
+						},
+						"description": "Validate username and email uniqueness"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User Assets",
+			"item": [
+				{
+					"name": "Get All User Assets",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/userAssets",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "userAssets"]
+						},
+						"description": "Get all user-asset assignments"
+					},
+					"response": []
+				},
+				{
+					"name": "Find by Asset ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/userAssets/findByAssetId?assetid={{assetId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "userAssets", "findByAssetId"],
+							"query": [
+								{
+									"key": "assetid",
+									"value": "{{assetId}}"
+								}
+							]
+						},
+						"description": "Find user assignment by asset ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Asset to User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userid\": \"{{userId}}\",\n    \"assetid\": \"{{assetId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/userAssets/assign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "userAssets", "assign"]
+						},
+						"description": "Assign an asset to a user"
+					},
+					"response": []
+				},
+				{
+					"name": "Unassign Asset from User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"assetid\": \"{{assetId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/userAssets/unassign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "userAssets", "unassign"]
+						},
+						"description": "Unassign an asset from its current user"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Asset",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userassetsid\": \"{{userAssetsId}}\",\n    \"userid\": \"{{newUserId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/userAssets/update",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "userAssets", "update"]
+						},
+						"description": "Update a user asset assignment"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Accessories",
+			"item": [
+				{
+					"name": "Get All Accessories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/accessories",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "accessories"]
+						},
+						"description": "Retrieve all accessories"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User Accessories",
+			"item": [
+				{
+					"name": "Get All User Accessories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/userAccessoires",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "userAccessoires"]
+						},
+						"description": "Get all user-accessory assignments"
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Accessory to User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userid\": \"{{userId}}\",\n    \"accessorieid\": \"{{accessoryId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/userAccessoires/assign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "userAccessoires", "assign"]
+						},
+						"description": "Assign an accessory to a user"
+					},
+					"response": []
+				},
+				{
+					"name": "Unassign Accessory from User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accessorieid\": \"{{accessoryId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/userAccessoires/unassign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "userAccessoires", "unassign"]
+						},
+						"description": "Unassign an accessory from its current user"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Licences",
+			"item": [
+				{
+					"name": "Get All Licences",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/licence",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "licence"]
+						},
+						"description": "Retrieve all licences"
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Licence to User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenceid\": \"{{licenceId}}\",\n    \"userid\": \"{{userId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/licence/assign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "licence", "assign"]
+						},
+						"description": "Assign a licence to a user"
+					},
+					"response": []
+				},
+				{
+					"name": "Unassign Licence from User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"licenceid\": \"{{licenceId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/licence/unassign",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "licence", "unassign"]
+						},
+						"description": "Unassign a licence from its current user"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Consumables",
+			"item": [
+				{
+					"name": "Get All Consumables",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/consumable",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "consumable"]
+						},
+						"description": "Retrieve all consumables"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Locations",
+			"item": [
+				{
+					"name": "Get All Locations",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/location",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "location"]
+						},
+						"description": "Retrieve all locations"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Manufacturers",
+			"item": [
+				{
+					"name": "Get All Manufacturers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/manufacturer",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "manufacturer"]
+						},
+						"description": "Retrieve all manufacturers"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Suppliers",
+			"item": [
+				{
+					"name": "Get All Suppliers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/supplier",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "supplier"]
+						},
+						"description": "Retrieve all suppliers"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "assetId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "statusTypeId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "accessoryId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "licenceId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userAssetsId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "newUserId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

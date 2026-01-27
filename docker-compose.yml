@@ -1,0 +1,72 @@
+services:
+  # PostgreSQL Database (optional - can use external database)
+  db:
+    image: postgres:16-alpine
+    container_name: assettracker-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-assettracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-assettracker}
+      POSTGRES_DB: ${POSTGRES_DB:-assettracker}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-assettracker} -d ${POSTGRES_DB:-assettracker}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - with-db
+
+  # Asset Tracker Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: assettracker-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://assettracker:assettracker@db:5432/assettracker}
+      NODE_ENV: production
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
+    profiles:
+      - with-db
+      - app-only
+
+  # Development mode with hot-reload
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: assettracker-app-dev
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://assettracker:assettracker@db:5432/assettracker}
+      NODE_ENV: development
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
+    profiles:
+      - dev
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: assettracker-network
