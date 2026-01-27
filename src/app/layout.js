@@ -5,6 +5,8 @@ import { GeistMono } from "geist/font/mono";
 import Navigation from "../components/Navigation";
 import Footer from "../components/Footer.jsx";
 import Sidebar from "../components/Sidebar";
+import { SessionProvider } from "../components/SessionProvider";
+import { auth } from "../auth";
 import { cookies } from "next/headers";
 
 export const metadata = {
@@ -16,6 +18,7 @@ export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
   const sidebarPref = cookieStore.get("sidebar_collapsed");
   const initialSidebarCollapsed = sidebarPref?.value === "true";
+  const session = await auth();
 
   return (
     <html
@@ -24,18 +27,20 @@ export default async function RootLayout({ children }) {
       className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
     >
       <body>
-        <Providers>
-          <div className="flex min-h-screen bg-background">
-            <Sidebar initialCollapsed={initialSidebarCollapsed} />
-            <div className="flex flex-1 flex-col">
-              <Navigation userName={"Luca Gerlich"} />
-              <main className="flex-1 overflow-y-auto p-6 md:p-8">
-                {children}
-              </main>
-              <Footer />
+        <SessionProvider session={session}>
+          <Providers>
+            <div className="flex min-h-screen bg-background">
+              <Sidebar initialCollapsed={initialSidebarCollapsed} />
+              <div className="flex flex-1 flex-col">
+                <Navigation />
+                <main className="flex-1 overflow-y-auto p-6 md:p-8">
+                  {children}
+                </main>
+                <Footer />
+              </div>
             </div>
-          </div>
-        </Providers>
+          </Providers>
+        </SessionProvider>
       </body>
     </html>
   );

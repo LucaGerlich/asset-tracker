@@ -2,6 +2,7 @@ import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 
 // Login schema validation
 const loginSchema = z.object({
@@ -39,6 +40,14 @@ export const authConfig = {
 
           if (!user) {
             console.log("User not found:", username);
+            // Audit failed login attempt
+            await createAuditLog({
+              userId: null,
+              action: AUDIT_ACTIONS.LOGIN_FAILED,
+              entity: AUDIT_ENTITIES.USER,
+              entityId: null,
+              details: { username, reason: "User not found" },
+            });
             return null;
           }
 
@@ -47,8 +56,25 @@ export const authConfig = {
 
           if (!isValidPassword) {
             console.log("Invalid password for user:", username);
+            // Audit failed login attempt
+            await createAuditLog({
+              userId: user.userid,
+              action: AUDIT_ACTIONS.LOGIN_FAILED,
+              entity: AUDIT_ENTITIES.USER,
+              entityId: user.userid,
+              details: { username, reason: "Invalid password" },
+            });
             return null;
           }
+
+          // Audit successful login
+          await createAuditLog({
+            userId: user.userid,
+            action: AUDIT_ACTIONS.LOGIN,
+            entity: AUDIT_ENTITIES.USER,
+            entityId: user.userid,
+            details: { username },
+          });
 
           // Return user object (password excluded)
           return {

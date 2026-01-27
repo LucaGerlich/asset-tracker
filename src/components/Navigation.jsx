@@ -3,7 +3,9 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import ThemeSwitcher from "./ThemeSwitcher.jsx";
+import { SignOutButton } from "./SignOutButton.jsx";
 import { ChevronDown, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,9 +29,10 @@ import { Separator } from "@/components/ui/separator";
 import { NotificationIcon } from "../ui/Icons.jsx";
 import { cn } from "@/lib/utils";
 
-function Navigation({ userName }) {
+function Navigation() {
   const route = usePathname();
   const [activeMenu, setActiveMenu] = useState("");
+  const { data: session } = useSession();
 
   useEffect(() => {
     const routeSegment = route.split("/")[1];
@@ -39,6 +42,19 @@ function Navigation({ userName }) {
   const isActive = (path) => {
     return activeMenu === path;
   };
+
+  // Get user initials for avatar
+  const getInitials = () => {
+    if (session?.user?.firstname && session?.user?.lastname) {
+      return `${session.user.firstname[0]}${session.user.lastname[0]}`.toUpperCase();
+    }
+    if (session?.user?.username) {
+      return session.user.username.slice(0, 2).toUpperCase();
+    }
+    return "U";
+  };
+
+  const userName = session?.user?.name || session?.user?.username || "User";
 
   return (
     <nav className="border-b">
@@ -232,7 +248,7 @@ function Navigation({ userName }) {
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src="https://images.unsplash.com/broken" alt={userName} />
-                  <AvatarFallback>LG</AvatarFallback>
+                  <AvatarFallback>{getInitials()}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
@@ -241,22 +257,23 @@ function Navigation({ userName }) {
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">Signed in as</p>
                   <p className="text-xs leading-none text-muted-foreground">{userName}</p>
+                  {session?.user?.email && (
+                    <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
+                  )}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/user/123">My Items</Link>
+                <Link href={`/user/${session?.user?.id || '123'}`}>My Items</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/user/123/settings">My Settings</Link>
+                <Link href={`/user/${session?.user?.id || '123'}/settings`}>My Settings</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/user/123/edit">Edit Profile</Link>
+                <Link href={`/user/${session?.user?.id || '123'}/edit`}>Edit Profile</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
-                Log Out
-              </DropdownMenuItem>
+              <SignOutButton />
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
