@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../../../../lib/prisma";
 
 export async function POST(req) {
@@ -43,7 +44,7 @@ export async function POST(req) {
         data: {
           assetid: assetId,
           userid: userId,
-        },
+        } as Prisma.userAssetsUncheckedCreateInput,
       });
     }
 

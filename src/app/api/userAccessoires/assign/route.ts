@@ -1,4 +1,5 @@
 import prisma from "../../../../lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // POST /api/userAccessoires/assign
 // Body: { userId, accessorieId }
@@ -11,7 +12,7 @@ export async function POST(req) {
     const exists = await prisma.userAccessoires.findFirst({ where: { userid: userId, accessorieid: accessorieId } });
     let record = exists;
     if (!exists) {
-      record = await prisma.userAccessoires.create({ data: { userid: userId, accessorieid: accessorieId } });
+      record = await prisma.userAccessoires.create({ data: { userid: userId, accessorieid: accessorieId } as Prisma.userAccessoiresUncheckedCreateInput });
     }
     return new Response(JSON.stringify({ message: "Accessory assigned", userAccessoire: record }), { status: 200 });
   } catch (e) {

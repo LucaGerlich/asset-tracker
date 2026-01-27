@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // GET /api/location
 export async function GET() {
@@ -32,7 +33,8 @@ export async function POST(req) {
         housenumber: housenumber ?? null,
         city: city ?? null,
         country: country ?? null,
-      },
+        creation_date: new Date(),
+      } as Prisma.locationUncheckedCreateInput,
     });
 
     return NextResponse.json(created, { status: 201 });

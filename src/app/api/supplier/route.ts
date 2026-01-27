@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // GET /api/supplier
 export async function GET() {
@@ -33,7 +34,8 @@ export async function POST(req) {
         salutation: salutation ?? null,
         email: email ?? null,
         phonenumber: phonenumber ?? null,
-      },
+        creation_date: new Date(),
+      } as Prisma.supplierUncheckedCreateInput,
     });
 
     return NextResponse.json(created, { status: 201 });

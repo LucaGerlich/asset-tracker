@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // GET /api/asset
 // Optional query: ?id=<assetid>
@@ -73,7 +74,7 @@ export async function POST(req) {
         supplierid: supplierid ?? null,
         locationid: locationid ?? null,
         manufacturerid: manufacturerid ?? null,
-      },
+      } as Prisma.assetUncheckedCreateInput,
     });
 
     return NextResponse.json(created, { status: 201 });

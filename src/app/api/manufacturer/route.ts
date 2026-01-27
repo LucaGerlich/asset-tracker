@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
+import { Prisma } from "@prisma/client";
 import { requireApiAuth, requireApiAdmin } from "@/lib/api-auth";
 import { createManufacturerSchema, updateManufacturerSchema, uuidSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
@@ -53,7 +54,8 @@ export async function POST(req) {
     const created = await prisma.manufacturer.create({
       data: {
         manufacturername,
-      },
+        creation_date: new Date(),
+      } as Prisma.manufacturerUncheckedCreateInput,
     });
 
     // Create audit log

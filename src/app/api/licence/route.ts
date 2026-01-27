@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // GET /api/licence
 export async function GET() {
@@ -55,7 +56,7 @@ export async function POST(req) {
         licencecategorytypeid,
         manufacturerid,
         supplierid,
-      },
+      } as Prisma.licenceUncheckedCreateInput,
     });
 
     return NextResponse.json(created, { status: 201 });

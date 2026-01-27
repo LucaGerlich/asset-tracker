@@ -1,4 +1,5 @@
 import prisma from "../../../../lib/prisma";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireApiAdmin } from "@/lib/api-auth";
 import { hashPassword } from "@/lib/auth-utils";
@@ -50,7 +51,8 @@ export async function POST(request) {
         email: email ?? null,
         lan: lan ?? null,
         password: hashedPassword,
-      },
+        creation_date: new Date(),
+      } as Prisma.userUncheckedCreateInput,
     });
 
     // Create audit log
