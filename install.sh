@@ -2,6 +2,7 @@
 
 # ============================================
 # Asset Tracker Installation Script
+# Supports both Docker and Podman
 # ============================================
 
 set -e
@@ -12,6 +13,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Container runtime (docker or podman)
+CONTAINER_RUNTIME=""
+COMPOSE_CMD=""
 
 # Print colored messages
 print_info() {
@@ -38,21 +43,68 @@ print_header() {
     echo ""
 }
 
+# Detect and set container runtime (Docker or Podman)
+detect_container_runtime() {
+    print_info "Detecting container runtime..."
+    
+    # Check for Docker
+    if command -v docker &> /dev/null; then
+        CONTAINER_RUNTIME="docker"
+        # Check for docker compose (v2) or docker-compose (v1)
+        if docker compose version &> /dev/null 2>&1; then
+            COMPOSE_CMD="docker compose"
+        elif command -v docker-compose &> /dev/null; then
+            COMPOSE_CMD="docker-compose"
+        fi
+    fi
+    
+    # Check for Podman
+    if command -v podman &> /dev/null; then
+        # If Docker wasn't found or user prefers Podman
+        if [[ -z "$CONTAINER_RUNTIME" ]]; then
+            CONTAINER_RUNTIME="podman"
+        fi
+        # Check for podman-compose
+        if command -v podman-compose &> /dev/null; then
+            if [[ -z "$COMPOSE_CMD" ]] || [[ "$CONTAINER_RUNTIME" == "podman" ]]; then
+                COMPOSE_CMD="podman-compose"
+            fi
+        elif podman compose version &> /dev/null 2>&1; then
+            if [[ -z "$COMPOSE_CMD" ]] || [[ "$CONTAINER_RUNTIME" == "podman" ]]; then
+                COMPOSE_CMD="podman compose"
+            fi
+        fi
+    fi
+}
+
 # Check for required commands
 check_requirements() {
     print_info "Checking system requirements..."
     
-    if ! command -v docker &> /dev/null; then
-        print_error "Docker is not installed. Please install Docker first."
-        echo "Visit: https://docs.docker.com/get-docker/"
+    detect_container_runtime
+    
+    if [[ -z "$CONTAINER_RUNTIME" ]]; then
+        print_error "Neither Docker nor Podman is installed."
+        echo "Please install one of the following:"
+        echo "  - Docker: https://docs.docker.com/get-docker/"
+        echo "  - Podman: https://podman.io/getting-started/installation"
         exit 1
     fi
     
-    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-        print_error "Docker Compose is not installed. Please install Docker Compose first."
+    if [[ -z "$COMPOSE_CMD" ]]; then
+        if [[ "$CONTAINER_RUNTIME" == "docker" ]]; then
+            print_error "Docker Compose is not installed. Please install Docker Compose."
+            echo "Visit: https://docs.docker.com/compose/install/"
+        else
+            print_error "Podman Compose is not installed. Please install podman-compose."
+            echo "Install with: pip install podman-compose"
+            echo "Or use: dnf install podman-compose (Fedora/RHEL)"
+        fi
         exit 1
     fi
     
+    print_success "Container runtime: ${CONTAINER_RUNTIME}"
+    print_success "Compose command: ${COMPOSE_CMD}"
     print_success "All requirements met!"
 }
 
@@ -217,29 +269,29 @@ EOF
     
     if $USE_DOCKER_POSTGRES; then
         # Start with included database
-        print_info "Starting with Docker PostgreSQL..."
-        docker compose --profile with-db up -d --build
+        print_info "Starting with containerized PostgreSQL..."
+        $COMPOSE_CMD --profile with-db up -d --build
         
         print_info "Waiting for database to be ready..."
         sleep 10
         
         if $USE_PRISMA; then
             print_info "Running Prisma migrations..."
-            docker compose exec app npx prisma migrate deploy 2>/dev/null || \
-            docker compose exec app npx prisma db push --accept-data-loss 2>/dev/null || \
+            $COMPOSE_CMD exec app npx prisma migrate deploy 2>/dev/null || \
+            $COMPOSE_CMD exec app npx prisma db push --accept-data-loss 2>/dev/null || \
             print_warning "Could not run Prisma migrations. You may need to run them manually."
         else
-            print_info "SQL schema will be auto-initialized by Docker PostgreSQL."
+            print_info "SQL schema will be auto-initialized by PostgreSQL container."
         fi
     else
         # Start app only
         print_info "Starting application only (using external database)..."
-        docker compose --profile app-only up -d --build
+        $COMPOSE_CMD --profile app-only up -d --build
         
         if $USE_PRISMA; then
             print_info "Running Prisma migrations on external database..."
-            docker compose exec app npx prisma migrate deploy 2>/dev/null || \
-            docker compose exec app npx prisma db push --accept-data-loss 2>/dev/null || \
+            $COMPOSE_CMD exec app npx prisma migrate deploy 2>/dev/null || \
+            $COMPOSE_CMD exec app npx prisma db push --accept-data-loss 2>/dev/null || \
             print_warning "Could not run Prisma migrations automatically."
             echo ""
             print_info "To run migrations manually, use:"
@@ -261,8 +313,8 @@ EOF
         echo ""
         if ask_yes_no "Would you like to seed the database with initial data?" "y"; then
             print_info "Running database seed..."
-            docker compose exec app npm run db:seed 2>/dev/null || \
-            print_warning "Seeding failed. You can run it manually later with: docker compose exec app npm run db:seed"
+            $COMPOSE_CMD exec app npm run db:seed 2>/dev/null || \
+            print_warning "Seeding failed. You can run it manually later with: $COMPOSE_CMD exec app npm run db:seed"
         fi
     fi
     
@@ -278,18 +330,18 @@ EOF
     echo ""
     echo -e "  Application URL: ${GREEN}http://localhost:${APP_PORT}${NC}"
     echo ""
-    echo "Useful commands:"
-    echo "  View logs:        docker compose logs -f"
-    echo "  Stop services:    docker compose down"
-    echo "  Restart:          docker compose restart"
-    echo "  Shell access:     docker compose exec app sh"
+    echo "Useful commands (using ${CONTAINER_RUNTIME}):"
+    echo "  View logs:        $COMPOSE_CMD logs -f"
+    echo "  Stop services:    $COMPOSE_CMD down"
+    echo "  Restart:          $COMPOSE_CMD restart"
+    echo "  Shell access:     $COMPOSE_CMD exec app sh"
     echo ""
     
     if $USE_PRISMA; then
         echo "Prisma commands:"
-        echo "  Run migrations:   docker compose exec app npx prisma migrate deploy"
-        echo "  Reset database:   docker compose exec app npx prisma migrate reset"
-        echo "  Prisma Studio:    docker compose exec app npx prisma studio"
+        echo "  Run migrations:   $COMPOSE_CMD exec app npx prisma migrate deploy"
+        echo "  Reset database:   $COMPOSE_CMD exec app npx prisma migrate reset"
+        echo "  Prisma Studio:    $COMPOSE_CMD exec app npx prisma studio"
     fi
     
     echo ""

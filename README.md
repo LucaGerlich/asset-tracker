@@ -27,6 +27,7 @@ This is build using [Next.js](https://nextjs.org/), [Prisma](https://prisma.io/)
 - **User Onboarding**: Intuitive user onboarding with guided tours and tooltips.
 - **Accessibility**: Designed with accessibility in mind.
 - **Docker Support**: Easy deployment with Docker and Docker Compose.
+- **Podman Support**: Alternative deployment with Podman and podman-compose.
 
 ## Installation
 
@@ -85,7 +86,19 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Docker Deployment
 
-### Using Docker Compose
+The application supports both **Docker** and **Podman** as container runtimes. The install script automatically detects which one is available.
+
+### Prerequisites
+
+**Option A: Docker**
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/) (v2 recommended)
+
+**Option B: Podman**
+- [Podman](https://podman.io/getting-started/installation)
+- [podman-compose](https://github.com/containers/podman-compose) (`pip install podman-compose` or `dnf install podman-compose`)
+
+### Using Docker Compose / Podman Compose
 
 **Option 1: Full Stack (App + PostgreSQL)**
 
@@ -135,6 +148,28 @@ docker compose exec app sh
 # Run Prisma commands
 docker compose exec app npx prisma studio
 docker compose exec app npx prisma migrate deploy
+```
+
+### Podman Commands
+
+If using Podman instead of Docker, replace `docker compose` with `podman-compose`:
+
+```bash
+# View logs
+podman-compose logs -f
+
+# Stop all services
+podman-compose down
+
+# Restart services
+podman-compose restart
+
+# Access app shell
+podman-compose exec app sh
+
+# Run Prisma commands
+podman-compose exec app npx prisma studio
+podman-compose exec app npx prisma migrate deploy
 ```
 
 ### Database Schema Setup
