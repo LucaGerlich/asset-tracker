@@ -11,14 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { PlusIcon, SearchIcon } from "../Icons";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
@@ -92,6 +85,32 @@ export default function SuppliersTable({ items }) {
     return filteredItems.slice(start, start + rowsPerPage);
   }, [filteredItems, page, rowsPerPage]);
 
+  const columns = [
+    { key: 'suppliername', label: 'Name' },
+    { key: 'contact', label: 'Contact' },
+    { key: 'email', label: 'Email' },
+    { key: 'phonenumber', label: 'Phone' },
+    { key: 'creation_date', label: 'Created' },
+  ];
+
+  const renderCell = (item, columnKey) => {
+    switch (columnKey) {
+      case 'suppliername':
+        return item.suppliername;
+      case 'contact':
+        const fullName = `${item.firstname ?? ""} ${item.lastname ?? ""}`.trim();
+        return fullName || "-";
+      case 'email':
+        return item.email ?? "-";
+      case 'phonenumber':
+        return item.phonenumber ?? "-";
+      case 'creation_date':
+        return formatDate(item.creation_date);
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="w-full space-y-4">
       <div className="flex flex-col gap-4">
@@ -154,41 +173,14 @@ export default function SuppliersTable({ items }) {
           </Select>
         </div>
       </div>
-      <div className="w-full overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Created</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedItems.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  No suppliers found
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedItems.map((item) => {
-                const fullName = `${item.firstname ?? ""} ${item.lastname ?? ""}`.trim();
-                return (
-                  <TableRow key={item.supplierid}>
-                    <TableCell>{item.suppliername}</TableCell>
-                    <TableCell>{fullName || "-"}</TableCell>
-                    <TableCell>{item.email ?? "-"}</TableCell>
-                    <TableCell>{item.phonenumber ?? "-"}</TableCell>
-                    <TableCell>{formatDate(item.creation_date)}</TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <ResponsiveTable
+        columns={columns}
+        data={paginatedItems}
+        renderCell={renderCell}
+        keyExtractor={(item) => item.supplierid}
+        emptyMessage="No suppliers found"
+        mobileCardView={true}
+      />
       <div className="flex items-center justify-center gap-2">
         <Button
           variant="outline"

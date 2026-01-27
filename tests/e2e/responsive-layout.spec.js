@@ -59,7 +59,7 @@ test.describe('Responsive Layout', () => {
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto('/');
       await page.waitForLoadState('networkidle');
-      
+
       // Verify the page loaded
       await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
     });
@@ -68,7 +68,7 @@ test.describe('Responsive Layout', () => {
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto('/');
       await page.waitForLoadState('networkidle');
-      
+
       // Verify the page loaded
       await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
     });
@@ -77,7 +77,7 @@ test.describe('Responsive Layout', () => {
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto('/assets/create');
       await page.waitForLoadState('networkidle');
-      
+
       // Verify the page loaded
       await expect(page.getByRole('heading', { name: /create new asset/i })).toBeVisible();
     });
@@ -86,7 +86,7 @@ test.describe('Responsive Layout', () => {
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto('/assets/create');
       await page.waitForLoadState('networkidle');
-      
+
       // Verify the page loaded
       await expect(page.getByRole('heading', { name: /create new asset/i })).toBeVisible();
     });

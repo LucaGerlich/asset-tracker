@@ -11,14 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { PlusIcon, SearchIcon } from "../Icons";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
@@ -70,6 +63,28 @@ export default function LocationsTable({ items }) {
     const start = (page - 1) * rowsPerPage;
     return filteredItems.slice(start, start + rowsPerPage);
   }, [filteredItems, page, rowsPerPage]);
+
+  const columns = [
+    { key: 'locationname', label: 'Name' },
+    { key: 'street', label: 'Street' },
+    { key: 'city', label: 'City' },
+    { key: 'country', label: 'Country' },
+  ];
+
+  const renderCell = (item, columnKey) => {
+    switch (columnKey) {
+      case 'locationname':
+        return item.locationname;
+      case 'street':
+        return item.street ? `${item.street} ${item.housenumber ?? ""}`.trim() : "-";
+      case 'city':
+        return item.city ?? "-";
+      case 'country':
+        return item.country ?? "-";
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="w-full space-y-4">
@@ -123,38 +138,14 @@ export default function LocationsTable({ items }) {
           </Select>
         </div>
       </div>
-      <div className="w-full overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Street</TableHead>
-              <TableHead>City</TableHead>
-              <TableHead>Country</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedItems.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center">
-                  No locations found
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedItems.map((item) => (
-                <TableRow key={item.locationid}>
-                  <TableCell>{item.locationname}</TableCell>
-                  <TableCell>
-                    {item.street ? `${item.street} ${item.housenumber ?? ""}`.trim() : "-"}
-                  </TableCell>
-                  <TableCell>{item.city ?? "-"}</TableCell>
-                  <TableCell>{item.country ?? "-"}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <ResponsiveTable
+        columns={columns}
+        data={paginatedItems}
+        renderCell={renderCell}
+        keyExtractor={(item) => item.locationid}
+        emptyMessage="No locations found"
+        mobileCardView={true}
+      />
       <div className="flex items-center justify-center gap-2">
         <Button
           variant="outline"

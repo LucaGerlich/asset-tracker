@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+/**
+ * Playwright E2E Test Configuration
+ * See https://playwright.dev/docs/test-configuration
+ */
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -29,9 +33,11 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
     },
   ],
+
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
+    timeout: 120000,
   },
 });
