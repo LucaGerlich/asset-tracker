@@ -1,0 +1,20 @@
+# Dockerfile for development with hot-reload
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies first
+COPY package.json package-lock.json* bun.lockb* ./
+COPY prisma ./prisma/
+
+RUN npm ci
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy source files
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
