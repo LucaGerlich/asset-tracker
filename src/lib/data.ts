@@ -10,7 +10,7 @@ export async function getAssets() {
   return assets;
 }
 
-export async function getAssetById(id) {
+export async function getAssetById(id: string) {
   // Validate the id parameter
   if (!id) {
     throw new Error("Invalid ID parameter");
@@ -34,7 +34,7 @@ export async function getLocation() {
   return location;
 }
 
-export async function getLocationById(id) {
+export async function getLocationById(id: string) {
   if (!id) {
     throw new Error("Invalid ID parameter");
   }
@@ -60,7 +60,7 @@ export async function getManufacturers() {
   return manufacturer;
 }
 
-export async function getManufacturerById(id) {
+export async function getManufacturerById(id: string) {
   if (!id) {
     throw new Error("Invalid ID parameter");
   }
@@ -81,7 +81,7 @@ export async function getAccessories() {
   return accessories;
 }
 
-export async function getAccessoryById(id) {
+export async function getAccessoryById(id: string) {
   if (!id) {
     throw new Error("Invalid ID parameter");
   }
@@ -102,7 +102,7 @@ export async function getSuppliers() {
   return suppliers;
 }
 
-export async function getSupplierById(id) {
+export async function getSupplierById(id: string) {
   if (!id) {
     throw new Error("Invalid ID parameter");
   }
@@ -123,7 +123,7 @@ export async function getConsumables() {
   return consumables;
 }
 
-export async function getConsumableById(id) {
+export async function getConsumableById(id: string) {
   if (!id) {
     throw new Error("Invalid ID parameter");
   }
@@ -154,7 +154,7 @@ export async function getLicences() {
   return licences;
 }
 
-export async function getLicenceById(id) {
+export async function getLicenceById(id: string) {
   if (!id) {
     throw new Error("Invalid ID parameter");
   }
@@ -195,7 +195,7 @@ export async function getUserAccessoires() {
   return res;
 }
 
-export async function updateUserAsset(user, asset) {
+export async function updateUserAsset(user: string, asset: string) {
   // DEPRECATED SIGNATURE: update by userAssetsId and new userId
   const res = await prisma.userAssets.update({
     where: { userassetsid: user },
@@ -204,7 +204,7 @@ export async function updateUserAsset(user, asset) {
   return res;
 }
 
-export async function getUserById(id) {
+export async function getUserById(id: string) {
   const user = await prisma.user.findUnique({
     where: {
       userid: id,
@@ -213,7 +213,7 @@ export async function getUserById(id) {
   return user;
 }
 
-export async function updateUser(id, data) {
+export async function updateUser(id: string, data: Record<string, unknown>) {
   const user = await prisma.user.update({
     where: {
       userid: id,
@@ -223,13 +223,13 @@ export async function updateUser(id, data) {
   return user;
 }
 
-export async function deleteUser(id) {
-  const user = await prisma.user.delete({
+export async function deleteUser(id: string) {
+  await prisma.user.delete({
     where: { userid: id },
   });
 }
 
-export async function postData(request) {
+export async function postData(): Promise<never> {
   // Not used; kept for backward compatibility. Prefer API routes.
   throw new Error("postData is deprecated. Use API routes instead.");
 }

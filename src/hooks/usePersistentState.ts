@@ -1,17 +1,25 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 
-const defaultSerialize = (value) => JSON.stringify(value);
-const defaultDeserialize = (value) => JSON.parse(value);
+type Serializer<T> = (value: T) => string;
+type Deserializer<T> = (value: string, defaultValue: T) => T;
+
+interface PersistentStateOptions<T> {
+  serialize?: Serializer<T>;
+  deserialize?: Deserializer<T>;
+}
+
+const defaultSerialize = <T>(value: T): string => JSON.stringify(value);
+const defaultDeserialize = <T>(value: string): T => JSON.parse(value);
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-export function usePersistentState(
-  key,
-  defaultValue,
-  { serialize = defaultSerialize, deserialize = defaultDeserialize } = {}
-) {
-  const [state, setState] = useState(defaultValue);
+export function usePersistentState<T>(
+  key: string,
+  defaultValue: T,
+  { serialize = defaultSerialize, deserialize = defaultDeserialize as Deserializer<T> }: PersistentStateOptions<T> = {}
+): [T, Dispatch<SetStateAction<T>>] {
+  const [state, setState] = useState<T>(defaultValue);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useIsomorphicLayoutEffect(() => {

@@ -34,15 +34,20 @@ export const PERMISSIONS = {
 
   // Categories/Manufacturers/Suppliers
   CATALOG_MANAGE: "catalog:manage",
-};
+} as const;
+
+export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
+
+interface User {
+  id?: string;
+  isAdmin?: boolean;
+  canRequest?: boolean;
+}
 
 /**
  * Check if a user has a specific permission
- * @param {Object} user - User object with isAdmin and canRequest properties
- * @param {string} permission - Permission to check
- * @returns {boolean} True if user has permission
  */
-export function userHasPermission(user, permission) {
+export function userHasPermission(user: User | null | undefined, permission: Permission): boolean {
   if (!user) return false;
 
   // Admins have all permissions
@@ -62,7 +67,7 @@ export function userHasPermission(user, permission) {
 
     // Request permissions - users with canRequest
     case PERMISSIONS.ACCESSORY_REQUEST:
-      return user.canRequest;
+      return !!user.canRequest;
 
     // Edit own profile
     case PERMISSIONS.USER_EDIT:
@@ -76,11 +81,8 @@ export function userHasPermission(user, permission) {
 
 /**
  * Check if current user can edit a specific user
- * @param {Object} currentUser - Current user object
- * @param {string} targetUserId - ID of the user to edit
- * @returns {boolean} True if can edit
  */
-export function userCanEditUser(currentUser, targetUserId) {
+export function userCanEditUser(currentUser: User | null | undefined, targetUserId: string): boolean {
   if (!currentUser) return false;
 
   // Admins can edit anyone
@@ -94,11 +96,8 @@ export function userCanEditUser(currentUser, targetUserId) {
 
 /**
  * Check if current user can delete a specific user
- * @param {Object} currentUser - Current user object
- * @param {string} targetUserId - ID of the user to delete
- * @returns {boolean} True if can delete
  */
-export function userCanDeleteUser(currentUser, targetUserId) {
+export function userCanDeleteUser(currentUser: User | null | undefined, targetUserId: string): boolean {
   if (!currentUser) return false;
 
   // Only admins can delete users

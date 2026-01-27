@@ -1,16 +1,31 @@
 import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 
+interface AuditLogParams {
+  userId: string | null;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  details?: Record<string, unknown>;
+}
+
+interface GetAuditLogsOptions {
+  limit?: number;
+  userId?: string;
+  entity?: string;
+  action?: string;
+}
+
+interface AuditLogWhereInput {
+  userId?: string;
+  entity?: string;
+  action?: string;
+}
+
 /**
  * Create an audit log entry
- * @param {Object} params - Audit log parameters
- * @param {string} params.userId - User ID performing the action
- * @param {string} params.action - Action performed (e.g., "CREATE", "UPDATE", "DELETE")
- * @param {string} params.entity - Entity type (e.g., "user", "asset", "accessory")
- * @param {string} params.entityId - ID of the entity affected
- * @param {Object} params.details - Additional details about the action
  */
-export async function createAuditLog({ userId, action, entity, entityId, details }) {
+export async function createAuditLog({ userId, action, entity, entityId, details }: AuditLogParams): Promise<void> {
   try {
     const headersList = await headers();
     const ipAddress = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
@@ -35,15 +50,9 @@ export async function createAuditLog({ userId, action, entity, entityId, details
 
 /**
  * Get recent audit logs
- * @param {Object} options - Query options
- * @param {number} options.limit - Maximum number of logs to return
- * @param {string} options.userId - Filter by user ID
- * @param {string} options.entity - Filter by entity type
- * @param {string} options.action - Filter by action
- * @returns {Promise<Array>} Array of audit logs
  */
-export async function getAuditLogs({ limit = 50, userId, entity, action } = {}) {
-  const where = {};
+export async function getAuditLogs({ limit = 50, userId, entity, action }: GetAuditLogsOptions = {}) {
+  const where: AuditLogWhereInput = {};
 
   if (userId) where.userId = userId;
   if (entity) where.entity = entity;
@@ -82,7 +91,7 @@ export const AUDIT_ACTIONS = {
   REQUEST: "REQUEST",
   APPROVE: "APPROVE",
   REJECT: "REJECT",
-};
+} as const;
 
 /**
  * Common entity types
@@ -96,4 +105,4 @@ export const AUDIT_ENTITIES = {
   SUPPLIER: "supplier",
   LOCATION: "location",
   CONSUMABLE: "consumable",
-};
+} as const;

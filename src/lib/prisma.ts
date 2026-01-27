@@ -8,15 +8,19 @@ const pool = new pg.Pool({
 });
 const adapter = new PrismaPg(pool);
 
-let prisma;
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+let prisma: PrismaClient;
 
 if (process.env.NODE_ENV === "production") {
   prisma = new PrismaClient({ adapter });
 } else {
-  if (!global.prisma) {
-    global.prisma = new PrismaClient({ adapter });
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = new PrismaClient({ adapter });
   }
-  prisma = global.prisma;
+  prisma = globalForPrisma.prisma;
 }
 
 export default prisma;

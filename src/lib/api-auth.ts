@@ -1,33 +1,41 @@
 import { auth } from "@/auth";
 
+interface AuthUser {
+  id?: string;
+  isAdmin?: boolean;
+  canRequest?: boolean;
+  name?: string | null;
+  email?: string | null;
+  username?: string;
+  firstname?: string;
+  lastname?: string;
+}
+
 /**
  * Get authenticated user from session
  * Throws error if not authenticated
- * @returns {Promise<User>} The authenticated user
  */
-export async function getAuthUser() {
+export async function getAuthUser(): Promise<AuthUser> {
   const session = await auth();
 
   if (!session || !session.user) {
     throw new Error("Unauthorized");
   }
 
-  return session.user;
+  return session.user as AuthUser;
 }
 
 /**
  * Require authentication for API routes
- * @returns {Promise<User>} The authenticated user
  */
-export async function requireApiAuth() {
+export async function requireApiAuth(): Promise<AuthUser> {
   return await getAuthUser();
 }
 
 /**
  * Require admin role for API routes
- * @returns {Promise<User>} The authenticated admin user
  */
-export async function requireApiAdmin() {
+export async function requireApiAdmin(): Promise<AuthUser> {
   const user = await getAuthUser();
 
   if (!user.isAdmin) {
@@ -39,9 +47,8 @@ export async function requireApiAdmin() {
 
 /**
  * Check if user has request permission
- * @returns {Promise<User>} The authenticated user with request permission
  */
-export async function requireApiCanRequest() {
+export async function requireApiCanRequest(): Promise<AuthUser> {
   const user = await getAuthUser();
 
   if (!user.canRequest && !user.isAdmin) {
