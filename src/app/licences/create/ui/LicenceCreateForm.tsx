@@ -76,7 +76,7 @@ export default function LicenceCreateForm({
     setError("");
 
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         ...form,
         licenceduserid: form.licenceduserid || null,
         purchasedate: form.purchasedate || null,
@@ -187,7 +187,7 @@ export default function LicenceCreateForm({
                   id="requestable"
                   checked={form.requestable}
                   onCheckedChange={(checked) =>
-                    setForm((prev) => ({ ...prev, requestable: checked }))
+                    setForm((prev) => ({ ...prev, requestable: Boolean(checked) }))
                   }
                 />
                 <Label htmlFor="requestable" className="cursor-pointer">Requestable</Label>

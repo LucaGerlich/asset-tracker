@@ -3,7 +3,7 @@ import { Providers } from "../lib/providers";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import Navigation from "../components/Navigation";
-import Footer from "../components/Footer.jsx";
+import Footer from "../components/Footer";
 import Sidebar from "../components/Sidebar";
 import { SessionProvider } from "../components/SessionProvider";
 import { auth } from "../auth";

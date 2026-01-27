@@ -1,4 +1,5 @@
 import prisma from "../../../../lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // Create asset via POST /api/asset/addAsset
 export async function POST(req) {
@@ -30,7 +31,7 @@ export async function POST(req) {
         supplierid: rest.supplierid ?? null,
         locationid: rest.locationid ?? null,
         manufacturerid: rest.manufacturerid ?? null,
-      },
+      } as Prisma.assetUncheckedCreateInput,
     });
 
     return new Response(JSON.stringify(created), { status: 201 });

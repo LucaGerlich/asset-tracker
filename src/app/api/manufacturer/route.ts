@@ -42,7 +42,7 @@ export async function POST(req) {
       return NextResponse.json(
         {
           error: "Validation failed",
-          details: validationResult.error.errors,
+          details: validationResult.error.issues,
         },
         { status: 400 }
       );
@@ -106,7 +106,7 @@ export async function PUT(req) {
       return NextResponse.json(
         {
           error: "Validation failed",
-          details: dataValidation.error.errors,
+          details: dataValidation.error.issues,
         },
         { status: 400 }
       );

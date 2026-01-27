@@ -4,8 +4,8 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import ThemeSwitcher from "./ThemeSwitcher.jsx";
-import { SignOutButton } from "./SignOutButton.jsx";
+import ThemeSwitcher from "./ThemeSwitcher";
+import { SignOutButton } from "./SignOutButton";
 import { ChevronDown, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { NotificationIcon } from "../ui/Icons.jsx";
+import { NotificationIcon } from "../ui/Icons";
 import { cn } from "@/lib/utils";
 
 function Navigation() {

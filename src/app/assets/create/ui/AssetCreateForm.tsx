@@ -184,11 +184,11 @@ export default function AssetCreateForm({ categories, locations, manufacturers, 
               </div>
               <div className="flex gap-6">
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="requestable" checked={form.requestable} onCheckedChange={(v) => setForm((f) => ({ ...f, requestable: v }))} />
+                  <Checkbox id="requestable" checked={form.requestable} onCheckedChange={(v) => setForm((f) => ({ ...f, requestable: Boolean(v) }))} />
                   <Label htmlFor="requestable">Requestable</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="mobile" checked={form.mobile} onCheckedChange={(v) => setForm((f) => ({ ...f, mobile: v }))} />
+                  <Checkbox id="mobile" checked={form.mobile} onCheckedChange={(v) => setForm((f) => ({ ...f, mobile: Boolean(v) }))} />
                   <Label htmlFor="mobile">Mobile</Label>
                 </div>
               </div>

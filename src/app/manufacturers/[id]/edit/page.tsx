@@ -6,8 +6,8 @@ export const metadata = {
   title: "Asset Tracker - Edit Manufacturer",
 };
 
-export default async function Page({ params }) {
-  const { id } = params;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const manufacturerRaw = await getManufacturerById(id);
   const manufacturer = {
     ...manufacturerRaw,

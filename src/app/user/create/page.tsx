@@ -191,7 +191,7 @@ export default function Page() {
                       <Checkbox 
                         id="isadmin"
                         checked={form.isadmin} 
-                        onCheckedChange={(v) => setForm((f) => ({ ...f, isadmin: v }))}
+                        onCheckedChange={(v) => setForm((f) => ({ ...f, isadmin: Boolean(v) }))}
                       />
                       <Label htmlFor="isadmin">Admin</Label>
                     </div>
@@ -199,7 +199,7 @@ export default function Page() {
                       <Checkbox 
                         id="canrequest"
                         checked={form.canrequest} 
-                        onCheckedChange={(v) => setForm((f) => ({ ...f, canrequest: v }))}
+                        onCheckedChange={(v) => setForm((f) => ({ ...f, canrequest: Boolean(v) }))}
                       />
                       <Label htmlFor="canrequest">Can Request</Label>
                     </div>

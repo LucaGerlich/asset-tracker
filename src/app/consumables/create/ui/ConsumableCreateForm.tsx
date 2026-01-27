@@ -63,7 +63,7 @@ export default function ConsumableCreateForm({
     setError("");
 
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         ...form,
         purchaseprice: form.purchaseprice === "" ? null : form.purchaseprice,
         purchasedate: form.purchasedate || null,

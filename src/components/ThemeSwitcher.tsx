@@ -3,7 +3,7 @@
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { LightModeIcon, DarkModeIcon } from "../ui/Icons.jsx";
+import { LightModeIcon, DarkModeIcon } from "../ui/Icons";
 
 const ThemeSwitcher = () => {
   const [mounted, setMounted] = useState(false);

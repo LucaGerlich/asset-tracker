@@ -33,7 +33,7 @@ export default function LocationCreateForm({ initialData = null, mode = "create"
     setError("");
 
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         ...form,
         street: form.street || null,
         housenumber: form.housenumber || null,

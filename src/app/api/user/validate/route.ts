@@ -8,7 +8,7 @@ export async function GET(req) {
     const username = url.searchParams.get("username");
     const email = url.searchParams.get("email");
     const excludeId = url.searchParams.get("excludeId");
-    const result = {};
+    const result: Record<string, { exists: boolean }> = {};
 
     if (username) {
       const byUsername = await prisma.user.findUnique({ where: { username } });

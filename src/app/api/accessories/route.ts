@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // GET /api/accessories
 export async function GET() {
@@ -65,7 +66,7 @@ export async function POST(req) {
             : Number(purchaseprice),
         purchasedate: purchasedate ? new Date(purchasedate) : null,
         requestable: typeof requestable === "boolean" ? requestable : null,
-      },
+      } as Prisma.accessoriesUncheckedCreateInput,
     });
 
     return NextResponse.json(created, { status: 201 });

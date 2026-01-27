@@ -11,8 +11,8 @@ export const metadata = {
   title: "Asset Tracker - Edit Consumable",
 };
 
-export default async function Page({ params }) {
-  const { id } = params;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
   const [consumableRaw, categories, manufacturers, suppliers] = await Promise.all([
     getConsumableById(id),

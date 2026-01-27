@@ -14,8 +14,8 @@ export const metadata = {
   title: "Asset Tracker - Edit Accessory",
 };
 
-export default async function Page({ params }) {
-  const { id } = params;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
   const [accessoryRaw, categories, locations, manufacturers, models, statuses, suppliers] =
     await Promise.all([

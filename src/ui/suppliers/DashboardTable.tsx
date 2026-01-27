@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { EditIcon, DeleteIcon, EyeIcon } from "../Icons.jsx";
+import { EditIcon, DeleteIcon, EyeIcon } from "../Icons";
 
 const statusColorMap = {
   active: "default",

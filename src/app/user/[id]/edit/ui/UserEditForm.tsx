@@ -215,11 +215,11 @@ export default function UserEditForm({ initial }) {
               </div>
               <div className="flex gap-6">
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="isadmin" checked={form.isadmin} onCheckedChange={(v) => setForm((f) => ({ ...f, isadmin: v }))} />
+                  <Checkbox id="isadmin" checked={form.isadmin} onCheckedChange={(v) => setForm((f) => ({ ...f, isadmin: Boolean(v) }))} />
                   <Label htmlFor="isadmin">Admin</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="canrequest" checked={form.canrequest} onCheckedChange={(v) => setForm((f) => ({ ...f, canrequest: v }))} />
+                  <Checkbox id="canrequest" checked={form.canrequest} onCheckedChange={(v) => setForm((f) => ({ ...f, canrequest: Boolean(v) }))} />
                   <Label htmlFor="canrequest">Can Request</Label>
                 </div>
               </div>

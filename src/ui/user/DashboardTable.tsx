@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EditIcon, DeleteIcon, EyeIcon, PlusIcon, SearchIcon } from "../Icons.jsx";
+import { EditIcon, DeleteIcon, EyeIcon, PlusIcon, SearchIcon } from "../Icons";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 const roleOptions = [

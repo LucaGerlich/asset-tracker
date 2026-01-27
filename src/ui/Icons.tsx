@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { ComponentType, SVGProps } from "react";
 import {
   Activity as LucideActivity,
   BadgeCheck as LucideBadgeCheck,
@@ -23,12 +23,18 @@ import {
   ChevronDown as LucideChevronDown,
   MoreVertical as LucideMoreVertical,
   Scale as LucideScale,
+  LucideProps,
 } from "lucide-react";
 
 const DEFAULT_COLOR = "#18181B"; // Tailwind zinc-900
 
-const withDefaultIconColor = (IconComponent) => {
-  const WrappedIcon = ({ fill, color, ...props }) => (
+interface IconProps extends Omit<LucideProps, 'ref'> {
+  fill?: string;
+  color?: string;
+}
+
+const withDefaultIconColor = (IconComponent: ComponentType<LucideProps>) => {
+  const WrappedIcon = ({ fill, color, ...props }: IconProps) => (
     <IconComponent color={color ?? fill ?? DEFAULT_COLOR} {...props} />
   );
 
@@ -51,7 +57,7 @@ export const Status = withDefaultIconColor(LucideBadgeCheck);
 
 export const ChevronDown = withDefaultIconColor(LucideChevronDown);
 
-export const ChevronDownIcon = ({ strokeWidth = 1.5, fill, color, ...props }) => (
+export const ChevronDownIcon = ({ strokeWidth = 1.5, fill, color, ...props }: IconProps & { strokeWidth?: number }) => (
   <LucideChevronDown
     strokeWidth={strokeWidth}
     color={color ?? fill ?? DEFAULT_COLOR}

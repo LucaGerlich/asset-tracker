@@ -43,7 +43,7 @@ export default function SupplierCreateForm({ initialData = null, mode = "create"
     setError("");
 
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         ...form,
         salutation: form.salutation || null,
         firstname: form.firstname || null,

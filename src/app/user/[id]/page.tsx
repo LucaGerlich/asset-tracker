@@ -18,7 +18,7 @@ export const metadata = {
   description: "Asset management tool",
 };
 
-export default async function Page(props) {
+export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const user = await getUserById(params.id);
   const [allAssets, links, statuses, allAccessoriesRaw, userAccLinks, licencesRaw] = await Promise.all([
@@ -47,8 +47,8 @@ export default async function Page(props) {
     .filter(Boolean);
   const myLicences = licences.filter((lic) => lic.licenceduserid === user.userid);
 
-  const statusById = new Map(statuses.map((s) => [s.statustypeid, s.statustypename]));
-  const statusColor = (name) => {
+  const statusById = new Map<string, string>(statuses.map((s) => [s.statustypeid, s.statustypename]));
+  const statusColor = (name: string | undefined) => {
     const n = (name || "").toLowerCase();
     if (n === "active") return "bg-primary/10 text-primary";
     if (n === "available") return "bg-success-100 text-success-700";

@@ -10,7 +10,7 @@ import {
 } from "@/lib/data";
 import AssetEditForm from "./ui/AssetEditForm";
 
-export default async function Page(props) {
+export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const initialRaw = await getAssetById(params.id);
   const initial = {

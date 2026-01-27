@@ -14,7 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { EditIcon, DeleteIcon, EyeIcon } from "../ui/Icons.jsx";
+import { EditIcon, DeleteIcon, EyeIcon } from "../ui/Icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const statusColorMap = {

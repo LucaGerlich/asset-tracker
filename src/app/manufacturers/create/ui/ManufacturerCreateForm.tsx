@@ -22,7 +22,7 @@ export default function ManufacturerCreateForm({ initialData = null, mode = "cre
     setError("");
 
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         manufacturername,
       };
 

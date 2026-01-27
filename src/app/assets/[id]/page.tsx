@@ -35,7 +35,7 @@ function booleanPill(val) {
   );
 }
 
-export default async function Page(props) {
+export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const assetRaw = await getAssetById(params.id);
   const asset = {

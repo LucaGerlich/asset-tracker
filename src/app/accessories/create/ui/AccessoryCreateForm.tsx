@@ -81,7 +81,7 @@ export default function AccessoryCreateForm({
     setError("");
 
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         ...form,
         purchaseprice: form.purchaseprice === "" ? null : form.purchaseprice,
         purchasedate: form.purchasedate || null,
@@ -244,7 +244,7 @@ export default function AccessoryCreateForm({
                   id="requestable"
                   checked={form.requestable}
                   onCheckedChange={(checked) =>
-                    setForm((prev) => ({ ...prev, requestable: checked }))
+                    setForm((prev) => ({ ...prev, requestable: Boolean(checked) }))
                   }
                 />
                 <Label htmlFor="requestable" className="cursor-pointer">Requestable</Label>

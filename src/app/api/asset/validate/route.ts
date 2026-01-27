@@ -7,7 +7,7 @@ export async function GET(req) {
     const url = req.nextUrl;
     const assettag = url.searchParams.get("assettag");
     const serialnumber = url.searchParams.get("serialnumber");
-    const result = {};
+    const result: Record<string, { exists: boolean }> = {};
 
     if (assettag) {
       const byTag = await prisma.asset.findUnique({ where: { assettag } });

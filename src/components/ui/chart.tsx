@@ -5,12 +5,34 @@ import * as RechartsPrimitive from "recharts"
 import { cn } from "@/lib/utils"
 
 // Format: { THEME_NAME: CSS_SELECTOR }
-const THEMES = {
+const THEMES: { [key: string]: string } = {
   light: "",
   dark: ".dark"
 }
 
-const ChartContext = React.createContext(null)
+export type ChartConfig = {
+  [key: string]: {
+    label?: string;
+    icon?: React.ComponentType<{ className?: string }>;
+    color?: string;
+    theme?: {
+      light?: string;
+      dark?: string;
+    };
+  };
+};
+
+interface ChartContainerProps extends React.HTMLAttributes<HTMLDivElement> {
+  id?: string;
+  config: ChartConfig;
+  children?: React.ReactNode;
+}
+
+interface ChartContextValue {
+  config: ChartConfig;
+}
+
+const ChartContext = React.createContext<ChartContextValue | null>(null)
 
 function useChart() {
   const context = React.useContext(ChartContext)
@@ -22,7 +44,7 @@ function useChart() {
   return context
 }
 
-const ChartContainer = React.forwardRef(({ id, className, children, config, ...props }, ref) => {
+const ChartContainer = React.forwardRef<HTMLDivElement, ChartContainerProps>(({ id, className, children, config, ...props }, ref) => {
   const uniqueId = React.useId()
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
 
@@ -46,11 +68,16 @@ const ChartContainer = React.forwardRef(({ id, className, children, config, ...p
 })
 ChartContainer.displayName = "Chart"
 
+interface ChartStyleProps {
+  id: string;
+  config: ChartConfig;
+}
+
 const ChartStyle = ({
   id,
   config
-}) => {
-  const colorConfig = Object.entries(config).filter(([, config]) => config.theme || config.color)
+}: ChartStyleProps) => {
+  const colorConfig = Object.entries(config).filter(([, configItem]) => configItem.theme || configItem.color)
 
   if (!colorConfig.length) {
     return null
@@ -79,7 +106,30 @@ return color ? `  --color-${key}: ${color};` : null
 
 const ChartTooltip = RechartsPrimitive.Tooltip
 
-const ChartTooltipContent = React.forwardRef((
+interface ChartTooltipContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  active?: boolean;
+  payload?: Array<{
+    type?: string;
+    dataKey?: string;
+    name?: string;
+    value?: number;
+    color?: string;
+    fill?: string;
+    payload?: Record<string, unknown>;
+  }>;
+  indicator?: "dot" | "line" | "dashed";
+  hideLabel?: boolean;
+  hideIndicator?: boolean;
+  label?: string;
+  labelFormatter?: (value: unknown, payload: unknown[]) => React.ReactNode;
+  labelClassName?: string;
+  formatter?: (value: number, name: string, item: unknown, index: number, payload: Record<string, unknown>) => React.ReactNode;
+  color?: string;
+  nameKey?: string;
+  labelKey?: string;
+}
+
+const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContentProps>((
   {
     active,
     payload,
@@ -184,7 +234,7 @@ const ChartTooltipContent = React.forwardRef((
                             {
                               "--color-bg": indicatorColor,
                               "--color-border": indicatorColor
-                            }
+                            } as React.CSSProperties
                           } />
                       )
                     )}
@@ -218,7 +268,19 @@ ChartTooltipContent.displayName = "ChartTooltip"
 
 const ChartLegend = RechartsPrimitive.Legend
 
-const ChartLegendContent = React.forwardRef((
+interface ChartLegendContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  hideIcon?: boolean;
+  payload?: Array<{
+    type?: string;
+    dataKey?: string;
+    value?: string;
+    color?: string;
+  }>;
+  verticalAlign?: "top" | "bottom";
+  nameKey?: string;
+}
+
+const ChartLegendContent = React.forwardRef<HTMLDivElement, ChartLegendContentProps>((
   { className, hideIcon = false, payload, verticalAlign = "bottom", nameKey },
   ref
 ) => {

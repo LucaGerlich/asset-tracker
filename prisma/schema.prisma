@@ -250,7 +250,7 @@ model Account {
   id_token          String?
   session_state     String?
 
-  user User @relation(fields: [userId], references: [userid], onDelete: Cascade)
+  user user @relation(fields: [userId], references: [userid], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -261,7 +261,7 @@ model Session {
   sessionToken String   @unique
   userId       String   @db.Uuid
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [userid], onDelete: Cascade)
+  user         user     @relation(fields: [userId], references: [userid], onDelete: Cascade)
 
   @@map("sessions")
 }
@@ -287,7 +287,7 @@ model AuditLog {
   userAgent String?
   createdAt DateTime  @default(now()) @db.Timestamp(6)
 
-  user User? @relation(fields: [userId], references: [userid], onDelete: SetNull)
+  user user? @relation(fields: [userId], references: [userid], onDelete: SetNull)
 
   @@map("audit_logs")
 }
