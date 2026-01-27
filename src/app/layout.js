@@ -29,7 +29,7 @@ export default async function RootLayout({ children }) {
             <Sidebar initialCollapsed={initialSidebarCollapsed} />
             <div className="flex flex-1 flex-col">
               <Navigation userName={"Luca Gerlich"} />
-              <main className="flex-1 overflow-y-auto p-6 md:p-8">
+              <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12">
                 {children}
               </main>
               <Footer />
