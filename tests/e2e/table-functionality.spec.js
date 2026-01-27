@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+const PIXEL_TOLERANCE = 1;
+
 test.describe('Table Functionality', () => {
   test.describe('Assets Table', () => {
     test('should display assets table', async ({ page }) => {
@@ -30,7 +32,7 @@ test.describe('Table Functionality', () => {
       const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
       const viewportWidth = await page.evaluate(() => window.innerWidth);
       
-      expect(documentWidth).toBeLessThanOrEqual(viewportWidth + 1);
+      expect(documentWidth).toBeLessThanOrEqual(viewportWidth + PIXEL_TOLERANCE);
     });
   });
 

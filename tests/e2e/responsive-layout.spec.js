@@ -1,5 +1,13 @@
 import { test, expect } from '@playwright/test';
 
+const PIXEL_TOLERANCE = 1;
+
+async function assertNoHorizontalScroll(page) {
+  const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  const viewportWidth = await page.evaluate(() => window.innerWidth);
+  expect(documentWidth).toBeLessThanOrEqual(viewportWidth + PIXEL_TOLERANCE);
+}
+
 test.describe('Responsive Layout', () => {
   const viewports = [
     { name: 'Mobile Small (375px)', width: 375, height: 667 },
@@ -17,51 +25,31 @@ test.describe('Responsive Layout', () => {
       test('Dashboard should have no horizontal scroll', async ({ page }) => {
         await page.goto('/');
         await page.waitForLoadState('networkidle');
-        
-        const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-        const viewportWidth = await page.evaluate(() => window.innerWidth);
-        
-        expect(documentWidth).toBeLessThanOrEqual(viewportWidth + 1); // +1 for rounding
+        await assertNoHorizontalScroll(page);
       });
 
       test('Assets page should have no horizontal scroll', async ({ page }) => {
         await page.goto('/assets');
         await page.waitForLoadState('networkidle');
-        
-        const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-        const viewportWidth = await page.evaluate(() => window.innerWidth);
-        
-        expect(documentWidth).toBeLessThanOrEqual(viewportWidth + 1);
+        await assertNoHorizontalScroll(page);
       });
 
       test('Users page should have no horizontal scroll', async ({ page }) => {
         await page.goto('/user');
         await page.waitForLoadState('networkidle');
-        
-        const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-        const viewportWidth = await page.evaluate(() => window.innerWidth);
-        
-        expect(documentWidth).toBeLessThanOrEqual(viewportWidth + 1);
+        await assertNoHorizontalScroll(page);
       });
 
       test('Asset Create page should have no horizontal scroll', async ({ page }) => {
         await page.goto('/assets/create');
         await page.waitForLoadState('networkidle');
-        
-        const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-        const viewportWidth = await page.evaluate(() => window.innerWidth);
-        
-        expect(documentWidth).toBeLessThanOrEqual(viewportWidth + 1);
+        await assertNoHorizontalScroll(page);
       });
 
       test('User Create page should have no horizontal scroll', async ({ page }) => {
         await page.goto('/user/create');
         await page.waitForLoadState('networkidle');
-        
-        const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-        const viewportWidth = await page.evaluate(() => window.innerWidth);
-        
-        expect(documentWidth).toBeLessThanOrEqual(viewportWidth + 1);
+        await assertNoHorizontalScroll(page);
       });
     });
   }
