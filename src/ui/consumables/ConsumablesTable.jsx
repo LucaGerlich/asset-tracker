@@ -11,14 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { PlusIcon, SearchIcon } from "../Icons";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
@@ -107,6 +100,34 @@ export default function ConsumablesTable({
     return filteredItems.slice(start, start + rowsPerPage);
   }, [filteredItems, page, rowsPerPage]);
 
+  const columns = [
+    { key: 'consumablename', label: 'Name' },
+    { key: 'category', label: 'Category' },
+    { key: 'manufacturer', label: 'Manufacturer' },
+    { key: 'supplier', label: 'Supplier' },
+    { key: 'purchaseprice', label: 'Price' },
+    { key: 'purchasedate', label: 'Purchased' },
+  ];
+
+  const renderCell = (item, columnKey) => {
+    switch (columnKey) {
+      case 'consumablename':
+        return item.consumablename;
+      case 'category':
+        return categoryById.get(item.consumablecategorytypeid) ?? "-";
+      case 'manufacturer':
+        return manufacturerById.get(item.manufacturerid) ?? "-";
+      case 'supplier':
+        return supplierById.get(item.supplierid) ?? "-";
+      case 'purchaseprice':
+        return formatPrice(item.purchaseprice);
+      case 'purchasedate':
+        return formatDate(item.purchasedate);
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="w-full space-y-4">
       <div className="flex flex-col gap-4">
@@ -187,40 +208,14 @@ export default function ConsumablesTable({
           </Select>
         </div>
       </div>
-      <div className="w-full overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Manufacturer</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Purchased</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedItems.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">
-                  No consumables found
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedItems.map((item) => (
-                <TableRow key={item.consumableid}>
-                  <TableCell>{item.consumablename}</TableCell>
-                  <TableCell>{categoryById.get(item.consumablecategorytypeid) ?? "-"}</TableCell>
-                  <TableCell>{manufacturerById.get(item.manufacturerid) ?? "-"}</TableCell>
-                  <TableCell>{supplierById.get(item.supplierid) ?? "-"}</TableCell>
-                  <TableCell>{formatPrice(item.purchaseprice)}</TableCell>
-                  <TableCell>{formatDate(item.purchasedate)}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <ResponsiveTable
+        columns={columns}
+        data={paginatedItems}
+        renderCell={renderCell}
+        keyExtractor={(item) => item.consumableid}
+        emptyMessage="No consumables found"
+        mobileCardView={true}
+      />
       <div className="flex items-center justify-center gap-2">
         <Button
           variant="outline"

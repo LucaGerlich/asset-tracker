@@ -11,14 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { PlusIcon, SearchIcon } from "../Icons";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
@@ -118,6 +111,34 @@ export default function LicencesTable({
     return filteredItems.slice(start, start + rowsPerPage);
   }, [filteredItems, page, rowsPerPage]);
 
+  const columns = [
+    { key: 'licencekey', label: 'Key' },
+    { key: 'licensedtoemail', label: 'Licensed To' },
+    { key: 'category', label: 'Category' },
+    { key: 'manufacturer', label: 'Manufacturer' },
+    { key: 'supplier', label: 'Supplier' },
+    { key: 'expirationdate', label: 'Expires' },
+  ];
+
+  const renderCell = (item, columnKey) => {
+    switch (columnKey) {
+      case 'licencekey':
+        return item.licencekey ?? "-";
+      case 'licensedtoemail':
+        return item.licensedtoemail ?? "-";
+      case 'category':
+        return categoryById.get(item.licencecategorytypeid) ?? "-";
+      case 'manufacturer':
+        return manufacturerById.get(item.manufacturerid) ?? "-";
+      case 'supplier':
+        return supplierById.get(item.supplierid) ?? "-";
+      case 'expirationdate':
+        return formatDate(item.expirationdate);
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="w-full space-y-4">
       <div className="flex flex-col gap-4">
@@ -208,40 +229,14 @@ export default function LicencesTable({
           </Select>
         </div>
       </div>
-      <div className="w-full overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Key</TableHead>
-              <TableHead>Licensed To</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Manufacturer</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead>Expires</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedItems.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">
-                  No licences found
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedItems.map((item) => (
-                <TableRow key={item.licenceid}>
-                  <TableCell>{item.licencekey ?? "-"}</TableCell>
-                  <TableCell>{item.licensedtoemail ?? "-"}</TableCell>
-                  <TableCell>{categoryById.get(item.licencecategorytypeid) ?? "-"}</TableCell>
-                  <TableCell>{manufacturerById.get(item.manufacturerid) ?? "-"}</TableCell>
-                  <TableCell>{supplierById.get(item.supplierid) ?? "-"}</TableCell>
-                  <TableCell>{formatDate(item.expirationdate)}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <ResponsiveTable
+        columns={columns}
+        data={paginatedItems}
+        renderCell={renderCell}
+        keyExtractor={(item) => item.licenceid}
+        emptyMessage="No licences found"
+        mobileCardView={true}
+      />
       <div className="flex items-center justify-center gap-2">
         <Button
           variant="outline"
