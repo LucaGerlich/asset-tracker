@@ -33,15 +33,17 @@ export default async function Home() {
 
   return (
     <main>
-      <h1 className="text-3xl">Dashboard</h1>
-      <br />
-      <div className="flex flex-row gap-8">
-        <StatCard href="/assets" title="Total Assets" value={assets.length} />
-        <StatCard href="/accessories" title="Total Accessories" value={accessories.length} />
-        <StatCard href="/user" title="Total User" value={user.length} />
+      <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold">Dashboard</h1>
+      <div className="mt-4 sm:mt-6 md:mt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
+          <StatCard href="/assets" title="Total Assets" value={assets.length} />
+          <StatCard href="/accessories" title="Total Accessories" value={accessories.length} />
+          <StatCard href="/user" title="Total User" value={user.length} />
+        </div>
       </div>
-      <br />
-      <AssetStatusChart data={chartData} />
+      <div className="mt-4 sm:mt-6 md:mt-8">
+        <AssetStatusChart data={chartData} />
+      </div>
     </main>
   );
 }

@@ -72,19 +72,19 @@ export default function LocationCreateForm({ initialData = null, mode = "create"
   return (
     <div className="max-w-2xl">
       <Toaster position="bottom-right" />
-      <form onSubmit={onSubmit} className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <form onSubmit={onSubmit} className="flex flex-col gap-4 sm:gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold">
               {mode === "edit" ? "Edit Location" : "Create Location"}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">Add a new site for assets, accessories, and consumables.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="ghost">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <Button asChild variant="ghost" className="w-full sm:w-auto">
               <Link href="/locations">Cancel</Link>
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" className="w-full sm:w-auto" disabled={submitting}>
               {mode === "edit" ? "Save" : "Create"}
             </Button>
           </div>
@@ -93,7 +93,7 @@ export default function LocationCreateForm({ initialData = null, mode = "create"
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
         <section className="rounded-lg border p-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="locationname">
                 Location Name <span className="text-destructive">*</span>
@@ -147,11 +147,11 @@ export default function LocationCreateForm({ initialData = null, mode = "create"
 
         <Separator />
 
-        <div className="flex justify-end gap-2">
-          <Button asChild variant="ghost">
+        <div className="flex flex-col sm:flex-row justify-end gap-2">
+          <Button asChild variant="ghost" className="w-full sm:w-auto">
             <Link href="/locations">Cancel</Link>
           </Button>
-          <Button type="submit" disabled={submitting}>
+          <Button type="submit" className="w-full sm:w-auto" disabled={submitting}>
             {mode === "edit" ? "Save Changes" : "Create Location"}
           </Button>
         </div>

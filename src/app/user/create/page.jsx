@@ -94,22 +94,22 @@ export default function Page() {
   return (
     <div className="max-w-4xl">
       <Toaster position="bottom-right" />
-      <form onSubmit={onSubmit} className="flex flex-col gap-6">
-        <div className="flex items-start justify-between gap-4">
+      <form onSubmit={onSubmit} className="flex flex-col gap-4 sm:gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Create User</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold">Create User</h1>
             <p className="text-sm text-muted-foreground mt-1">Fill out details below</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
-            <Button type="submit" disabled={submitting}>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <Button type="button" variant="ghost" className="w-full sm:w-auto" onClick={() => router.back()}>Cancel</Button>
+            <Button type="submit" className="w-full sm:w-auto" disabled={submitting}>
               {submitting ? "Creating..." : "Create"}
             </Button>
           </div>
         </div>
         <Separator />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <section className="col-span-1 rounded-lg border p-4">
                 <h2 className="text-sm font-semibold mb-3">Profile</h2>
                 <div className="grid grid-cols-1 gap-3">
@@ -208,7 +208,7 @@ export default function Page() {
               </section>
             </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <section className="col-span-1 rounded-lg border p-4">
             <h2 className="text-sm font-semibold mb-3">Security</h2>
             <div className="grid grid-cols-1 gap-3">
@@ -225,9 +225,9 @@ export default function Page() {
             {error || (usernameTaken && "Username already exists") || (emailTaken && "Email already exists")}
           </p>
         )}
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
-          <Button type="submit" disabled={submitting || usernameTaken || emailTaken}>
+        <div className="flex flex-col sm:flex-row justify-end gap-2">
+          <Button type="button" variant="ghost" className="w-full sm:w-auto" onClick={() => router.back()}>Cancel</Button>
+          <Button type="submit" className="w-full sm:w-auto" disabled={submitting || usernameTaken || emailTaken}>
             {submitting ? "Creating..." : "Create"}
           </Button>
         </div>
