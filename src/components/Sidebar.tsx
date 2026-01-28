@@ -45,6 +45,13 @@ const navSections = [
       { label: "Locations", href: "/locations", icon: MapPin },
     ],
   },
+  {
+    title: "Administration",
+    items: [
+      { label: "Reports", href: "/reports", icon: LayoutDashboard },
+      { label: "Admin Settings", href: "/admin/settings", icon: LayoutDashboard, adminOnly: true },
+    ],
+  },
 ];
 
 const cx = (...classes) => classes.filter(Boolean).join(" ");

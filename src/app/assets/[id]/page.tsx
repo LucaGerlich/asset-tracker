@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Separator } from "@/components/ui/separator";
+import HistoryTimeline from "@/components/HistoryTimeline";
 import {
   getAssetById,
   getLocationById,
@@ -13,6 +14,7 @@ import {
   getUserAssets,
   getSuppliers,
 } from "@/lib/data";
+import prisma from "@/lib/prisma";
 import AssetDetailHeader from "./ui/AssetDetailHeader";
 
 export const metadata = {
@@ -53,6 +55,26 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const categories = await getCategories();
   const suppliers = await getSuppliers();
   const userAssets = await getUserAssets();
+
+  // Fetch history for this asset
+  const historyEntries = await prisma.auditLog.findMany({
+    where: {
+      entity: "asset",
+      entityId: params.id,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    include: {
+      user: {
+        select: {
+          userid: true,
+          username: true,
+          firstname: true,
+          lastname: true,
+        },
+      },
+    },
+  });
 
   const userByAsset = userAssets.find((ua) => ua.assetid === asset.assetid);
   const assignedUser = userByAsset ? users.find((u) => u.userid === userByAsset.userid) : null;
@@ -138,7 +160,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         <div className="mt-10">
           <h2 className="text-lg font-semibold">Asset History</h2>
           <Separator className="my-3" />
-          <p className="text-sm text-foreground-500">No history available yet.</p>
+          <HistoryTimeline entries={historyEntries} entityType="asset" />
         </div>
       </div>
     </>

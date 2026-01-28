@@ -53,6 +53,11 @@ model asset {
   supplierid          String?            @db.Uuid
   locationid          String?            @db.Uuid
   manufacturerid      String?            @db.Uuid
+  // Warranty fields
+  warrantyMonths      Int?
+  warrantyExpires     DateTime?          @db.Date
+  // Depreciation tracking
+  expectedEndOfLife   DateTime?          @db.Date
   creation_date       DateTime           @db.Timestamp(6)
   change_date         DateTime?          @db.Timestamp(6)
   assetCategoryType   assetCategoryType? @relation(fields: [assetcategorytypeid], references: [assetcategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_assetcategorytype_c_assetcategorytypeid")
@@ -62,12 +67,15 @@ model asset {
   statusType          statusType?        @relation(fields: [statustypeid], references: [statustypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_statustype_c_statustypeid")
   supplier            supplier?          @relation(fields: [supplierid], references: [supplierid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_supplier_c_supplierid")
   userAssets          userAssets[]
+  maintenanceSchedules MaintenanceSchedule[]
+  attachments         AssetAttachment[]
 }
 
 model assetCategoryType {
   assetcategorytypeid   String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   assetcategorytypename String  @db.VarChar
   asset                 asset[]
+  depreciationSetting   DepreciationSetting?
 }
 
 model consumable {
@@ -78,6 +86,8 @@ model consumable {
   supplierid               String                 @db.Uuid
   purchaseprice            Decimal?               @db.Decimal(10, 2)
   purchasedate             DateTime?              @db.Date
+  quantity                 Int                    @default(0)
+  minQuantity              Int                    @default(0) // Minimum stock level for alerts
   creation_date            DateTime               @db.Timestamp(6)
   change_date              DateTime?              @db.Timestamp(6)
   consumableCategoryType   consumableCategoryType @relation(fields: [consumablecategorytypeid], references: [consumablecategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_consumable_consumablecategorytype_c_consumablecategorytypeid")
@@ -198,6 +208,14 @@ model user {
   userAccessoires userAccessoires[]
   userAssets      userAssets[]
   userHistory     userHistory[]
+  
+  // New feature relations
+  notificationQueue      NotificationQueue[]
+  notificationPreference NotificationPreference?
+  savedFilters          SavedFilter[]
+  maintenanceAssigned   MaintenanceSchedule[] @relation("MaintenanceAssignee")
+  maintenanceCompleted  MaintenanceLog[] @relation("MaintenanceCompleter")
+  uploadedAttachments   AssetAttachment[] @relation("AssetAttachmentUploader")
 }
 
 model userAccessoires {
@@ -290,4 +308,212 @@ model AuditLog {
   user user? @relation(fields: [userId], references: [userid], onDelete: SetNull)
 
   @@map("audit_logs")
+}
+
+// System Settings for admin configuration
+model SystemSettings {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  settingKey    String   @unique @db.VarChar(100)
+  settingValue  String?
+  settingType   String   @db.VarChar(20) // string, boolean, number, json
+  category      String   @db.VarChar(50) // email, notifications, general, etc.
+  description   String?
+  isEncrypted   Boolean  @default(false)
+  createdAt     DateTime @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("system_settings")
+}
+
+// Email Templates for notifications
+model EmailTemplate {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  subject     String   @db.VarChar(255)
+  body        String
+  variables   String?  // JSON array of available variables
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("email_templates")
+}
+
+// Notification Queue for sending emails
+model NotificationQueue {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String?   @db.Uuid
+  type        String    @db.VarChar(50) // assignment, expiration, maintenance, low_stock
+  recipient   String    @db.VarChar(255)
+  subject     String    @db.VarChar(255)
+  body        String
+  status      String    @default("pending") @db.VarChar(20) // pending, sent, failed
+  attempts    Int       @default(0)
+  lastError   String?
+  scheduledAt DateTime  @default(now()) @db.Timestamp(6)
+  sentAt      DateTime? @db.Timestamp(6)
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+
+  user user? @relation(fields: [userId], references: [userid], onDelete: SetNull)
+
+  @@map("notification_queue")
+}
+
+// User Notification Preferences
+model NotificationPreference {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String   @unique @db.Uuid
+  emailAssignments      Boolean  @default(true)
+  emailUnassignments    Boolean  @default(true)
+  emailLicenseExpiry    Boolean  @default(true)
+  emailMaintenanceDue   Boolean  @default(true)
+  emailLowStock         Boolean  @default(false)
+  licenseExpiryDays     Int      @default(30) // Days before expiry to notify
+  maintenanceReminderDays Int    @default(7) // Days before maintenance to remind
+  lowStockThreshold     Int      @default(10) // Minimum stock level for alert
+  createdAt             DateTime @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime @updatedAt @db.Timestamp(6)
+
+  user user @relation(fields: [userId], references: [userid], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+// Saved Search Filters
+model SavedFilter {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @db.Uuid
+  name        String   @db.VarChar(100)
+  entity      String   @db.VarChar(50) // assets, users, accessories, etc.
+  filters     String   // JSON object with filter criteria
+  isDefault   Boolean  @default(false)
+  isGlobal    Boolean  @default(false) // Admin can create global filters
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  user user @relation(fields: [userId], references: [userid], onDelete: Cascade)
+
+  @@map("saved_filters")
+}
+
+// Label Templates for printing
+model LabelTemplate {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(100)
+  width       Decimal  @db.Decimal(5, 2) // in inches
+  height      Decimal  @db.Decimal(5, 2) // in inches
+  layout      String   // JSON object with layout configuration
+  includeQR   Boolean  @default(true)
+  includeLogo Boolean  @default(false)
+  fields      String   // JSON array of fields to include
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("label_templates")
+}
+
+// Asset Maintenance Schedule
+model MaintenanceSchedule {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId         String    @db.Uuid
+  title           String    @db.VarChar(255)
+  description     String?
+  frequency       String    @db.VarChar(20) // once, daily, weekly, monthly, yearly
+  nextDueDate     DateTime  @db.Date
+  lastCompletedAt DateTime? @db.Timestamp(6)
+  assignedTo      String?   @db.Uuid
+  estimatedCost   Decimal?  @db.Decimal(10, 2)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @db.Timestamp(6)
+
+  asset asset @relation(fields: [assetId], references: [assetid], onDelete: Cascade)
+  assignedUser user? @relation("MaintenanceAssignee", fields: [assignedTo], references: [userid], onDelete: SetNull)
+  logs MaintenanceLog[]
+
+  @@map("maintenance_schedules")
+}
+
+// Maintenance Log entries
+model MaintenanceLog {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scheduleId    String   @db.Uuid
+  completedBy   String?  @db.Uuid
+  completedAt   DateTime @default(now()) @db.Timestamp(6)
+  notes         String?
+  actualCost    Decimal? @db.Decimal(10, 2)
+  createdAt     DateTime @default(now()) @db.Timestamp(6)
+
+  schedule MaintenanceSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  completedByUser user? @relation("MaintenanceCompleter", fields: [completedBy], references: [userid], onDelete: SetNull)
+
+  @@map("maintenance_logs")
+}
+
+// Asset Custom Fields Definition
+model CustomFieldDefinition {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String   @db.VarChar(100)
+  fieldType     String   @db.VarChar(20) // text, number, date, select, checkbox
+  options       String?  // JSON array for select options
+  isRequired    Boolean  @default(false)
+  entityType    String   @db.VarChar(50) // asset, accessory, etc.
+  displayOrder  Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime @updatedAt @db.Timestamp(6)
+
+  values CustomFieldValue[]
+
+  @@map("custom_field_definitions")
+}
+
+// Asset Custom Field Values
+model CustomFieldValue {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fieldId     String   @db.Uuid
+  entityId    String   @db.Uuid // assetid, accessoryid, etc.
+  value       String?
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  field CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, entityId])
+  @@map("custom_field_values")
+}
+
+// Asset Attachments
+model AssetAttachment {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId     String   @db.Uuid
+  filename    String   @db.VarChar(255)
+  originalName String  @db.VarChar(255)
+  mimeType    String   @db.VarChar(100)
+  size        Int      // in bytes
+  path        String   @db.VarChar(500)
+  isPrimary   Boolean  @default(false) // Primary photo
+  uploadedBy  String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+
+  asset asset @relation(fields: [assetId], references: [assetid], onDelete: Cascade)
+  uploader user? @relation("AssetAttachmentUploader", fields: [uploadedBy], references: [userid], onDelete: SetNull)
+
+  @@map("asset_attachments")
+}
+
+// Depreciation Settings per Asset Category
+model DepreciationSetting {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoryId      String   @unique @db.Uuid
+  method          String   @db.VarChar(30) // straight_line, declining_balance, sum_of_years
+  usefulLifeYears Int      @default(5)
+  salvagePercent  Decimal  @default(10) @db.Decimal(5, 2) // Percentage of original value
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime @updatedAt @db.Timestamp(6)
+
+  category assetCategoryType @relation(fields: [categoryId], references: [assetcategorytypeid], onDelete: Cascade)
+
+  @@map("depreciation_settings")
 }

@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import ThemeSwitcher from "./ThemeSwitcher";
 import { SignOutButton } from "./SignOutButton";
-import { ChevronDown, Menu } from "lucide-react";
+import GlobalSearch from "./GlobalSearch";
+import { ChevronDown, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -32,7 +33,21 @@ import { cn } from "@/lib/utils";
 function Navigation() {
   const route = usePathname();
   const [activeMenu, setActiveMenu] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const { data: session } = useSession();
+
+  // Listen for Cmd+K / Ctrl+K
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSearchOpen((open) => !open);
+      }
+    };
+
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
 
   useEffect(() => {
     const routeSegment = route.split("/")[1];
@@ -213,6 +228,29 @@ function Navigation() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Global Search Button */}
+          <Button
+            variant="outline"
+            className="hidden md:flex items-center gap-2 text-muted-foreground w-64"
+            onClick={() => setSearchOpen(true)}
+          >
+            <Search className="h-4 w-4" />
+            <span className="flex-1 text-left">Search...</span>
+            <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-xs font-medium opacity-100 sm:flex">
+              <span className="text-xs">⌘</span>K
+            </kbd>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setSearchOpen(true)}
+          >
+            <Search className="h-5 w-5" />
+          </Button>
+
+          <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
