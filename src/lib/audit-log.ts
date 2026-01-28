@@ -105,4 +105,10 @@ export const AUDIT_ENTITIES = {
   SUPPLIER: "supplier",
   LOCATION: "location",
   CONSUMABLE: "consumable",
+  ASSET_CATEGORY: "asset_category",
+  ACCESSORY_CATEGORY: "accessory_category",
+  CONSUMABLE_CATEGORY: "consumable_category",
+  LICENCE_CATEGORY: "licence_category",
+  MODEL: "model",
+  STATUS_TYPE: "status_type",
 } as const;

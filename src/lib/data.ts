@@ -233,3 +233,100 @@ export async function postData(): Promise<never> {
   // Not used; kept for backward compatibility. Prefer API routes.
   throw new Error("postData is deprecated. Use API routes instead.");
 }
+
+// Category Type data functions
+export async function getAssetCategoryById(id: string) {
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const category = await prisma.assetCategoryType.findUnique({
+    where: { assetcategorytypeid: id },
+  });
+
+  if (!category) {
+    throw new Error(`Asset category with ID ${id} not found`);
+  }
+
+  return category;
+}
+
+export async function getAccessoryCategoryById(id: string) {
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const category = await prisma.accessorieCategoryType.findUnique({
+    where: { accessoriecategorytypeid: id },
+  });
+
+  if (!category) {
+    throw new Error(`Accessory category with ID ${id} not found`);
+  }
+
+  return category;
+}
+
+export async function getConsumableCategoryById(id: string) {
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const category = await prisma.consumableCategoryType.findUnique({
+    where: { consumablecategorytypeid: id },
+  });
+
+  if (!category) {
+    throw new Error(`Consumable category with ID ${id} not found`);
+  }
+
+  return category;
+}
+
+export async function getLicenceCategoryById(id: string) {
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const category = await prisma.licenceCategoryType.findUnique({
+    where: { licencecategorytypeid: id },
+  });
+
+  if (!category) {
+    throw new Error(`Licence category with ID ${id} not found`);
+  }
+
+  return category;
+}
+
+export async function getModelById(id: string) {
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const model = await prisma.model.findUnique({
+    where: { modelid: id },
+  });
+
+  if (!model) {
+    throw new Error(`Model with ID ${id} not found`);
+  }
+
+  return model;
+}
+
+export async function getStatusById(id: string) {
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const status = await prisma.statusType.findUnique({
+    where: { statustypeid: id },
+  });
+
+  if (!status) {
+    throw new Error(`Status with ID ${id} not found`);
+  }
+
+  return status;
+}

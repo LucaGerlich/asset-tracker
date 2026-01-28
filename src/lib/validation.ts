@@ -131,6 +131,52 @@ export const createLocationSchema = z.object({
 export const updateLocationSchema = createLocationSchema.partial();
 
 /**
+ * Category Type schemas
+ */
+export const createAssetCategoryTypeSchema = z.object({
+  assetcategorytypename: z.string().min(1).max(255),
+});
+
+export const updateAssetCategoryTypeSchema = createAssetCategoryTypeSchema.partial();
+
+export const createAccessoryCategoryTypeSchema = z.object({
+  accessoriecategorytypename: z.string().min(1).max(255),
+});
+
+export const updateAccessoryCategoryTypeSchema = createAccessoryCategoryTypeSchema.partial();
+
+export const createConsumableCategoryTypeSchema = z.object({
+  consumablecategorytypename: z.string().min(1).max(255),
+});
+
+export const updateConsumableCategoryTypeSchema = createConsumableCategoryTypeSchema.partial();
+
+export const createLicenceCategoryTypeSchema = z.object({
+  licencecategorytypename: z.string().min(1).max(255),
+});
+
+export const updateLicenceCategoryTypeSchema = createLicenceCategoryTypeSchema.partial();
+
+/**
+ * Model schemas
+ */
+export const createModelSchema = z.object({
+  modelname: z.string().min(1).max(255),
+  modelnumber: z.string().max(255).nullable().optional(),
+});
+
+export const updateModelSchema = createModelSchema.partial();
+
+/**
+ * Status Type schemas
+ */
+export const createStatusTypeSchema = z.object({
+  statustypename: z.string().min(1).max(255),
+});
+
+export const updateStatusTypeSchema = createStatusTypeSchema.partial();
+
+/**
  * Generic UUID validation
  */
 export const uuidSchema = z.string().uuid();
