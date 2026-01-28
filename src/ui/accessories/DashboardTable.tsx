@@ -35,7 +35,7 @@ import {
   DeleteIcon,
   ChevronDownIcon,
 } from "../Icons";
-import { capitalize } from "../../../utils/utils";
+import { capitalize } from "@/utils/utils";
 
 const statusColorMap = {
   Active: "default",
@@ -83,10 +83,12 @@ export default function App({
   const [filterValue, setFilterValue] = useState("");
   const [selectedKeys, setSelectedKeys] = useState(new Set([]));
   const [deleteButtonActive, setDeleteButtonActive] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState(
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
     new Set(INITIAL_VISIBLE_COLUMNS)
   );
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(
+    new Set(statusOptions.map(s => s.uid))
+  );
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [sortDescriptor, setSortDescriptor] = useState({
     column: "assettag",
@@ -105,7 +107,7 @@ export default function App({
   }, [selectedKeys]);
 
   const headerColumns = useMemo(() => {
-    if (visibleColumns === "all") return columns;
+    if (visibleColumns.size === columns?.length) return columns;
 
     return columns?.filter((column) =>
       Array.from(visibleColumns).includes(column.uid)
@@ -123,10 +125,7 @@ export default function App({
           data.serialnumber.toLowerCase().includes(filterValue.toLowerCase())
       );
     }
-    if (
-      statusFilter !== "all" &&
-      Array.from(statusFilter).length !== statusOptions.length
-    ) {
+    if (statusFilter.size !== statusOptions.length) {
       filteredAssets = filteredAssets.filter((asset) => {
         // Assuming 'statustypename' is the field that contains the status name in the 'status' array
         const assetStatus = status.find(
@@ -134,9 +133,7 @@ export default function App({
         );
         return (
           assetStatus &&
-          Array.from(statusFilter).includes(
-            assetStatus.statustypename.toLowerCase()
-          )
+          statusFilter.has(assetStatus.statustypename.toLowerCase())
         );
       });
     }
@@ -448,28 +445,28 @@ export default function App({
   }, []);
 
   const topContent = useMemo(() => {
-    const handleStatusToggle = (statusUid) => {
-      const currentFilter = statusFilter === "all" ? new Set(statusOptions.map(s => s.uid)) : new Set(statusFilter);
+    const handleStatusToggle = (statusUid: string) => {
+      const currentFilter = new Set(statusFilter);
       if (currentFilter.has(statusUid)) {
         currentFilter.delete(statusUid);
       } else {
         currentFilter.add(statusUid);
       }
-      setStatusFilter(currentFilter.size === statusOptions.length ? "all" : currentFilter);
+      setStatusFilter(currentFilter);
     };
 
-    const handleColumnToggle = (columnUid) => {
-      const currentColumns = visibleColumns === "all" ? new Set(columns.map(c => c.uid)) : new Set(visibleColumns);
+    const handleColumnToggle = (columnUid: string) => {
+      const currentColumns = new Set(visibleColumns);
       if (currentColumns.has(columnUid)) {
         currentColumns.delete(columnUid);
       } else {
         currentColumns.add(columnUid);
       }
-      setVisibleColumns(currentColumns.size === columns.length ? "all" : currentColumns);
+      setVisibleColumns(currentColumns);
     };
 
-    const currentStatusSet = statusFilter === "all" ? new Set(statusOptions.map(s => s.uid)) : new Set(statusFilter);
-    const currentColumnsSet = visibleColumns === "all" ? new Set(columns.map(c => c.uid)) : new Set(visibleColumns);
+    const currentStatusSet = statusFilter;
+    const currentColumnsSet = visibleColumns;
 
     return (
       <div className="flex flex-col gap-4">
@@ -594,7 +591,7 @@ export default function App({
     return (
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-muted-foreground">
-          {selectedKeys === "all"
+          {selectedKeys.size === filteredItems.length && filteredItems.length > 0
             ? "All items selected"
             : `${selectedKeys.size} of ${filteredItems.length} selected`}
         </span>

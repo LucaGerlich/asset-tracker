@@ -12,14 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { PlusIcon, SearchIcon } from "../Icons";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
@@ -121,6 +114,48 @@ export default function AccessoriesTable({
     return filteredItems.slice(start, start + rowsPerPage);
   }, [filteredItems, page, rowsPerPage]);
 
+  const columns = [
+    { key: 'accessoriename', label: 'Name' },
+    { key: 'accessorietag', label: 'Tag' },
+    { key: 'manufacturer', label: 'Manufacturer' },
+    { key: 'model', label: 'Model' },
+    { key: 'status', label: 'Status' },
+    { key: 'category', label: 'Category' },
+    { key: 'location', label: 'Location' },
+    { key: 'supplier', label: 'Supplier' },
+    { key: 'requestable', label: 'Requestable' },
+  ];
+
+  const renderCell = (item: Record<string, unknown>, columnKey: string) => {
+    switch (columnKey) {
+      case 'accessoriename':
+        return String(item.accessoriename ?? "-");
+      case 'accessorietag':
+        return String(item.accessorietag ?? "-");
+      case 'manufacturer':
+        return String(manufacturerById.get(item.manufacturerid as number) ?? "-");
+      case 'model':
+        return String(modelById.get(item.modelid as number) ?? "-");
+      case 'status':
+        const statusName = statusById.get(item.statustypeid as number);
+        return statusName ? <Badge>{String(statusName)}</Badge> : "-";
+      case 'category':
+        return String(categoryById.get(item.accessoriecategorytypeid as number) ?? "-");
+      case 'location':
+        return String(locationById.get(item.locationid as number) ?? "-");
+      case 'supplier':
+        return String(supplierById.get(item.supplierid as number) ?? "-");
+      case 'requestable':
+        return (
+          <Badge variant={item.requestable ? "default" : "secondary"}>
+            {item.requestable ? "Yes" : "No"}
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="w-full space-y-4">
       <div className="flex flex-col gap-4">
@@ -211,58 +246,14 @@ export default function AccessoriesTable({
           </Select>
         </div>
       </div>
-      <div className="w-full overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Tag</TableHead>
-              <TableHead>Manufacturer</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead>Requestable</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedItems.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center">
-                  No accessories found
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedItems.map((item) => (
-                <TableRow key={item.accessorieid}>
-                  <TableCell>{item.accessoriename}</TableCell>
-                  <TableCell>{item.accessorietag}</TableCell>
-                  <TableCell>{manufacturerById.get(item.manufacturerid) ?? "-"}</TableCell>
-                  <TableCell>{modelById.get(item.modelid) ?? "-"}</TableCell>
-                  <TableCell>
-                    {statusById.get(item.statustypeid) ? (
-                      <Badge>
-                        {statusById.get(item.statustypeid)}
-                      </Badge>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell>{categoryById.get(item.accessoriecategorytypeid) ?? "-"}</TableCell>
-                  <TableCell>{locationById.get(item.locationid) ?? "-"}</TableCell>
-                  <TableCell>{supplierById.get(item.supplierid) ?? "-"}</TableCell>
-                  <TableCell>
-                    <Badge variant={item.requestable ? "default" : "secondary"}>
-                      {item.requestable ? "Yes" : "No"}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <ResponsiveTable
+        columns={columns}
+        data={paginatedItems}
+        renderCell={renderCell}
+        keyExtractor={(item) => (item as Record<string, unknown>).accessorieid as number}
+        emptyMessage="No accessories found"
+        mobileCardView={true}
+      />
       <div className="flex items-center justify-center gap-2">
         <Button
           variant="outline"

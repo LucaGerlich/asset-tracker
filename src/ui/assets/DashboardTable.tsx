@@ -100,10 +100,12 @@ export default function App({
   const [filterValue, setFilterValue] = useState("");
   const [selectedKeys, setSelectedKeys] = useState(new Set([]));
   const [deleteButtonActive, setDeleteButtonActive] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState(
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
     new Set(INITIAL_VISIBLE_COLUMNS)
   );
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(
+    new Set(statusOptions.map(s => s.uid))
+  );
   const [assetsData, setAssetsData] = useState(data);
   const [userAssetsData, setUserAssetsData] = useState(userAssets);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -336,7 +338,7 @@ export default function App({
   );
 
   const headerColumns = useMemo(() => {
-    if (visibleColumns === "all") return columns;
+    if (visibleColumns.size === columns?.length) return columns;
 
     return columns?.filter((column) =>
       Array.from(visibleColumns).includes(column.uid)
@@ -354,19 +356,14 @@ export default function App({
           data.serialnumber.toLowerCase().includes(filterValue.toLowerCase())
       );
     }
-    if (
-      statusFilter !== "all" &&
-      Array.from(statusFilter).length !== statusOptions.length
-    ) {
+    if (statusFilter.size !== statusOptions.length) {
       filteredAssets = filteredAssets.filter((asset) => {
         const assetStatus = status.find(
           (stat) => stat.statustypeid === asset.statustypeid
         );
         return (
           assetStatus &&
-          Array.from(statusFilter).includes(
-            assetStatus.statustypename.toLowerCase()
-          )
+          statusFilter.has(assetStatus.statustypename.toLowerCase())
         );
       });
     }
@@ -790,28 +787,28 @@ export default function App({
   }, []);
 
   const topContent = useMemo(() => {
-    const handleStatusToggle = (statusUid) => {
-      const currentFilter = statusFilter === "all" ? new Set(statusOptions.map(s => s.uid)) : new Set(statusFilter);
+    const handleStatusToggle = (statusUid: string) => {
+      const currentFilter = new Set(statusFilter);
       if (currentFilter.has(statusUid)) {
         currentFilter.delete(statusUid);
       } else {
         currentFilter.add(statusUid);
       }
-      setStatusFilter(currentFilter.size === statusOptions.length ? "all" : currentFilter);
+      setStatusFilter(currentFilter);
     };
 
-    const handleColumnToggle = (columnUid) => {
-      const currentColumns = visibleColumns === "all" ? new Set(columns.map(c => c.uid)) : new Set(visibleColumns);
+    const handleColumnToggle = (columnUid: string) => {
+      const currentColumns = new Set(visibleColumns);
       if (currentColumns.has(columnUid)) {
         currentColumns.delete(columnUid);
       } else {
         currentColumns.add(columnUid);
       }
-      setVisibleColumns(currentColumns.size === columns.length ? "all" : currentColumns);
+      setVisibleColumns(currentColumns);
     };
 
-    const currentStatusSet = statusFilter === "all" ? new Set(statusOptions.map(s => s.uid)) : new Set(statusFilter);
-    const currentColumnsSet = visibleColumns === "all" ? new Set(columns.map(c => c.uid)) : new Set(visibleColumns);
+    const currentStatusSet = statusFilter;
+    const currentColumnsSet = visibleColumns;
 
     return (
       <div className="flex flex-col gap-4">
@@ -897,7 +894,7 @@ export default function App({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" onClick={refreshData} disabled={isRefreshing}>
+            <Button variant="outline" onClick={() => refreshData()} disabled={isRefreshing}>
               {isRefreshing ? "Refreshing..." : "Refresh"}
             </Button>
             <Button asChild>
@@ -956,7 +953,7 @@ export default function App({
     return (
       <div className="flex items-center justify-between px-2 py-2">
         <span className="text-sm text-muted-foreground">
-          {selectedKeys === "all"
+          {selectedKeys.size === assetsData.length && assetsData.length > 0
             ? "All items selected"
             : `${selectedKeys.size} of ${assetsData.length} selected`}
         </span>
@@ -1126,7 +1123,7 @@ export default function App({
           <DialogHeader>
             <DialogTitle>
               {deleteMode === "bulk"
-                ? `Delete ${selectedKeys === "all" ? assetsData.length : selectedKeys.size} selected item(s)?`
+                ? `Delete ${selectedKeys.size === assetsData.length ? assetsData.length : selectedKeys.size} selected item(s)?`
                 : `Delete ${selectedAsset?.assetname || "this item"}?`}
             </DialogTitle>
           </DialogHeader>
@@ -1143,14 +1140,14 @@ export default function App({
               );
             })() : null}
             {deleteMode === "bulk" ? (() => {
-              const ids = selectedKeys === "all" ? assetsData.map((a) => a.assetid) : Array.from(selectedKeys);
+              const ids = Array.from(selectedKeys);
               const assignedCount = userAssetsData.filter((ua) => ids.includes(ua.assetid)).length;
               if (!assignedCount) return null;
               return (
                 <div className="flex flex-col gap-2">
                   <p className="text-sm text-destructive">{assignedCount} selected item(s) are currently assigned to users.</p>
                   <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={confirmAssigned} onCheckedChange={setConfirmAssigned} />
+                    <Checkbox checked={confirmAssigned} onCheckedChange={(checked) => setConfirmAssigned(checked === true)} />
                     I understand and want to delete them anyway
                   </label>
                 </div>
@@ -1164,13 +1161,13 @@ export default function App({
             <Button
               variant="destructive"
               disabled={deleteMode === "bulk" && (() => {
-                const ids = selectedKeys === "all" ? assetsData.map((a) => a.assetid) : Array.from(selectedKeys);
+                const ids = Array.from(selectedKeys);
                 const assignedCount = userAssetsData.filter((ua) => ids.includes(ua.assetid)).length;
                 return assignedCount > 0 && !confirmAssigned;
               })()}
               onClick={async () => {
                 if (deleteMode === "bulk") {
-                  const ids = selectedKeys === "all" ? assetsData.map((a) => a.assetid) : Array.from(selectedKeys);
+                  const ids = Array.from(selectedKeys);
                   for (const id of ids) {
                     await handleDelete(id);
                   }

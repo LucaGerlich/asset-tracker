@@ -23,10 +23,10 @@ export default function LocationsTable({ items }) {
   const [page, setPage] = useState(1);
 
   const countries = useMemo(() => {
-    const unique = new Set(
+    const unique = new Set<string>(
       items
         .map((item) => item.country)
-        .filter((country) => country && country.trim().length > 0)
+        .filter((country): country is string => typeof country === 'string' && country.trim().length > 0)
     );
     return Array.from(unique).sort((a, b) => a.localeCompare(b));
   }, [items]);

@@ -272,7 +272,7 @@ const assets = [
 const user = [
   {
     userID: faker.number.int(),
-    userName: faker.internet.userName(),
+    userName: faker.internet.username(),
     isAdmin: faker.datatype.boolean(),
     canRequest: faker.datatype.boolean(),
     lastName: faker.person.lastName(),

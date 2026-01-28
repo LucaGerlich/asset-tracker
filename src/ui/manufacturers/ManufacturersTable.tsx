@@ -37,10 +37,10 @@ export default function ManufacturersTable({ items }) {
   const [page, setPage] = useState(1);
 
   const years = useMemo(() => {
-    const unique = new Set(
+    const unique = new Set<number>(
       items
         .map((item) => getYear(item.creation_date))
-        .filter((year) => typeof year === "number")
+        .filter((year): year is number => typeof year === "number")
     );
     return Array.from(unique).sort((a, b) => b - a);
   }, [items]);
