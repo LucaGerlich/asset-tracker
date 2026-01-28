@@ -9,7 +9,7 @@ const Breadcrumb = ({ options }) => {
     <nav aria-label="breadcrumb">
       <ol className="flex items-center gap-2 text-sm text-muted-foreground">
         {options.map((option, index) => (
-          <li key={option.id} className="flex items-center gap-2">
+          <li key={index} className="flex items-center gap-2">
             {index > 0 && <ChevronRight className="h-4 w-4" />}
             {index === options.length - 1 ? (
               <span className="font-medium text-foreground">{option.label}</span>
