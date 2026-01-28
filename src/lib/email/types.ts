@@ -55,6 +55,6 @@ export const EMAIL_PROVIDERS: { id: EmailProvider; name: string; description: st
   {
     id: 'ses',
     name: 'Amazon SES',
-    description: 'Pay as you go (very cheap). Best for high volume.',
+    description: 'Pay as you go (very cheap). Requires @aws-sdk/client-ses package.',
   },
 ];

@@ -1,6 +1,10 @@
 /**
  * Email Service
  * Main service for sending emails through configured provider
+ * 
+ * NOTE: API keys and secrets stored in the database are marked with isEncrypted flag
+ * but are stored as plain text. In a production environment, consider implementing
+ * actual encryption using environment-based encryption keys or a secrets manager.
  */
 
 import prisma from '../prisma';

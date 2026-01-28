@@ -309,7 +309,7 @@ export default function NotificationSettingsTab({ settings }: NotificationSettin
           <div className="bg-muted p-4 rounded-lg">
             <p className="text-sm font-mono">
               # Add to your crontab to process notifications daily at 8 AM:<br />
-              0 8 * * * curl -X POST {typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/api/cron/notifications
+              0 8 * * * curl -X POST https://your-domain.com/api/cron/notifications
             </p>
           </div>
         </CardContent>

@@ -154,7 +154,7 @@ export default function ReportsPage({ data }: ReportsPageProps) {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Asset Report - ${new Date().toLocaleDateString()}</title>
+        <title>Asset Report - ${new Date().toISOString().split("T")[0]}</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; }
           h1 { color: #333; }

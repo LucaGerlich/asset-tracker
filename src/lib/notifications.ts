@@ -181,15 +181,18 @@ export async function checkMaintenanceDue(): Promise<number> {
  * Check and notify about low stock consumables
  */
 export async function checkLowStock(): Promise<number> {
-  const lowStockItems = await prisma.consumable.findMany({
+  // Fetch all consumables with a minimum quantity threshold set
+  const allConsumables = await prisma.consumable.findMany({
     where: {
       minQuantity: { gt: 0 },
-      quantity: { lte: prisma.consumable.fields.minQuantity },
     },
     include: {
       consumableCategoryType: true,
     },
   });
+
+  // Filter in JavaScript to find items where quantity <= minQuantity
+  const lowStockItems = allConsumables.filter(item => item.quantity <= item.minQuantity);
 
   // Get admin users for notification
   const admins = await prisma.user.findMany({

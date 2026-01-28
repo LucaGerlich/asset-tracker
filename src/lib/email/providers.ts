@@ -235,6 +235,11 @@ class PostmarkProvider extends BaseEmailProvider {
 
 /**
  * Amazon SES Provider
+ * 
+ * NOTE: This provider requires the @aws-sdk/client-ses package for full functionality.
+ * Currently shows placeholder implementation. To enable SES:
+ * 1. Install: npm install @aws-sdk/client-ses
+ * 2. Implement proper AWS SDK integration
  */
 class SESProvider extends BaseEmailProvider {
   private region: string;
@@ -255,39 +260,18 @@ class SESProvider extends BaseEmailProvider {
   }
 
   async send(options: EmailOptions): Promise<EmailSendResult> {
-    // AWS SES requires AWS SDK v4 signing
-    // For simplicity, we use the AWS SDK approach via environment
-    // In production, use @aws-sdk/client-ses package
+    // AWS SES requires the AWS SDK with v4 signing
+    // This is a placeholder - implement using @aws-sdk/client-ses
+    // Example implementation:
+    // import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+    // const client = new SESClient({ region: this.region, credentials: {...} });
+    // const command = new SendEmailCommand({ ... });
+    // await client.send(command);
     
-    try {
-      // Note: This is a simplified implementation
-      // In production, use the AWS SDK properly
-      const endpoint = `https://email.${this.region}.amazonaws.com`;
-      
-      const recipients = Array.isArray(options.to) ? options.to : [options.to];
-      
-      const params = new URLSearchParams();
-      params.append('Action', 'SendEmail');
-      params.append('Source', `${this.fromName} <${options.from || this.fromEmail}>`);
-      recipients.forEach((email, i) => {
-        params.append(`Destination.ToAddresses.member.${i + 1}`, email);
-      });
-      params.append('Message.Subject.Data', options.subject);
-      params.append('Message.Body.Html.Data', options.html);
-      if (options.text) {
-        params.append('Message.Body.Text.Data', options.text);
-      }
-      params.append('Version', '2010-12-01');
-
-      // Note: Proper AWS v4 signing would be needed here
-      // This is a placeholder - use AWS SDK in production
-      return { 
-        success: false, 
-        error: 'SES requires AWS SDK. Please install @aws-sdk/client-ses for production use.' 
-      };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
+    return { 
+      success: false, 
+      error: 'Amazon SES requires @aws-sdk/client-ses package. Please install it and update this provider implementation.' 
+    };
   }
 
   async testConnection(): Promise<boolean> {

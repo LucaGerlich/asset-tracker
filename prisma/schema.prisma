@@ -78,6 +78,8 @@ model assetCategoryType {
   depreciationSetting   DepreciationSetting?
 }
 
+// NOTE: The quantity and minQuantity fields are new additions with default(0).
+// For existing data, run a data migration to set appropriate values if needed.
 model consumable {
   consumableid             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   consumablename           String                 @db.VarChar
@@ -86,7 +88,7 @@ model consumable {
   supplierid               String                 @db.Uuid
   purchaseprice            Decimal?               @db.Decimal(10, 2)
   purchasedate             DateTime?              @db.Date
-  quantity                 Int                    @default(0)
+  quantity                 Int                    @default(0) // Current stock quantity
   minQuantity              Int                    @default(0) // Minimum stock level for alerts
   creation_date            DateTime               @db.Timestamp(6)
   change_date              DateTime?              @db.Timestamp(6)
