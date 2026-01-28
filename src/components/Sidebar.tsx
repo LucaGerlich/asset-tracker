@@ -22,6 +22,9 @@ import {
   BadgeCheck,
   PanelLeftClose,
   PanelRightOpen,
+  Layers,
+  Tags,
+  CircleDot,
 } from "lucide-react";
 import { PlusIcon as SidebarPlusIcon } from "../ui/Icons";
 
@@ -43,6 +46,17 @@ const navSections = [
       { label: "Manufacturers", href: "/manufacturers", icon: Factory },
       { label: "Suppliers", href: "/suppliers", icon: Truck },
       { label: "Locations", href: "/locations", icon: MapPin },
+    ],
+  },
+  {
+    title: "Categories",
+    items: [
+      { label: "Asset Categories", href: "/assetCategories", icon: Layers },
+      { label: "Accessory Categories", href: "/accessoryCategories", icon: Layers },
+      { label: "Consumable Categories", href: "/consumableCategories", icon: Layers },
+      { label: "Licence Categories", href: "/licenceCategories", icon: Layers },
+      { label: "Models", href: "/models", icon: Tags },
+      { label: "Status Types", href: "/statusTypes", icon: CircleDot },
     ],
   },
   {
