@@ -23,6 +23,26 @@ export async function POST(req: Request) {
       warrantyExpiryDays,
     } = body;
 
+    // Validate input
+    if (typeof enableAssignmentEmails !== "boolean" || typeof enableUnassignmentEmails !== "boolean" ||
+        typeof enableLicenseExpiryEmails !== "boolean" || typeof enableMaintenanceEmails !== "boolean" ||
+        typeof enableLowStockEmails !== "boolean" || typeof enableWarrantyEmails !== "boolean") {
+      return NextResponse.json(
+        { error: "Invalid boolean values provided" },
+        { status: 400 }
+      );
+    }
+
+    if (typeof licenseExpiryDays !== "number" || licenseExpiryDays < 1 ||
+        typeof maintenanceReminderDays !== "number" || maintenanceReminderDays < 1 ||
+        typeof lowStockThreshold !== "number" || lowStockThreshold < 1 ||
+        typeof warrantyExpiryDays !== "number" || warrantyExpiryDays < 1) {
+      return NextResponse.json(
+        { error: "Invalid number values provided" },
+        { status: 400 }
+      );
+    }
+
     // Upsert notification settings
     const settingsToUpsert = [
       { key: "notify_assignments", value: String(enableAssignmentEmails), type: "boolean", category: "notifications" },
@@ -37,22 +57,25 @@ export async function POST(req: Request) {
       { key: "warranty_expiry_days", value: String(warrantyExpiryDays), type: "number", category: "notifications" },
     ];
 
-    for (const setting of settingsToUpsert) {
-      await prisma.systemSettings.upsert({
-        where: { settingKey: setting.key },
-        update: {
-          settingValue: setting.value,
-          updatedAt: new Date(),
-        },
-        create: {
-          settingKey: setting.key,
-          settingValue: setting.value,
-          settingType: setting.type,
-          category: setting.category,
-          isEncrypted: false,
-        },
-      });
-    }
+    // Use transaction for atomicity and Promise.all for performance
+    await prisma.$transaction(
+      settingsToUpsert.map((setting) =>
+        prisma.systemSettings.upsert({
+          where: { settingKey: setting.key },
+          update: {
+            settingValue: setting.value,
+            updatedAt: new Date(),
+          },
+          create: {
+            settingKey: setting.key,
+            settingValue: setting.value,
+            settingType: setting.type,
+            category: setting.category,
+            isEncrypted: false,
+          },
+        })
+      )
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
