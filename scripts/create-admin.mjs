@@ -15,9 +15,14 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+// Determine SSL configuration based on environment
+const isCloudDatabase = process.env.DATABASE_SSL === "true" || 
+  process.env.DATABASE_URL?.includes("supabase") ||
+  process.env.DATABASE_URL?.includes("pooler.supabase");
+
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: false
+  ssl: isCloudDatabase ? { rejectUnauthorized: false } : false
 });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });

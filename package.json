@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:seed": "prisma db seed",
+    "db:demo-seed": "node prisma/demo-seed.js",
+    "db:demo-reset": "node scripts/reset-demo-db.mjs",
     "create-admin": "node scripts/create-admin.mjs",
     "test": "npx playwright test",
     "test:ui": "npx playwright test --ui",

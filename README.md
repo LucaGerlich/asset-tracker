@@ -11,6 +11,7 @@ This is build using [Next.js](https://nextjs.org/), [Prisma](https://prisma.io/)
   - [Quick Start with Docker](#quick-start-with-docker)
   - [Manual Installation](#manual-installation)
 - [Docker Deployment](#docker-deployment)
+- [Demo Deployment](#demo-deployment)
 - [API Testing with Postman](#api-testing-with-postman)
 - [Database Schema](#database-schema)
 - [Contributing](#contributing)
@@ -220,6 +221,40 @@ A Postman collection is included for API testing:
 1. Import the collection from `postman/AssetTracker.postman_collection.json`
 2. Import the environment from `postman/AssetTracker.postman_environment.json`
 3. Set the `baseUrl` variable to your server URL (default: `http://localhost:3000`)
+
+## Demo Deployment
+
+You can deploy a public demo version of the application using Supabase as the database backend. The demo includes:
+
+- **Pre-populated sample data** - Realistic test data showcasing all features
+- **Automatic resets** - Database refreshes every 30 minutes
+- **Demo accounts** - Pre-configured admin and user accounts
+
+### Quick Start
+
+1. Create a [Supabase](https://supabase.com) project
+2. Deploy to Vercel/Railway with environment variables:
+   ```bash
+   DATABASE_URL="postgresql://postgres.[ref]:[pw]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"
+   DATABASE_SSL="true"
+   DEMO_MODE="true"
+   NEXTAUTH_URL="https://your-domain.com"
+   NEXTAUTH_SECRET="your-secret"
+   ```
+3. Initialize the database:
+   ```bash
+   npx prisma db push
+   npm run db:demo-seed
+   ```
+
+### Demo Credentials
+
+| Account | Username | Password |
+|---------|----------|----------|
+| Admin | demo_admin | demo123 |
+| User | demo_user | demo123 |
+
+For detailed setup instructions, see [docs/DEMO_HOSTING.md](docs/DEMO_HOSTING.md).
 
 ### Available API Endpoints
 
