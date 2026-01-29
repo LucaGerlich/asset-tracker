@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     // Use transaction for atomicity and Promise.all for performance
     await prisma.$transaction(
       settingsToUpsert.map((setting) =>
-        prisma.systemSettings.upsert({
+        prisma.system_settings.upsert({
           where: { settingKey: setting.key },
           update: {
             settingValue: setting.value,
@@ -70,6 +70,7 @@ export async function POST(req: Request) {
             settingType: setting.type,
             category: setting.category,
             isEncrypted: false,
+            updatedAt: new Date(),
           },
         })
       )

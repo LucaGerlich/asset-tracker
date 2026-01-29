@@ -74,7 +74,7 @@ export async function POST(req: Request) {
     }
 
     for (const setting of settingsToUpsert) {
-      await prisma.systemSettings.upsert({
+      await prisma.system_settings.upsert({
         where: { settingKey: setting.key },
         update: {
           settingValue: setting.value,
@@ -86,6 +86,7 @@ export async function POST(req: Request) {
           settingType: setting.type,
           category: setting.category,
           isEncrypted: setting.key.includes("api_key") || setting.key.includes("secret"),
+          updatedAt: new Date(),
         },
       });
     }

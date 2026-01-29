@@ -28,7 +28,7 @@ interface EmailConfig {
 async function getEmailConfig(): Promise<EmailConfig | null> {
   try {
     // Try to get configuration from database first
-    const settings = await prisma.systemSettings.findMany({
+    const settings = await prisma.system_settings.findMany({
       where: { category: 'email' },
     });
 
@@ -171,7 +171,7 @@ export async function queueEmail(
   body: string,
   scheduledAt?: Date
 ): Promise<void> {
-  await prisma.notificationQueue.create({
+  await prisma.notification_queue.create({
     data: {
       userId,
       type,
@@ -192,7 +192,7 @@ export async function processEmailQueue(batchSize: number = 10): Promise<{
   succeeded: number;
   failed: number;
 }> {
-  const pendingEmails = await prisma.notificationQueue.findMany({
+  const pendingEmails = await prisma.notification_queue.findMany({
     where: {
       status: 'pending',
       scheduledAt: { lte: new Date() },
@@ -213,7 +213,7 @@ export async function processEmailQueue(batchSize: number = 10): Promise<{
     });
 
     if (result.success) {
-      await prisma.notificationQueue.update({
+      await prisma.notification_queue.update({
         where: { id: email.id },
         data: {
           status: 'sent',
@@ -222,7 +222,7 @@ export async function processEmailQueue(batchSize: number = 10): Promise<{
       });
       succeeded++;
     } else {
-      await prisma.notificationQueue.update({
+      await prisma.notification_queue.update({
         where: { id: email.id },
         data: {
           attempts: email.attempts + 1,

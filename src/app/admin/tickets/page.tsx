@@ -10,9 +10,9 @@ export const metadata = {
 };
 
 async function getTickets() {
-  return await prisma.ticket.findMany({
+  const rawTickets = await prisma.tickets.findMany({
     include: {
-      creator: {
+      user_tickets_createdByTouser: {
         select: {
           userid: true,
           username: true,
@@ -21,7 +21,7 @@ async function getTickets() {
           email: true,
         },
       },
-      assignee: {
+      user_tickets_assignedToTouser: {
         select: {
           userid: true,
           username: true,
@@ -30,7 +30,7 @@ async function getTickets() {
           email: true,
         },
       },
-      comments: {
+      ticket_comments: {
         include: {
           user: {
             select: {
@@ -50,6 +50,14 @@ async function getTickets() {
       createdAt: 'desc',
     },
   });
+
+  // Map Prisma relation names to expected interface names
+  return rawTickets.map((ticket) => ({
+    ...ticket,
+    creator: ticket.user_tickets_createdByTouser,
+    assignee: ticket.user_tickets_assignedToTouser,
+    comments: ticket.ticket_comments,
+  }));
 }
 
 async function getAdminUsers() {

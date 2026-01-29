@@ -11,10 +11,10 @@ export async function GET(req: Request) {
     const user = await requireApiAuth();
     
     // Admins see all tickets, users see only their own
-    const tickets = await prisma.ticket.findMany({
+    const rawTickets = await prisma.tickets.findMany({
       where: user.isAdmin ? {} : { createdBy: user.id },
       include: {
-        creator: {
+        user_tickets_createdByTouser: {
           select: {
             userid: true,
             username: true,
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
             email: true,
           },
         },
-        assignee: {
+        user_tickets_assignedToTouser: {
           select: {
             userid: true,
             username: true,
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
             email: true,
           },
         },
-        comments: {
+        ticket_comments: {
           include: {
             user: {
               select: {
@@ -52,6 +52,14 @@ export async function GET(req: Request) {
         createdAt: 'desc',
       },
     });
+
+    // Map Prisma relation names to expected interface names
+    const tickets = rawTickets.map((ticket) => ({
+      ...ticket,
+      creator: ticket.user_tickets_createdByTouser,
+      assignee: ticket.user_tickets_assignedToTouser,
+      comments: ticket.ticket_comments,
+    }));
 
     return NextResponse.json(tickets, { status: 200 });
   } catch (error) {
@@ -79,16 +87,19 @@ export async function POST(req: Request) {
       );
     }
 
-    const ticket = await prisma.ticket.create({
+    const rawTicket = await prisma.tickets.create({
       data: {
         title,
         description: description || null,
         priority: priority || "medium",
-        createdBy: user.id!,
+        user_tickets_createdByTouser: {
+          connect: { userid: user.id! },
+        },
         status: "new",
+        updatedAt: new Date(),
       },
       include: {
-        creator: {
+        user_tickets_createdByTouser: {
           select: {
             userid: true,
             username: true,
@@ -99,6 +110,14 @@ export async function POST(req: Request) {
         },
       },
     });
+
+    // Map Prisma relation names to expected interface names
+    const ticket = {
+      ...rawTicket,
+      creator: rawTicket.user_tickets_createdByTouser,
+      assignee: null,
+      comments: [],
+    };
 
     return NextResponse.json(ticket, { status: 201 });
   } catch (error) {

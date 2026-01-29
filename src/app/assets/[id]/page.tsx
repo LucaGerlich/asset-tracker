@@ -57,7 +57,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const userAssets = await getUserAssets();
 
   // Fetch history for this asset
-  const historyEntries = await prisma.auditLog.findMany({
+  const historyEntries = await prisma.audit_logs.findMany({
     where: {
       entity: "asset",
       entityId: params.id,

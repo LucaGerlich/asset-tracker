@@ -72,7 +72,7 @@ interface AdminSettingsPageProps {
     method: string;
     usefulLifeYears: number;
     salvagePercent: unknown;
-    category: {
+    assetCategoryType: {
       assetcategorytypeid: string;
       assetcategorytypename: string;
     };

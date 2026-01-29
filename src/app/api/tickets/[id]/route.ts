@@ -24,11 +24,11 @@ export async function PATCH(
     if (priority) updateData.priority = priority;
     if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
 
-    const ticket = await prisma.ticket.update({
+    const rawTicket = await prisma.tickets.update({
       where: { id },
       data: updateData,
       include: {
-        creator: {
+        user_tickets_createdByTouser: {
           select: {
             userid: true,
             username: true,
@@ -37,7 +37,7 @@ export async function PATCH(
             email: true,
           },
         },
-        assignee: {
+        user_tickets_assignedToTouser: {
           select: {
             userid: true,
             username: true,
@@ -48,6 +48,14 @@ export async function PATCH(
         },
       },
     });
+
+    // Map Prisma relation names to expected interface names
+    const ticket = {
+      ...rawTicket,
+      creator: rawTicket.user_tickets_createdByTouser,
+      assignee: rawTicket.user_tickets_assignedToTouser,
+      comments: [],
+    };
 
     return NextResponse.json(ticket, { status: 200 });
   } catch (error) {

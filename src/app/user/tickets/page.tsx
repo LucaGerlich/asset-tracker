@@ -10,12 +10,12 @@ export const metadata = {
 };
 
 async function getUserTickets(userId: string) {
-  return await prisma.ticket.findMany({
+  const rawTickets = await prisma.tickets.findMany({
     where: {
       createdBy: userId,
     },
     include: {
-      creator: {
+      user_tickets_createdByTouser: {
         select: {
           userid: true,
           username: true,
@@ -24,7 +24,7 @@ async function getUserTickets(userId: string) {
           email: true,
         },
       },
-      assignee: {
+      user_tickets_assignedToTouser: {
         select: {
           userid: true,
           username: true,
@@ -33,7 +33,7 @@ async function getUserTickets(userId: string) {
           email: true,
         },
       },
-      comments: {
+      ticket_comments: {
         include: {
           user: {
             select: {
@@ -53,6 +53,14 @@ async function getUserTickets(userId: string) {
       createdAt: 'desc',
     },
   });
+
+  // Map Prisma relation names to expected interface names
+  return rawTickets.map((ticket) => ({
+    ...ticket,
+    creator: ticket.user_tickets_createdByTouser,
+    assignee: ticket.user_tickets_assignedToTouser,
+    comments: ticket.ticket_comments,
+  }));
 }
 
 export default async function TicketsPage() {

@@ -35,7 +35,7 @@ The Asset Management System is a well-structured Next.js application with solid 
 ## Current State Assessment
 
 ### Strengths ✅
-- Modern tech stack (Next.js 15, React 19, Prisma ORM)
+- Modern tech stack (Next.js 16, React 19, Prisma ORM)
 - Clean code architecture with separation of concerns
 - Docker support for easy deployment
 - Basic authentication with NextAuth.js

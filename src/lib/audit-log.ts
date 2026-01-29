@@ -31,7 +31,7 @@ export async function createAuditLog({ userId, action, entity, entityId, details
     const ipAddress = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
     const userAgent = headersList.get("user-agent") || "unknown";
 
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         userId: userId || null,
         action,
@@ -58,7 +58,7 @@ export async function getAuditLogs({ limit = 50, userId, entity, action }: GetAu
   if (entity) where.entity = entity;
   if (action) where.action = action;
 
-  return await prisma.auditLog.findMany({
+  return await prisma.audit_logs.findMany({
     where,
     take: limit,
     orderBy: { createdAt: "desc" },

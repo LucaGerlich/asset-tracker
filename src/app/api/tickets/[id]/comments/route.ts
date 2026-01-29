@@ -23,7 +23,7 @@ export async function POST(
     }
 
     // Verify user has access to this ticket
-    const ticket = await prisma.ticket.findUnique({
+    const ticket = await prisma.tickets.findUnique({
       where: { id },
     });
 
@@ -42,7 +42,7 @@ export async function POST(
       );
     }
 
-    const ticketComment = await prisma.ticketComment.create({
+    const ticketComment = await prisma.ticket_comments.create({
       data: {
         ticketId: id,
         userId: user.id!,

@@ -20,7 +20,7 @@ export async function PATCH(req, { params }) {
     }
 
     // Build update data object with only provided fields
-    const updateData = {};
+    const updateData: { isadmin?: boolean; canrequest?: boolean; change_date?: Date } = {};
     if (typeof isadmin === "boolean") {
       updateData.isadmin = isadmin;
     }
