@@ -294,7 +294,7 @@ export default function SuppliersTable({ items }) {
           <DialogHeader>
             <DialogTitle>Delete Supplier</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete supplier "{selectedSupplier?.suppliername}"? This action cannot be undone.
+              Are you sure you want to delete supplier &quot;{selectedSupplier?.suppliername}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

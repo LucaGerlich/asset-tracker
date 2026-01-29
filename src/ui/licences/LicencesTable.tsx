@@ -350,7 +350,7 @@ export default function LicencesTable({
           <DialogHeader>
             <DialogTitle>Delete Licence</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete licence "{selectedLicence?.licencekey || selectedLicence?.licenceid}"? This action cannot be undone.
+              Are you sure you want to delete licence &quot;{selectedLicence?.licencekey || selectedLicence?.licenceid}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

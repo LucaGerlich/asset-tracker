@@ -258,7 +258,7 @@ export default function ManufacturersTable({ items }) {
           <DialogHeader>
             <DialogTitle>Delete Manufacturer</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete manufacturer "{selectedManufacturer?.manufacturername}"? This action cannot be undone.
+              Are you sure you want to delete manufacturer &quot;{selectedManufacturer?.manufacturername}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -259,7 +259,7 @@ export default function LocationsTable({ items }) {
           <DialogHeader>
             <DialogTitle>Delete Location</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete location "{selectedLocation?.locationname}"? This action cannot be undone.
+              Are you sure you want to delete location &quot;{selectedLocation?.locationname}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

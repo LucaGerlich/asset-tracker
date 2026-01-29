@@ -329,7 +329,7 @@ export default function ConsumablesTable({
           <DialogHeader>
             <DialogTitle>Delete Consumable</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete consumable "{selectedConsumable?.consumablename}"? This action cannot be undone.
+              Are you sure you want to delete consumable &quot;{selectedConsumable?.consumablename}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
