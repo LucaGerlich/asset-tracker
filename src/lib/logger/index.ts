@@ -215,11 +215,3 @@ export const logger = new Logger();
 
 // Export class for custom instances
 export { Logger };
-
-// Export correlation ID utilities
-export {
-  generateCorrelationId,
-  getCorrelationId,
-  withCorrelationId,
-  withCorrelationIdAsync,
-};
