@@ -95,6 +95,22 @@ export const createLicenseSchema = z.object({
 export const updateLicenseSchema = createLicenseSchema.partial();
 
 /**
+ * Consumable schemas
+ */
+export const createConsumableSchema = z.object({
+  consumablename: z.string().min(1).max(255),
+  consumablecategorytypeid: z.string().uuid(),
+  manufacturerid: z.string().uuid(),
+  supplierid: z.string().uuid(),
+  purchaseprice: z.number().positive().nullable().optional(),
+  purchasedate: z.string().datetime().nullable().optional(),
+  minQuantity: z.number().int().nonnegative().nullable().optional(),
+  quantity: z.number().int().nonnegative().nullable().optional(),
+});
+
+export const updateConsumableSchema = createConsumableSchema.partial();
+
+/**
  * Manufacturer schemas
  */
 export const createManufacturerSchema = z.object({

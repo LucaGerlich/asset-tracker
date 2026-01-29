@@ -11,8 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { PlusIcon, SearchIcon } from "../Icons";
+import { PlusIcon, SearchIcon, EditIcon, DeleteIcon, MoreVertical } from "../Icons";
+import { toast } from "sonner";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
@@ -42,6 +57,9 @@ export default function ConsumablesTable({
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
   const [page, setPage] = useState(1);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedConsumable, setSelectedConsumable] = useState(null);
+  const [consumablesData, setConsumablesData] = useState(items);
 
   const categoryById = useMemo(
     () => new Map(categories.map((c) => [c.consumablecategorytypeid, c.consumablecategorytypename])),
@@ -62,7 +80,7 @@ export default function ConsumablesTable({
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = searchValue.trim().toLowerCase();
-    return items.filter((item) => {
+    return consumablesData.filter((item) => {
       const matchesSearch =
         !normalizedQuery ||
         [
@@ -84,7 +102,7 @@ export default function ConsumablesTable({
       return matchesSearch && matchesCategory && matchesManufacturer && matchesSupplier;
     });
   }, [
-    items,
+    consumablesData,
     searchValue,
     categoryFilter,
     manufacturerFilter,
@@ -107,7 +125,37 @@ export default function ConsumablesTable({
     { key: 'supplier', label: 'Supplier' },
     { key: 'purchaseprice', label: 'Price' },
     { key: 'purchasedate', label: 'Purchased' },
+    { key: 'actions', label: 'Actions' },
   ];
+
+  const handleDelete = async (consumableId: string) => {
+    try {
+      const response = await fetch("/api/consumable", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ consumableid: consumableId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete consumable");
+      }
+
+      const result = await response.json();
+
+      toast.success(result.message, {
+        description: `${consumableId} deleted successfully`,
+      });
+
+      setConsumablesData((prevItems) => prevItems.filter((item) => item.consumableid !== consumableId));
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error("Error deleting consumable:", error);
+      toast.error("Failed to delete consumable", {
+        description: error.message,
+      });
+    }
+  };
 
   const renderCell = (item, columnKey) => {
     switch (columnKey) {
@@ -123,6 +171,44 @@ export default function ConsumablesTable({
         return formatPrice(item.purchaseprice);
       case 'purchasedate':
         return formatDate(item.purchasedate);
+      case 'actions':
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+              size="icon"
+              variant="ghost"
+              asChild
+            >
+              <Link href={`/consumables/${item.consumableid}/edit`}>
+                <EditIcon />
+              </Link>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                  size="icon"
+                  variant="ghost"
+                >
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    setSelectedConsumable(item);
+                    setIsDeleteModalOpen(true);
+                  }}
+                >
+                  <DeleteIcon className="mr-2 h-4 w-4" />
+                  Delete Item
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
       default:
         return null;
     }
@@ -237,6 +323,28 @@ export default function ConsumablesTable({
           Next
         </Button>
       </div>
+
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Consumable</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete consumable &quot;{selectedConsumable?.consumablename}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleDelete(selectedConsumable?.consumableid)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

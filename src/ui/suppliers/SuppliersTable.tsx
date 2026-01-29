@@ -11,8 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { PlusIcon, SearchIcon } from "../Icons";
+import { PlusIcon, SearchIcon, EditIcon, DeleteIcon, MoreVertical } from "../Icons";
+import { toast } from "sonner";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 const contactOptions = [
@@ -41,15 +56,18 @@ export default function SuppliersTable({ items }) {
   const [yearFilter, setYearFilter] = useState("all");
   const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
   const [page, setPage] = useState(1);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const [suppliersData, setSuppliersData] = useState(items);
 
   const years = useMemo(() => {
     const unique = new Set<number>(
-      items
+      suppliersData
         .map((item) => getYear(item.creation_date))
         .filter((year): year is number => typeof year === "number")
     );
     return Array.from(unique).sort((a, b) => b - a);
-  }, [items]);
+  }, [suppliersData]);
 
   useEffect(() => {
     setPage(1);
@@ -58,7 +76,7 @@ export default function SuppliersTable({ items }) {
   const filteredItems = useMemo(() => {
     const normalizedQuery = searchValue.trim().toLowerCase();
 
-    return items.filter((item) => {
+    return suppliersData.filter((item) => {
       const fullName = `${item.firstname ?? ""} ${item.lastname ?? ""}`.trim();
       const matchesSearch =
         !normalizedQuery ||
@@ -77,7 +95,7 @@ export default function SuppliersTable({ items }) {
 
       return matchesSearch && matchesContact && matchesYear;
     });
-  }, [items, searchValue, contactFilter, yearFilter]);
+  }, [suppliersData, searchValue, contactFilter, yearFilter]);
 
   const pages = Math.max(1, Math.ceil(filteredItems.length / rowsPerPage));
   const paginatedItems = useMemo(() => {
@@ -91,7 +109,37 @@ export default function SuppliersTable({ items }) {
     { key: 'email', label: 'Email' },
     { key: 'phonenumber', label: 'Phone' },
     { key: 'creation_date', label: 'Created' },
+    { key: 'actions', label: 'Actions' },
   ];
+
+  const handleDelete = async (supplierId: string) => {
+    try {
+      const response = await fetch("/api/supplier", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supplierid: supplierId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete supplier");
+      }
+
+      const result = await response.json();
+
+      toast.success(result.message, {
+        description: `${supplierId} deleted successfully`,
+      });
+
+      setSuppliersData((prevItems) => prevItems.filter((item) => item.supplierid !== supplierId));
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error("Error deleting supplier:", error);
+      toast.error("Failed to delete supplier", {
+        description: error.message,
+      });
+    }
+  };
 
   const renderCell = (item, columnKey) => {
     switch (columnKey) {
@@ -106,6 +154,44 @@ export default function SuppliersTable({ items }) {
         return item.phonenumber ?? "-";
       case 'creation_date':
         return formatDate(item.creation_date);
+      case 'actions':
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+              size="icon"
+              variant="ghost"
+              asChild
+            >
+              <Link href={`/suppliers/${item.supplierid}/edit`}>
+                <EditIcon />
+              </Link>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                  size="icon"
+                  variant="ghost"
+                >
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    setSelectedSupplier(item);
+                    setIsDeleteModalOpen(true);
+                  }}
+                >
+                  <DeleteIcon className="mr-2 h-4 w-4" />
+                  Delete Item
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
       default:
         return null;
     }
@@ -202,6 +288,28 @@ export default function SuppliersTable({ items }) {
           Next
         </Button>
       </div>
+
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Supplier</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete supplier &quot;{selectedSupplier?.suppliername}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleDelete(selectedSupplier?.supplierid)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
