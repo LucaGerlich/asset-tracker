@@ -2,33 +2,7 @@
 
 import { Clock, MessageSquare, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
-interface Ticket {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  createdBy: string;
-  assignedTo: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  creator: {
-    userid: string;
-    username: string | null;
-    firstname: string;
-    lastname: string;
-    email: string | null;
-  };
-  assignee: {
-    userid: string;
-    username: string | null;
-    firstname: string;
-    lastname: string;
-    email: string | null;
-  } | null;
-  comments: Array<any>;
-}
+import { Ticket } from "@/types/ticket";
 
 interface TicketListProps {
   tickets: Ticket[];

@@ -6,49 +6,7 @@ import { Button } from "@/components/ui/button";
 import { NewTicketForm } from "./NewTicketForm";
 import { TicketList } from "./TicketList";
 import { TicketDetailsModal } from "./TicketDetailsModal";
-
-interface Creator {
-  userid: string;
-  username: string | null;
-  firstname: string;
-  lastname: string;
-  email: string | null;
-}
-
-interface Assignee {
-  userid: string;
-  username: string | null;
-  firstname: string;
-  lastname: string;
-  email: string | null;
-}
-
-interface Comment {
-  id: string;
-  comment: string;
-  createdAt: Date;
-  user: {
-    userid: string;
-    username: string | null;
-    firstname: string;
-    lastname: string;
-  };
-}
-
-interface Ticket {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  createdBy: string;
-  assignedTo: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  creator: Creator;
-  assignee: Assignee | null;
-  comments: Comment[];
-}
+import { Ticket } from "@/types/ticket";
 
 interface UserTicketsPageProps {
   tickets: Ticket[];
@@ -120,7 +78,7 @@ export default function UserTicketsPage({ tickets: initialTickets }: UserTickets
       {/* Tickets List */}
       <TicketList
         tickets={tickets}
-        onTicketClick={setSelectedTicket}
+        onTicketClick={(ticket) => setSelectedTicket(ticket)}
       />
 
       {/* Ticket Details Modal */}

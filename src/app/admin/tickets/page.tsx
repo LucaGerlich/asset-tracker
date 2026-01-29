@@ -86,7 +86,7 @@ export default async function TicketsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <Breadcrumb
-        items={[
+        options={[
           { label: "Home", href: "/" },
           { label: "Admin", href: "/admin" },
           { label: "Tickets" },

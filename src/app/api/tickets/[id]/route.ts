@@ -7,11 +7,11 @@ import { requireApiAuth, requireApiAdmin } from "@/lib/api-auth";
 // Only admins can update tickets
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireApiAdmin();
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
 
     const { status, priority, assignedTo } = body || {};

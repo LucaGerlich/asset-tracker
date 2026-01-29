@@ -13,43 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-interface Ticket {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  createdBy: string;
-  assignedTo: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  creator: {
-    userid: string;
-    username: string | null;
-    firstname: string;
-    lastname: string;
-    email: string | null;
-  };
-  assignee: {
-    userid: string;
-    username: string | null;
-    firstname: string;
-    lastname: string;
-    email: string | null;
-  } | null;
-  comments: Array<{
-    id: string;
-    comment: string;
-    createdAt: Date;
-    user: {
-      userid: string;
-      username: string | null;
-      firstname: string;
-      lastname: string;
-    };
-  }>;
-}
+import { Ticket } from "@/types/ticket";
 
 interface AdminUser {
   userid: string;

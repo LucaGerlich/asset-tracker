@@ -14,49 +14,7 @@ import { TicketColumn } from "./TicketColumn";
 import { TicketCard } from "./TicketCard";
 import { TicketModal } from "./TicketModal";
 import { toast } from "sonner";
-
-interface Creator {
-  userid: string;
-  username: string | null;
-  firstname: string;
-  lastname: string;
-  email: string | null;
-}
-
-interface Assignee {
-  userid: string;
-  username: string | null;
-  firstname: string;
-  lastname: string;
-  email: string | null;
-}
-
-interface Comment {
-  id: string;
-  comment: string;
-  createdAt: Date;
-  user: {
-    userid: string;
-    username: string | null;
-    firstname: string;
-    lastname: string;
-  };
-}
-
-interface Ticket {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  createdBy: string;
-  assignedTo: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  creator: Creator;
-  assignee: Assignee | null;
-  comments: Comment[];
-}
+import { Ticket, TicketUser } from "@/types/ticket";
 
 interface AdminUser {
   userid: string;
@@ -226,7 +184,7 @@ export default function KanbanBoard({ tickets: initialTickets, adminUsers }: Kan
               label={status.label}
               color={status.color}
               tickets={getTicketsByStatus(status.id)}
-              onTicketClick={setSelectedTicket}
+              onTicketClick={(ticket) => setSelectedTicket(ticket)}
             />
           ))}
         </div>

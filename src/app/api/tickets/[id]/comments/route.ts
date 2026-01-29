@@ -6,11 +6,11 @@ import { requireApiAuth } from "@/lib/api-auth";
 // Add a comment to a ticket
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireApiAuth();
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
 
     const { comment } = body || {};
