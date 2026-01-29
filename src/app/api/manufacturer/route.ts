@@ -157,5 +157,77 @@ export async function PUT(req) {
   }
 }
 
+// DELETE /api/manufacturer
+export async function DELETE(req) {
+  try {
+    // Only admins can delete manufacturers
+    const admin = await requireApiAdmin();
+
+    const body = await req.json();
+    const { manufacturerid } = body;
+
+    // Validate manufacturer ID
+    const idValidation = uuidSchema.safeParse(manufacturerid);
+    if (!idValidation.success) {
+      return NextResponse.json(
+        { error: "Invalid manufacturer ID" },
+        { status: 400 }
+      );
+    }
+
+    // Get manufacturer details before deletion for audit log
+    const manufacturer = await prisma.manufacturer.findUnique({
+      where: { manufacturerid },
+      select: { manufacturername: true },
+    });
+
+    if (!manufacturer) {
+      return NextResponse.json(
+        { error: "Manufacturer not found" },
+        { status: 404 }
+      );
+    }
+
+    // Delete the manufacturer
+    await prisma.manufacturer.delete({
+      where: { manufacturerid },
+    });
+
+    // Create audit log
+    await createAuditLog({
+      userId: admin.id,
+      action: AUDIT_ACTIONS.DELETE,
+      entity: AUDIT_ENTITIES.MANUFACTURER,
+      entityId: manufacturerid,
+      details: { manufacturername: manufacturer.manufacturername },
+    });
+
+    return NextResponse.json(
+      { message: "Manufacturer deleted successfully" },
+      { status: 200 }
+    );
+  } catch (e) {
+    console.error("DELETE /api/manufacturer error:", e);
+
+    if (e.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (e.message.startsWith("Forbidden")) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
+    if (e.code === "P2025") {
+      return NextResponse.json(
+        { error: "Manufacturer not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Failed to delete manufacturer" },
+      { status: 500 }
+    );
+  }
+}
+
 export const dynamic = "force-dynamic";
 
