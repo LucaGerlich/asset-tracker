@@ -9,6 +9,9 @@ declare module "next-auth" {
       canRequest?: boolean;
       firstname?: string;
       lastname?: string;
+      organizationId?: string;
+      departmentId?: string;
+      permissions?: string[];
     } & DefaultSession["user"];
   }
 
@@ -19,6 +22,8 @@ declare module "next-auth" {
     canRequest?: boolean;
     firstname?: string;
     lastname?: string;
+    organizationId?: string;
+    departmentId?: string;
   }
 }
 
@@ -30,5 +35,8 @@ declare module "next-auth/jwt" {
     canRequest?: boolean;
     firstname?: string;
     lastname?: string;
+    organizationId?: string;
+    departmentId?: string;
+    permissions?: string[];
   }
 }

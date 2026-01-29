@@ -6,6 +6,176 @@ datasource db {
   provider = "postgresql"
 }
 
+// Multi-tenancy: Organization model
+model Organization {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(100)
+  slug        String   @unique @db.VarChar(50)
+  description String?
+  settings    Json?
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+  isActive    Boolean  @default(true)
+
+  // Relationships
+  users       user[]
+  departments Department[]
+  assets      asset[]
+  accessories accessories[]
+  licences    licence[]
+  consumables consumable[]
+  roles       Role[]
+  webhooks    Webhook[]
+
+  @@map("organizations")
+}
+
+// Multi-tenancy: Department model (hierarchical)
+model Department {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String       @db.VarChar(100)
+  description    String?
+  organizationId String       @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parentId       String?      @db.Uuid
+  parent         Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children       Department[] @relation("DepartmentHierarchy")
+  createdAt      DateTime     @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamp(6)
+
+  // Relationships
+  users user[]
+
+  @@map("departments")
+}
+
+// RBAC: Role model
+model Role {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String        @db.VarChar(100)
+  description    String?
+  permissions    String[]
+  isSystem       Boolean       @default(false)
+  organizationId String?       @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime      @updatedAt @db.Timestamp(6)
+
+  userRoles UserRole[]
+
+  @@unique([name, organizationId])
+  @@map("roles")
+}
+
+// RBAC: UserRole junction model
+model UserRole {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @db.Uuid
+  user      user     @relation(fields: [userId], references: [userid], onDelete: Cascade)
+  roleId    String   @db.Uuid
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  grantedAt DateTime @default(now()) @db.Timestamp(6)
+  grantedBy String?  @db.Uuid
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+// Webhook System
+model Webhook {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String        @db.VarChar(100)
+  url            String        @db.VarChar(500)
+  secret         String?       @db.VarChar(255)
+  events         String[]
+  isActive       Boolean       @default(true)
+  retryAttempts  Int           @default(3)
+  organizationId String?       @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime      @updatedAt @db.Timestamp(6)
+
+  deliveries WebhookDelivery[]
+
+  @@map("webhooks")
+}
+
+model WebhookDelivery {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  webhookId   String   @db.Uuid
+  webhook     Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  event       String   @db.VarChar(100)
+  payload     Json
+  statusCode  Int?
+  response    String?
+  attempt     Int      @default(1)
+  success     Boolean  @default(false)
+  deliveredAt DateTime @default(now()) @db.Timestamp(6)
+  error       String?
+
+  @@index([webhookId])
+  @@map("webhook_deliveries")
+}
+
+// Asset Reservation/Booking System
+model AssetReservation {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId    String    @db.Uuid
+  asset      asset     @relation(fields: [assetId], references: [assetid], onDelete: Cascade)
+  userId     String    @db.Uuid
+  user       user      @relation(fields: [userId], references: [userid], onDelete: Cascade)
+  startDate  DateTime  @db.Timestamp(6)
+  endDate    DateTime  @db.Timestamp(6)
+  status     String    @default("pending") @db.VarChar(20)
+  notes      String?
+  approvedBy String?   @db.Uuid
+  approvedAt DateTime? @db.Timestamp(6)
+  createdAt  DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([assetId])
+  @@index([userId])
+  @@map("asset_reservations")
+}
+
+// Stock Alert Configuration
+model StockAlert {
+  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  consumableId      String     @unique @db.Uuid
+  consumable        consumable @relation(fields: [consumableId], references: [consumableid], onDelete: Cascade)
+  minThreshold      Int        @default(10)
+  criticalThreshold Int        @default(5)
+  emailNotify       Boolean    @default(true)
+  webhookNotify     Boolean    @default(false)
+  lastAlertSentAt   DateTime?  @db.Timestamp(6)
+  createdAt         DateTime   @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime   @updatedAt @db.Timestamp(6)
+
+  @@map("stock_alerts")
+}
+
+// Bulk Import Jobs
+model ImportJob {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String    @db.Uuid
+  user          user      @relation(fields: [userId], references: [userid], onDelete: Cascade)
+  entityType    String    @db.VarChar(50)
+  fileName      String    @db.VarChar(255)
+  fileSize      Int
+  totalRows     Int       @default(0)
+  processedRows Int       @default(0)
+  successCount  Int       @default(0)
+  errorCount    Int       @default(0)
+  status        String    @default("pending") @db.VarChar(20)
+  errors        Json?
+  startedAt     DateTime? @db.Timestamp(6)
+  completedAt   DateTime? @db.Timestamp(6)
+  createdAt     DateTime  @default(now()) @db.Timestamp(6)
+
+  @@index([userId])
+  @@map("import_jobs")
+}
+
 model accessorieCategoryType {
   accessoriecategorytypeid   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   accessoriecategorytypename String        @db.VarChar
@@ -25,12 +195,14 @@ model accessories {
   locationid               String                 @db.Uuid
   supplierid               String                 @db.Uuid
   modelid                  String                 @db.Uuid
+  organizationId           String?                @db.Uuid
   creation_date            DateTime               @db.Timestamp(6)
   change_date              DateTime?              @db.Timestamp(6)
   accessorieCategoryType   accessorieCategoryType @relation(fields: [accessoriecategorytypeid], references: [accessoriecategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_accessoriecategorytype_c_accessoriecategorytypei")
   location                 location               @relation(fields: [locationid], references: [locationid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_location_c_locationid")
   manufacturer             manufacturer           @relation(fields: [manufacturerid], references: [manufacturerid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_manufacturer_c_manufacturerid")
   model                    model                  @relation(fields: [modelid], references: [modelid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_model_c_modelid")
+  organization             Organization?          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   statusType               statusType             @relation(fields: [statustypeid], references: [statustypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_statustype_c_statustypeid")
   supplier                 supplier               @relation(fields: [supplierid], references: [supplierid], onDelete: NoAction, onUpdate: NoAction, map: "fk_accessories_supplier_c_supplierid")
   userAccessoires          userAccessoires[]
@@ -71,6 +243,7 @@ model asset {
   supplierid            String?                 @db.Uuid
   locationid            String?                 @db.Uuid
   manufacturerid        String?                 @db.Uuid
+  organizationId        String?                 @db.Uuid
   creation_date         DateTime                @db.Timestamp(6)
   change_date           DateTime?               @db.Timestamp(6)
   expectedEndOfLife     DateTime?               @db.Date
@@ -80,10 +253,12 @@ model asset {
   location              location?               @relation(fields: [locationid], references: [locationid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_location_c_locationid")
   manufacturer          manufacturer?           @relation(fields: [manufacturerid], references: [manufacturerid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_manufacturer_c_manufacturerid")
   model                 model?                  @relation(fields: [modelid], references: [modelid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_model_c_modelid")
+  organization          Organization?           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   statusType            statusType?             @relation(fields: [statustypeid], references: [statustypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_statustype_c_statustypeid")
   supplier              supplier?               @relation(fields: [supplierid], references: [supplierid], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_supplier_c_supplierid")
   asset_attachments     asset_attachments[]
   maintenance_schedules maintenance_schedules[]
+  reservations          AssetReservation[]
   userAssets            userAssets[]
 }
 
@@ -130,13 +305,16 @@ model consumable {
   supplierid               String                 @db.Uuid
   purchaseprice            Decimal?               @db.Decimal(10, 2)
   purchasedate             DateTime?              @db.Date
+  organizationId           String?                @db.Uuid
   creation_date            DateTime               @db.Timestamp(6)
   change_date              DateTime?              @db.Timestamp(6)
   minQuantity              Int                    @default(0)
   quantity                 Int                    @default(0)
   consumableCategoryType   consumableCategoryType @relation(fields: [consumablecategorytypeid], references: [consumablecategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_consumable_consumablecategorytype_c_consumablecategorytypeid")
   manufacturer             manufacturer           @relation(fields: [manufacturerid], references: [manufacturerid], onDelete: NoAction, onUpdate: NoAction, map: "fk_consumable_manufacturer_c_manufacturerid")
+  organization             Organization?          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   supplier                 supplier               @relation(fields: [supplierid], references: [supplierid], onDelete: NoAction, onUpdate: NoAction, map: "fk_consumable_supplier_c_supplierid")
+  stockAlert               StockAlert?
 }
 
 model consumableCategoryType {
@@ -220,10 +398,12 @@ model licence {
   licencecategorytypeid String              @db.Uuid
   manufacturerid        String              @db.Uuid
   supplierid            String              @db.Uuid
+  organizationId        String?             @db.Uuid
   creation_date         DateTime            @db.Timestamp(6)
   change_date           DateTime?           @db.Timestamp(6)
   licenceCategoryType   licenceCategoryType @relation(fields: [licencecategorytypeid], references: [licencecategorytypeid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_licencecategorytype_c_licencecategorytypeid")
   manufacturer          manufacturer        @relation(fields: [manufacturerid], references: [manufacturerid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_manufacturer_c_manufacturerid")
+  organization          Organization?       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   supplier              supplier            @relation(fields: [supplierid], references: [supplierid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_supplier_c_supplierid")
   user                  user?               @relation(fields: [licenceduserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_user_c_licenceduser_userid")
 }
@@ -421,16 +601,23 @@ model user {
   email                            String?                   @unique @db.VarChar
   lan                              String?                   @db.VarChar
   password                         String                    @db.VarChar
+  organizationId                   String?                   @db.Uuid
+  departmentId                     String?                   @db.Uuid
   creation_date                    DateTime                  @db.Timestamp(6)
   change_date                      DateTime?                 @db.Timestamp(6)
   accounts                         accounts[]
   asset_attachments                asset_attachments[]
+  assetReservations                AssetReservation[]
   audit_logs                       audit_logs[]
+  department                       Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  importJobs                       ImportJob[]
   licence                          licence[]
   maintenance_logs                 maintenance_logs[]
   maintenance_schedules            maintenance_schedules[]
   notification_preferences         notification_preferences?
   notification_queue               notification_queue[]
+  organization                     Organization?             @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  roles                            UserRole[]
   saved_filters                    saved_filters[]
   sessions                         sessions[]
   ticket_comments                  ticket_comments[]

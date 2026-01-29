@@ -38,6 +38,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               isadmin: true,
               canrequest: true,
               password: true,
+              organizationId: true,
+              departmentId: true,
             },
           });
 
@@ -89,6 +91,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             canRequest: user.canrequest,
             firstname: user.firstname,
             lastname: user.lastname,
+            organizationId: user.organizationId || undefined,
+            departmentId: user.departmentId || undefined,
           };
         } catch (error) {
           console.error("Authorization error:", error);
