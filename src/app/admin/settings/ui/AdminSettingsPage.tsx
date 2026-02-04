@@ -12,6 +12,7 @@ import {
   FileText,
   Bell,
   Shield,
+  Ticket,
 } from "lucide-react";
 import EmailSettingsTab from "./EmailSettingsTab";
 import UsersSettingsTab from "./UsersSettingsTab";
@@ -20,6 +21,7 @@ import DepreciationSettingsTab from "./DepreciationSettingsTab";
 import CustomFieldsTab from "./CustomFieldsTab";
 import NotificationSettingsTab from "./NotificationSettingsTab";
 import GeneralSettingsTab from "./GeneralSettingsTab";
+import FreshdeskSettingsTab from "./FreshdeskSettingsTab";
 
 interface AdminSettingsPageProps {
   settings: Record<
@@ -101,7 +103,7 @@ export default function AdminSettingsPage({
       <Separator />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 h-auto p-1">
+        <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 h-auto p-1">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             <span className="hidden sm:inline">General</span>
@@ -109,6 +111,10 @@ export default function AdminSettingsPage({
           <TabsTrigger value="email" className="flex items-center gap-2">
             <Mail className="h-4 w-4" />
             <span className="hidden sm:inline">Email</span>
+          </TabsTrigger>
+          <TabsTrigger value="freshdesk" className="flex items-center gap-2">
+            <Ticket className="h-4 w-4" />
+            <span className="hidden sm:inline">Freshdesk</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
@@ -139,6 +145,10 @@ export default function AdminSettingsPage({
 
           <TabsContent value="email">
             <EmailSettingsTab settings={settings.email || []} />
+          </TabsContent>
+
+          <TabsContent value="freshdesk">
+            <FreshdeskSettingsTab settings={settings.freshdesk || []} />
           </TabsContent>
 
           <TabsContent value="notifications">
