@@ -183,12 +183,6 @@ No features currently in active development.
 - [ ] Role-based access control (RBAC) expansion
 - [ ] Custom permission configurations
 
-#### Mobile App
-- [ ] Native mobile application
-- [ ] QR code scanning for quick asset lookup
-- [ ] Mobile-optimized workflows
-- [ ] Offline mode support
-
 #### Integration & APIs
 - [ ] REST API documentation (Swagger/OpenAPI)
 - [ ] Webhook support
@@ -238,17 +232,23 @@ No features currently in active development.
 - [ ] Keyboard navigation improvements
 - [ ] Accessibility enhancements (WCAG compliance)
 
+#### Mobile App
+- [ ] Native mobile application
+- [ ] QR code scanning for quick asset lookup
+- [ ] Mobile-optimized workflows
+- [ ] Offline mode support
+
 ---
 
 ## 📝 Development Notes
 
 ### Recent Major Changes
 - **Frontend/API Overhaul**: Complete redesign of asset and user management UI with sectioned layouts, inline validation, and improved workflows. See `docs/OVERHAUL.md` for details.
-- **Next.js 15 Upgrade**: Migration to Next.js 15 with Turbopack support. See `docs/NEXT15-UPGRADE.md` for details.
+- **Next.js 16 Upgrade**: Migration to Next.js 16 with Turbopack support. See `docs/NEXT16-UPGRADE.md` for details.
 - **Hydration Fixes**: Resolved SSR/client hydration mismatches by properly separating server and client components.
 
 ### Technical Stack
-- **Frontend**: Next.js 15, React 19, NextUI, Tailwind CSS
+- **Frontend**: Next.js 16, React 19, NextUI, Tailwind CSS
 - **Backend**: Next.js API Routes
 - **Database**: PostgreSQL with Prisma ORM
 - **UI Components**: NextUI (HeroUI), Lucide Icons, Framer Motion

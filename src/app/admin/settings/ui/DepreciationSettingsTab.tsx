@@ -46,7 +46,7 @@ interface DepreciationSettingsTabProps {
     method: string;
     usefulLifeYears: number;
     salvagePercent: unknown;
-    category: {
+    assetCategoryType: {
       assetcategorytypeid: string;
       assetcategorytypename: string;
     };
@@ -152,7 +152,7 @@ export default function DepreciationSettingsTab({
               {settings.map((setting) => (
                 <TableRow key={setting.id}>
                   <TableCell className="font-medium">
-                    {setting.category.assetcategorytypename}
+                    {setting.assetCategoryType.assetcategorytypename}
                   </TableCell>
                   <TableCell>
                     {getMethodDisplayName(setting.method as DepreciationMethod)}

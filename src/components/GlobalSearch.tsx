@@ -141,7 +141,7 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
         <DialogHeader className="sr-only">
           <DialogTitle>Global Search</DialogTitle>
         </DialogHeader>
-        
+
         <div className="flex items-center border-b px-4">
           <Search className="h-5 w-5 text-muted-foreground mr-3" />
           <Input
@@ -169,28 +169,40 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
           )}
 
           {results.length > 0 && (
-            <div className="space-y-1">
-              {results.map((result, index) => (
-                <div
-                  key={`${result.type}-${result.id}`}
-                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                    index === selectedIndex
-                      ? "bg-accent"
-                      : "hover:bg-accent/50"
-                  }`}
-                  onClick={() => handleResultClick(result)}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                >
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted">
-                    {getTypeIcon(result.type)}
+            <div className="space-y-4">
+              {Object.entries(
+                results.reduce((acc, result) => {
+                  if (!acc[result.type]) acc[result.type] = [];
+                  acc[result.type].push(result);
+                  return acc;
+                }, {} as Record<string, typeof results>)
+              ).map(([type, items]) => (
+                <div key={type} className="space-y-1">
+                  <div className="text-lg font-semibold text-muted-foreground first-letter:uppercase">
+                    {type}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{result.title}</p>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {result.subtitle}
-                    </p>
-                  </div>
-                  {getTypeBadge(result.type)}
+                  {items.map((result) => (
+                    <div
+                      key={`${result.type}-${result.id}`}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedIndex === results.indexOf(result)
+                        ? "bg-neutral-100"
+                        : "hover:bg-neutral-100"
+                        }`}
+                      onClick={() => handleResultClick(result)}
+                      onMouseEnter={() => setSelectedIndex(results.indexOf(result))}
+                    >
+                      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted">
+                        {getTypeIcon(result.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{result.title}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {result.subtitle}
+                        </p>
+                      </div>
+                      {getTypeBadge(result.type)}
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -218,6 +230,6 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
           </span>
         </div>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   );
 }

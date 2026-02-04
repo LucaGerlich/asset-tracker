@@ -12,8 +12,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { PlusIcon, SearchIcon } from "../Icons";
+import { PlusIcon, SearchIcon, EditIcon, DeleteIcon, MoreVertical } from "../Icons";
+import { toast } from "sonner";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
@@ -39,6 +54,9 @@ export default function AccessoriesTable({
   const [requestableFilter, setRequestableFilter] = useState("all");
   const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
   const [page, setPage] = useState(1);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedAccessory, setSelectedAccessory] = useState(null);
+  const [accessoriesData, setAccessoriesData] = useState(items);
 
   const manufacturerById = useMemo(
     () => new Map(manufacturers.map((m) => [m.manufacturerid, m.manufacturername])),
@@ -74,7 +92,7 @@ export default function AccessoriesTable({
 
   const filteredItems = useMemo(() => {
     const normalizedQuery = searchValue.trim().toLowerCase();
-    return items.filter((item) => {
+    return accessoriesData.filter((item) => {
       const matchesSearch =
         !normalizedQuery ||
         [item.accessoriename, item.accessorietag, manufacturerById.get(item.manufacturerid), modelById.get(item.modelid)]
@@ -98,7 +116,7 @@ export default function AccessoriesTable({
       return matchesSearch && matchesStatus && matchesCategory && matchesLocation && matchesRequestable;
     });
   }, [
-    items,
+    accessoriesData,
     searchValue,
     statusFilter,
     categoryFilter,
@@ -114,6 +132,34 @@ export default function AccessoriesTable({
     return filteredItems.slice(start, start + rowsPerPage);
   }, [filteredItems, page, rowsPerPage]);
 
+  const handleDelete = async (accessoryId) => {
+    try {
+      const response = await fetch("/api/accessories/deleteAccessory/", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ accessoryId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete accessory");
+      }
+
+      const result = await response.json();
+
+      toast.success(result.message, {
+        description: `${accessoryId} deleted successfully`,
+      });
+
+      setAccessoriesData((prevItems) => prevItems.filter((item) => item.accessorieid !== accessoryId));
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error("Error deleting accessory:", error);
+      toast.error("Failed to delete accessory");
+    }
+  };
+
   const columns = [
     { key: 'accessoriename', label: 'Name' },
     { key: 'accessorietag', label: 'Tag' },
@@ -124,6 +170,7 @@ export default function AccessoriesTable({
     { key: 'location', label: 'Location' },
     { key: 'supplier', label: 'Supplier' },
     { key: 'requestable', label: 'Requestable' },
+    { key: 'actions', label: 'Actions' },
   ];
 
   const renderCell = (item: Record<string, unknown>, columnKey: string) => {
@@ -150,6 +197,44 @@ export default function AccessoriesTable({
           <Badge variant={item.requestable ? "default" : "secondary"}>
             {item.requestable ? "Yes" : "No"}
           </Badge>
+        );
+      case 'actions':
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+              size="icon"
+              variant="ghost"
+              asChild
+            >
+              <Link href={`/accessories/${item.accessorieid}/edit`}>
+                <EditIcon />
+              </Link>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                  size="icon"
+                  variant="ghost"
+                >
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    setSelectedAccessory(item);
+                    setIsDeleteModalOpen(true);
+                  }}
+                >
+                  <DeleteIcon className="mr-2 h-4 w-4" />
+                  Delete Item
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       default:
         return null;
@@ -275,6 +360,34 @@ export default function AccessoriesTable({
           Next
         </Button>
       </div>
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Delete {selectedAccessory?.accessoriename || "this item"}?
+            </DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            <p className="text-sm text-muted-foreground">
+              This action permanently removes the accessory and its user assignment. This cannot be undone.
+            </p>
+          </DialogDescription>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => selectedAccessory && handleDelete(selectedAccessory.accessorieid)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

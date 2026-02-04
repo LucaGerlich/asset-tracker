@@ -30,10 +30,21 @@ async function clearDatabase() {
   console.log("Clearing existing data...");
   
   // Delete in order respecting foreign key constraints
-  await prisma.auditLog.deleteMany({});
-  await prisma.session.deleteMany({});
-  await prisma.account.deleteMany({});
-  await prisma.verificationToken.deleteMany({});
+  // New models first (they may reference existing tables)
+  await prisma.webhookDelivery.deleteMany({});
+  await prisma.webhook.deleteMany({});
+  await prisma.assetReservation.deleteMany({});
+  await prisma.stockAlert.deleteMany({});
+  await prisma.importJob.deleteMany({});
+  await prisma.userRole.deleteMany({});
+  await prisma.role.deleteMany({});
+  await prisma.department.deleteMany({});
+  
+  // Original tables
+  await prisma.audit_logs.deleteMany({});
+  await prisma.sessions.deleteMany({});
+  await prisma.accounts.deleteMany({});
+  await prisma.verification_tokens.deleteMany({});
   await prisma.userHistory.deleteMany({});
   await prisma.userAccessoires.deleteMany({});
   await prisma.userAssets.deleteMany({});
@@ -51,6 +62,9 @@ async function clearDatabase() {
   await prisma.accessorieCategoryType.deleteMany({});
   await prisma.consumableCategoryType.deleteMany({});
   await prisma.licenceCategoryType.deleteMany({});
+  
+  // Delete organizations last (they're referenced by other tables)
+  await prisma.organization.deleteMany({});
   
   console.log("Database cleared!");
 }
@@ -225,13 +239,19 @@ async function createModels(manufacturers) {
   return created;
 }
 
-async function createDemoUsers() {
+async function createDemoUsers(organization, departments) {
   console.log("Creating demo users...");
   
   const hashedAdminPassword = await bcrypt.hash(DEMO_ADMIN_PASSWORD, 12);
   const hashedUserPassword = await bcrypt.hash(DEMO_USER_PASSWORD, 12);
   
   const users = [];
+  
+  // Find department IDs
+  const engineeringDept = departments.find(d => d.name === "Engineering");
+  const marketingDept = departments.find(d => d.name === "Marketing");
+  const salesDept = departments.find(d => d.name === "Sales");
+  const hrDept = departments.find(d => d.name === "Human Resources");
   
   // Demo Admin
   const admin = await prisma.user.create({
@@ -244,6 +264,7 @@ async function createDemoUsers() {
       isadmin: true,
       canrequest: true,
       lan: "LAN001",
+      organizationId: organization.id,
       creation_date: new Date()
     }
   });
@@ -260,19 +281,21 @@ async function createDemoUsers() {
       isadmin: false,
       canrequest: true,
       lan: "LAN002",
+      organizationId: organization.id,
+      departmentId: engineeringDept?.id,
       creation_date: new Date()
     }
   });
   users.push(user);
   
-  // Additional sample users
+  // Additional sample users with departments
   const additionalUsers = [
-    { firstName: "Alice", lastName: "Engineering", dept: "Engineering" },
-    { firstName: "Bob", lastName: "Marketing", dept: "Marketing" },
-    { firstName: "Charlie", lastName: "Sales", dept: "Sales" },
-    { firstName: "Diana", lastName: "HR", dept: "Human Resources" },
-    { firstName: "Eve", lastName: "Finance", dept: "Finance" },
-    { firstName: "Frank", lastName: "Operations", dept: "Operations" }
+    { firstName: "Alice", lastName: "Engineering", dept: engineeringDept },
+    { firstName: "Bob", lastName: "Marketing", dept: marketingDept },
+    { firstName: "Charlie", lastName: "Sales", dept: salesDept },
+    { firstName: "Diana", lastName: "HR", dept: hrDept },
+    { firstName: "Eve", lastName: "Finance", dept: null },
+    { firstName: "Frank", lastName: "Operations", dept: null }
   ];
   
   for (const u of additionalUsers) {
@@ -287,6 +310,8 @@ async function createDemoUsers() {
         isadmin: false,
         canrequest: true,
         lan: "LAN" + faker.string.numeric(3),
+        organizationId: organization.id,
+        departmentId: u.dept?.id || null,
         creation_date: new Date()
       }
     });
@@ -517,11 +542,152 @@ async function createUserHistory(users, assets) {
   }
 }
 
+// Create default organization for multi-tenancy
+async function createDefaultOrganization() {
+  console.log("Creating default organization...");
+  
+  const org = await prisma.organization.create({
+    data: {
+      name: "Demo Organization",
+      slug: "demo-org",
+      description: "Default organization for demo purposes",
+      isActive: true,
+      settings: {
+        theme: "light",
+        defaultCurrency: "USD",
+        allowAssetRequests: true
+      }
+    }
+  });
+  
+  return org;
+}
+
+// Create default departments
+async function createDepartments(organization) {
+  console.log("Creating departments...");
+  
+  const departments = [];
+  
+  const engineering = await prisma.department.create({
+    data: {
+      name: "Engineering",
+      description: "Software engineering and development",
+      organizationId: organization.id
+    }
+  });
+  departments.push(engineering);
+  
+  const marketing = await prisma.department.create({
+    data: {
+      name: "Marketing",
+      description: "Marketing and communications",
+      organizationId: organization.id
+    }
+  });
+  departments.push(marketing);
+  
+  const sales = await prisma.department.create({
+    data: {
+      name: "Sales",
+      description: "Sales and business development",
+      organizationId: organization.id
+    }
+  });
+  departments.push(sales);
+  
+  const hr = await prisma.department.create({
+    data: {
+      name: "Human Resources",
+      description: "HR and people operations",
+      organizationId: organization.id
+    }
+  });
+  departments.push(hr);
+  
+  return departments;
+}
+
+// Create default roles for RBAC
+async function createDefaultRoles(organization) {
+  console.log("Creating default roles...");
+  
+  const roles = [];
+  
+  // Admin role (system role, all permissions)
+  const adminRole = await prisma.role.create({
+    data: {
+      name: "Administrator",
+      description: "Full system access",
+      isSystem: true,
+      organizationId: null, // Global role
+      permissions: [
+        "asset:view", "asset:create", "asset:edit", "asset:delete", "asset:assign",
+        "user:view", "user:create", "user:edit", "user:delete",
+        "accessory:view", "accessory:create", "accessory:edit", "accessory:delete",
+        "license:view", "license:create", "license:edit", "license:delete", "license:assign",
+        "consumable:view", "consumable:create", "consumable:edit", "consumable:delete",
+        "org:view", "org:manage", "dept:view", "dept:manage",
+        "reservation:view", "reservation:create", "reservation:approve",
+        "settings:view", "settings:edit",
+        "report:view", "report:export",
+        "audit:view", "webhook:view", "webhook:manage", "import:execute"
+      ]
+    }
+  });
+  roles.push(adminRole);
+  
+  // Asset Manager role
+  const managerRole = await prisma.role.create({
+    data: {
+      name: "Asset Manager",
+      description: "Can manage assets and assignments",
+      isSystem: true,
+      organizationId: null,
+      permissions: [
+        "asset:view", "asset:create", "asset:edit", "asset:assign",
+        "accessory:view", "accessory:create", "accessory:edit",
+        "license:view", "license:assign",
+        "consumable:view",
+        "reservation:view", "reservation:approve",
+        "report:view", "report:export"
+      ]
+    }
+  });
+  roles.push(managerRole);
+  
+  // Standard User role
+  const userRole = await prisma.role.create({
+    data: {
+      name: "Standard User",
+      description: "View-only access with request capabilities",
+      isSystem: true,
+      organizationId: null,
+      permissions: [
+        "asset:view",
+        "accessory:view",
+        "license:view",
+        "consumable:view",
+        "reservation:view", "reservation:create",
+        "report:view"
+      ]
+    }
+  });
+  roles.push(userRole);
+  
+  return roles;
+}
+
 async function main() {
   console.log("🚀 Starting Demo Database Seed...\n");
   
   try {
     await clearDatabase();
+    
+    // Create multi-tenancy foundation
+    const organization = await createDefaultOrganization();
+    const departments = await createDepartments(organization);
+    const roles = await createDefaultRoles(organization);
     
     // Create reference data
     const statuses = await createStatusTypes();
@@ -535,7 +701,7 @@ async function main() {
     const models = await createModels(manufacturers);
     
     // Create main data
-    const users = await createDemoUsers();
+    const users = await createDemoUsers(organization, departments);
     const assets = await createAssets(statuses, assetCategories, locations, manufacturers, suppliers, models);
     const accessories = await createAccessories(statuses, accessoryCategories, locations, manufacturers, suppliers, models);
     await createConsumables(consumableCategories, manufacturers, suppliers);
@@ -552,6 +718,9 @@ async function main() {
     console.log(`   User:  ${DEMO_USER_USERNAME} / ${DEMO_USER_PASSWORD}`);
     console.log("\n📊 Summary:");
     console.log(`   - ${users.length} users created`);
+    console.log(`   - ${organization.name} organization created`);
+    console.log(`   - ${departments.length} departments created`);
+    console.log(`   - ${roles.length} roles created`);
     console.log(`   - ${assets.length} assets created`);
     console.log(`   - ${accessories.length} accessories created`);
     console.log(`   - ${statuses.length} status types`);

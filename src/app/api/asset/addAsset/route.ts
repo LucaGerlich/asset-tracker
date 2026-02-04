@@ -31,6 +31,7 @@ export async function POST(req) {
         supplierid: rest.supplierid ?? null,
         locationid: rest.locationid ?? null,
         manufacturerid: rest.manufacturerid ?? null,
+        creation_date: new Date(),
       } as Prisma.assetUncheckedCreateInput,
     });
 

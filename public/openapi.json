@@ -1,0 +1,727 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Asset Tracker API",
+    "version": "2.0.0",
+    "description": "Comprehensive asset management system API with multi-tenancy, RBAC, webhooks, and advanced features.",
+    "contact": {
+      "name": "API Support"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Current server"
+    }
+  ],
+  "tags": [
+    { "name": "Assets", "description": "Asset management endpoints" },
+    { "name": "Organizations", "description": "Multi-tenancy organization management" },
+    { "name": "Departments", "description": "Department management within organizations" },
+    { "name": "Roles", "description": "Role-based access control" },
+    { "name": "Webhooks", "description": "Webhook configuration and delivery" },
+    { "name": "Reservations", "description": "Asset reservation and booking" },
+    { "name": "Stock Alerts", "description": "Consumable stock monitoring" },
+    { "name": "Import", "description": "Bulk CSV import" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "next-auth.session-token",
+        "description": "Session token from NextAuth authentication"
+      }
+    },
+    "schemas": {
+      "Organization": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "maxLength": 100 },
+          "slug": { "type": "string", "maxLength": 50 },
+          "description": { "type": "string", "nullable": true },
+          "settings": { "type": "object", "nullable": true },
+          "isActive": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "slug"]
+      },
+      "Department": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "maxLength": 100 },
+          "description": { "type": "string", "nullable": true },
+          "organizationId": { "type": "string", "format": "uuid" },
+          "parentId": { "type": "string", "format": "uuid", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "organizationId"]
+      },
+      "Role": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "maxLength": 100 },
+          "description": { "type": "string", "nullable": true },
+          "permissions": { "type": "array", "items": { "type": "string" } },
+          "isSystem": { "type": "boolean" },
+          "organizationId": { "type": "string", "format": "uuid", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "permissions"]
+      },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "maxLength": 100 },
+          "url": { "type": "string", "format": "uri" },
+          "secret": { "type": "string", "nullable": true },
+          "events": { "type": "array", "items": { "type": "string" } },
+          "isActive": { "type": "boolean" },
+          "retryAttempts": { "type": "integer", "minimum": 0, "maximum": 5 },
+          "organizationId": { "type": "string", "format": "uuid", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "url", "events"]
+      },
+      "AssetReservation": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "assetId": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "startDate": { "type": "string", "format": "date-time" },
+          "endDate": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "enum": ["pending", "approved", "rejected", "cancelled", "completed"] },
+          "notes": { "type": "string", "nullable": true },
+          "approvedBy": { "type": "string", "format": "uuid", "nullable": true },
+          "approvedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "assetId", "userId", "startDate", "endDate", "status"]
+      },
+      "StockAlert": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "consumableId": { "type": "string", "format": "uuid" },
+          "minThreshold": { "type": "integer", "minimum": 0 },
+          "criticalThreshold": { "type": "integer", "minimum": 0 },
+          "emailNotify": { "type": "boolean" },
+          "webhookNotify": { "type": "boolean" },
+          "lastAlertSentAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "consumableId", "minThreshold", "criticalThreshold"]
+      },
+      "ImportJob": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "entityType": { "type": "string", "enum": ["asset", "accessory", "consumable", "licence", "user", "location"] },
+          "fileName": { "type": "string" },
+          "fileSize": { "type": "integer" },
+          "totalRows": { "type": "integer" },
+          "processedRows": { "type": "integer" },
+          "successCount": { "type": "integer" },
+          "errorCount": { "type": "integer" },
+          "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed"] },
+          "errors": { "type": "array", "items": { "type": "object" }, "nullable": true },
+          "startedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "completedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "userId", "entityType", "fileName", "fileSize", "status"]
+      },
+      "Asset": {
+        "type": "object",
+        "properties": {
+          "assetid": { "type": "string", "format": "uuid" },
+          "assetname": { "type": "string" },
+          "assettag": { "type": "string" },
+          "serialnumber": { "type": "string" },
+          "modelid": { "type": "string", "format": "uuid", "nullable": true },
+          "specs": { "type": "string", "nullable": true },
+          "notes": { "type": "string", "nullable": true },
+          "purchaseprice": { "type": "number", "nullable": true },
+          "purchasedate": { "type": "string", "format": "date", "nullable": true },
+          "mobile": { "type": "boolean", "nullable": true },
+          "requestable": { "type": "boolean", "nullable": true },
+          "organizationId": { "type": "string", "format": "uuid", "nullable": true }
+        },
+        "required": ["assetid", "assetname", "assettag", "serialnumber"]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "status": { "type": "integer" }
+        }
+      }
+    }
+  },
+  "security": [{ "cookieAuth": [] }],
+  "paths": {
+    "/organizations": {
+      "get": {
+        "tags": ["Organizations"],
+        "summary": "List all organizations",
+        "responses": {
+          "200": {
+            "description": "List of organizations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Organization" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Organizations"],
+        "summary": "Create a new organization",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "slug": { "type": "string" },
+                  "description": { "type": "string" },
+                  "settings": { "type": "object" },
+                  "isActive": { "type": "boolean" }
+                },
+                "required": ["name", "slug"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Organization created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Organization" }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      }
+    },
+    "/organizations/{id}": {
+      "get": {
+        "tags": ["Organizations"],
+        "summary": "Get organization by ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organization details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Organization" }
+              }
+            }
+          },
+          "404": { "description": "Organization not found" }
+        }
+      },
+      "put": {
+        "tags": ["Organizations"],
+        "summary": "Update an organization",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Organization" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Organization updated" },
+          "403": { "description": "Forbidden - Admin only" },
+          "404": { "description": "Organization not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Organizations"],
+        "summary": "Delete an organization",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Organization deleted" },
+          "400": { "description": "Cannot delete organization with existing data" },
+          "403": { "description": "Forbidden - Admin only" },
+          "404": { "description": "Organization not found" }
+        }
+      }
+    },
+    "/departments": {
+      "get": {
+        "tags": ["Departments"],
+        "summary": "List departments",
+        "parameters": [
+          { "name": "organizationId", "in": "query", "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of departments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Department" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Departments"],
+        "summary": "Create a department",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "organizationId": { "type": "string", "format": "uuid" },
+                  "parentId": { "type": "string", "format": "uuid" }
+                },
+                "required": ["name", "organizationId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Department created" },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      }
+    },
+    "/roles": {
+      "get": {
+        "tags": ["Roles"],
+        "summary": "List roles",
+        "responses": {
+          "200": {
+            "description": "List of roles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Role" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Roles"],
+        "summary": "Create a role",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "permissions": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["name", "permissions"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Role created" },
+          "400": { "description": "Invalid permissions" },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      },
+      "options": {
+        "tags": ["Roles"],
+        "summary": "Get available permissions",
+        "responses": {
+          "200": {
+            "description": "List of available permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "permissions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": { "type": "string" },
+                          "description": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks": {
+      "get": {
+        "tags": ["Webhooks"],
+        "summary": "List webhooks",
+        "responses": {
+          "200": {
+            "description": "List of webhooks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Webhook" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Webhooks"],
+        "summary": "Create a webhook",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "url": { "type": "string", "format": "uri" },
+                  "events": { "type": "array", "items": { "type": "string" } },
+                  "secret": { "type": "string" },
+                  "isActive": { "type": "boolean" },
+                  "retryAttempts": { "type": "integer" }
+                },
+                "required": ["name", "url", "events"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Webhook created" },
+          "400": { "description": "Invalid events" },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      },
+      "options": {
+        "tags": ["Webhooks"],
+        "summary": "Get available webhook events",
+        "responses": {
+          "200": {
+            "description": "List of available webhook events"
+          }
+        }
+      }
+    },
+    "/reservations": {
+      "get": {
+        "tags": ["Reservations"],
+        "summary": "List asset reservations",
+        "parameters": [
+          { "name": "assetId", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "userId", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of reservations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/AssetReservation" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Reservations"],
+        "summary": "Create a reservation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "assetId": { "type": "string", "format": "uuid" },
+                  "startDate": { "type": "string", "format": "date-time" },
+                  "endDate": { "type": "string", "format": "date-time" },
+                  "notes": { "type": "string" }
+                },
+                "required": ["assetId", "startDate", "endDate"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Reservation created" },
+          "400": { "description": "Asset already reserved or validation error" }
+        }
+      }
+    },
+    "/reservations/{id}": {
+      "put": {
+        "tags": ["Reservations"],
+        "summary": "Update reservation (approve/reject/cancel)",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string", "enum": ["approved", "rejected", "cancelled"] },
+                  "notes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Reservation updated" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/stock-alerts": {
+      "get": {
+        "tags": ["Stock Alerts"],
+        "summary": "List stock alerts",
+        "parameters": [
+          { "name": "lowStockOnly", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "critical", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of stock alerts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/StockAlert" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Stock Alerts"],
+        "summary": "Create a stock alert for a consumable",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "consumableId": { "type": "string", "format": "uuid" },
+                  "minThreshold": { "type": "integer" },
+                  "criticalThreshold": { "type": "integer" },
+                  "emailNotify": { "type": "boolean" },
+                  "webhookNotify": { "type": "boolean" }
+                },
+                "required": ["consumableId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Stock alert created" },
+          "400": { "description": "Alert already exists" }
+        }
+      },
+      "put": {
+        "tags": ["Stock Alerts"],
+        "summary": "Check all consumables and trigger alerts",
+        "responses": {
+          "200": {
+            "description": "Alert check results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "checked": { "type": "integer" },
+                    "triggered": { "type": "integer" },
+                    "alerts": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/import": {
+      "get": {
+        "tags": ["Import"],
+        "summary": "List import jobs",
+        "responses": {
+          "200": {
+            "description": "List of import jobs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ImportJob" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Import"],
+        "summary": "Upload and process a CSV import",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "entityType": { "type": "string", "enum": ["asset", "accessory", "consumable", "licence", "user", "location"] }
+                },
+                "required": ["file", "entityType"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Import completed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ImportJob" }
+              }
+            }
+          },
+          "400": { "description": "Invalid CSV or missing required fields" }
+        }
+      },
+      "options": {
+        "tags": ["Import"],
+        "summary": "Get expected CSV fields for entity types",
+        "parameters": [
+          { "name": "entityType", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Available entity types and their fields"
+          }
+        }
+      }
+    },
+    "/asset": {
+      "get": {
+        "tags": ["Assets"],
+        "summary": "List all assets",
+        "parameters": [
+          { "name": "id", "in": "query", "schema": { "type": "string", "format": "uuid" }, "description": "Get specific asset by ID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of assets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Asset" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Assets"],
+        "summary": "Create a new asset",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Asset" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Asset created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Asset" }
+              }
+            }
+          },
+          "400": { "description": "Validation error" }
+        }
+      },
+      "put": {
+        "tags": ["Assets"],
+        "summary": "Update an asset",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Asset" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Asset updated" },
+          "400": { "description": "assetid required" }
+        }
+      }
+    }
+  }
+}

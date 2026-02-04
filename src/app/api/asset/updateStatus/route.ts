@@ -1,15 +1,24 @@
 import prisma from "../../../../lib/prisma";
+import { logger } from "@/lib/logger";
 
 // PUT /api/asset/updateStatus
 // Body: { assetId: string, statusTypeId?: string, statusName?: string }
 export async function PUT(req) {
+  const startTime = Date.now();
+  
   try {
     const { assetId, statusTypeId, statusName } = await req.json();
 
     if (!assetId || (!statusTypeId && !statusName)) {
+      logger.warn("PUT /api/asset/updateStatus - Invalid request", {
+        type: "validation_error",
+        hasAssetId: !!assetId,
+        hasStatusTypeId: !!statusTypeId,
+        hasStatusName: !!statusName,
+      });
       return new Response(
         JSON.stringify({ error: "assetId and statusTypeId or statusName are required" }),
-        { status: 400 }
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
@@ -19,9 +28,12 @@ export async function PUT(req) {
         where: { statustypename: { equals: statusName, mode: "insensitive" } },
       });
       if (!found) {
+        logger.warn("PUT /api/asset/updateStatus - Status not found", {
+          statusName,
+        });
         return new Response(
           JSON.stringify({ error: `Status '${statusName}' not found` }),
-          { status: 404 }
+          { status: 404, headers: { "Content-Type": "application/json" } }
         );
       }
       statusId = found.statustypeid;
@@ -32,12 +44,44 @@ export async function PUT(req) {
       data: { statustypeid: statusId, change_date: new Date() },
     });
 
-    return new Response(JSON.stringify(updated), { status: 200 });
-  } catch (error) {
-    console.error("PUT /api/asset/updateStatus error:", error);
-    return new Response(JSON.stringify({ error: "Failed to update status" }), {
-      status: 500,
+    const duration = Date.now() - startTime;
+    logger.apiResponse("PUT", "/api/asset/updateStatus", 200, duration, {
+      assetId,
+      statusId,
     });
+
+    return new Response(JSON.stringify(updated), { 
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    logger.apiError("PUT", "/api/asset/updateStatus", error, { duration });
+    
+    // Handle Prisma-specific errors
+    let errorMessage = "Failed to update status";
+    let statusCode = 500;
+    
+    if (error.code === "P2025") {
+      errorMessage = "Asset not found";
+      statusCode = 404;
+    } else if (error.code === "P2003") {
+      errorMessage = "Invalid status ID - status does not exist";
+      statusCode = 400;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    return new Response(
+      JSON.stringify({ 
+        error: errorMessage,
+        code: error.code || "UNKNOWN"
+      }), 
+      { 
+        status: statusCode,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
   }
 }
 

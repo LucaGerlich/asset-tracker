@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 async function getSystemSettings() {
-  const settings = await prisma.systemSettings.findMany({
+  const settings = await prisma.system_settings.findMany({
     orderBy: [{ category: "asc" }, { settingKey: "asc" }],
   });
 
@@ -58,27 +58,27 @@ async function getUsers() {
 }
 
 async function getEmailTemplates() {
-  return await prisma.emailTemplate.findMany({
+  return await prisma.email_templates.findMany({
     orderBy: { name: "asc" },
   });
 }
 
 async function getLabelTemplates() {
-  return await prisma.labelTemplate.findMany({
+  return await prisma.label_templates.findMany({
     orderBy: { name: "asc" },
   });
 }
 
 async function getCustomFields() {
-  return await prisma.customFieldDefinition.findMany({
+  return await prisma.custom_field_definitions.findMany({
     orderBy: [{ entityType: "asc" }, { displayOrder: "asc" }],
   });
 }
 
 async function getDepreciationSettings() {
-  return await prisma.depreciationSetting.findMany({
+  return await prisma.depreciation_settings.findMany({
     include: {
-      category: true,
+      assetCategoryType: true,
     },
   });
 }

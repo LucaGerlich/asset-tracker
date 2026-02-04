@@ -11,8 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { PlusIcon, SearchIcon } from "../Icons";
+import { PlusIcon, SearchIcon, EditIcon, DeleteIcon, MoreVertical } from "../Icons";
+import { toast } from "sonner";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 const expirationOptions = [
@@ -41,6 +56,9 @@ export default function LicencesTable({
   const [expirationFilter, setExpirationFilter] = useState("all");
   const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
   const [page, setPage] = useState(1);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedLicence, setSelectedLicence] = useState(null);
+  const [licencesData, setLicencesData] = useState(items);
 
   const categoryById = useMemo(
     () => new Map(categories.map((c) => [c.licencecategorytypeid, c.licencecategorytypename])),
@@ -63,7 +81,7 @@ export default function LicencesTable({
     const normalizedQuery = searchValue.trim().toLowerCase();
     const now = new Date();
 
-    return items.filter((item) => {
+    return licencesData.filter((item) => {
       const matchesSearch =
         !normalizedQuery ||
         [
@@ -94,7 +112,7 @@ export default function LicencesTable({
       return matchesSearch && matchesCategory && matchesManufacturer && matchesSupplier && matchesExpiration;
     });
   }, [
-    items,
+    licencesData,
     searchValue,
     categoryFilter,
     manufacturerFilter,
@@ -118,7 +136,37 @@ export default function LicencesTable({
     { key: 'manufacturer', label: 'Manufacturer' },
     { key: 'supplier', label: 'Supplier' },
     { key: 'expirationdate', label: 'Expires' },
+    { key: 'actions', label: 'Actions' },
   ];
+
+  const handleDelete = async (licenceId: string) => {
+    try {
+      const response = await fetch("/api/licence", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ licenceid: licenceId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete licence");
+      }
+
+      const result = await response.json();
+
+      toast.success(result.message, {
+        description: `${licenceId} deleted successfully`,
+      });
+
+      setLicencesData((prevItems) => prevItems.filter((item) => item.licenceid !== licenceId));
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error("Error deleting licence:", error);
+      toast.error("Failed to delete licence", {
+        description: error.message,
+      });
+    }
+  };
 
   const renderCell = (item, columnKey) => {
     switch (columnKey) {
@@ -134,6 +182,44 @@ export default function LicencesTable({
         return supplierById.get(item.supplierid) ?? "-";
       case 'expirationdate':
         return formatDate(item.expirationdate);
+      case 'actions':
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+              size="icon"
+              variant="ghost"
+              asChild
+            >
+              <Link href={`/licences/${item.licenceid}/edit`}>
+                <EditIcon />
+              </Link>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                  size="icon"
+                  variant="ghost"
+                >
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    setSelectedLicence(item);
+                    setIsDeleteModalOpen(true);
+                  }}
+                >
+                  <DeleteIcon className="mr-2 h-4 w-4" />
+                  Delete Item
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
       default:
         return null;
     }
@@ -258,6 +344,28 @@ export default function LicencesTable({
           Next
         </Button>
       </div>
+
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Licence</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete licence &quot;{selectedLicence?.licencekey || selectedLicence?.licenceid}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleDelete(selectedLicence?.licenceid)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

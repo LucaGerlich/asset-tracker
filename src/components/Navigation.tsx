@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import ThemeSwitcher from "./ThemeSwitcher";
 import { SignOutButton } from "./SignOutButton";
 import GlobalSearch from "./GlobalSearch";
-import { ChevronDown, Menu, Search } from "lucide-react";
+import { ChevronDown, Menu, Search, X, Loader2, Bell, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -29,12 +29,111 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { NotificationIcon } from "../ui/Icons";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+interface Notification {
+  id: string;
+  type: string;
+  subject: string;
+  body: string;
+  status: string;
+  createdAt: string;
+}
 
 function Navigation() {
   const route = usePathname();
   const [activeMenu, setActiveMenu] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const { data: session } = useSession();
+
+  // Notification state
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+
+  // Fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!session?.user?.id) return;
+
+    setNotificationsLoading(true);
+    try {
+      const response = await fetch('/api/notifications?limit=10');
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, [session?.user?.id]);
+
+  // Mark notification as read
+  const markAsRead = async (id: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'sent' }),
+      });
+      if (response.ok) {
+        setNotifications(prev =>
+          prev.map(n => n.id === id ? { ...n, status: 'sent' } : n)
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  // Delete single notification
+  const deleteNotification = async (id: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${id}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        const notification = notifications.find(n => n.id === id);
+        setNotifications(prev => prev.filter(n => n.id !== id));
+        if (notification?.status === 'pending') {
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+        toast.success('Notification deleted');
+      }
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+      toast.error('Failed to delete notification');
+    }
+  };
+
+  // Delete all notifications
+  const deleteAllNotifications = async () => {
+    setDeletingAll(true);
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        setNotifications([]);
+        setUnreadCount(0);
+        toast.success('All notifications deleted');
+      }
+    } catch (error) {
+      console.error('Failed to delete all notifications:', error);
+      toast.error('Failed to delete notifications');
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
+  // Fetch notifications on mount and when session changes
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   // Listen for Cmd+K / Ctrl+K
   useEffect(() => {
@@ -114,6 +213,27 @@ function Navigation() {
                 >
                   Accessories
                 </Link>
+                {session?.user?.isAdmin ? (
+                  <Link
+                    href="/admin/tickets"
+                    className={cn(
+                      "text-lg font-medium hover:text-primary transition-colors",
+                      route.includes("/admin/tickets") || route.includes("/user/tickets") ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    Tickets
+                  </Link>
+                ) : (
+                  <Link
+                    href="/user/tickets"
+                    className={cn(
+                      "text-lg font-medium hover:text-primary transition-colors",
+                      route.includes("/tickets") ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    My Tickets
+                  </Link>
+                )}
                 <Separator className="my-2" />
                 <p className="text-sm font-semibold text-muted-foreground">More Items</p>
                 <Link
@@ -198,6 +318,27 @@ function Navigation() {
             >
               Accessories
             </Link>
+            {session?.user?.isAdmin ? (
+              <Link
+                href="/admin/tickets"
+                className={cn(
+                  "text-sm font-medium transition-colors hover:text-primary",
+                  route.includes("/admin/tickets") || route.includes("/user/tickets") ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                Tickets
+              </Link>
+            ) : (
+              <Link
+                href="/user/tickets"
+                className={cn(
+                  "text-sm font-medium transition-colors hover:text-primary",
+                  route.includes("/tickets") ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                My Tickets
+              </Link>
+            )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -255,27 +396,118 @@ function Navigation() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <NotificationIcon size={24} />
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                >
-                  99+
-                </Badge>
+                {unreadCount > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Badge>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Notifications</span>
+                {notificationsLoading && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="py-3">
-                <div className="flex flex-row items-center gap-6 justify-between w-full">
-                  <span>An asset got assigned</span>
+
+              {notifications.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  {notificationsLoading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading notifications...
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Bell className="h-8 w-8 text-muted-foreground/50" />
+                      <span>No notifications</span>
+                    </div>
+                  )}
                 </div>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem className="text-destructive">
-                Delete all notifications
-              </DropdownMenuItem>
+              ) : (
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.map((notification) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      className={cn(
+                        "py-3 cursor-pointer flex flex-col items-start gap-1",
+                        notification.status === 'pending' && "bg-muted/50"
+                      )}
+                      onClick={() => {
+                        if (notification.status === 'pending') {
+                          markAsRead(notification.id);
+                        }
+                      }}
+                    >
+                      <div className="flex w-full items-start justify-between gap-2">
+                        <span className="font-medium text-sm line-clamp-1">
+                          {notification.subject}
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {notification.status === 'pending' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markAsRead(notification.id);
+                              }}
+                            >
+                              <Check className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(notification.id);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground line-clamp-2">
+                        {notification.body.replace(/<[^>]*>/g, '').slice(0, 100)}
+                        {notification.body.length > 100 && '...'}
+                      </span>
+                      <span className="text-xs text-muted-foreground/70">
+                        {new Date(notification.createdAt).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              )}
+
+              {notifications.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    className="text-destructive cursor-pointer"
+                    onClick={deleteAllNotifications}
+                    disabled={deletingAll}
+                  >
+                    {deletingAll ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    Delete all notifications
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -303,6 +535,11 @@ function Navigation() {
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href={`/user/${session?.user?.id || '123'}`}>My Items</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={session?.user?.isAdmin ? "/admin/tickets" : "/user/tickets"}>
+                  {session?.user?.isAdmin ? "Tickets" : "My Tickets"}
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href={`/user/${session?.user?.id || '123'}/settings`}>My Settings</Link>

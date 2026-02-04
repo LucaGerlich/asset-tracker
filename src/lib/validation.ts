@@ -95,6 +95,22 @@ export const createLicenseSchema = z.object({
 export const updateLicenseSchema = createLicenseSchema.partial();
 
 /**
+ * Consumable schemas
+ */
+export const createConsumableSchema = z.object({
+  consumablename: z.string().min(1).max(255),
+  consumablecategorytypeid: z.string().uuid(),
+  manufacturerid: z.string().uuid(),
+  supplierid: z.string().uuid(),
+  purchaseprice: z.number().positive().nullable().optional(),
+  purchasedate: z.string().datetime().nullable().optional(),
+  minQuantity: z.number().int().nonnegative().nullable().optional(),
+  quantity: z.number().int().nonnegative().nullable().optional(),
+});
+
+export const updateConsumableSchema = createConsumableSchema.partial();
+
+/**
  * Manufacturer schemas
  */
 export const createManufacturerSchema = z.object({
@@ -129,6 +145,52 @@ export const createLocationSchema = z.object({
 });
 
 export const updateLocationSchema = createLocationSchema.partial();
+
+/**
+ * Category Type schemas
+ */
+export const createAssetCategoryTypeSchema = z.object({
+  assetcategorytypename: z.string().min(1).max(255),
+});
+
+export const updateAssetCategoryTypeSchema = createAssetCategoryTypeSchema.partial();
+
+export const createAccessoryCategoryTypeSchema = z.object({
+  accessoriecategorytypename: z.string().min(1).max(255),
+});
+
+export const updateAccessoryCategoryTypeSchema = createAccessoryCategoryTypeSchema.partial();
+
+export const createConsumableCategoryTypeSchema = z.object({
+  consumablecategorytypename: z.string().min(1).max(255),
+});
+
+export const updateConsumableCategoryTypeSchema = createConsumableCategoryTypeSchema.partial();
+
+export const createLicenceCategoryTypeSchema = z.object({
+  licencecategorytypename: z.string().min(1).max(255),
+});
+
+export const updateLicenceCategoryTypeSchema = createLicenceCategoryTypeSchema.partial();
+
+/**
+ * Model schemas
+ */
+export const createModelSchema = z.object({
+  modelname: z.string().min(1).max(255),
+  modelnumber: z.string().max(255).nullable().optional(),
+});
+
+export const updateModelSchema = createModelSchema.partial();
+
+/**
+ * Status Type schemas
+ */
+export const createStatusTypeSchema = z.object({
+  statustypename: z.string().min(1).max(255),
+});
+
+export const updateStatusTypeSchema = createStatusTypeSchema.partial();
 
 /**
  * Generic UUID validation

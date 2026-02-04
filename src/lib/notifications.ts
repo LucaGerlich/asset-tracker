@@ -133,7 +133,7 @@ export async function checkMaintenanceDue(): Promise<number> {
   const maxDate = new Date(now);
   maxDate.setDate(maxDate.getDate() + defaultDays);
 
-  const dueMaintenance = await prisma.maintenanceSchedule.findMany({
+  const dueMaintenance = await prisma.maintenance_schedules.findMany({
     where: {
       isActive: true,
       nextDueDate: {
@@ -143,14 +143,14 @@ export async function checkMaintenanceDue(): Promise<number> {
     },
     include: {
       asset: true,
-      assignedUser: true,
+      user: true,
     },
   });
 
   let notified = 0;
 
   for (const maintenance of dueMaintenance) {
-    const user = maintenance.assignedUser;
+    const user = maintenance.user;
     if (!user?.email) continue;
 
     const prefs = await getUserNotificationPrefs(user.userid);
@@ -285,7 +285,7 @@ export async function checkExpiringWarranties(): Promise<number> {
  * Get user notification preferences
  */
 async function getUserNotificationPrefs(userId: string) {
-  return await prisma.notificationPreference.findUnique({
+  return await prisma.notification_preferences.findUnique({
     where: { userId },
   });
 }

@@ -11,8 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { PlusIcon, SearchIcon } from "../Icons";
+import { PlusIcon, SearchIcon, EditIcon, DeleteIcon, MoreVertical } from "../Icons";
+import { toast } from "sonner";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
@@ -21,15 +36,18 @@ export default function LocationsTable({ items }) {
   const [countryFilter, setCountryFilter] = useState("all");
   const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
   const [page, setPage] = useState(1);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [locationsData, setLocationsData] = useState(items);
 
   const countries = useMemo(() => {
     const unique = new Set<string>(
-      items
+      locationsData
         .map((item) => item.country)
         .filter((country): country is string => typeof country === 'string' && country.trim().length > 0)
     );
     return Array.from(unique).sort((a, b) => a.localeCompare(b));
-  }, [items]);
+  }, [locationsData]);
 
   useEffect(() => {
     setPage(1);
@@ -38,7 +56,7 @@ export default function LocationsTable({ items }) {
   const filteredItems = useMemo(() => {
     const normalizedQuery = searchValue.trim().toLowerCase();
 
-    return items.filter((item) => {
+    return locationsData.filter((item) => {
       const matchesSearch =
         !normalizedQuery ||
         [
@@ -56,7 +74,7 @@ export default function LocationsTable({ items }) {
 
       return matchesSearch && matchesCountry;
     });
-  }, [items, searchValue, countryFilter]);
+  }, [locationsData, searchValue, countryFilter]);
 
   const pages = Math.max(1, Math.ceil(filteredItems.length / rowsPerPage));
   const paginatedItems = useMemo(() => {
@@ -69,7 +87,37 @@ export default function LocationsTable({ items }) {
     { key: 'street', label: 'Street' },
     { key: 'city', label: 'City' },
     { key: 'country', label: 'Country' },
+    { key: 'actions', label: 'Actions' },
   ];
+
+  const handleDelete = async (locationId: string) => {
+    try {
+      const response = await fetch("/api/location", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locationid: locationId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete location");
+      }
+
+      const result = await response.json();
+
+      toast.success(result.message, {
+        description: `${locationId} deleted successfully`,
+      });
+
+      setLocationsData((prevItems) => prevItems.filter((item) => item.locationid !== locationId));
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error("Error deleting location:", error);
+      toast.error("Failed to delete location", {
+        description: error.message,
+      });
+    }
+  };
 
   const renderCell = (item, columnKey) => {
     switch (columnKey) {
@@ -81,6 +129,44 @@ export default function LocationsTable({ items }) {
         return item.city ?? "-";
       case 'country':
         return item.country ?? "-";
+      case 'actions':
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+              size="icon"
+              variant="ghost"
+              asChild
+            >
+              <Link href={`/locations/${item.locationid}/edit`}>
+                <EditIcon />
+              </Link>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                  size="icon"
+                  variant="ghost"
+                >
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    setSelectedLocation(item);
+                    setIsDeleteModalOpen(true);
+                  }}
+                >
+                  <DeleteIcon className="mr-2 h-4 w-4" />
+                  Delete Item
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
       default:
         return null;
     }
@@ -167,6 +253,28 @@ export default function LocationsTable({ items }) {
           Next
         </Button>
       </div>
+
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Location</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete location &quot;{selectedLocation?.locationname}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleDelete(selectedLocation?.locationid)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

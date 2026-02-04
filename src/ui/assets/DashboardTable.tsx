@@ -275,10 +275,14 @@ export default function App({
 
   const handleUserSelection = (value) => {
     // Check if value is empty or null and set selectedUser accordingly
-    if (!value || value.size === 0) {
+    if (!value || value.size === 0 || (typeof value === 'string' && !value)) {
       setSelectedUser(null);
+    } else if (value instanceof Set) {
+      // If it's a Set, get the first value
+      setSelectedUser(value.values().next().value || value.anchorKey);
     } else {
-      setSelectedUser(value.anchorKey || value); // Adjust based on actual structure of `value`
+      // Otherwise use the value directly (string from Select)
+      setSelectedUser(value);
     }
   };
 
@@ -1194,7 +1198,7 @@ export default function App({
               QR-Code for {selectedAsset?.assettag}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex justify-center items-center bg-white py-4">
+          <div ref={qrRef} className="flex justify-center items-center bg-white py-4">
             <QRCodeCanvas
               value={`http://192.168.0.81:3000/assets/${selectedAsset?.assetid}`}
               size={256}
@@ -1260,7 +1264,7 @@ export default function App({
                 <div className="py-4 space-y-4">
                   <Select
                     value={selectedUser ? String(selectedUser) : assignedStatus ? String(assignedStatus.statustypeid) : ""}
-                    onValueChange={(value) => handleUserSelection(new Set([value]))}
+                    onValueChange={(value) => setSelectedUser(value)}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select a status" />

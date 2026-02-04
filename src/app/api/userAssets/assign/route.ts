@@ -44,6 +44,7 @@ export async function POST(req) {
         data: {
           assetid: assetId,
           userid: userId,
+          creation_date: new Date(),
         } as Prisma.userAssetsUncheckedCreateInput,
       });
     }

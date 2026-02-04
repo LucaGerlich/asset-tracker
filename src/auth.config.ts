@@ -10,6 +10,8 @@ interface ExtendedUser extends User {
   canRequest?: boolean;
   firstname?: string;
   lastname?: string;
+  organizationId?: string;
+  departmentId?: string;
 }
 
 // Extended JWT type with custom fields
@@ -20,6 +22,9 @@ interface ExtendedJWT extends JWT {
   canRequest?: boolean;
   firstname?: string;
   lastname?: string;
+  organizationId?: string;
+  departmentId?: string;
+  permissions?: string[];
 }
 
 // Extended Session type with custom fields
@@ -31,6 +36,9 @@ interface ExtendedSession extends Session {
     canRequest?: boolean;
     firstname?: string;
     lastname?: string;
+    organizationId?: string;
+    departmentId?: string;
+    permissions?: string[];
     name?: string | null;
     email?: string | null;
     image?: string | null;
@@ -64,6 +72,8 @@ export const authConfig: NextAuthConfig = {
         token.canRequest = user.canRequest;
         token.firstname = user.firstname;
         token.lastname = user.lastname;
+        token.organizationId = user.organizationId;
+        token.departmentId = user.departmentId;
       }
       return token;
     },
@@ -76,6 +86,9 @@ export const authConfig: NextAuthConfig = {
         session.user.canRequest = token.canRequest;
         session.user.firstname = token.firstname;
         session.user.lastname = token.lastname;
+        session.user.organizationId = token.organizationId;
+        session.user.departmentId = token.departmentId;
+        session.user.permissions = token.permissions;
       }
       return session;
     },

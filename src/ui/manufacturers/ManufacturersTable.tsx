@@ -11,8 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { PlusIcon, SearchIcon } from "../Icons";
+import { PlusIcon, SearchIcon, EditIcon, DeleteIcon, MoreVertical } from "../Icons";
+import { toast } from "sonner";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
@@ -35,15 +50,18 @@ export default function ManufacturersTable({ items }) {
   const [yearFilter, setYearFilter] = useState("all");
   const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
   const [page, setPage] = useState(1);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedManufacturer, setSelectedManufacturer] = useState(null);
+  const [manufacturersData, setManufacturersData] = useState(items);
 
   const years = useMemo(() => {
     const unique = new Set<number>(
-      items
+      manufacturersData
         .map((item) => getYear(item.creation_date))
         .filter((year): year is number => typeof year === "number")
     );
     return Array.from(unique).sort((a, b) => b - a);
-  }, [items]);
+  }, [manufacturersData]);
 
   useEffect(() => {
     setPage(1);
@@ -52,7 +70,7 @@ export default function ManufacturersTable({ items }) {
   const filteredItems = useMemo(() => {
     const normalizedQuery = searchValue.trim().toLowerCase();
 
-    return items.filter((item) => {
+    return manufacturersData.filter((item) => {
       const matchesSearch =
         !normalizedQuery || (item.manufacturername ?? "").toLowerCase().includes(normalizedQuery);
 
@@ -61,7 +79,7 @@ export default function ManufacturersTable({ items }) {
 
       return matchesSearch && matchesYear;
     });
-  }, [items, searchValue, yearFilter]);
+  }, [manufacturersData, searchValue, yearFilter]);
 
   const pages = Math.max(1, Math.ceil(filteredItems.length / rowsPerPage));
   const paginatedItems = useMemo(() => {
@@ -72,7 +90,37 @@ export default function ManufacturersTable({ items }) {
   const columns = [
     { key: 'manufacturername', label: 'Name' },
     { key: 'creation_date', label: 'Created' },
+    { key: 'actions', label: 'Actions' },
   ];
+
+  const handleDelete = async (manufacturerId: string) => {
+    try {
+      const response = await fetch("/api/manufacturer", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manufacturerid: manufacturerId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete manufacturer");
+      }
+
+      const result = await response.json();
+
+      toast.success(result.message, {
+        description: `${manufacturerId} deleted successfully`,
+      });
+
+      setManufacturersData((prevItems) => prevItems.filter((item) => item.manufacturerid !== manufacturerId));
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error("Error deleting manufacturer:", error);
+      toast.error("Failed to delete manufacturer", {
+        description: error.message,
+      });
+    }
+  };
 
   const renderCell = (item, columnKey) => {
     switch (columnKey) {
@@ -80,6 +128,44 @@ export default function ManufacturersTable({ items }) {
         return item.manufacturername;
       case 'creation_date':
         return formatDate(item.creation_date);
+      case 'actions':
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+              size="icon"
+              variant="ghost"
+              asChild
+            >
+              <Link href={`/manufacturers/${item.manufacturerid}/edit`}>
+                <EditIcon />
+              </Link>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                  size="icon"
+                  variant="ghost"
+                >
+                  <MoreVertical />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    setSelectedManufacturer(item);
+                    setIsDeleteModalOpen(true);
+                  }}
+                >
+                  <DeleteIcon className="mr-2 h-4 w-4" />
+                  Delete Item
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
       default:
         return null;
     }
@@ -166,6 +252,28 @@ export default function ManufacturersTable({ items }) {
           Next
         </Button>
       </div>
+
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Manufacturer</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete manufacturer &quot;{selectedManufacturer?.manufacturername}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleDelete(selectedManufacturer?.manufacturerid)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
