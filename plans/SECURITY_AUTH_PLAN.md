@@ -40,97 +40,6 @@ npm install -D @types/bcryptjs
 
 **File:** `/src/auth.config.js`
 
-```javascript
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import prisma from "@/lib/prisma";
-import bcrypt from "bcryptjs";
-import Credentials from "next-auth/providers/credentials";
-
-export const authConfig = {
-  adapter: PrismaAdapter(prisma),
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
-  providers: [
-    Credentials({
-      name: "credentials",
-      credentials: {
-        username: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) {
-          throw new Error("Missing credentials");
-        }
-
-        const user = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { username: credentials.username },
-              { email: credentials.username }, // Allow email login too
-            ],
-          },
-        });
-
-        if (!user || !user.password) {
-          throw new Error("Invalid credentials");
-        }
-
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-
-        if (!isPasswordValid) {
-          throw new Error("Invalid credentials");
-        }
-
-        return {
-          id: user.userid,
-          username: user.username,
-          email: user.email,
-          name: `${user.firstname} ${user.lastname}`,
-          isAdmin: user.isadmin,
-          canRequest: user.canrequest,
-        };
-      },
-    }),
-  ],
-  callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      // Initial sign in
-      if (user) {
-        token.id = user.id;
-        token.username = user.username;
-        token.isAdmin = user.isAdmin;
-        token.canRequest = user.canRequest;
-      }
-
-      // Update session (for profile updates)
-      if (trigger === "update" && session) {
-        token = { ...token, ...session };
-      }
-
-      return token;
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id;
-        session.user.username = token.username;
-        session.user.isAdmin = token.isAdmin;
-        session.user.canRequest = token.canRequest;
-      }
-      return session;
-    },
-  },
-};
-```
-
 ### 1.3 Create Auth Handler
 
 **File:** `/src/auth.js`
@@ -269,54 +178,6 @@ export async function verifyPassword(password, hashedPassword) {
 
 **File:** `/scripts/migrate-passwords.js`
 
-```javascript
-import prisma from "../src/lib/prisma.js";
-import bcrypt from "bcryptjs";
-
-async function migratePasswords() {
-  console.log("Starting password migration...");
-
-  const users = await prisma.user.findMany({
-    select: {
-      userid: true,
-      password: true,
-      username: true,
-    },
-  });
-
-  console.log(`Found ${users.length} users to migrate`);
-
-  for (const user of users) {
-    // Check if password is already hashed (bcrypt hashes start with $2)
-    if (user.password.startsWith("$2")) {
-      console.log(`User ${user.username} already has hashed password, skipping`);
-      continue;
-    }
-
-    // Hash the plain text password
-    const hashedPassword = await bcrypt.hash(user.password, 12);
-
-    await prisma.user.update({
-      where: { userid: user.userid },
-      data: { password: hashedPassword },
-    });
-
-    console.log(`✓ Migrated password for user: ${user.username}`);
-  }
-
-  console.log("Password migration complete!");
-}
-
-migratePasswords()
-  .catch((e) => {
-    console.error("Migration failed:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
-```
-
 **Run migration:**
 ```bash
 node scripts/migrate-passwords.js
@@ -354,158 +215,9 @@ const user = await prisma.user.create({
 
 **File:** `/src/app/login/page.jsx`
 
-```jsx
-"use client";
-
-import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Toaster, toast } from "sonner";
-
-export default function LoginPage() {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [form, setForm] = useState({
-    username: "",
-    password: "",
-  });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const result = await signIn("credentials", {
-        username: form.username,
-        password: form.password,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        toast.error("Login failed", {
-          description: "Invalid username or password",
-        });
-        return;
-      }
-
-      toast.success("Login successful");
-      router.push("/");
-      router.refresh();
-    } catch (error) {
-      toast.error("Login failed", {
-        description: "An unexpected error occurred",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Toaster position="bottom-right" />
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">
-            Asset Tracker Login
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username or Email</Label>
-              <Input
-                id="username"
-                type="text"
-                value={form.username}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, username: e.target.value }))
-                }
-                required
-                disabled={isLoading}
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={form.password}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, password: e.target.value }))
-                }
-                required
-                disabled={isLoading}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-```
-
 ### 3.2 Update Navigation with Auth
 
 **File:** `/src/components/Navigation.jsx` (add auth)
-
-```jsx
-import { auth } from "@/auth";
-import { SignOutButton } from "./SignOutButton";
-
-async function Navigation() {
-  const session = await auth();
-
-  if (!session) {
-    // Redirect to login handled by middleware
-    return null;
-  }
-
-  return (
-    <nav className="border-b">
-      {/* ... existing nav code ... */}
-
-      {/* Update user dropdown */}
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">
-              {session.user.name}
-            </p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {session.user.email}
-            </p>
-            {session.user.isAdmin && (
-              <Badge variant="secondary" className="w-fit mt-1">
-                Admin
-              </Badge>
-            )}
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href={`/user/${session.user.id}`}>My Items</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href={`/user/${session.user.id}/settings`}>Settings</Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <SignOutButton />
-      </DropdownMenuContent>
-    </nav>
-  );
-}
-
-export default Navigation;
-```
 
 ### 3.3 Create Sign Out Button
 
@@ -839,76 +551,14 @@ export function userCanEditUser(currentUser, targetUserId) {
 
 **File:** `/src/hooks/usePermissions.js`
 
-```javascript
-"use client";
-
-import { useSession } from "next-auth/react";
-import { userHasPermission } from "@/lib/permissions";
-
-export function usePermissions() {
-  const { data: session } = useSession();
-
-  const hasPermission = (permission) => {
-    if (!session?.user) return false;
-    return userHasPermission(session.user, permission);
-  };
-
-  const isAdmin = session?.user?.isAdmin || false;
-  const canRequest = session?.user?.canRequest || false;
-
-  return {
-    hasPermission,
-    isAdmin,
-    canRequest,
-    user: session?.user,
-  };
-}
-```
 
 ### 5.3 Create UI Permission Guards
 
 **File:** `/src/components/PermissionGuard.jsx`
 
-```jsx
-"use client";
-
-import { usePermissions } from "@/hooks/usePermissions";
-
-export function PermissionGuard({ permission, children, fallback = null }) {
-  const { hasPermission } = usePermissions();
-
-  if (!hasPermission(permission)) {
-    return fallback;
-  }
-
-  return <>{children}</>;
-}
-
-export function AdminOnly({ children, fallback = null }) {
-  const { isAdmin } = usePermissions();
-
-  if (!isAdmin) {
-    return fallback;
-  }
-
-  return <>{children}</>;
-}
-```
-
 ### 5.4 Apply RBAC to UI (Example)
 
 **File:** `/src/components/Navigation.jsx`
-
-```jsx
-import { AdminOnly } from "@/components/PermissionGuard";
-
-// In navigation items
-<AdminOnly>
-  <DropdownMenuItem asChild>
-    <Link href="/manufacturers/create">Create Manufacturer</Link>
-  </DropdownMenuItem>
-</AdminOnly>
-```
 
 ### 5.5 Create Audit Log System
 
@@ -940,48 +590,6 @@ model user {
 
 **File:** `/src/lib/audit-log.js`
 
-```javascript
-import prisma from "./prisma";
-import { headers } from "next/headers";
-
-export async function logAudit({
-  userId,
-  action,
-  entity,
-  entityId = null,
-  details = null,
-}) {
-  const headersList = headers();
-  const ipAddress = headersList.get("x-forwarded-for") || "unknown";
-  const userAgent = headersList.get("user-agent") || "unknown";
-
-  try {
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        action,
-        entity,
-        entityId,
-        details,
-        ipAddress,
-        userAgent,
-      },
-    });
-  } catch (error) {
-    console.error("Failed to create audit log:", error);
-  }
-}
-
-// Usage in API routes:
-// await logAudit({
-//   userId: user.id,
-//   action: "CREATE",
-//   entity: "ASSET",
-//   entityId: asset.assetid,
-//   details: { assetname: asset.assetname },
-// });
-```
-
 **Testing Phase 5:**
 - [ ] Admin users see all UI elements
 - [ ] Regular users see limited UI elements
@@ -1008,133 +616,17 @@ npm install express-rate-limit
 
 **File:** `/src/lib/rate-limit.js`
 
-```javascript
-import { LRUCache } from "lru-cache";
-
-const tokenCache = new LRUCache({
-  max: 500,
-  ttl: 60000, // 60 seconds
-});
-
-export const rateLimit = {
-  check: (identifier, limit = 10) => {
-    const tokenCount = tokenCache.get(identifier) || [0];
-    const currentUsage = tokenCount[0];
-    const isRateLimited = currentUsage >= limit;
-
-    tokenCache.set(identifier, [currentUsage + 1]);
-
-    return {
-      success: !isRateLimited,
-      limit,
-      remaining: Math.max(0, limit - currentUsage - 1),
-    };
-  },
-};
-```
-
 ### 6.3 Create Rate Limit Middleware
 
 **File:** `/src/lib/api-middleware.js`
-
-```javascript
-import { NextResponse } from "next/server";
-import { rateLimit } from "./rate-limit";
-
-export function withRateLimit(handler, options = {}) {
-  return async (request, context) => {
-    const ip = request.headers.get("x-forwarded-for") || "anonymous";
-    const { success, limit, remaining } = rateLimit.check(
-      ip,
-      options.limit || 10
-    );
-
-    if (!success) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded" },
-        {
-          status: 429,
-          headers: {
-            "X-RateLimit-Limit": limit.toString(),
-            "X-RateLimit-Remaining": "0",
-            "Retry-After": "60",
-          },
-        }
-      );
-    }
-
-    const response = await handler(request, context);
-
-    // Add rate limit headers
-    response.headers.set("X-RateLimit-Limit", limit.toString());
-    response.headers.set("X-RateLimit-Remaining", remaining.toString());
-
-    return response;
-  };
-}
-```
 
 ### 6.4 Apply Rate Limiting to Login
 
 **File:** `/src/app/api/auth/[...nextauth]/route.js`
 
-```javascript
-import { handlers } from "@/auth";
-import { withRateLimit } from "@/lib/api-middleware";
-
-// Wrap POST with rate limiting (login attempts)
-export const GET = handlers.GET;
-export const POST = withRateLimit(handlers.POST, { limit: 5 });
-```
-
 ### 6.5 Add Security Headers
 
 **File:** `/next.config.js`
-
-```javascript
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  async headers() {
-    return [
-      {
-        source: "/(.*)",
-        headers: [
-          {
-            key: "X-DNS-Prefetch-Control",
-            value: "on",
-          },
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
-          },
-          {
-            key: "X-Frame-Options",
-            value: "SAMEORIGIN",
-          },
-          {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
-          },
-          {
-            key: "X-XSS-Protection",
-            value: "1; mode=block",
-          },
-          {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
-          },
-          {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
-          },
-        ],
-      },
-    ];
-  },
-};
-
-export default nextConfig;
-```
 
 ### 6.6 Add CSRF Protection
 
@@ -1142,23 +634,6 @@ NextAuth.js includes built-in CSRF protection. Ensure it's enabled:
 
 **File:** `/src/auth.config.js` (add to config)
 
-```javascript
-export const authConfig = {
-  // ... existing config ...
-  useSecureCookies: process.env.NODE_ENV === "production",
-  cookies: {
-    sessionToken: {
-      name: `${process.env.NODE_ENV === "production" ? "__Secure-" : ""}next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      },
-    },
-  },
-};
-```
 
 ### 6.7 Input Validation & Sanitization
 
@@ -1169,7 +644,6 @@ npm install validator zod
 
 **File:** `/src/lib/validation.js`
 
-```javascript
 import { z } from "zod";
 
 export const loginSchema = z.object({
@@ -1401,6 +875,8 @@ Implement 2FA as an optional security enhancement for admin accounts.
 ## Implementation Checklist
 
 ### Phase 1: NextAuth Setup ✅
+- [ ] Switch to TypeScript
+- [ ] Use Zod for validation
 - [ ] Install next-auth and bcryptjs
 - [ ] Create auth.config.js
 - [ ] Create auth.js
@@ -1510,6 +986,22 @@ Implement 2FA as an optional security enhancement for admin accounts.
    - Test authorization bypass
    - Test injection attacks
    - Test session hijacking
+   - Test for XSS vulnerabilities
+   - Test for CSRF vulnerabilities
+   - Test for SQL injection vulnerabilities
+   - Test for XSS vulnerabilities
+   - Test for CSRF vulnerabilities
+   - Test for SQL injection vulnerabilities
+   - Write Code and security tests
+   - Run security tests
+   - Update dependencies regularly
+   - Create security documentation
+   - Secure environment variables
+   - Create admin dashboard
+   - Document password policy
+   - Final security audit
+   - Write Code and security tests
+   - Give user Penetration Testing Guide in markdown file
 
 3. **Monitoring Setup**
    - Set up error tracking (Sentry)
