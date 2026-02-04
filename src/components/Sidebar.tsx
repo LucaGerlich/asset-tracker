@@ -22,6 +22,7 @@ import {
   BadgeCheck,
   PanelLeftClose,
   PanelRightOpen,
+  Ticket,
 } from "lucide-react";
 import { PlusIcon as SidebarPlusIcon } from "../ui/Icons";
 
@@ -43,6 +44,12 @@ const navSections = [
       { label: "Manufacturers", href: "/manufacturers", icon: Factory },
       { label: "Suppliers", href: "/suppliers", icon: Truck },
       { label: "Locations", href: "/locations", icon: MapPin },
+    ],
+  },
+  {
+    title: "Support",
+    items: [
+      { label: "IT Tickets", href: "/tickets", icon: Ticket },
     ],
   },
   {
