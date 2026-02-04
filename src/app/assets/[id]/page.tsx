@@ -16,6 +16,7 @@ import {
 } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import AssetDetailHeader from "./ui/AssetDetailHeader";
+import AssetDepreciationPanel from "./ui/AssetDepreciationPanel";
 
 export const metadata = {
   title: "Asset Tracker - Asset Details",
@@ -55,6 +56,11 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const categories = await getCategories();
   const suppliers = await getSuppliers();
   const userAssets = await getUserAssets();
+  const depreciationSettings = asset.assetcategorytypeid
+    ? await prisma.depreciation_settings.findUnique({
+        where: { categoryId: asset.assetcategorytypeid },
+      })
+    : null;
 
   // Fetch history for this asset
   const historyEntries = await prisma.audit_logs.findMany({
@@ -155,6 +161,10 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
               <div className="flex justify-between"><span className="text-foreground-500">Serial Number</span><span className="font-medium">{asset.serialnumber}</span></div>
             </div>
           </section>
+        </div>
+
+        <div className="mt-8">
+          <AssetDepreciationPanel asset={asset} categoryName={categoryName || null} settings={depreciationSettings} />
         </div>
 
         <div className="mt-10">

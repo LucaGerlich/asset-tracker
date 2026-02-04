@@ -111,7 +111,6 @@ This document tracks the development status of all features in the Asset Managem
 - [x] Database schema with foreign key relationships
 - [x] Database migrations support
 - [x] Database seeding functionality
-- [x] User history table (structure in place)
 - [x] UUID primary keys
 - [x] Timestamps (creation_date, change_date)
 - [x] Transaction support for complex operations
@@ -148,7 +147,6 @@ This document tracks the development status of all features in the Asset Managem
 - [x] Assets by category analytics
 - [x] Assets by location tracking
 - [x] Cost analysis reports
-- [x] Depreciation tracking (database structure ready)
 - [x] Export functionality (CSV, PDF)
 
 #### Multi-tenancy & Organization Management
@@ -199,18 +197,12 @@ This document tracks the development status of all features in the Asset Managem
 - [x] Notification queue model
 - [x] Notification preferences per user
 - [x] Notification CRUD API endpoints
-- [x] Email notifications for assignments
-- [x] License expiration alerts (database structure)
-- [x] Asset maintenance reminders (database structure)
-- [x] Low consumable stock alerts (database structure)
 - [x] Email provider support (Brevo, SendGrid, Mailgun, Postmark, Amazon SES)
 - [x] Email templates model
 
 #### Enhanced Search & Filtering
 - [x] Global search API endpoint
-- [x] Saved search filters (database structure)
 - [x] Advanced search with multiple criteria
-- [x] Saved filters per user
 
 #### Admin Settings & System Configuration
 - [x] System settings model with categories
@@ -220,17 +212,6 @@ This document tracks the development status of all features in the Asset Managem
 - [x] Email configuration settings
 - [x] General system settings
 - [x] Notification settings
-
-#### Enhanced Asset Management
-- [x] Asset attachments (database structure)
-- [x] Asset photos/documents support
-- [x] Custom field definitions model
-- [x] Custom field values per asset
-- [x] Asset maintenance logs
-- [x] Asset maintenance schedules
-- [x] Warranty tracking
-- [x] Depreciation settings model
-- [x] Label templates for printing
 
 #### Audit & Compliance
 - [x] Audit logs model
@@ -249,7 +230,6 @@ This document tracks the development status of all features in the Asset Managem
 - [x] Account lockout after failed login attempts (progressive backoff)
 - [x] Feature flags system (rate limiting, demo mode, maintenance mode)
 - [x] Demo mode banner and demo login shortcuts (env-controlled)
-- [x] Maintenance mode settings + page scaffold (enforcement pending)
 
 ---
 
@@ -262,24 +242,39 @@ No features currently in active development.
 ### 📋 Pending Features
 
 #### Asset History
+- [ ] User history table (schema in place)
 - [ ] History timeline view on user detail page
 
+#### Reporting & Analytics
+- [ ] Depreciation tracking (schema + calculator ready; UI pending)
+
 #### Enhanced Search & Filtering
+- [ ] Saved search filters (schema ready)
+- [ ] Saved filters per user (schema ready)
 - [ ] Filter presets UI implementation
 - [ ] Saved filters UI
 
 #### Notifications
+- [ ] Email notifications for assignments (helpers in place; not wired)
+- [ ] License expiration alerts (schema + settings ready; delivery pending)
+- [ ] Asset maintenance reminders (schema + settings ready; delivery pending)
+- [ ] Low consumable stock alerts (schema + settings ready; delivery pending)
 - [ ] UI for notification preferences
 - [ ] Notification center/inbox UI
 - [ ] Real-time notification delivery
 
 #### Enhanced Asset Management
-- [ ] Asset attachments UI (upload/download)
-- [ ] Custom fields UI (create/edit/display)
-- [ ] Maintenance logs UI
-- [ ] Maintenance schedules UI
-- [ ] Label template designer UI
-- [ ] Label printing functionality
+- [ ] Asset attachments (schema ready; upload/download UI pending)
+- [ ] Asset photos/documents support
+- [ ] Custom fields (schema + admin UI scaffold; API + asset form integration pending)
+- [ ] Asset maintenance logs (schema ready; UI pending)
+- [ ] Asset maintenance schedules (schema ready; UI pending)
+- [ ] Warranty tracking (schema in assets; UI + alerts pending)
+- [ ] Depreciation settings (schema + admin UI scaffold; API pending)
+- [ ] Label templates (schema + admin UI scaffold; designer + printing pending)
+
+#### Security & Reliability
+- [ ] Maintenance mode enforcement (settings + page scaffold ready)
 
 ---
 
@@ -378,8 +373,8 @@ No features currently in active development.
 ### Technical Stack
 - **Frontend**: Next.js 16, React 19, NextUI, Tailwind CSS
 - **Backend**: Next.js API Routes
-- **Database**: PostgreSQL with Prisma ORM (47 models)
-- **API Endpoints**: 65+ RESTful endpoints
+- **Database**: PostgreSQL with Prisma ORM (44 models)
+- **API Endpoints**: 65 RESTful endpoints
 - **UI Components**: NextUI (HeroUI), Lucide Icons, Framer Motion
 - **Data Visualization**: Recharts
 - **QR Code**: qrcode.react, react-qr-code
@@ -387,7 +382,7 @@ No features currently in active development.
 - **Authentication**: NextAuth.js
 
 ### Database Models Overview
-The system includes 47 database models covering:
+The system includes 44 database models covering:
 - **Core Entities**: Assets, Users, Accessories, Licenses, Consumables
 - **Supporting Entities**: Manufacturers, Suppliers, Locations, Models, Categories, Status Types
 - **Multi-tenancy**: Organizations, Departments
@@ -456,7 +451,7 @@ Based on the current state of the application, here are recommended priorities:
 5. **Audit Log Viewer** - UI for viewing and filtering audit trails
 
 ### Low Priority (New Features)
-1. **API Documentation** - Create OpenAPI/Swagger documentation for 65+ endpoints
+1. **API Documentation** - Create OpenAPI/Swagger documentation for 65 endpoints
 2. **Ticket System Enhancement** - Add categories, SLA tracking, and templates
 3. **Advanced Analytics** - Enhanced charts and data visualization
 4. **Mobile Optimization** - Improve responsive design and mobile workflows
@@ -502,7 +497,7 @@ When adding new features:
 ---
 
 **Last Updated**: 2026-02-04
-**Total Database Models**: 47
-**Total API Endpoints**: 65+
-**Implemented Features**: 195+
-**Pending Features**: 69+
+**Total Database Models**: 44
+**Total API Endpoints**: 65
+**Implemented Features**: 177
+**Pending Features**: 80

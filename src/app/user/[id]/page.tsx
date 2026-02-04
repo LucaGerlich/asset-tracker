@@ -1,8 +1,10 @@
 import React from "react";
 import Link from "next/link";
 import UserResources from "./ui/UserResources";
+import UserHistoryTable from "./ui/UserHistoryTable";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Separator } from "@/components/ui/separator";
+import HistoryTimeline from "@/components/HistoryTimeline";
 import {
   getUserById,
   getUserAssets,
@@ -12,6 +14,7 @@ import {
   getUserAccessoires,
   getLicences,
 } from "@/lib/data";
+import prisma from "@/lib/prisma";
 
 export const metadata = {
   title: "Asset Tracker - User Details",
@@ -20,14 +23,19 @@ export const metadata = {
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const user = await getUserById(params.id);
-  const [allAssets, links, statuses, allAccessoriesRaw, userAccLinks, licencesRaw] = await Promise.all([
+  const [user, allAssets, links, statuses, allAccessoriesRaw, userAccLinks, licencesRaw, userHistoryEntries] = await Promise.all([
+    getUserById(params.id),
     getAssets(),
     getUserAssets(),
     getStatus(),
     getAccessories(),
     getUserAccessoires(),
     getLicences(),
+    prisma.userHistory.findMany({
+      where: { userid: params.id },
+      orderBy: { creation_date: "desc" },
+      take: 50,
+    }),
   ]);
   const allAccessories = allAccessoriesRaw.map((a) => ({
     ...a,
@@ -46,6 +54,26 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     .map((l) => allAccessories.find((a) => a.accessorieid === l.accessorieid))
     .filter(Boolean);
   const myLicences = licences.filter((lic) => lic.licenceduserid === user.userid);
+  const historyTimelineEntries = userHistoryEntries.map((entry) => {
+    const action = entry.actionname?.toLowerCase() || "";
+    let createdAt = entry.updatedate ?? entry.creation_date;
+
+    if (action.includes("checked out") && entry.checkedout) {
+      createdAt = entry.checkedout;
+    } else if (action.includes("checked in") && entry.checkedin) {
+      createdAt = entry.checkedin;
+    }
+
+    return {
+      id: entry.historyid,
+      action: entry.actionname,
+      entity: entry.referencetable || "user",
+      entityId: entry.referenceid,
+      details: null,
+      createdAt,
+      user: null,
+    };
+  });
 
   const statusById = new Map<string, string>(statuses.map((s) => [s.statustypeid, s.statustypename]));
   const statusColor = (name: string | undefined) => {
@@ -150,6 +178,26 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         </div>
 
         <UserResources user={user} accessories={myAccessories} licences={myLicences} allAccessories={allAccessories} allLicences={licences} />
+
+        <div className="mt-10">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">User History</h2>
+            <span className="text-xs text-foreground-500">{userHistoryEntries.length} entries</span>
+          </div>
+          <Separator className="my-3" />
+
+          <div className="grid grid-cols-1 gap-6">
+            <section className="rounded-lg border border-default-200 p-4">
+              <h3 className="text-sm font-semibold text-foreground-600 mb-3">History Log</h3>
+              <UserHistoryTable entries={userHistoryEntries} assets={allAssets} accessories={allAccessories} licences={licences} />
+            </section>
+
+            <section className="rounded-lg border border-default-200 p-4">
+              <h3 className="text-sm font-semibold text-foreground-600 mb-3">Timeline</h3>
+              <HistoryTimeline entries={historyTimelineEntries} entityType="user" />
+            </section>
+          </div>
+        </div>
       </div>
     </>
   );

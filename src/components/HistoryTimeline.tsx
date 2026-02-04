@@ -33,17 +33,28 @@ interface HistoryTimelineProps {
   entityType: "asset" | "user";
 }
 
+function normalizeAction(action: string) {
+  return action.trim().toUpperCase();
+}
+
 function getActionIcon(action: string) {
-  switch (action.toUpperCase()) {
+  switch (normalizeAction(action)) {
     case "CREATE":
+    case "CREATED":
       return <Plus className="h-4 w-4" />;
     case "UPDATE":
+    case "UPDATED":
       return <Edit className="h-4 w-4" />;
     case "DELETE":
+    case "DELETED":
       return <Trash2 className="h-4 w-4" />;
     case "ASSIGN":
+    case "ASSIGNED":
+    case "CHECKED OUT":
       return <UserPlus className="h-4 w-4" />;
     case "UNASSIGN":
+    case "UNASSIGNED":
+    case "CHECKED IN":
       return <UserMinus className="h-4 w-4" />;
     case "LOGIN":
     case "LOGOUT":
@@ -54,34 +65,50 @@ function getActionIcon(action: string) {
 }
 
 function getActionColor(action: string) {
-  switch (action.toUpperCase()) {
+  switch (normalizeAction(action)) {
     case "CREATE":
+    case "CREATED":
       return "bg-green-100 text-green-600 border-green-200";
     case "UPDATE":
+    case "UPDATED":
       return "bg-blue-100 text-blue-600 border-blue-200";
     case "DELETE":
+    case "DELETED":
       return "bg-red-100 text-red-600 border-red-200";
     case "ASSIGN":
+    case "ASSIGNED":
+    case "CHECKED OUT":
       return "bg-purple-100 text-purple-600 border-purple-200";
     case "UNASSIGN":
+    case "UNASSIGNED":
+    case "CHECKED IN":
       return "bg-orange-100 text-orange-600 border-orange-200";
     default:
       return "bg-gray-100 text-gray-600 border-gray-200";
   }
 }
 
-function formatAction(action: string, entity: string) {
-  switch (action.toUpperCase()) {
+function formatAction(action: string, entity: string, entityType: HistoryTimelineProps["entityType"]) {
+  switch (normalizeAction(action)) {
     case "CREATE":
+    case "CREATED":
       return `${entity} created`;
     case "UPDATE":
+    case "UPDATED":
       return `${entity} updated`;
     case "DELETE":
+    case "DELETED":
       return `${entity} deleted`;
     case "ASSIGN":
-      return `Assigned to user`;
+    case "ASSIGNED":
+      return entityType === "user" ? "Asset assigned" : "Assigned to user";
     case "UNASSIGN":
-      return `Unassigned from user`;
+    case "UNASSIGNED":
+      return entityType === "user" ? "Asset unassigned" : "Unassigned from user";
+    case "CHECKED OUT":
+      return "Checked out";
+    case "CHECKED IN":
+      return "Checked in";
     case "LOGIN":
       return "User logged in";
     case "LOGOUT":
@@ -138,7 +165,7 @@ export default function HistoryTimeline({ entries, entityType }: HistoryTimeline
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-medium">
-                      {formatAction(entry.action, entry.entity)}
+                      {formatAction(entry.action, entry.entity, entityType)}
                     </p>
                     {entry.user && (
                       <p className="text-sm text-muted-foreground mt-1">

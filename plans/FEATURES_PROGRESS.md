@@ -14,5 +14,8 @@
 
 ## Questions (xhigh)
 1. Should FEATURES.md include production-readiness items (rate limiting, error pages, correlation IDs, etc.) as first-class features, or keep it product-only?
+Yes, please production-readiness items should be included as first-class features.
 2. For items that have UI/settings but no enforcement (ex: maintenance mode toggle), should they be marked Implemented or Pending?
+Implement as far as you can and mark them as pending if not fully implemented.
 3. Do you want the total counts (Implemented/Pending/API endpoints) to be recalculated, or keep them as rough estimates?
+Recalculate the total counts.

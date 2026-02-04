@@ -48,6 +48,7 @@ interface CustomFieldsTabProps {
     entityType: string;
     isRequired: boolean;
     isActive: boolean;
+    options?: string | null;
   }>;
 }
 
@@ -79,6 +80,17 @@ export default function CustomFieldsTab({ fields: initialFields }: CustomFieldsT
     options: "",
   });
 
+  const formatOptions = (raw?: string | null) => {
+    if (!raw) return "";
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.join(", ");
+      }
+    } catch {}
+    return String(raw);
+  };
+
   const handleCreate = async () => {
     try {
       const response = await fetch("/api/admin/custom-fields", {
@@ -86,7 +98,9 @@ export default function CustomFieldsTab({ fields: initialFields }: CustomFieldsT
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          options: formData.fieldType === "select" ? formData.options.split(",").map((o) => o.trim()) : undefined,
+          options: formData.fieldType === "select"
+            ? formData.options.split(",").map((o) => o.trim()).filter(Boolean)
+            : undefined,
         }),
       });
 
@@ -113,7 +127,9 @@ export default function CustomFieldsTab({ fields: initialFields }: CustomFieldsT
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          options: formData.fieldType === "select" ? formData.options.split(",").map((o) => o.trim()) : undefined,
+          options: formData.fieldType === "select"
+            ? formData.options.split(",").map((o) => o.trim()).filter(Boolean)
+            : undefined,
         }),
       });
 
@@ -187,7 +203,7 @@ export default function CustomFieldsTab({ fields: initialFields }: CustomFieldsT
       fieldType: field.fieldType,
       entityType: field.entityType,
       isRequired: field.isRequired,
-      options: "",
+      options: field.fieldType === "select" ? formatOptions(field.options) : "",
     });
     setIsDialogOpen(true);
   };
