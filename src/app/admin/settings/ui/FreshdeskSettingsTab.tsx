@@ -209,6 +209,7 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
             <Button
               variant="outline"
               onClick={handleTestConnection}
+              // Disable if testing, no domain, or no API key (unless it's masked from database)
               disabled={isTesting || !domain || (!apiKey && apiKey !== "********")}
             >
               {isTesting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -216,6 +217,7 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
             </Button>
             <Button
               onClick={handleSave}
+              // Disable if saving, no domain, or no API key (unless it's masked from database)
               disabled={isSaving || !domain || (!apiKey && apiKey !== "********")}
             >
               {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

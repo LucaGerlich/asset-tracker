@@ -2,6 +2,9 @@
  * Freshdesk API Client
  * Handles communication with the Freshdesk API
  * Documentation: https://developers.freshdesk.com/api/
+ * 
+ * Note: This client uses Node.js Buffer for base64 encoding and should
+ * only be used in server-side code (API routes, server components).
  */
 
 import type {
@@ -12,6 +15,15 @@ import type {
   FreshdeskTicketType,
 } from './types';
 import { SUPPORTED_TICKET_TYPES } from './types';
+
+/**
+ * Base64 encode a string using Node.js Buffer
+ * This function is server-side only
+ */
+function base64Encode(str: string): string {
+  // Buffer is available in Node.js environment (server-side)
+  return Buffer.from(str).toString('base64');
+}
 
 /**
  * Freshdesk API Client
@@ -25,7 +37,7 @@ export class FreshdeskClient {
     const domain = config.domain.replace(/\.freshdesk\.com\/?$/, '').replace(/^https?:\/\//, '');
     this.baseUrl = `https://${domain}.freshdesk.com/api/v2`;
     // Freshdesk uses API key as username with 'X' as password for Basic Auth
-    this.authHeader = `Basic ${Buffer.from(`${config.apiKey}:X`).toString('base64')}`;
+    this.authHeader = `Basic ${base64Encode(`${config.apiKey}:X`)}`;
   }
 
   /**

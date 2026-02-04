@@ -211,7 +211,7 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-[160px]" aria-label="Filter by ticket type">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -225,7 +225,7 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
               </Select>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[140px]" aria-label="Filter by status">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -246,7 +246,7 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
               </Select>
 
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[140px]" aria-label="Filter by priority">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
