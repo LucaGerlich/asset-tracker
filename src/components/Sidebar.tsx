@@ -25,6 +25,7 @@ import {
   Layers,
   Tags,
   CircleDot,
+  Ticket,
 } from "lucide-react";
 import { PlusIcon as SidebarPlusIcon } from "../ui/Icons";
 
@@ -57,6 +58,7 @@ const navSections = [
       { label: "Licence Categories", href: "/licenceCategories", icon: Layers },
       { label: "Models", href: "/models", icon: Tags },
       { label: "Status Types", href: "/statusTypes", icon: CircleDot },
+      { label: "IT Tickets", href: "/tickets", icon: Ticket },
     ],
   },
   {
@@ -113,75 +115,75 @@ const Sidebar = ({ initialCollapsed = false }) => {
           collapsed ? "w-20" : "w-64"
         )}
       >
-      <div className="flex h-16 shrink-0 items-center justify-between px-3">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
-          <span className={cx("text-lg tracking-tight", collapsed && "sr-only")}>Asset Tracker</span>
-        </Link>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setCollapsed((prev) => {
-              const next = !prev;
-              if (typeof window !== "undefined") {
-                window.localStorage.setItem("sidebar:collapsed", String(next));
-                document.cookie = `sidebar_collapsed=${next}; path=/; max-age=31536000`;
-              }
-              return next;
-            });
-          }}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="h-8 w-8 p-0"
-        >
-          {collapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-        </Button>
-      </div>
-      <div className="flex-1 px-2 py-4 scroll-shadow">
-        {navSections.map((section) => (
-          <div key={section.title} className="mb-6">
-            {!collapsed && (
-              <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-foreground-400">
-                {section.title}
-              </p>
-            )}
-            <div className="space-y-1">
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const active = activeMap.get(item.href);
-                const linkClasses = cx(
-                  "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  collapsed && "justify-center px-2",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground-500 hover:bg-content2 hover:text-foreground"
-                );
-                const content = (
-                  <Link href={item.href} className={linkClasses}>
-                    <Icon className="h-5 w-5 shrink-0" />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                  </Link>
-                );
-
-                if (collapsed) {
-                  return (
-                    <Tooltip key={item.href}>
-                      <TooltipTrigger asChild>
-                        {content}
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        <p>{item.label}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
+        <div className="flex h-16 shrink-0 items-center justify-between px-3">
+          <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
+            <span className={cx("text-lg tracking-tight", collapsed && "sr-only")}>Asset Tracker</span>
+          </Link>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setCollapsed((prev) => {
+                const next = !prev;
+                if (typeof window !== "undefined") {
+                  window.localStorage.setItem("sidebar:collapsed", String(next));
+                  document.cookie = `sidebar_collapsed=${next}; path=/; max-age=31536000`;
                 }
+                return next;
+              });
+            }}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="h-8 w-8 p-0"
+          >
+            {collapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </Button>
+        </div>
+        <div className="flex-1 px-2 py-4 scroll-shadow">
+          {navSections.map((section) => (
+            <div key={section.title} className="mb-6">
+              {!collapsed && (
+                <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-foreground-400">
+                  {section.title}
+                </p>
+              )}
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = activeMap.get(item.href);
+                  const linkClasses = cx(
+                    "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    collapsed && "justify-center px-2",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground-500 hover:bg-content2 hover:text-foreground"
+                  );
+                  const content = (
+                    <Link href={item.href} className={linkClasses}>
+                      <Icon className="h-5 w-5 shrink-0" />
+                      {!collapsed && <span className="truncate">{item.label}</span>}
+                    </Link>
+                  );
 
-                return <React.Fragment key={item.href}>{content}</React.Fragment>;
-              })}
+                  if (collapsed) {
+                    return (
+                      <Tooltip key={item.href}>
+                        <TooltipTrigger asChild>
+                          {content}
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>{item.label}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }
+
+                  return <React.Fragment key={item.href}>{content}</React.Fragment>;
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-      <div className="p-3">
+          ))}
+        </div>
+        <div className="p-3">
           <p className={cx("text-xs text-foreground-400", collapsed && "sr-only")}>Quick actions</p>
           <div className="mt-2 flex items-center gap-2">
             <Button

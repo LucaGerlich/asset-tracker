@@ -1,15 +1,29 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
+import { createFreshdeskClient, SUPPORTED_TICKET_TYPES } from "@/lib/freshdesk";
 
 // GET /api/tickets
-// Returns tickets based on user role:
-// - Admins: all tickets
-// - Regular users: only their own tickets
+// Supports two sources:
+// - Default (local): Returns tickets from the local database based on user role
+// - Freshdesk (?source=freshdesk): Returns tickets from Freshdesk API
 export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const source = url.searchParams.get("source");
+
+  if (source === "freshdesk") {
+    return getFreshdeskTickets(req, url);
+  }
+
+  return getLocalTickets();
+}
+
+// Fetch tickets from the local Prisma database
+async function getLocalTickets() {
   try {
     const user = await requireApiAuth();
-    
+
     // Admins see all tickets, users see only their own
     const rawTickets = await prisma.tickets.findMany({
       where: user.isAdmin ? {} : { createdBy: user.id },
@@ -68,6 +82,68 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.json({ error: "Failed to fetch tickets" }, { status: 500 });
+  }
+}
+
+// Fetch tickets from Freshdesk API
+async function getFreshdeskTickets(req: Request, url: URL) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get Freshdesk configuration from database
+    const [domainSetting, apiKeySetting] = await Promise.all([
+      prisma.systemSettings.findUnique({
+        where: { settingKey: "freshdesk_domain" },
+      }),
+      prisma.systemSettings.findUnique({
+        where: { settingKey: "freshdesk_api_key" },
+      }),
+    ]);
+
+    if (!domainSetting?.settingValue || !apiKeySetting?.settingValue) {
+      return NextResponse.json(
+        { error: "Freshdesk is not configured. Please configure it in Admin Settings." },
+        { status: 400 }
+      );
+    }
+
+    // Parse query params
+    const page = parseInt(url.searchParams.get("page") || "1", 10);
+    const typeFilter = url.searchParams.get("type");
+
+    const client = createFreshdeskClient({
+      domain: domainSetting.settingValue,
+      apiKey: apiKeySetting.settingValue,
+    });
+
+    // Determine which types to filter
+    const types = typeFilter
+      ? [typeFilter]
+      : [...SUPPORTED_TICKET_TYPES];
+
+    const result = await client.getTicketsByTypes(types, page);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error || "Failed to fetch tickets" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      tickets: result.data || [],
+      page,
+      types: SUPPORTED_TICKET_TYPES,
+    });
+  } catch (error) {
+    console.error("GET /api/tickets (freshdesk) error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch tickets" },
+      { status: 500 }
+    );
   }
 }
 
