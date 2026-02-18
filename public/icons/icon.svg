@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="64" fill="#0f172a"/>
+  <path d="M256 100L380 180V340L256 420L132 340V180L256 100Z" stroke="#3b82f6" stroke-width="16" fill="none"/>
+  <path d="M256 140L350 200V320L256 380L162 320V200L256 140Z" fill="#3b82f6" opacity="0.2"/>
+  <circle cx="256" cy="240" r="40" fill="#3b82f6"/>
+  <rect x="236" y="280" width="40" height="60" rx="4" fill="#3b82f6"/>
+  <text x="256" y="450" text-anchor="middle" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#e2e8f0">AT</text>
+</svg>

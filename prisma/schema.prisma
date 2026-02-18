@@ -178,6 +178,27 @@ model ApprovalRequest {
   @@map("approval_requests")
 }
 
+// Automation Rules / Workflows Engine
+model AutomationRule {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(200)
+  description String?
+  trigger     String   @db.VarChar(50) // warranty_expiring, maintenance_due, asset_status_change, license_expiring, stock_low
+  conditions  String   @db.Text // JSON: conditions to evaluate
+  actions     String   @db.Text // JSON: actions to take (notify, update_status, create_ticket, etc.)
+  isActive    Boolean  @default(true)
+  lastRunAt   DateTime? @db.Timestamp(6)
+  runCount    Int      @default(0)
+  createdBy   String   @db.Uuid
+  creator     user     @relation("automation_creator", fields: [createdBy], references: [userid], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([trigger])
+  @@index([isActive])
+  @@map("automation_rules")
+}
+
 // Stock Alert Configuration
 model StockAlert {
   id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -301,6 +322,13 @@ model asset {
   reservations          AssetReservation[]
   transfers             AssetTransfer[]
   userAssets            userAssets[]
+
+  @@index([assetname])
+  @@index([statustypeid])
+  @@index([assetcategorytypeid])
+  @@index([locationid])
+  @@index([organizationId])
+  @@index([creation_date])
 }
 
 model assetCategoryType {
@@ -336,6 +364,9 @@ model audit_logs {
   userAgent String?
   createdAt DateTime @default(now()) @db.Timestamp(6)
   user      user?    @relation(fields: [userId], references: [userid])
+
+  @@index([entity, entityId])
+  @@index([createdAt])
 }
 
 model consumable {
@@ -357,6 +388,8 @@ model consumable {
   supplier                 supplier               @relation(fields: [supplierid], references: [supplierid], onDelete: NoAction, onUpdate: NoAction, map: "fk_consumable_supplier_c_supplierid")
   stockAlert               StockAlert?
   consumable_checkouts     consumable_checkouts[]
+
+  @@index([consumablename])
 }
 
 model consumableCategoryType {
@@ -497,6 +530,8 @@ model maintenance_schedules {
   maintenance_logs maintenance_logs[]
   asset            asset              @relation(fields: [assetId], references: [assetid], onDelete: Cascade)
   user             user?              @relation(fields: [assignedTo], references: [userid])
+
+  @@index([nextDueDate])
 }
 
 model manufacturer {
@@ -672,6 +707,9 @@ model user {
   userHistory                      userHistory[]
   approvalRequests                 ApprovalRequest[]         @relation("approval_requester")
   approvalDecisions                ApprovalRequest[]         @relation("approval_approver")
+  automationRules                  AutomationRule[]          @relation("automation_creator")
+
+  @@index([firstname, lastname])
 }
 
 model userAccessoires {

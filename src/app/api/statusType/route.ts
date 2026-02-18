@@ -3,6 +3,7 @@ import prisma from "../../../lib/prisma";
 import { requireApiAuth, requireApiAdmin } from "@/lib/api-auth";
 import { createStatusTypeSchema, updateStatusTypeSchema, uuidSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { invalidateCache } from "@/lib/cache";
 
 // GET /api/statusType
 export async function GET() {
@@ -55,6 +56,9 @@ export async function POST(req) {
         statustypename,
       },
     });
+
+    // Invalidate cached status types so subsequent reads reflect the new entry
+    invalidateCache("status_types");
 
     // Create audit log
     await createAuditLog({
@@ -120,6 +124,9 @@ export async function PUT(req) {
         statustypename,
       },
     });
+
+    // Invalidate cached status types so subsequent reads reflect the update
+    invalidateCache("status_types");
 
     // Create audit log
     await createAuditLog({

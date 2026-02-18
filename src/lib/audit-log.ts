@@ -76,6 +76,56 @@ export async function getAuditLogs({ limit = 50, userId, entity, action }: GetAu
 }
 
 /**
+ * Compute the diff between two objects, returning only the fields that changed.
+ * Uses JSON.stringify for deep equality comparison.
+ */
+export function computeDiff(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): Record<string, { from: unknown; to: unknown }> {
+  const diff: Record<string, { from: unknown; to: unknown }> = {};
+
+  const allKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
+
+  for (const key of allKeys) {
+    const fromVal = before[key];
+    const toVal = after[key];
+
+    if (JSON.stringify(fromVal) !== JSON.stringify(toVal)) {
+      diff[key] = { from: fromVal ?? null, to: toVal ?? null };
+    }
+  }
+
+  return diff;
+}
+
+interface AuditLogWithDiffParams extends AuditLogParams {
+  before: Record<string, unknown>;
+  after: Record<string, unknown>;
+}
+
+/**
+ * Create an audit log entry that includes a diff of changed fields.
+ * The diff is stored in the `details` JSON field under the `changes` key.
+ */
+export async function createAuditLogWithDiff({
+  before,
+  after,
+  details,
+  ...rest
+}: AuditLogWithDiffParams): Promise<void> {
+  const changes = computeDiff(before, after);
+
+  await createAuditLog({
+    ...rest,
+    details: {
+      changes,
+      ...details,
+    },
+  });
+}
+
+/**
  * Common audit actions
  */
 export const AUDIT_ACTIONS = {

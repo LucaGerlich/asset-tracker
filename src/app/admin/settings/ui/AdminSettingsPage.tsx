@@ -19,6 +19,7 @@ import {
   KeyRound,
   Server,
   MessageSquare,
+  MapPin,
 } from "lucide-react";
 import EmailSettingsTab from "./EmailSettingsTab";
 import UsersSettingsTab from "./UsersSettingsTab";
@@ -35,6 +36,7 @@ import WebhooksTab from "./WebhooksTab";
 import SSOSettingsTab from "./SSOSettingsTab";
 import LDAPSettingsTab from "./LDAPSettingsTab";
 import IntegrationsTab from "./IntegrationsTab";
+import LocationTrackingTab from "./LocationTrackingTab";
 
 interface AdminSettingsPageProps {
   settings: Record<
@@ -177,6 +179,10 @@ export default function AdminSettingsPage({
             <MessageSquare className="h-4 w-4" />
             <span className="hidden sm:inline">Integrations</span>
           </TabsTrigger>
+          <TabsTrigger value="locationTracking" className="flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            <span className="hidden sm:inline">Location Tracking</span>
+          </TabsTrigger>
         </TabsList>
 
         <div className="mt-6">
@@ -238,6 +244,10 @@ export default function AdminSettingsPage({
 
           <TabsContent value="integrations">
             <IntegrationsTab />
+          </TabsContent>
+
+          <TabsContent value="locationTracking">
+            <LocationTrackingTab />
           </TabsContent>
         </div>
       </Tabs>

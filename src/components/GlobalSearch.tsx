@@ -15,8 +15,8 @@ import { Search, Loader2, Box, User, Puzzle, Key, Package, MapPin, Factory } fro
 interface SearchResult {
   id: string;
   type: string;
-  title: string;
-  subtitle: string;
+  label: string;
+  sublabel?: string;
   href: string;
 }
 
@@ -195,10 +195,12 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
                         {getTypeIcon(result.type)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{result.title}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {result.subtitle}
-                        </p>
+                        <p className="font-medium truncate">{result.label}</p>
+                        {result.sublabel && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            {result.sublabel}
+                          </p>
+                        )}
                       </div>
                       {getTypeBadge(result.type)}
                     </div>

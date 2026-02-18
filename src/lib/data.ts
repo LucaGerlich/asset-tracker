@@ -1,8 +1,8 @@
 import prisma from "./prisma";
+import { cached } from "./cache";
 
 export async function getUsers() {
-  const users = await prisma.user.findMany({});
-  return users;
+  return cached("users", () => prisma.user.findMany({}), 2 * 60 * 1000);
 }
 
 export async function getAssets() {
@@ -30,8 +30,7 @@ export async function getAssetById(id: string) {
 }
 
 export async function getLocation() {
-  const location = await prisma.location.findMany({});
-  return location;
+  return cached("locations", () => prisma.location.findMany({}));
 }
 
 export async function getLocationById(id: string) {
@@ -51,13 +50,11 @@ export async function getLocationById(id: string) {
 }
 
 export async function getStatus() {
-  const status = await prisma.statusType.findMany({});
-  return status;
+  return cached("status_types", () => prisma.statusType.findMany({}));
 }
 
 export async function getManufacturers() {
-  const manufacturer = await prisma.manufacturer.findMany({});
-  return manufacturer;
+  return cached("manufacturers", () => prisma.manufacturer.findMany({}));
 }
 
 export async function getManufacturerById(id: string) {
@@ -98,8 +95,7 @@ export async function getAccessoryById(id: string) {
 }
 
 export async function getSuppliers() {
-  const suppliers = await prisma.supplier.findMany({});
-  return suppliers;
+  return cached("suppliers", () => prisma.supplier.findMany({}));
 }
 
 export async function getSupplierById(id: string) {
@@ -176,13 +172,11 @@ export async function getLicenceCategories() {
 }
 
 export async function getModel() {
-  const model = await prisma.model.findMany({});
-  return model;
+  return cached("models", () => prisma.model.findMany({}));
 }
 
 export async function getCategories() {
-  const categories = await prisma.assetCategoryType.findMany({});
-  return categories;
+  return cached("categories", () => prisma.assetCategoryType.findMany({}));
 }
 
 export async function getUserAssets() {

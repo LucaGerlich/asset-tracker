@@ -24,16 +24,20 @@ export async function DELETE(req) {
       );
     }
 
-    const deletedAsset = await prisma.userAssets.deleteMany({
-      where: {
-        assetid: assetId,
-        userid: userId,
-      },
-    });
+    const deletedAsset = await prisma.$transaction(async (tx) => {
+      const deleted = await tx.userAssets.deleteMany({
+        where: {
+          assetid: assetId,
+          userid: userId,
+        },
+      });
 
-    await prisma.asset.update({
-      where: { assetid: assetId },
-      data: { statustypeid: availableStatus.statustypeid },
+      await tx.asset.update({
+        where: { assetid: assetId },
+        data: { statustypeid: availableStatus.statustypeid },
+      });
+
+      return deleted;
     });
 
     return new Response(

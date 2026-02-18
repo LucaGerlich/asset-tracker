@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { requireApiAdmin } from "@/lib/api-auth";
 
 // PATCH /api/admin/users/bulk-permissions
 export async function PATCH(req) {
   try {
+    await requireApiAdmin();
     const body = await req.json();
     const { userIds, isadmin, canrequest } = body;
 
@@ -51,6 +53,13 @@ export async function PATCH(req) {
     );
   } catch (error) {
     console.error("PATCH /api/admin/users/bulk-permissions error:", error);
+
+    if (error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error.message?.startsWith("Forbidden")) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
 
     return NextResponse.json(
       { error: "Failed to update bulk permissions" },

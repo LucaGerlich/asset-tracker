@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useUrlState } from "@/hooks/useUrlState";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -99,14 +100,58 @@ export default function App({
   selectOptions,
   userAssets,
 }) {
-  const [filterValue, setFilterValue] = useState("");
+  // -- URL-synced state for shareable filter / pagination / sort URLs --
+  const allStatusUids = statusOptions.map((s) => s.uid).join(",");
+  const [urlState, setUrlState] = useUrlState({
+    search: "",
+    page: "1",
+    pageSize: selectOptions[0].value,
+    sortCol: "assettag",
+    sortDir: "ascending",
+    status: allStatusUids,
+  });
+
+  // Derived values from URL state
+  const filterValue = urlState.search;
+  const page = Number(urlState.page) || 1;
+  const rowsPerPage = Number(urlState.pageSize) || Number(selectOptions[0].value);
+  const sortDescriptor = useMemo(
+    () => ({ column: urlState.sortCol, direction: urlState.sortDir }),
+    [urlState.sortCol, urlState.sortDir]
+  );
+  const statusFilter = useMemo<Set<string>>(
+    () => new Set(urlState.status ? urlState.status.split(",") : []),
+    [urlState.status]
+  );
+
+  // Convenience setters that update URL state
+  const setFilterValue = useCallback(
+    (v: string) => setUrlState({ search: v, page: "1" }),
+    [setUrlState]
+  );
+  const setPage = useCallback(
+    (p: number) => setUrlState({ page: String(p) }),
+    [setUrlState]
+  );
+  const setRowsPerPage = useCallback(
+    (n: number) => setUrlState({ pageSize: String(n), page: "1" }),
+    [setUrlState]
+  );
+  const setSortDescriptor = useCallback(
+    (desc: { column: string; direction: string }) =>
+      setUrlState({ sortCol: desc.column, sortDir: desc.direction }),
+    [setUrlState]
+  );
+  const setStatusFilter = useCallback(
+    (s: Set<string>) => setUrlState({ status: Array.from(s).join(",") }),
+    [setUrlState]
+  );
+
+  // -- Local-only state (not shareable via URL) --
   const [selectedKeys, setSelectedKeys] = useState(new Set([]));
   const [deleteButtonActive, setDeleteButtonActive] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
     new Set(INITIAL_VISIBLE_COLUMNS)
-  );
-  const [statusFilter, setStatusFilter] = useState<Set<string>>(
-    new Set(statusOptions.map(s => s.uid))
   );
   const [assetsData, setAssetsData] = useState(data);
   const [userAssetsData, setUserAssetsData] = useState(userAssets);
@@ -114,12 +159,6 @@ export default function App({
   const [lastUpdated, setLastUpdated] = useState(null);
   const [now, setNow] = useState(null);
   const [mounted, setMounted] = useState(false);
-  const [rowsPerPage, setRowsPerPage] = useState(selectOptions[0].value);
-  const [sortDescriptor, setSortDescriptor] = useState({
-    column: "assettag",
-    direction: "ascending",
-  });
-  const [page, setPage] = useState(1);
   
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isQRCodeModalOpen, setIsQRCodeModalOpen] = useState(false);
@@ -701,18 +740,15 @@ export default function App({
 
   const onRowsPerPageChange = useCallback((e) => {
     setRowsPerPage(Number(e.target.value));
-    setPage(1);
-  }, []);
+  }, [setRowsPerPage]);
 
   const onSearchChange = useCallback((value) => {
     setFilterValue(value);
-    setPage(1);
-  }, []);
+  }, [setFilterValue]);
 
   const onClear = useCallback(() => {
     setFilterValue("");
-    setPage(1);
-  }, []);
+  }, [setFilterValue]);
 
   const refreshData = useCallback(async (auto = false) => {
     try {
@@ -936,7 +972,7 @@ export default function App({
           </span>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Rows per page:</span>
-            <Select value={String(rowsPerPage)} onValueChange={(value) => { setRowsPerPage(Number(value)); setPage(1); }}>
+            <Select value={String(rowsPerPage)} onValueChange={(value) => { setRowsPerPage(Number(value)); }}>
               <SelectTrigger className="w-20">
                 <SelectValue />
               </SelectTrigger>

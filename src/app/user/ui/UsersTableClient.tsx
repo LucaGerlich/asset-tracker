@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import dynamic from "next/dynamic";
 
 const DashboardTable = dynamic(() => import("../../../ui/user/DashboardTable"), {
@@ -7,6 +8,10 @@ const DashboardTable = dynamic(() => import("../../../ui/user/DashboardTable"), 
 });
 
 export default function UsersTableClient(props) {
-  return <DashboardTable {...props} />;
+  return (
+    <Suspense fallback={null}>
+      <DashboardTable {...props} />
+    </Suspense>
+  );
 }
 

@@ -1,8 +1,44 @@
 import { withSentryConfig } from "@sentry/nextjs";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable standalone output for Docker deployment
   output: "standalone",
+
+  async headers() {
+    // Security headers applied to every route.
+    // The HSTS header is only included when NOT running on localhost (checked
+    // at build/startup time via NODE_ENV / VERCEL_URL).
+    const isLocal =
+      !process.env.VERCEL_URL && process.env.NODE_ENV !== "production";
+
+    /** @type {import('next').Header["headers"]} */
+    const securityHeaders = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "X-XSS-Protection", value: "1; mode=block" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      {
+        key: "Permissions-Policy",
+        value: "camera=(), microphone=(), geolocation=()",
+      },
+    ];
+
+    if (!isLocal) {
+      securityHeaders.push({
+        key: "Strict-Transport-Security",
+        value: "max-age=31536000; includeSubDomains",
+      });
+    }
+
+    return [
+      {
+        // Apply to all routes
+        source: "/(.*)",
+        headers: securityHeaders,
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

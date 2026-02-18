@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { validateBody, consumableCheckoutSchema } from "@/lib/validations";
 
 // GET /api/consumable/checkout?consumableId=...
 export async function GET(req: Request) {
@@ -48,21 +49,10 @@ export async function POST(req: Request) {
     const authUser = await requireApiAuth();
 
     const body = await req.json();
-    const { consumableId, userId, quantity = 1, notes } = body;
+    const validated = validateBody(consumableCheckoutSchema, body);
+    if (validated instanceof NextResponse) return validated;
 
-    if (!consumableId || !userId) {
-      return NextResponse.json(
-        { error: "consumableId and userId are required" },
-        { status: 400 }
-      );
-    }
-
-    if (typeof quantity !== "number" || quantity < 1) {
-      return NextResponse.json(
-        { error: "quantity must be a positive integer" },
-        { status: 400 }
-      );
-    }
+    const { consumableId, userId, quantity, notes } = validated;
 
     // Verify the consumable exists and has sufficient stock
     const consumable = await prisma.consumable.findUnique({

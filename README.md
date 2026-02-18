@@ -1,309 +1,166 @@
-# Asset Management System
+# Asset Tracker
 
-This project is an Asset Management System designed to help organizations manage their assets efficiently. It includes features like assigning assets to users, updating asset information, unassigning assets, and filtering assets based on various criteria. The application is built with Next.js, React, and Prisma for the database interactions.
-
-This is build using [Next.js](https://nextjs.org/), [Prisma](https://prisma.io/), [PostgreSQL](https://postgresql.org/) and [shadcn/ui](https://ui.shadcn.com/)
-
-## Table of Contents
-
-- [Features](#features)
-- [Installation](#installation)
-  - [Quick Start with Docker](#quick-start-with-docker)
-  - [Manual Installation](#manual-installation)
-- [Docker Deployment](#docker-deployment)
-- [Demo Deployment](#demo-deployment)
-- [API Testing with Postman](#api-testing-with-postman)
-- [Database Schema](#database-schema)
-- [Contributing](#contributing)
-- [License](#license)
+A comprehensive, full-featured asset management platform built with Next.js. Track hardware, software, consumables, licences, and more across your organization with role-based access, audit logging, and integrations.
 
 ## Features
 
-- **Asset Management**: Add, update, assign, and unassign assets.
-- **User Management**: Assign users to assets and manage user information.
-- **Filtering and Sorting**: Filter assets by various criteria and sort them as needed.
-- **Pagination**: Efficiently handle large datasets with pagination.
-- **Responsive Design**: Fully responsive design for mobile and desktop views.
-- **Search Functionality**: Quickly search for assets using the search bar.
-- **User Onboarding**: Intuitive user onboarding with guided tours and tooltips.
-- **Accessibility**: Designed with accessibility in mind.
-- **Docker Support**: Easy deployment with Docker and Docker Compose.
-- **Podman Support**: Alternative deployment with Podman and podman-compose.
+### Asset Management
+- Full CRUD for assets with detailed profiles
+- Asset lifecycle management (procure, deploy, retire)
+- Transfers between users, locations, and organizations
+- Reservation and booking system with approval flows
+- File attachments and photos
+- Depreciation tracking and reporting
+- Warranty tracking and alerts
+- Custom fields on assets
+- QR code generation, printing, and scanning
 
-## Installation
+### User Management
+- Role-based access control (RBAC)
+- Organization and department scoping
+- Per-user preferences and settings
+- User history timeline
+- Admin tooling for org configuration
 
-### Quick Start with Docker
+### Consumables & Accessories
+- Stock level tracking with quantity and minimums
+- Check-out system with usage tracking
+- Automatic reorder alerts and low-stock notifications
+- Category management
 
-The easiest way to get started is using the interactive installation script:
+### Licences
+- Licence management and assignment
+- Licence categories
 
-```bash
-# Clone the repository
-git clone https://github.com/your-username/asset-management-system.git
-cd asset-management-system
+### Integrations
+- Freshdesk integration for IT tickets
+- Slack and Teams notifications
+- Webhooks with delivery log viewer
+- SSO/SAML provider support
+- LDAP/AD sync and auth mapping
 
-# Run the interactive installer
-./install.sh
-```
+### Compliance & Security
+- Audit logging with full entity diffs
+- GDPR data retention and export tooling
+- Encryption at rest (AES-256-GCM)
+- Compliance reporting (SOX/HIPAA scaffolding)
+- Account lockout, session timeout, and rate limiting
 
-The installer will guide you through:
-- Choosing between using an existing PostgreSQL database or creating one with Docker
-- Selecting schema creation method (Prisma migrations or SQL scripts)
-- Configuring application settings
+### Performance
+- Server-side pagination and filtering
+- Caching strategy (server-side + optional Redis)
+- Rate limiting (in-memory or Upstash Redis)
+- Database index optimization and transactions
 
-### Manual Installation
+### UX
+- Search typeahead and auto-suggestions
+- Keyboard navigation and shortcuts
+- Skeleton loaders for perceived performance
+- Shareable URLs with filters in query params
+- i18n/localization framework
+- Regional settings (date, number, currency)
 
-If you prefer manual setup:
+### Mobile & PWA
+- Progressive Web App with offline support
+- Mobile-optimized navigation and workflows
+- Responsive tables
+- QR scanning for asset lookup
+- Install prompt
 
-```bash
-# Clone the repository
-git clone https://github.com/your-username/asset-management-system.git
-cd asset-management-system
+## Tech Stack
 
-# Install dependencies
-npm install
-# or
-bun install
+- **Next.js 16** (App Router + Turbopack)
+- **TypeScript**
+- **PostgreSQL** + **Prisma ORM**
+- **Tailwind CSS** + **shadcn/ui** (Radix primitives)
+- **NextAuth.js** (v5)
+- **Zod** validation
+- **Sentry** error tracking
+- **Playwright** E2E testing
+- **Recharts** dashboards
 
-# Copy environment example and configure
-cp .env.example .env
-# Edit .env with your database settings
-
-# Generate Prisma client
-npx prisma generate
-
-# Run database migrations
-npx prisma migrate deploy
-# or push schema directly
-npx prisma db push
-
-# Seed the database (optional)
-npm run db:seed
-
-# Start development server
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Docker Deployment
-
-The application supports both **Docker** and **Podman** as container runtimes. The install script automatically detects which one is available.
+## Getting Started
 
 ### Prerequisites
 
-**Option A: Docker**
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/) (v2 recommended)
+- Node.js 18+
+- PostgreSQL
+- [Bun](https://bun.sh/) (recommended) or npm
 
-**Option B: Podman**
-- [Podman](https://podman.io/getting-started/installation)
-- [podman-compose](https://github.com/containers/podman-compose) (`pip install podman-compose` or `dnf install podman-compose`)
-
-### Using Docker Compose / Podman Compose
-
-**Option 1: Full Stack (App + PostgreSQL)**
+### Installation
 
 ```bash
-# Copy and configure environment
+# Clone the repository
+git clone <repo-url>
+cd assettTracker
+
+# Install dependencies
+bun install
+
+# Copy environment variables
 cp .env.example .env
 
-# Start with included PostgreSQL database
-docker compose --profile with-db up -d
+# Edit .env and set your DATABASE_URL and NEXTAUTH_SECRET
+# Generate a secret: openssl rand -base64 32
 
-# Run Prisma migrations (first time only)
-docker compose exec app npx prisma migrate deploy
-```
-
-**Option 2: App Only (External Database)**
-
-```bash
-# Configure .env with your external database URL
-# DATABASE_URL="postgresql://user:password@your-host:5432/your-db"
-
-# Start app only
-docker compose --profile app-only up -d
-```
-
-**Option 3: Development Mode**
-
-```bash
-# Start with hot-reload for development
-docker compose --profile dev up -d
-```
-
-### Docker Commands
-
-```bash
-# View logs
-docker compose logs -f
-
-# Stop all services
-docker compose down
-
-# Restart services
-docker compose restart
-
-# Access app shell
-docker compose exec app sh
-
-# Run Prisma commands
-docker compose exec app npx prisma studio
-docker compose exec app npx prisma migrate deploy
-```
-
-### Podman Commands
-
-If using Podman instead of Docker, replace `docker compose` with `podman-compose`:
-
-```bash
-# View logs
-podman-compose logs -f
-
-# Stop all services
-podman-compose down
-
-# Restart services
-podman-compose restart
-
-# Access app shell
-podman-compose exec app sh
-
-# Run Prisma commands
-podman-compose exec app npx prisma studio
-podman-compose exec app npx prisma migrate deploy
-```
-
-### Database Schema Setup
-
-You can set up the database schema using either method:
-
-**Using Prisma (Recommended):**
-```bash
-# Push schema to database
+# Push the database schema and generate the Prisma client
 npx prisma db push
+npx prisma generate
 
-# Or run migrations
-npx prisma migrate deploy
+# (Optional) Seed the database
+bun run db:seed
 
-# Seed initial data
-npm run db:seed
+# Start the development server
+bun dev
 ```
 
-**Using SQL Scripts:**
-```bash
-# Using psql
-psql -h localhost -U assettracker -d assettracker -f sql/init/01-schema.sql
-```
+The app will be available at **http://localhost:3000**.
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and configure:
+Copy `.env.example` and configure the following groups:
 
-```bash
-# Database Connection
-DATABASE_URL="postgresql://assettracker:assettracker@localhost:5432/assettracker"
+| Category | Key Variables | Required |
+|---|---|---|
+| Database | `DATABASE_URL` | Yes |
+| NextAuth | `NEXTAUTH_URL`, `NEXTAUTH_SECRET` | Yes |
+| Encryption | `ENCRYPTION_KEY` | Recommended |
+| Feature Flags | `FEATURE_RATE_LIMITING`, `FEATURE_AUDIT_LOGGING`, etc. | No (defaults enabled) |
+| Email | `EMAIL_PROVIDER`, provider-specific keys | No |
+| Storage | `STORAGE_PROVIDER`, `S3_*` or `UPLOAD_DIR` | No |
+| Freshdesk | `FRESHDESK_DOMAIN`, `FRESHDESK_API_KEY` | No |
+| Redis | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | No |
 
-# Docker PostgreSQL Settings (if using Docker-provided database)
-POSTGRES_USER=assettracker
-POSTGRES_PASSWORD=assettracker
-POSTGRES_DB=assettracker
+See `.env.example` for full details and provider options.
 
-# Application Settings
-APP_PORT=3000
-DB_PORT=5432
-NODE_ENV=production
+## Project Structure
+
+```
+src/
+├── app/           # Next.js pages and API routes
+├── components/    # Shared UI components
+├── hooks/         # Custom React hooks
+├── lib/           # Utilities (auth, prisma, cache, validation, etc.)
+└── ui/            # Page-specific UI components
 ```
 
-## API Testing with Postman
+## Available Scripts
 
-A Postman collection is included for API testing:
+| Command | Description |
+|---|---|
+| `bun dev` | Start dev server with Turbopack and inspector |
+| `bun run build` | Production build |
+| `bun start` | Start production server |
+| `bun run lint` | Run ESLint |
+| `bun run db:seed` | Seed the database |
+| `bun run db:demo-seed` | Seed with demo data |
+| `bun run db:demo-reset` | Reset demo database |
+| `bun run create-admin` | Create an admin user |
+| `bun run test` | Run Playwright tests |
+| `bun run test:ui` | Run Playwright with UI mode |
+| `bun run test:mobile` | Run mobile-specific tests |
+| `bun run test:report` | Show Playwright test report |
 
-1. Import the collection from `postman/AssetTracker.postman_collection.json`
-2. Import the environment from `postman/AssetTracker.postman_environment.json`
-3. Set the `baseUrl` variable to your server URL (default: `http://localhost:3000`)
+## License
 
-## Demo Deployment
-
-You can deploy a public demo version of the application using Supabase as the database backend. The demo includes:
-
-- **Pre-populated sample data** - Realistic test data showcasing all features
-- **Automatic resets** - Database refreshes every 30 minutes
-- **Demo accounts** - Pre-configured admin and user accounts
-
-### Quick Start
-
-1. Create a [Supabase](https://supabase.com) project
-2. Deploy to Vercel/Railway with environment variables:
-   ```bash
-   DATABASE_URL="postgresql://postgres.[ref]:[pw]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"
-   DATABASE_SSL="true"
-   DEMO_MODE="true"
-   NEXTAUTH_URL="https://your-domain.com"
-   NEXTAUTH_SECRET="your-secret"
-   ```
-3. Initialize the database:
-   ```bash
-   npx prisma db push
-   npm run db:demo-seed
-   ```
-
-### Demo Credentials
-
-| Account | Username | Password |
-|---------|----------|----------|
-| Admin | demo_admin | demo123 |
-| User | demo_user | demo123 |
-
-For detailed setup instructions, see [docs/DEMO_HOSTING.md](docs/DEMO_HOSTING.md).
-
-### Available API Endpoints
-
-| Category | Endpoint | Methods |
-|----------|----------|---------|
-| Assets | `/api/asset` | GET, POST |
-| Assets | `/api/asset/getAsset` | GET |
-| Assets | `/api/asset/addAsset` | POST |
-| Assets | `/api/asset/updateStatus` | PATCH |
-| Assets | `/api/asset/deleteAsset` | DELETE |
-| Users | `/api/user` | GET, POST |
-| User Assets | `/api/userAssets` | GET |
-| User Assets | `/api/userAssets/assign` | POST |
-| User Assets | `/api/userAssets/unassign` | POST |
-| Accessories | `/api/accessories` | GET |
-| Licences | `/api/licence` | GET |
-| Consumables | `/api/consumable` | GET |
-| Locations | `/api/location` | GET |
-| Manufacturers | `/api/manufacturer` | GET |
-| Suppliers | `/api/supplier` | GET |
-
-## Database Schema
-
-The database schema includes the following main tables:
-
-- **user**: User accounts and permissions
-- **asset**: Physical assets (laptops, phones, etc.)
-- **accessories**: Asset accessories
-- **consumable**: Consumable items
-- **licence**: Software licenses
-- **location**: Physical locations
-- **manufacturer**: Asset manufacturers
-- **supplier**: Asset suppliers
-- **model**: Asset models
-- **userAssets**: User-Asset assignments
-- **userAccessoires**: User-Accessory assignments
-- **userHistory**: Audit trail
-
-See `prisma/schema.prisma` for the complete schema definition or `sql/init/01-schema.sql` for the SQL version.
-
-## Contributing
-
-Contributions are welcome! Please follow these steps to contribute:
-
-1. Fork the repository
-2. Create a new branch (`git checkout -b feature-branch`)
-3. Make your changes
-4. Commit your changes (`git commit -m 'Add some feature'`)
-5. Push to the branch (`git push origin feature-branch`)
-6. Create a new Pull Request
-
-## Licence
+This project is licensed under the MIT License. See [licence.md](licence.md) for details.

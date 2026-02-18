@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { requireApiAdmin } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
 // PATCH /api/admin/users/[id]/permissions
 export async function PATCH(req, { params }) {
   const startTime = Date.now();
-  
+
   try {
-    const { id } = params;
+    await requireApiAdmin();
+    const { id } = await params;
     const body = await req.json();
     const { isadmin, canrequest } = body;
 
@@ -73,6 +75,12 @@ export async function PATCH(req, { params }) {
       duration,
     });
     
+    if (error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error.message?.startsWith("Forbidden")) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     if (error.code === "P2025") {
       return NextResponse.json(
         { error: "User not found" },

@@ -5,21 +5,55 @@ import { requireApiAuth, requireApiAdmin } from "@/lib/api-auth";
 import { createConsumableSchema, updateConsumableSchema, uuidSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { getOrganizationContext, scopeToOrganization } from "@/lib/organization-context";
+import {
+  parsePaginationParams,
+  buildPrismaArgs,
+  buildPaginatedResponse,
+} from "@/lib/pagination";
+
+const CONSUMABLE_SORT_FIELDS = ["consumablename", "quantity", "creation_date"];
 
 // GET /api/consumable
-export async function GET() {
+// Pagination: ?page=1&pageSize=25&sortBy=consumablename&sortOrder=asc&search=keyword
+export async function GET(req) {
   try {
     // Require authentication to view consumables
     await requireApiAuth();
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
-    const where = scopeToOrganization({}, orgId);
-    const items = await prisma.consumable.findMany({
-      where,
-      orderBy: { consumablename: "asc" },
-    });
-    return NextResponse.json(items, { status: 200 });
+    const searchParams = req.nextUrl.searchParams;
+
+    // If no `page` param, return all results for backward compatibility
+    if (!searchParams.has("page")) {
+      const where = scopeToOrganization({}, orgId);
+      const items = await prisma.consumable.findMany({
+        where,
+        orderBy: { consumablename: "asc" },
+      });
+      return NextResponse.json(items, { status: 200 });
+    }
+
+    // Paginated path
+    const params = parsePaginationParams(searchParams);
+    const prismaArgs = buildPrismaArgs(params, CONSUMABLE_SORT_FIELDS);
+
+    const where: Record<string, unknown> = scopeToOrganization({}, orgId);
+
+    // Search filter (consumablename)
+    if (params.search) {
+      where.consumablename = { contains: params.search, mode: "insensitive" };
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.consumable.findMany({ where, ...prismaArgs }),
+      prisma.consumable.count({ where }),
+    ]);
+
+    return NextResponse.json(
+      buildPaginatedResponse(items, total, params),
+      { status: 200 },
+    );
   } catch (e) {
     console.error("GET /api/consumable error:", e);
 

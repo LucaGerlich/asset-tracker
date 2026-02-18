@@ -27,8 +27,15 @@ import {
   CircleDot,
   Ticket,
   FileJson,
+  ClipboardCheck,
+  QrCode,
+  Zap,
+  Shield,
+  ShieldCheck,
+  ScrollText,
 } from "lucide-react";
 import { PlusIcon as SidebarPlusIcon } from "../ui/Icons";
+import SearchTypeahead from "./SearchTypeahead";
 
 const navSections = [
   {
@@ -63,10 +70,21 @@ const navSections = [
     ],
   },
   {
+    title: "Tools",
+    items: [
+      { label: "Approvals", href: "/approvals", icon: ClipboardCheck },
+      { label: "QR Scanner", href: "/scanner", icon: QrCode },
+    ],
+  },
+  {
     title: "Administration",
     items: [
       { label: "Reports", href: "/reports", icon: LayoutDashboard },
+      { label: "Workflows", href: "/admin/workflows", icon: Zap, adminOnly: true },
       { label: "API Docs", href: "/api-docs", icon: FileJson },
+      { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText, adminOnly: true },
+      { label: "GDPR", href: "/admin/gdpr", icon: Shield, adminOnly: true },
+      { label: "Compliance", href: "/admin/compliance", icon: ShieldCheck, adminOnly: true },
       { label: "Admin Settings", href: "/admin/settings", icon: LayoutDashboard, adminOnly: true },
     ],
   },
@@ -112,6 +130,8 @@ const Sidebar = ({ initialCollapsed = false }) => {
   return (
     <TooltipProvider>
       <aside
+        role="navigation"
+        aria-label="Main navigation"
         className={cx(
           "hidden border-r border-default-200 bg-content1/60 backdrop-blur lg:flex lg:flex-col transition-[width] duration-300 ease-in-out",
           collapsed ? "w-20" : "w-64"
@@ -140,6 +160,11 @@ const Sidebar = ({ initialCollapsed = false }) => {
             {collapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </Button>
         </div>
+        {!collapsed && (
+          <div className="px-3 pb-2">
+            <SearchTypeahead />
+          </div>
+        )}
         <div className="flex-1 px-2 py-4 scroll-shadow">
           {navSections.map((section) => (
             <div key={section.title} className="mb-6">

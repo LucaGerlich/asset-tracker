@@ -30,29 +30,30 @@ export async function POST(req) {
       where: { assetid: assetId },
     });
 
-    let result;
+    const result = await prisma.$transaction(async (tx) => {
+      let assignment;
 
-    if (existingAssignment) {
-      // Update the existing assignment
-      result = await prisma.userAssets.update({
-        where: { userassetsid: existingAssignment.userassetsid },
-        data: { userid: userId },
-      });
-    } else {
-      // Create a new assignment
-      result = await prisma.userAssets.create({
-        data: {
-          assetid: assetId,
-          userid: userId,
-          creation_date: new Date(),
-        } as Prisma.userAssetsUncheckedCreateInput,
-      });
-    }
+      if (existingAssignment) {
+        assignment = await tx.userAssets.update({
+          where: { userassetsid: existingAssignment.userassetsid },
+          data: { userid: userId },
+        });
+      } else {
+        assignment = await tx.userAssets.create({
+          data: {
+            assetid: assetId,
+            userid: userId,
+            creation_date: new Date(),
+          } as Prisma.userAssetsUncheckedCreateInput,
+        });
+      }
 
-    // Set asset status to Active on assign
-    await prisma.asset.update({
-      where: { assetid: assetId },
-      data: { statustypeid: activeStatus.statustypeid },
+      await tx.asset.update({
+        where: { assetid: assetId },
+        data: { statustypeid: activeStatus.statustypeid },
+      });
+
+      return assignment;
     });
 
     return new Response(

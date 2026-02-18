@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
+import { useUrlState } from "@/hooks/useUrlState";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,14 +40,37 @@ function resolveRole(user) {
 }
 
 function DashboardTable({ data, columns: propColumns }) {
-  const [searchValue, setSearchValue] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [rowsPerPage, setRowsPerPage] = useState(Number(ROWS_PER_PAGE_OPTIONS[0]));
-  const [page, setPage] = useState(1);
+  // -- URL-synced state for shareable filter / pagination URLs --
+  const [urlState, setUrlState] = useUrlState({
+    search: "",
+    role: "all",
+    page: "1",
+    pageSize: ROWS_PER_PAGE_OPTIONS[0],
+  });
 
-  useEffect(() => {
-    setPage(1);
-  }, [searchValue, roleFilter, rowsPerPage]);
+  // Derived values from URL state
+  const searchValue = urlState.search;
+  const roleFilter = urlState.role;
+  const page = Number(urlState.page) || 1;
+  const rowsPerPage = Number(urlState.pageSize) || Number(ROWS_PER_PAGE_OPTIONS[0]);
+
+  // Convenience setters that update URL state
+  const setSearchValue = useCallback(
+    (v: string) => setUrlState({ search: v, page: "1" }),
+    [setUrlState]
+  );
+  const setRoleFilter = useCallback(
+    (v: string) => setUrlState({ role: v, page: "1" }),
+    [setUrlState]
+  );
+  const setRowsPerPage = useCallback(
+    (n: number) => setUrlState({ pageSize: String(n), page: "1" }),
+    [setUrlState]
+  );
+  const setPage = useCallback(
+    (p: number) => setUrlState({ page: String(p) }),
+    [setUrlState]
+  );
 
   const filteredUsers = useMemo(() => {
     const normalizedQuery = searchValue.trim().toLowerCase();
