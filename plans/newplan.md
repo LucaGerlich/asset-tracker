@@ -1,6 +1,9 @@
 Here is Claude's plan:
 
-**Status Update (2026-02-18):** This plan is historical. Current scope and status are tracked in `FEATURES.md` and `plans/PROGRESS.md`.
+**Status Update (2026-02-18):** This plan has been consolidated into `plans/MASTER_PLAN.md`. Use the master plan for current status aligned with the codebase.
+
+Summary
+- Legacy modernization roadmap for UI migration, responsiveness, dependency updates, and testing.
 ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
  Asset Management System - Modernization Plan
 

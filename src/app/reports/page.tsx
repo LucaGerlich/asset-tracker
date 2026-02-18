@@ -105,6 +105,18 @@ async function getReportData() {
   // Low stock consumables
   const lowStockConsumables = consumables.filter((c) => c.quantity <= c.minQuantity).length;
 
+  const warrantyAssets = assets
+    .filter((a) => a.warrantyExpires)
+    .map((a) => ({
+      id: a.assetid,
+      name: a.assetname,
+      tag: a.assettag,
+      warrantyExpires: a.warrantyExpires!.toISOString(),
+      warrantyMonths: a.warrantyMonths,
+      status: a.statusType?.statustypename || "Unknown",
+      category: a.assetCategoryType?.assetcategorytypename || "Uncategorized",
+    }));
+
   return {
     summary: {
       totalAssets: assets.length,
@@ -143,6 +155,7 @@ async function getReportData() {
         purchaseDate: a.purchasedate ? new Date(a.purchasedate).toISOString() : null,
       })),
     },
+    warrantyAssets,
   };
 }
 
@@ -163,7 +176,7 @@ export default async function Page() {
   return (
     <>
       <Breadcrumb options={breadcrumbOptions} />
-      <ReportsPage data={reportData} />
+      <ReportsPage data={reportData} warrantyAssets={reportData.warrantyAssets} />
     </>
   );
 }

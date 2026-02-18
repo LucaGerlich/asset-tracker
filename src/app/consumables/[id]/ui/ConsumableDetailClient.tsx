@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { PackageMinus, Bell } from "lucide-react";
+import { PackageMinus, PackagePlus, Bell } from "lucide-react";
 
 interface User {
   userid: string;
@@ -53,8 +53,10 @@ export default function ConsumableDetailClient({
 }: ConsumableDetailClientProps) {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
+  const [restockOpen, setRestockOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [qty, setQty] = useState(currentQuantity);
+  const [restockQty, setRestockQty] = useState("1");
 
   // Checkout form
   const [checkoutUserId, setCheckoutUserId] = useState("");
@@ -118,6 +120,44 @@ export default function ConsumableDetailClient({
     }
   };
 
+  const handleRestock = async () => {
+    const amount = Number(restockQty);
+    if (!amount || amount < 1) {
+      toast.error("Quantity must be at least 1");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/consumable", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          consumableid: consumableId,
+          addQuantity: amount,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Restock failed");
+      }
+
+      toast.success("Restock successful", {
+        description: `Added ${amount} item(s) to stock`,
+      });
+      setQty((prev) => prev + amount);
+      setRestockOpen(false);
+      setRestockQty("1");
+    } catch (err) {
+      toast.error("Restock failed", {
+        description: (err as Error).message,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleCreateAlert = async () => {
     const minVal = Number(alertMin);
     const critVal = Number(alertCritical);
@@ -168,6 +208,15 @@ export default function ConsumableDetailClient({
         >
           <PackageMinus className="h-4 w-4 mr-2" />
           Check Out to User
+        </Button>
+
+        <Button
+          variant="outline"
+          className="w-full justify-start"
+          onClick={() => setRestockOpen(true)}
+        >
+          <PackagePlus className="h-4 w-4 mr-2" />
+          Restock
         </Button>
 
         {!hasStockAlert && (
@@ -242,6 +291,38 @@ export default function ConsumableDetailClient({
             </Button>
             <Button onClick={handleCheckout} disabled={submitting}>
               {submitting ? "Processing..." : "Check Out"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Restock Dialog */}
+      <Dialog open={restockOpen} onOpenChange={setRestockOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Restock Consumable</DialogTitle>
+            <DialogDescription>
+              Add inventory to increase available stock.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-2">
+            <div>
+              <Label htmlFor="restock-qty">Quantity to Add</Label>
+              <Input
+                id="restock-qty"
+                type="number"
+                min="1"
+                value={restockQty}
+                onChange={(e) => setRestockQty(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRestockOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRestock} disabled={submitting}>
+              {submitting ? "Restocking..." : "Restock"}
             </Button>
           </DialogFooter>
         </DialogContent>

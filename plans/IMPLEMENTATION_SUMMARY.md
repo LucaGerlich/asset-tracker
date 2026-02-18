@@ -1,6 +1,10 @@
 # 🔐 NextAuth.js Security Implementation - Summary
 
-**Status Update (2026-02-18):** Core auth and security features are implemented. Additional API hardening work has been applied (see `docs/SECURITY_GUIDE.md` and `plans/PROGRESS.md`).
+**Status Update (2026-02-18):** This summary is now consolidated into `plans/MASTER_PLAN.md`. Use the master plan for current status aligned with the codebase.
+
+## Summary
+- Historical record of the security/auth implementation.
+- Superseded by the master plan for current status.
 
 ## Overview
 

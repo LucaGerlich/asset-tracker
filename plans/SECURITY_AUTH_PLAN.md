@@ -1,7 +1,11 @@
 # Security & Authentication Implementation Plan
 ## NextAuth.js Integration for Asset Tracker
 
-**Status Update (2026-02-18):** NextAuth credential auth is implemented, rate limiting and session timeout are active, and core asset/user/accessory/assignment APIs are now protected. Remaining work is focused on org scoping, upload hardening, CSRF, security headers, and MFA/reset flows. See `docs/SECURITY_GUIDE.md` and `FEATURES.md` for current status.
+**Status Update (2026-02-18):** This plan has been consolidated into `plans/MASTER_PLAN.md`. Use the master plan for current status aligned with the codebase.
+
+## Summary
+- NextAuth v5 integration plan, RBAC, and API hardening steps.
+- Security hardening roadmap (rate limits, CSRF, headers, MFA, reset flows).
 
 **Current State Analysis:**
 - Next.js 16.1.5 (App Router)
@@ -1403,63 +1407,63 @@ Implement 2FA as an optional security enhancement for admin accounts.
 ## Implementation Checklist
 
 ### Phase 1: NextAuth Setup ✅
-- [ ] Install next-auth and bcryptjs
-- [ ] Create auth.config.js
-- [ ] Create auth.js
-- [ ] Create API route handler
+- [x] Install next-auth and bcryptjs
+- [x] Create auth.config.js
+- [x] Create auth.js
+- [x] Create API route handler
 - [ ] Set environment variables
 - [ ] Test auth configuration
 
 ### Phase 2: Database Integration ✅
 - [ ] Add NextAuth tables to schema
 - [ ] Run Prisma migration
-- [ ] Create password hashing utility
-- [ ] Create password migration script
+- [x] Create password hashing utility
+- [x] Create password migration script
 - [ ] Run password migration
-- [ ] Update user creation API
+- [x] Update user creation API
 - [ ] Verify passwords hashed
 
 ### Phase 3: Login UI ✅
-- [ ] Create login page
-- [ ] Update navigation with auth
-- [ ] Create sign out button
-- [ ] Create session provider
-- [ ] Update root layout
+- [x] Create login page
+- [x] Update navigation with auth
+- [x] Create sign out button
+- [x] Create session provider
+- [x] Update root layout
 - [ ] Test login flow
 - [ ] Test session persistence
 
 ### Phase 4: Route Protection ✅
 - [ ] Create auth middleware
-- [ ] Create auth guard functions
-- [ ] Protect pages with guards
-- [ ] Create API auth helpers
-- [ ] Protect API routes
+- [x] Create auth guard functions
+- [x] Protect pages with guards
+- [x] Create API auth helpers
+- [x] Protect API routes
 - [ ] Test route protection
 
 ### Phase 5: RBAC ✅
-- [ ] Define permission matrix
-- [ ] Create permission helpers
-- [ ] Create permission hooks
-- [ ] Create UI permission guards
+- [x] Define permission matrix
+- [x] Create permission helpers
+- [x] Create permission hooks
+- [x] Create UI permission guards
 - [ ] Apply RBAC to UI
-- [ ] Create audit log system
+- [x] Create audit log system
 - [ ] Test RBAC enforcement
 
 ### Phase 6: API Security ✅
-- [ ] Install rate limiting
-- [ ] Create rate limiter
+- [x] Install rate limiting
+- [x] Create rate limiter
 - [ ] Apply rate limiting
-- [ ] Add security headers
+- [x] Add security headers
 - [ ] Add CSRF protection
-- [ ] Add input validation
+- [x] Add input validation
 - [ ] Test API security
 
 ### Phase 7: Testing & Hardening ✅
 - [ ] Run security tests
-- [ ] Create security documentation
+- [x] Create security documentation
 - [ ] Secure environment variables
-- [ ] Create admin dashboard
-- [ ] Document password policy
+- [x] Create admin dashboard
+- [x] Document password policy
 - [ ] Final security audit
 
 ---
@@ -1535,10 +1539,10 @@ Implement 2FA as an optional security enhancement for admin accounts.
 - [ ] All pages protected by authentication
 - [ ] All API endpoints protected
 - [ ] RBAC enforced everywhere
-- [ ] Passwords securely hashed
+- [x] Passwords securely hashed
 - [ ] Rate limiting active
-- [ ] Security headers configured
-- [ ] Audit logging functional
+- [x] Security headers configured
+- [x] Audit logging functional
 - [ ] Documentation complete
 - [ ] All tests passing
 - [ ] No critical vulnerabilities

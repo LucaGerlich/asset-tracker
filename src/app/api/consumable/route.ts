@@ -292,4 +292,49 @@ export async function DELETE(req) {
   }
 }
 
+// PATCH /api/consumable (restock)
+export async function PATCH(req) {
+  try {
+    const admin = await requireApiAdmin();
+    const body = await req.json();
+    const { consumableid, addQuantity } = body;
+
+    if (!consumableid || typeof addQuantity !== "number" || addQuantity <= 0) {
+      return NextResponse.json(
+        { error: "consumableid and positive addQuantity required" },
+        { status: 400 }
+      );
+    }
+
+    const updated = await prisma.consumable.update({
+      where: { consumableid },
+      data: { quantity: { increment: addQuantity }, change_date: new Date() },
+    });
+
+    await createAuditLog({
+      userId: admin.id,
+      action: AUDIT_ACTIONS.UPDATE,
+      entity: AUDIT_ENTITIES.CONSUMABLE,
+      entityId: updated.consumableid,
+      details: { consumablename: updated.consumablename, restockQuantity: addQuantity },
+    });
+
+    return NextResponse.json(updated, { status: 200 });
+  } catch (e) {
+    console.error("PATCH /api/consumable error:", e);
+
+    if (e.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (e.message.startsWith("Forbidden")) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
+    if (e.code === "P2025") {
+      return NextResponse.json({ error: "Consumable not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ error: "Failed to restock consumable" }, { status: 500 });
+  }
+}
+
 export const dynamic = "force-dynamic";

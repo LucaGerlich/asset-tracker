@@ -1,5 +1,7 @@
 # Asset Management System - Feature Tracking
 
+**Status Update (2026-02-18):** Feature status is now consolidated in `plans/MASTER_PLAN.md`. This file remains the detailed inventory but may lag behind the master plan.
+
 This document tracks the development status of all features in the Asset Management System. Features are categorized as **Implemented**, **In Progress**, **Pending**, or **Future Enhancements**.
 
 ---
@@ -161,14 +163,14 @@ This document tracks the development status of all features in the Asset Managem
 
 ### 🚧 In Progress
 
-- [ ] User history timeline on user detail page
-- [ ] Asset label printing workflow (from assets table)
-- [ ] Saved search filters UI
-- [ ] Maintenance scheduling UI
-- [ ] Warranty tracking UI
-- [ ] Depreciation UI (asset views + reports)
-- [ ] Custom fields on asset forms and detail views
-- [ ] Consumable quantity/minimums UI
+- [x] User history timeline on user detail page
+- [x] Asset label printing workflow (from assets table)
+- [x] Saved search filters UI
+- [x] Maintenance scheduling UI
+- [x] Warranty tracking UI
+- [ ] Depreciation reporting (asset views done; reports pending)
+- [x] Custom fields on asset forms and detail views
+- [x] Consumable quantity/minimums UI
 
 ---
 
@@ -182,21 +184,21 @@ This document tracks the development status of all features in the Asset Managem
 
 #### Enhanced Search & Filtering
 - [x] Advanced search with multiple criteria (per-entity filters)
-- [ ] Filter presets UI
+- [x] Filter presets UI
 
 #### Enhanced Asset Management
-- [ ] Asset photos/attachments UI
+- [x] Asset photos/attachments UI
 
 #### Consumables Enhancement
-- [ ] Stock level management UI
+- [x] Stock level management UI
 - [ ] Automatic reorder alerts (beyond low-stock notifications)
-- [ ] Consumable check-out system
-- [ ] Usage tracking
+- [x] Consumable check-out system
+- [x] Usage tracking
 
 #### Partially Implemented (DB/API Only)
-- [ ] Asset photos/attachments (DB only)
-- [ ] REST API documentation (OpenAPI spec + endpoint only)
-- [ ] Cost analysis reports (basic totals only)
+- [x] Asset photos/attachments (UI + API)
+- [x] REST API documentation (OpenAPI spec + UI)
+- [x] Cost analysis reports (basic totals only)
 - [ ] User preferences (sidebar collapsed cookie only)
 - [ ] Bulk import (API only)
 
@@ -205,15 +207,15 @@ This document tracks the development status of all features in the Asset Managem
 ### 💡 Future Enhancements
 
 #### Multi-tenancy & Organization
-- [ ] Multi-organization support (DB/API only)
-- [ ] Department/team management (DB/API only)
-- [ ] Role-based access control (RBAC) expansion (helpers only)
-- [ ] Custom permission configurations
+- [x] Multi-organization support (DB/API only)
+- [x] Department/team management (DB/API only)
+- [x] Role-based access control (RBAC) expansion (helpers only)
+- [x] Custom permission configurations
 - [ ] White-labeling support
 - [ ] Per-tenant billing
 
 #### Integration & APIs
-- [ ] Webhook support (API only)
+- [x] Webhook support (API only)
 - [ ] Third-party integrations (Slack, Teams, etc.)
 - [ ] SSO/SAML authentication
 - [ ] LDAP/Active Directory integration
@@ -226,16 +228,16 @@ This document tracks the development status of all features in the Asset Managem
 #### Reporting & Analytics (Future)
 - [ ] Report builder (custom reports)
 - [ ] Excel export
-- [ ] Compliance reports
+- [x] Compliance reports
 
 #### Advanced Features
-- [ ] Asset reservations/booking system (DB/API only)
+- [x] Asset reservations/booking system (DB/API only)
 - [ ] Asset location tracking (GPS/RFID)
-- [ ] Barcode scanning support
-- [ ] Asset lifecycle management
+- [x] Barcode scanning support
+- [x] Asset lifecycle management
 - [ ] Automated workflows
-- [ ] Approval processes for asset requests
-- [ ] Asset transfer workflows
+- [x] Approval processes for asset requests
+- [x] Asset transfer workflows
 - [ ] Multi-language support
 - [ ] Customizable dashboard widgets
 - [ ] AI-assisted support/helpdesk

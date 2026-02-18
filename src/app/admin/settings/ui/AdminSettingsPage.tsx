@@ -25,7 +25,7 @@ import EmailSettingsTab from "./EmailSettingsTab";
 import UsersSettingsTab from "./UsersSettingsTab";
 import LabelSettingsTab from "./LabelSettingsTab";
 import DepreciationSettingsTab from "./DepreciationSettingsTab";
-import CustomFieldsTab from "./CustomFieldsTab";
+import CustomFieldsAdminTab from "./CustomFieldsAdminTab";
 import NotificationSettingsTab from "./NotificationSettingsTab";
 import GeneralSettingsTab from "./GeneralSettingsTab";
 import FreshdeskSettingsTab from "./FreshdeskSettingsTab";
@@ -147,7 +147,7 @@ export default function AdminSettingsPage({
             <Calculator className="h-4 w-4" />
             <span className="hidden sm:inline">Depreciation</span>
           </TabsTrigger>
-          <TabsTrigger value="customFields" className="flex items-center gap-2">
+          <TabsTrigger value="custom-fields" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             <span className="hidden sm:inline">Custom Fields</span>
           </TabsTrigger>
@@ -214,8 +214,8 @@ export default function AdminSettingsPage({
             <DepreciationSettingsTab settings={depreciationSettings} />
           </TabsContent>
 
-          <TabsContent value="customFields">
-            <CustomFieldsTab fields={customFields} />
+          <TabsContent value="custom-fields">
+            <CustomFieldsAdminTab />
           </TabsContent>
 
           <TabsContent value="organizations">

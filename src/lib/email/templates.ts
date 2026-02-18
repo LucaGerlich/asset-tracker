@@ -196,6 +196,24 @@ export const emailTemplates = {
       </div>
     `,
   },
+
+  passwordReset: {
+    subject: 'Reset Your Password - Asset Tracker',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Password Reset Request</h2>
+        <p>Hello,</p>
+        <p>You requested a password reset for your Asset Tracker account.</p>
+        <p style="margin: 30px 0;">
+          <a href="{{resetUrl}}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Reset Your Password</a>
+        </p>
+        <p>Or copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; color: #2563eb;">{{resetUrl}}</p>
+        <p style="color: #666; font-size: 14px; margin-top: 30px;">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+        <p>Best regards,<br>Asset Tracker System</p>
+      </div>
+    `,
+  },
 };
 
 export type TemplateType = keyof typeof emailTemplates;

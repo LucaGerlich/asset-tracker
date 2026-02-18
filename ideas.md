@@ -1,5 +1,13 @@
 # Production Readiness Plan
 
+**Status Update (2026-02-18):** This plan has been consolidated into `plans/MASTER_PLAN.md`. Use the master plan for current status aligned with the codebase.
+
+## Summary
+- Production readiness checklist and phased delivery plan.
+- Security, reliability, performance, observability, and testing focus areas.
+
+---
+
 **Source of truth:** `FEATURES.md`. This document mirrors that list and adds production-readiness context. Status markers below are aligned with the codebase.
 
 This document outlines a comprehensive plan to transform the Asset Management System into a production-ready application, including feature suggestions, improvements, and best practices.

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -136,6 +137,11 @@ export default function LoginPage({ isDemo = false }: LoginPageProps) {
                 disabled={isLoading}
                 required
               />
+            </div>
+            <div className="flex justify-end">
+              <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                Forgot your password?
+              </Link>
             </div>
             {error && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">

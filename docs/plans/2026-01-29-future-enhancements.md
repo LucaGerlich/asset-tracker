@@ -1,5 +1,11 @@
 # Future Enhancements Implementation Plan
 
+**Status Update (2026-02-18):** This plan has been consolidated into `plans/MASTER_PLAN.md`. Use the master plan for current status aligned with the codebase.
+
+## Summary
+- Long-term roadmap for multi-tenancy, integrations, compliance, and UX improvements.
+- Detailed implementation steps for schema and API additions.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Enhance the Asset Tracker with multi-tenancy, advanced integrations, compliance features, and improved UX across 8 major feature areas.

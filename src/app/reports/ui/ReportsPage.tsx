@@ -35,6 +35,7 @@ import {
   AlertTriangle,
   DollarSign,
 } from "lucide-react";
+import WarrantyReport from "./WarrantyReport";
 import { toast } from "sonner";
 
 interface ReportData {
@@ -74,8 +75,19 @@ interface ReportData {
   };
 }
 
+interface WarrantyAsset {
+  id: string;
+  name: string;
+  tag: string;
+  warrantyExpires: string;
+  warrantyMonths: number | null;
+  status: string;
+  category: string;
+}
+
 interface ReportsPageProps {
   data: ReportData;
+  warrantyAssets: WarrantyAsset[];
 }
 
 const COLORS = [
@@ -98,7 +110,7 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export default function ReportsPage({ data }: ReportsPageProps) {
+export default function ReportsPage({ data, warrantyAssets }: ReportsPageProps) {
   const [activeTab, setActiveTab] = useState("overview");
 
   const exportToCSV = () => {
@@ -324,6 +336,7 @@ export default function ReportsPage({ data }: ReportsPageProps) {
           <TabsTrigger value="utilization">Utilization</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
+          <TabsTrigger value="warranty">Warranty</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
@@ -510,6 +523,10 @@ export default function ReportsPage({ data }: ReportsPageProps) {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="warranty" className="mt-6">
+          <WarrantyReport warrantyAssets={warrantyAssets} />
         </TabsContent>
       </Tabs>
     </div>

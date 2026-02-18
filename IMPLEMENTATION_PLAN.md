@@ -1,5 +1,13 @@
 # Release Readiness Implementation Plan
 
+**Status Update (2026-02-18):** This plan has been consolidated into `plans/MASTER_PLAN.md`. Use the master plan for current status aligned with the codebase.
+
+## Summary
+- Release readiness phases for full feature coverage and production stability.
+- Emphasis on security, performance, documentation, and QA gates.
+
+---
+
 ## Goal
 Deliver a release-ready Asset Tracker that fully implements every item in `FEATURES.md`, with production-grade stability, security, documentation, and operations. Always document the implementation plan in `IMPLEMENTATION_PLAN.md`, in `CHANGELOG.md` and in `README.md`.
 

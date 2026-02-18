@@ -1,4 +1,11 @@
 Enhancements - Asset Management System
+**Status Update (2026-02-18):** This plan has been consolidated into `plans/MASTER_PLAN.md`. Use the master plan for current status aligned with the codebase.
+
+Summary
+- Long-term enhancement roadmap by feature area and technical specification.
+- Detailed implementation steps and dependencies for future work.
+
+---
 This document outlines a comprehensive plan for future enhancements to the Asset Management System. Features are organized by category with detailed implementation plans, technical specifications, estimated effort, and dependencies.
 
 Table of Contents

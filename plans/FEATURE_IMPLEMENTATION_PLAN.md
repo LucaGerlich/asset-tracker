@@ -2,7 +2,11 @@
 
 This document outlines the implementation plan for the requested features. Some features require database changes and external configuration.
 
-**Status Update (2026-02-18):** This plan is now tracked in `FEATURES.md`. Several items below are partially implemented (DB/API only) and still require UI or workflow completion. Use `FEATURES.md` as the source of truth.
+**Status Update (2026-02-18):** This plan has been consolidated into `plans/MASTER_PLAN.md`. Use the master plan for current status aligned with the codebase.
+
+## Summary
+- Feature rollout steps for schema changes, external configuration, and post-deploy setup.
+- Email provider and storage configuration guidance.
 
 ## ⚠️ Implementation Status
 

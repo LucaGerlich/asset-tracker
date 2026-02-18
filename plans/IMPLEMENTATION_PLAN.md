@@ -1,12 +1,16 @@
 # Asset Management System - Implementation Plan
 
-**Status Update (2026-02-18):** This plan is historical. Current scope and status are tracked in `FEATURES.md` and `plans/PROGRESS.md`. Security hardening is underway; core API endpoints are now protected.
+**Status Update (2026-02-18):** This plan has been consolidated into `plans/MASTER_PLAN.md`. Use the master plan for current status aligned with the codebase.
+
+## Summary
+- UI modernization and responsive layout migration plan.
+- Dependency upgrades and Playwright test setup.
 
 ## Executive Summary
 
 This document outlines the implementation plan for modernizing the Asset Management System based on `newplan.md`. The plan covers 6 major phases with a focus on code quality, responsive design, dependency updates, and automated testing.
 
-**Current Status:** Phases 1-4 Complete, Phase 5 Complete, Phase 6 Complete, Phase 3 Partially Complete (50%)
+**Current Status:** Phases 1-4 Complete, Phase 5 Complete, Phase 6 Complete, Phase 3 Partially Complete (~90%)
 
 ---
 
@@ -27,7 +31,7 @@ This document outlines the implementation plan for modernizing the Asset Managem
 - ✅ Navigation using shadcn/ui Sheet for mobile
 - ✅ No @heroui imports anywhere in codebase
 
-### 🚧 Phase 3: Comprehensive Responsive Layouts (PARTIALLY COMPLETE - 75%)
+### 🚧 Phase 3: Comprehensive Responsive Layouts (PARTIALLY COMPLETE - ~90%)
 **Status:** Core components done, table migrations in progress
 
 #### Completed:
@@ -43,14 +47,14 @@ This document outlines the implementation plan for modernizing the Asset Managem
   - Automatic switching at lg breakpoint
 
 #### In Progress:
-- 🚧 3.4 Table Migrations (5/10 completed - 50%)
+- 🚧 3.4 Table Migrations (7/8 completed - 88%)
   - ✅ ManufacturersTable - migrated with mobile card view
   - ✅ LocationsTable - migrated with mobile card view
   - ✅ SuppliersTable - migrated with mobile card view
   - ✅ ConsumablesTable - migrated with mobile card view
   - ✅ LicencesTable - migrated with mobile card view
-  - ⏳ AccessoriesTable - pending
-  - ⏳ User DashboardTable - pending (complex)
+  - ✅ AccessoriesTable - migrated with mobile card view
+  - ✅ User DashboardTable - migrated with mobile card view
   - ⏳ Assets DashboardTable - pending (very complex - 45KB)
 
 #### Pending:
@@ -201,20 +205,8 @@ Current breakpoint strategy (defined in globals.css):
 
 ### High Priority
 
-#### 1. Complete Table Migrations (5 remaining)
-**Estimated Time:** 2-3 hours
-
-Simple Tables (1-2 hours):
-- [ ] AccessoriesTable (~10KB)
-  - Similar complexity to suppliers
-  - Has category, manufacturer, supplier filters
-  - Should be straightforward migration
-
-Complex Tables (1-2 hours):
-- [ ] User DashboardTable (7.8KB)
-  - Has user actions (assign/unassign)
-  - May need custom cell renderers for actions
-  - Consider keeping action buttons in parent
+#### 1. Complete Table Migrations (1 remaining)
+**Estimated Time:** 1-2 hours
 
 Very Complex Tables (plan separately):
 - [ ] Assets DashboardTable (45KB)
@@ -272,7 +264,7 @@ Check for:
 - [ ] Update README.md with new test commands
 - [ ] Document ResponsiveTable component usage
 - [ ] Add screenshots of mobile vs desktop views
-- [ ] Update FEATURES.md with completed items
+- [x] Update FEATURES.md with completed items
 
 #### 5. Code Quality
 - [ ] Fix eslint configuration issue
@@ -318,8 +310,8 @@ Based on newplan.md Phase 5 goals (already completed, but polish needed):
 ## Success Criteria
 
 ### Phase 3 Complete (Responsive Layouts)
-- [x] All tables migrated to ResponsiveTable (5/10 so far)
-- [ ] Mobile navigation accessible on <768px
+- [ ] All tables migrated to ResponsiveTable (7/8 so far)
+- [x] Mobile navigation accessible on <768px
 - [x] No horizontal page scroll on any viewport
 - [x] StatCard responsive across all breakpoints
 - [ ] Forms stack properly on mobile
@@ -339,13 +331,13 @@ Based on newplan.md Phase 5 goals (already completed, but polish needed):
 
 | Task | Estimated Time | Status |
 |------|---------------|--------|
-| Remaining table migrations | 2-3 hours | Pending |
+| Remaining table migrations | 1-2 hours | Pending |
 | Testing & validation | 1-2 hours | Pending |
 | Responsive improvements | 2-3 hours | Pending |
 | Documentation | 1 hour | Pending |
-| **TOTAL** | **6-9 hours** | **In Progress** |
+| **TOTAL** | **5-8 hours** | **In Progress** |
 
-**Current Progress:** ~85% complete (Phases 1, 2, 4, 5, 6 done; Phase 3 at 75%)
+**Current Progress:** ~90% complete (Phases 1, 2, 4, 5, 6 done; Phase 3 at ~90%)
 
 ---
 
