@@ -10,6 +10,7 @@ import {
 } from "@/lib/pagination";
 import { validateBody, createAssetSchema, updateAssetSchema } from "@/lib/validations";
 import { triggerWebhook } from "@/lib/webhooks";
+import { checkAssetLimit } from "@/lib/tenant-limits";
 
 const ASSET_SORT_FIELDS = [
   "assetname",
@@ -96,6 +97,15 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     await requirePermission('asset:create');
+
+    const limitCheck = await checkAssetLimit();
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: `Asset limit reached (${limitCheck.current}/${limitCheck.max}). Upgrade your plan to add more assets.` },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const d = validateBody(createAssetSchema, body);
     if (d instanceof NextResponse) return d;

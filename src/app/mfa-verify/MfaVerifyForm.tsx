@@ -53,7 +53,7 @@ export default function MfaVerifyForm() {
         setIsLoading(false);
       } else {
         // MFA verified — redirect to home
-        router.push("/");
+        router.push("/dashboard");
         router.refresh();
       }
     } catch (err) {

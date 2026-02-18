@@ -51,6 +51,7 @@
     "next": "^16.1.5",
     "next-auth": "^5.0.0-beta.30",
     "next-themes": "^0.4.6",
+    "otplib": "^13.3.0",
     "pg": "^8.17.2",
     "qrcode": "^1.5.4",
     "qrcode.react": "^3.1.0",
@@ -59,6 +60,7 @@
     "react-qr-code": "^2.0.13",
     "recharts": "^3.7.0",
     "sonner": "^1.7.4",
+    "stripe": "^20.3.1",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^4.3.6"

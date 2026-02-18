@@ -285,7 +285,7 @@ function Navigation() {
             </SheetContent>
           </Sheet>
 
-          <Link href="/" className="hidden sm:block font-bold text-lg">
+          <Link href="/dashboard" className="hidden sm:block font-bold text-lg">
             Asset Tracker
           </Link>
 

@@ -88,7 +88,7 @@ export default async function Page() {
 
   // Require admin access
   if (!session?.user?.isAdmin) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const [settings, users, emailTemplates, labelTemplates, customFields, depreciationSettings] =

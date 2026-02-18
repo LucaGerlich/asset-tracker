@@ -5,13 +5,22 @@ import { roleSchema } from '@/lib/validation-organization';
 import { PERMISSIONS, getAllPermissions } from '@/lib/rbac';
 import { createAuditLog, AUDIT_ACTIONS } from '@/lib/audit-log';
 import { z } from 'zod';
+import {
+  parsePaginationParams,
+  buildPrismaArgs,
+  buildPaginatedResponse,
+} from "@/lib/pagination";
 
-export async function GET() {
+const ROLE_SORT_FIELDS = ["name", "createdAt"];
+
+export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    const searchParams = req.nextUrl.searchParams;
 
     // Get user's organization
     const user = await prisma.user.findUnique({
@@ -19,28 +28,62 @@ export async function GET() {
       select: { organizationId: true }
     });
 
-    const roles = await prisma.role.findMany({
-      where: user?.organizationId ? {
-        OR: [
-          { organizationId: user.organizationId },
-          { organizationId: null } // System roles
-        ]
-      } : {},
-      include: {
-        organization: {
-          select: { id: true, name: true }
-        },
-        _count: {
-          select: { userRoles: true }
-        }
-      },
-      orderBy: [
-        { isSystem: 'desc' },
-        { name: 'asc' }
+    const where: Record<string, unknown> = user?.organizationId ? {
+      OR: [
+        { organizationId: user.organizationId },
+        { organizationId: null } // System roles
       ]
-    });
+    } : {};
 
-    return NextResponse.json(roles);
+    const include = {
+      organization: {
+        select: { id: true, name: true }
+      },
+      _count: {
+        select: { userRoles: true }
+      }
+    };
+
+    // If no `page` param, return all results for backward compatibility
+    if (!searchParams.has("page")) {
+      const roles = await prisma.role.findMany({
+        where,
+        include,
+        orderBy: [
+          { isSystem: 'desc' },
+          { name: 'asc' }
+        ]
+      });
+      return NextResponse.json(roles);
+    }
+
+    // Paginated path
+    const params = parsePaginationParams(searchParams);
+    const prismaArgs = buildPrismaArgs(params, ROLE_SORT_FIELDS);
+
+    // Search filter
+    if (params.search) {
+      const searchOR = [
+        { name: { contains: params.search, mode: "insensitive" } },
+      ];
+      if (where.OR) {
+        // Wrap existing org-scoping OR and search OR in AND
+        where.AND = [{ OR: where.OR as unknown[] }, { OR: searchOR }];
+        delete where.OR;
+      } else {
+        where.OR = searchOR;
+      }
+    }
+
+    const [roles, total] = await Promise.all([
+      prisma.role.findMany({ where, include, ...prismaArgs }),
+      prisma.role.count({ where }),
+    ]);
+
+    return NextResponse.json(
+      buildPaginatedResponse(roles, total, params),
+      { status: 200 },
+    );
   } catch (error) {
     console.error('Error fetching roles:', error);
     return NextResponse.json({ error: 'Failed to fetch roles' }, { status: 500 });

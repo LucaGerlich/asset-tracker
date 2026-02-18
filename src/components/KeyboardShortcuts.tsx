@@ -94,7 +94,7 @@ export default function KeyboardShortcuts() {
         clearPending();
         switch (e.key) {
           case "d":
-            router.push("/");
+            router.push("/dashboard");
             break;
           case "a":
             router.push("/assets");

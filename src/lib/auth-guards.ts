@@ -38,7 +38,7 @@ export async function requireAdmin(): Promise<ExtendedSession> {
   const session = await requireAuth();
 
   if (!(session.user as { isAdmin?: boolean }).isAdmin) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   return session;

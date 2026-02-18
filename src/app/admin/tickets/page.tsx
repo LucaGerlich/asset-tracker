@@ -85,7 +85,7 @@ export default async function TicketsPage() {
   }
 
   if (!session.user.isAdmin) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const tickets = await getTickets();

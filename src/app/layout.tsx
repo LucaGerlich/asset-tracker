@@ -2,22 +2,17 @@ import "./globals.css";
 import { Providers } from "../lib/providers";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import Navigation from "../components/Navigation";
-import Footer from "../components/Footer";
-import Sidebar from "../components/Sidebar";
-import DemoBanner from "../components/DemoBanner";
 import SkipToContent from "../components/SkipToContent";
-import KeyboardShortcuts from "../components/KeyboardShortcuts";
-import MobileNav from "../components/MobileNav";
 import OfflineBanner from "../components/OfflineBanner";
 import { SessionProvider } from "../components/SessionProvider";
 import PWAInstallPrompt from "../components/PWAInstallPrompt";
 import ServiceWorkerRegistration from "../components/ServiceWorkerRegistration";
+import AppShell from "../components/AppShell";
 import { auth } from "../auth";
 import { cookies } from "next/headers";
 
 export const metadata = {
-  title: "Dashboard",
+  title: "Asset Tracker",
   description: "Track and manage your organization's assets, licenses, and consumables",
   manifest: "/manifest.json",
   appleWebApp: {
@@ -54,19 +49,12 @@ export default async function RootLayout({ children }) {
         <ServiceWorkerRegistration />
         <SessionProvider session={session}>
           <Providers>
-            <KeyboardShortcuts />
-            <DemoBanner isDemo={isDemo} />
-            <div className="flex min-h-screen bg-background">
-              <Sidebar initialCollapsed={initialSidebarCollapsed} />
-              <div className="flex flex-1 flex-col">
-                <Navigation />
-                <main id="main-content" className="flex-1 overflow-y-auto p-4 pb-20 md:p-8 md:pb-8">
-                  {children}
-                </main>
-                <Footer />
-                <MobileNav />
-              </div>
-            </div>
+            <AppShell
+              initialSidebarCollapsed={initialSidebarCollapsed}
+              isDemo={isDemo}
+            >
+              {children}
+            </AppShell>
             <PWAInstallPrompt />
           </Providers>
         </SessionProvider>

@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/api-auth";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { createAssetSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
+import { checkAssetLimit } from "@/lib/tenant-limits";
 
 const assetSchema = createAssetSchema.extend({
   purchaseprice: z.number().nonnegative().nullable().optional(),
@@ -32,6 +33,15 @@ const normalizeNumberInput = (value: unknown) => {
 export async function POST(req) {
   try {
     await requirePermission('asset:create');
+
+    const limitCheck = await checkAssetLimit();
+    if (!limitCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: `Asset limit reached (${limitCheck.current}/${limitCheck.max}). Upgrade your plan to add more assets.` }),
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
 
     const normalized = {

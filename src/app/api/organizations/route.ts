@@ -5,21 +5,58 @@ import { organizationSchema } from '@/lib/validation-organization';
 import { createAuditLog, AUDIT_ACTIONS } from '@/lib/audit-log';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
+import {
+  parsePaginationParams,
+  buildPrismaArgs,
+  buildPaginatedResponse,
+} from "@/lib/pagination";
 
-export async function GET() {
+const ORGANIZATION_SORT_FIELDS = ["name", "slug", "createdAt"];
+
+export async function GET(req: NextRequest) {
   try {
     await requirePermission('org:view');
 
-    const organizations = await prisma.organization.findMany({
-      include: {
-        _count: {
-          select: { users: true, assets: true, departments: true }
-        }
-      },
-      orderBy: { name: 'asc' }
-    });
+    const searchParams = req.nextUrl.searchParams;
 
-    return NextResponse.json(organizations);
+    const include = {
+      _count: {
+        select: { users: true, assets: true, departments: true }
+      }
+    };
+
+    // If no `page` param, return all results for backward compatibility
+    if (!searchParams.has("page")) {
+      const organizations = await prisma.organization.findMany({
+        include,
+        orderBy: { name: 'asc' }
+      });
+      return NextResponse.json(organizations);
+    }
+
+    // Paginated path
+    const params = parsePaginationParams(searchParams);
+    const prismaArgs = buildPrismaArgs(params, ORGANIZATION_SORT_FIELDS);
+
+    const where: Record<string, unknown> = {};
+
+    // Search filter
+    if (params.search) {
+      where.OR = [
+        { name: { contains: params.search, mode: "insensitive" } },
+        { slug: { contains: params.search, mode: "insensitive" } },
+      ];
+    }
+
+    const [organizations, total] = await Promise.all([
+      prisma.organization.findMany({ where, include, ...prismaArgs }),
+      prisma.organization.count({ where }),
+    ]);
+
+    return NextResponse.json(
+      buildPaginatedResponse(organizations, total, params),
+      { status: 200 },
+    );
   } catch (error) {
     console.error('Error fetching organizations:', error);
     if (error instanceof Error && error.message === 'Unauthorized') {

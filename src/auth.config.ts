@@ -58,16 +58,32 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }: { auth: Session | null; request: { nextUrl: NextURL } }) {
       const isLoggedIn = !!auth?.user;
-      const isPublicRoute = nextUrl.pathname === "/login";
-      const isMfaVerifyRoute = nextUrl.pathname === "/mfa-verify";
-      const isMfaApiRoute = nextUrl.pathname.startsWith("/api/auth/mfa/validate");
-      const isAuthApiRoute = nextUrl.pathname.startsWith("/api/auth");
+      const { pathname } = nextUrl;
+
+      // Public routes accessible without authentication
+      const publicRoutes = [
+        "/login",
+        "/register",
+        "/forgot-password",
+        "/reset-password",
+        "/pricing",
+        "/terms",
+        "/privacy",
+        "/offline",
+      ];
+      const isPublicRoute =
+        pathname === "/" ||
+        publicRoutes.some((r) => pathname === r || pathname.startsWith(r + "/"));
+      const isApiRoute = pathname.startsWith("/api/");
+      const isMfaVerifyRoute = pathname === "/mfa-verify";
+      const isAuthApiRoute = pathname.startsWith("/api/auth");
 
       // Check if user has MFA pending
       const extSession = auth as ExtendedSession | null;
       const mfaPending = extSession?.user?.mfaPending === true;
 
-      if (isPublicRoute) {
+      // Allow public routes and all API routes (API routes handle their own auth)
+      if (isPublicRoute || isApiRoute) {
         return true;
       }
 
@@ -75,18 +91,17 @@ export const authConfig: NextAuthConfig = {
         return false;
       }
 
-      // If MFA is pending, only allow MFA verify page, auth API routes, and login
+      // If MFA is pending, only allow MFA verify page and auth API routes
       if (mfaPending) {
-        if (isMfaVerifyRoute || isMfaApiRoute || isAuthApiRoute) {
+        if (isMfaVerifyRoute || isAuthApiRoute) {
           return true;
         }
-        // Redirect to MFA verify page
         return Response.redirect(new URL("/mfa-verify", nextUrl));
       }
 
-      // If MFA is not pending but user is on MFA verify page, redirect to home
+      // If MFA is not pending but user is on MFA verify page, redirect to dashboard
       if (isMfaVerifyRoute && !mfaPending) {
-        return Response.redirect(new URL("/", nextUrl));
+        return Response.redirect(new URL("/dashboard", nextUrl));
       }
 
       return isLoggedIn;

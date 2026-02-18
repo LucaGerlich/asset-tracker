@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import Breadcrumb from "@/components/Breadcrumb";
 import prisma from "@/lib/prisma";
 import UserSettingsClient from "./ui/UserSettingsClient";
+import MfaSettings from "./ui/MfaSettings";
 import SessionManagement from "./SessionManagement";
 
 export const metadata = {
@@ -17,12 +18,12 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   // Only allow the user themselves or an admin to view settings
   if (!session?.user) redirect("/login");
   if (session.user.id !== params.id && !session.user.isAdmin) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   const user = await prisma.user.findUnique({
     where: { userid: params.id },
-    select: { userid: true, firstname: true, lastname: true, email: true },
+    select: { userid: true, firstname: true, lastname: true, email: true, mfaEnabled: true },
   });
 
   if (!user) redirect("/user");
@@ -58,6 +59,9 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     <>
       <Breadcrumb options={breadcrumbOptions} />
       <UserSettingsClient user={user} preferences={preferences} />
+      <div className="mt-6 max-w-2xl">
+        <MfaSettings userId={user.userid} mfaEnabled={user.mfaEnabled} />
+      </div>
       <div className="mt-6 max-w-2xl">
         <SessionManagement />
       </div>

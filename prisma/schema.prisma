@@ -17,6 +17,14 @@ model Organization {
   updatedAt   DateTime @updatedAt @db.Timestamp(6)
   isActive    Boolean  @default(true)
 
+  // Billing
+  plan            String   @default("starter") @db.VarChar(20)
+  stripeCustomerId    String?  @unique @db.VarChar(255)
+  stripeSubscriptionId String? @unique @db.VarChar(255)
+  trialEndsAt     DateTime? @db.Timestamp(6)
+  maxAssets       Int      @default(100)
+  maxUsers        Int      @default(3)
+
   // Relationships
   users       user[]
   departments Department[]

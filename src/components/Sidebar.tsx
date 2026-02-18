@@ -144,7 +144,7 @@ const Sidebar = ({ initialCollapsed = false }) => {
         )}
       >
         <div className="flex h-16 shrink-0 items-center justify-between px-3">
-          <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-foreground">
             <span className={cx("text-lg tracking-tight", collapsed && "sr-only")}>Asset Tracker</span>
           </Link>
           <Button

@@ -16,7 +16,7 @@ export default async function WorkflowsPage() {
   }
 
   if (!session.user.isAdmin) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   return (

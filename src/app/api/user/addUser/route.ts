@@ -7,12 +7,21 @@ import { hashPassword } from "@/lib/auth-utils";
 import { createUserSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
+import { checkUserLimit } from "@/lib/tenant-limits";
 
 // POST /api/user/addUser
 export async function POST(request) {
   try {
     // Require user:create permission
     const admin = await requirePermission('user:create');
+
+    const limitCheck = await checkUserLimit();
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: `User limit reached (${limitCheck.current}/${limitCheck.max}). Upgrade your plan to add more users.` },
+        { status: 403 }
+      );
+    }
 
     const body = await request.json();
 

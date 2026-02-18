@@ -5,6 +5,13 @@ import { departmentSchema } from '@/lib/validation-organization';
 import { createAuditLog, AUDIT_ACTIONS } from '@/lib/audit-log';
 import { getOrganizationContext, scopeToOrganization } from '@/lib/organization-context';
 import { z } from 'zod';
+import {
+  parsePaginationParams,
+  buildPrismaArgs,
+  buildPaginatedResponse,
+} from "@/lib/pagination";
+
+const DEPARTMENT_SORT_FIELDS = ["name", "createdAt"];
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,31 +20,57 @@ export async function GET(req: NextRequest) {
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
 
-    const organizationId = req.nextUrl.searchParams.get('organizationId');
+    const searchParams = req.nextUrl.searchParams;
+    const organizationId = searchParams.get('organizationId');
 
     // Use the query param if provided, otherwise scope to user's org
-    const where = scopeToOrganization(
+    const where: Record<string, unknown> = scopeToOrganization(
       organizationId ? { organizationId } : {},
       orgId
     );
 
-    const departments = await prisma.department.findMany({
-      where,
-      include: {
-        organization: {
-          select: { id: true, name: true, slug: true }
-        },
-        parent: {
-          select: { id: true, name: true }
-        },
-        _count: {
-          select: { children: true, users: true }
-        }
+    const include = {
+      organization: {
+        select: { id: true, name: true, slug: true }
       },
-      orderBy: { name: 'asc' }
-    });
+      parent: {
+        select: { id: true, name: true }
+      },
+      _count: {
+        select: { children: true, users: true }
+      }
+    };
 
-    return NextResponse.json(departments);
+    // If no `page` param, return all results for backward compatibility
+    if (!searchParams.has("page")) {
+      const departments = await prisma.department.findMany({
+        where,
+        include,
+        orderBy: { name: 'asc' }
+      });
+      return NextResponse.json(departments);
+    }
+
+    // Paginated path
+    const params = parsePaginationParams(searchParams);
+    const prismaArgs = buildPrismaArgs(params, DEPARTMENT_SORT_FIELDS);
+
+    // Search filter
+    if (params.search) {
+      where.OR = [
+        { name: { contains: params.search, mode: "insensitive" } },
+      ];
+    }
+
+    const [departments, total] = await Promise.all([
+      prisma.department.findMany({ where, include, ...prismaArgs }),
+      prisma.department.count({ where }),
+    ]);
+
+    return NextResponse.json(
+      buildPaginatedResponse(departments, total, params),
+      { status: 200 },
+    );
   } catch (error) {
     console.error('Error fetching departments:', error);
     if (error instanceof Error && error.message === 'Unauthorized') {

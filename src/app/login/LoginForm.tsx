@@ -39,8 +39,8 @@ export default function LoginPage({ isDemo = false }: LoginPageProps) {
         setError("Invalid username or password");
         setIsLoading(false);
       } else {
-        // Redirect to home page on success
-        router.push("/");
+        // Redirect — the authorized callback will send MFA-pending users to /mfa-verify
+        router.push("/dashboard");
         router.refresh();
       }
     } catch (err) {

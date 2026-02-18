@@ -10,6 +10,7 @@ interface AuthUser {
   username?: string;
   firstname?: string;
   lastname?: string;
+  organizationId?: string;
 }
 
 /**

@@ -16,7 +16,7 @@ export default async function CompliancePage() {
   }
 
   if (!session.user.isAdmin) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   return (
