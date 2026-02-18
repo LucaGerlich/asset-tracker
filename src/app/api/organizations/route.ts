@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
+import { requirePermission } from '@/lib/api-auth';
 import { organizationSchema } from '@/lib/validation-organization';
 import { createAuditLog, AUDIT_ACTIONS } from '@/lib/audit-log';
 import { z } from 'zod';
@@ -8,10 +8,7 @@ import { Prisma } from '@prisma/client';
 
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    await requirePermission('org:view');
 
     const organizations = await prisma.organization.findMany({
       include: {
@@ -25,16 +22,19 @@ export async function GET() {
     return NextResponse.json(organizations);
   } catch (error) {
     console.error('Error fetching organizations:', error);
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Failed to fetch organizations' }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.isAdmin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const authUser = await requirePermission('org:manage');
 
     const body = await req.json();
     const validated = organizationSchema.parse(body);
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: authUser.id!,
       action: AUDIT_ACTIONS.CREATE,
       entity: 'Organization',
       entityId: organization.id,
@@ -69,6 +69,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(organization, { status: 201 });
   } catch (error) {
     console.error('Error creating organization:', error);
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }

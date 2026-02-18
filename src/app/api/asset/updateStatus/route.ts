@@ -1,14 +1,19 @@
 import prisma from "../../../../lib/prisma";
 import { logger } from "@/lib/logger";
-import { requireApiAdmin } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
+import { getOrganizationContext, scopeToOrganization } from "@/lib/organization-context";
+import { triggerWebhook } from "@/lib/webhooks";
 
 // PUT /api/asset/updateStatus
 // Body: { assetId: string, statusTypeId?: string, statusName?: string }
 export async function PUT(req) {
   const startTime = Date.now();
-  
+
   try {
-    await requireApiAdmin();
+    await requirePermission('asset:edit');
+    const orgContext = await getOrganizationContext();
+    const orgId = orgContext?.organization?.id;
+
     const { assetId, statusTypeId, statusName } = await req.json();
 
     if (!assetId || (!statusTypeId && !statusName)) {
@@ -41,10 +46,24 @@ export async function PUT(req) {
       statusId = found.statustypeid;
     }
 
+    // Verify asset belongs to user's organization before updating
+    const existingAsset = await prisma.asset.findFirst({
+      where: scopeToOrganization({ assetid: assetId }, orgId),
+    });
+
+    if (!existingAsset) {
+      return new Response(
+        JSON.stringify({ error: "Asset not found" }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const updated = await prisma.asset.update({
       where: { assetid: assetId },
       data: { statustypeid: statusId, change_date: new Date() },
     });
+
+    triggerWebhook('asset.updated', { assetId, statusChanged: true, newStatus: statusId }, orgId).catch(() => {});
 
     const duration = Date.now() - startTime;
     logger.apiResponse("PUT", "/api/asset/updateStatus", 200, duration, {

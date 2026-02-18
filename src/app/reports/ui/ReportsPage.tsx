@@ -36,6 +36,8 @@ import {
   DollarSign,
 } from "lucide-react";
 import WarrantyReport from "./WarrantyReport";
+import DepreciationReport from "./DepreciationReport";
+import type { DepreciationMethod } from "@/lib/depreciation";
 import { toast } from "sonner";
 
 interface ReportData {
@@ -85,9 +87,26 @@ interface WarrantyAsset {
   category: string;
 }
 
+interface DepreciationAsset {
+  id: string;
+  name: string;
+  tag: string;
+  category: string;
+  purchasePrice: number;
+  purchaseDate: string;
+  method: DepreciationMethod;
+  usefulLifeYears: number;
+  salvagePercent: number;
+  currentValue: number;
+  accumulatedDepreciation: number;
+  percentDepreciated: number;
+  isFullyDepreciated: boolean;
+}
+
 interface ReportsPageProps {
   data: ReportData;
   warrantyAssets: WarrantyAsset[];
+  depreciationAssets: DepreciationAsset[];
 }
 
 const COLORS = [
@@ -110,7 +129,7 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export default function ReportsPage({ data, warrantyAssets }: ReportsPageProps) {
+export default function ReportsPage({ data, warrantyAssets, depreciationAssets }: ReportsPageProps) {
   const [activeTab, setActiveTab] = useState("overview");
 
   const exportToCSV = () => {
@@ -337,6 +356,7 @@ export default function ReportsPage({ data, warrantyAssets }: ReportsPageProps) 
           <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
           <TabsTrigger value="warranty">Warranty</TabsTrigger>
+          <TabsTrigger value="depreciation">Depreciation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
@@ -527,6 +547,10 @@ export default function ReportsPage({ data, warrantyAssets }: ReportsPageProps) 
 
         <TabsContent value="warranty" className="mt-6">
           <WarrantyReport warrantyAssets={warrantyAssets} />
+        </TabsContent>
+
+        <TabsContent value="depreciation" className="mt-6">
+          <DepreciationReport depreciationAssets={depreciationAssets} />
         </TabsContent>
       </Tabs>
     </div>

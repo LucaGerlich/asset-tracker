@@ -4,17 +4,52 @@ import { Prisma } from "@prisma/client";
 import { requireApiAuth, requireApiAdmin } from "@/lib/api-auth";
 import { createAccessoryCategoryTypeSchema, updateAccessoryCategoryTypeSchema, uuidSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import {
+  parsePaginationParams,
+  buildPrismaArgs,
+  buildPaginatedResponse,
+} from "@/lib/pagination";
+
+const ACCESSORY_CATEGORY_SORT_FIELDS = ["accessoriecategorytypename"];
 
 // GET /api/accessoryCategory
-export async function GET() {
+export async function GET(req) {
   try {
     // Require authentication to view accessory categories
     await requireApiAuth();
 
-    const items = await prisma.accessorieCategoryType.findMany({
-      orderBy: { accessoriecategorytypename: "asc" },
-    });
-    return NextResponse.json(items, { status: 200 });
+    const searchParams = req.nextUrl.searchParams;
+
+    // If no `page` param, return all results for backward compatibility
+    if (!searchParams.has("page")) {
+      const items = await prisma.accessorieCategoryType.findMany({
+        orderBy: { accessoriecategorytypename: "asc" },
+      });
+      return NextResponse.json(items, { status: 200 });
+    }
+
+    // Paginated path
+    const params = parsePaginationParams(searchParams);
+    const prismaArgs = buildPrismaArgs(params, ACCESSORY_CATEGORY_SORT_FIELDS);
+
+    const where: Record<string, unknown> = {};
+
+    // Search filter
+    if (params.search) {
+      where.OR = [
+        { accessoriecategorytypename: { contains: params.search, mode: "insensitive" } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.accessorieCategoryType.findMany({ where, ...prismaArgs }),
+      prisma.accessorieCategoryType.count({ where }),
+    ]);
+
+    return NextResponse.json(
+      buildPaginatedResponse(items, total, params),
+      { status: 200 },
+    );
   } catch (e) {
     console.error("GET /api/accessoryCategory error:", e);
 

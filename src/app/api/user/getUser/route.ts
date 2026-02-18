@@ -1,18 +1,22 @@
 import prisma from "../../../../lib/prisma";
 import { NextResponse } from "next/server";
-import { requireApiAdmin } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
+import { getOrganizationContext, scopeToOrganization } from "@/lib/organization-context";
 
 const stripPassword = (user) => {
   if (!user) return user;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const { password, ...rest } = user;
   return rest;
 };
 
 export async function GET() {
   try {
-    await requireApiAdmin();
-    const users = await prisma.user.findMany();
+    await requirePermission('user:view');
+    const orgContext = await getOrganizationContext();
+    const orgId = orgContext?.organization?.id;
+    const where = scopeToOrganization({}, orgId);
+    const users = await prisma.user.findMany({ where });
     return NextResponse.json(users.map(stripPassword));
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

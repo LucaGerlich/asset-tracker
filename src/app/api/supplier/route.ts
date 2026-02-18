@@ -4,17 +4,55 @@ import { Prisma } from "@prisma/client";
 import { requireApiAuth, requireApiAdmin } from "@/lib/api-auth";
 import { createSupplierSchema, updateSupplierSchema, uuidSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import {
+  parsePaginationParams,
+  buildPrismaArgs,
+  buildPaginatedResponse,
+} from "@/lib/pagination";
+
+const SUPPLIER_SORT_FIELDS = ["suppliername", "email", "creation_date"];
 
 // GET /api/supplier
-export async function GET() {
+export async function GET(req) {
   try {
     // Require authentication to view suppliers
     await requireApiAuth();
 
-    const items = await prisma.supplier.findMany({
-      orderBy: { suppliername: "asc" },
-    });
-    return NextResponse.json(items, { status: 200 });
+    const searchParams = req.nextUrl.searchParams;
+
+    // If no `page` param, return all results for backward compatibility
+    if (!searchParams.has("page")) {
+      const items = await prisma.supplier.findMany({
+        orderBy: { suppliername: "asc" },
+      });
+      return NextResponse.json(items, { status: 200 });
+    }
+
+    // Paginated path
+    const params = parsePaginationParams(searchParams);
+    const prismaArgs = buildPrismaArgs(params, SUPPLIER_SORT_FIELDS);
+
+    const where: Record<string, unknown> = {};
+
+    // Search filter
+    if (params.search) {
+      where.OR = [
+        { suppliername: { contains: params.search, mode: "insensitive" } },
+        { email: { contains: params.search, mode: "insensitive" } },
+        { firstname: { contains: params.search, mode: "insensitive" } },
+        { lastname: { contains: params.search, mode: "insensitive" } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.supplier.findMany({ where, ...prismaArgs }),
+      prisma.supplier.count({ where }),
+    ]);
+
+    return NextResponse.json(
+      buildPaginatedResponse(items, total, params),
+      { status: 200 },
+    );
   } catch (e) {
     console.error("GET /api/supplier error:", e);
 

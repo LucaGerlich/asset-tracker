@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import ReportsPage from "./ui/ReportsPage";
 import Breadcrumb from "@/components/Breadcrumb";
 import prisma from "@/lib/prisma";
+import { calculateDepreciation, DepreciationMethod } from "@/lib/depreciation";
 
 export const metadata = {
   title: "Reports - Asset Tracker",
@@ -21,6 +22,7 @@ async function getReportData() {
     statuses,
     locations,
     manufacturers,
+    depreciationSettings,
   ] = await Promise.all([
     prisma.asset.findMany({
       include: {
@@ -39,6 +41,7 @@ async function getReportData() {
     prisma.statusType.findMany(),
     prisma.location.findMany(),
     prisma.manufacturer.findMany(),
+    prisma.depreciation_settings.findMany(),
   ]);
 
   // Calculate asset value
@@ -117,6 +120,39 @@ async function getReportData() {
       category: a.assetCategoryType?.assetcategorytypename || "Uncategorized",
     }));
 
+  const depreciationAssets = assets
+    .filter((a) => a.purchaseprice && a.purchasedate && a.assetcategorytypeid)
+    .map((a) => {
+      const settings = depreciationSettings.find(
+        (ds) => ds.categoryId === a.assetcategorytypeid
+      );
+      if (!settings) return null;
+      const result = calculateDepreciation({
+        purchasePrice: Number(a.purchaseprice),
+        purchaseDate: new Date(a.purchasedate!),
+        usefulLifeYears: settings.usefulLifeYears,
+        salvagePercent: Number(settings.salvagePercent),
+        method: settings.method as DepreciationMethod,
+      });
+      return {
+        id: a.assetid,
+        name: a.assetname,
+        tag: a.assettag,
+        category:
+          a.assetCategoryType?.assetcategorytypename || "Uncategorized",
+        purchasePrice: Number(a.purchaseprice),
+        purchaseDate: a.purchasedate!.toISOString(),
+        method: settings.method as DepreciationMethod,
+        usefulLifeYears: settings.usefulLifeYears,
+        salvagePercent: Number(settings.salvagePercent),
+        currentValue: result.currentValue,
+        accumulatedDepreciation: result.accumulatedDepreciation,
+        percentDepreciated: result.percentDepreciated,
+        isFullyDepreciated: result.isFullyDepreciated,
+      };
+    })
+    .filter(Boolean);
+
   return {
     summary: {
       totalAssets: assets.length,
@@ -156,6 +192,7 @@ async function getReportData() {
       })),
     },
     warrantyAssets,
+    depreciationAssets,
   };
 }
 
@@ -176,7 +213,7 @@ export default async function Page() {
   return (
     <>
       <Breadcrumb options={breadcrumbOptions} />
-      <ReportsPage data={reportData} warrantyAssets={reportData.warrantyAssets} />
+      <ReportsPage data={reportData} warrantyAssets={reportData.warrantyAssets} depreciationAssets={reportData.depreciationAssets} />
     </>
   );
 }

@@ -1,25 +1,26 @@
-const CACHE_NAME = "asset-tracker-v1";
+const CACHE_NAME = 'asset-tracker-v1';
+const OFFLINE_URL = '/offline';
 
-const APP_SHELL_URLS = [
-  "/",
-  "/assets",
-  "/user",
-  "/consumables",
-  "/offline.html",
+// Static assets to pre-cache
+const PRECACHE_URLS = [
+  '/',
+  '/offline',
+  '/manifest.json',
+  '/icons/icon.svg',
 ];
 
-// Install: pre-cache the app shell
-self.addEventListener("install", (event) => {
+// Install event - pre-cache static assets
+self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(APP_SHELL_URLS);
+      return cache.addAll(PRECACHE_URLS);
     })
   );
   self.skipWaiting();
 });
 
-// Activate: clean up old caches
-self.addEventListener("activate", (event) => {
+// Activate event - clean old caches
+self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -32,92 +33,58 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch: network-first for API/navigation, cache-first for static assets
-self.addEventListener("fetch", (event) => {
+// Fetch event - network first for pages, cache first for static assets
+self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   // Skip non-GET requests
-  if (request.method !== "GET") return;
+  if (request.method !== 'GET') return;
 
-  // Skip chrome-extension and other non-http(s) schemes
-  if (!url.protocol.startsWith("http")) return;
+  // Skip non-http(s) schemes (e.g. chrome-extension)
+  if (!url.protocol.startsWith('http')) return;
 
-  // API calls: network-first
-  if (url.pathname.startsWith("/api/")) {
-    event.respondWith(networkFirst(request));
+  // Skip API requests and auth
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/api/auth')) return;
+
+  // For navigation requests (HTML pages) - network first
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(request).then((cached) => {
+            if (cached) return cached;
+            return caches.match(OFFLINE_URL).then((offlinePage) => {
+              if (offlinePage) return offlinePage;
+              return caches.match('/');
+            });
+          });
+        })
+    );
     return;
   }
 
-  // Navigation requests: network-first with offline fallback
-  if (request.mode === "navigate") {
-    event.respondWith(networkFirstWithOfflineFallback(request));
+  // For static assets - stale while revalidate
+  if (url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|gif|woff2?)$/)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const fetchPromise = fetch(request).then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        });
+        return cached || fetchPromise;
+      })
+    );
     return;
   }
-
-  // Static assets (JS, CSS, images, fonts): cache-first
-  if (isStaticAsset(url.pathname)) {
-    event.respondWith(cacheFirst(request));
-    return;
-  }
-
-  // Everything else: network-first
-  event.respondWith(networkFirst(request));
 });
-
-function isStaticAsset(pathname) {
-  return /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/.test(
-    pathname
-  );
-}
-
-async function networkFirst(request) {
-  try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch {
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) return cachedResponse;
-    return new Response("Network error", { status: 503 });
-  }
-}
-
-async function networkFirstWithOfflineFallback(request) {
-  try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch {
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) return cachedResponse;
-    // Serve offline fallback page
-    const offlinePage = await caches.match("/offline.html");
-    if (offlinePage) return offlinePage;
-    return new Response("You are offline", {
-      status: 503,
-      headers: { "Content-Type": "text/html" },
-    });
-  }
-}
-
-async function cacheFirst(request) {
-  const cachedResponse = await caches.match(request);
-  if (cachedResponse) return cachedResponse;
-  try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch {
-    return new Response("Network error", { status: 503 });
-  }
-}

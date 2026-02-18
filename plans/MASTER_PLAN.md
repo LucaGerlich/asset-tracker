@@ -37,9 +37,19 @@ This document consolidates all planning, roadmap, and implementation notes into 
 - Integrations baseline: webhook API + UI, Slack/Teams webhook settings, Freshdesk settings UI.
 - QR scanner page with camera scanning and search fallback.
 
+### Recently Completed (2026-02-18)
+- Maintenance schedule management page (full CRUD, status badges, complete/delete actions).
+- Warranty expiration dashboard in reports (summary cards, bar chart, sortable table).
+- Custom fields admin UI in admin settings (full CRUD for field definitions).
+- Consumable restock functionality (PATCH endpoint + Restock dialog on consumable detail).
+- Password reset flow (forgot-password API with rate limiting, reset-password API, email template, UI pages, login link).
+- Sidebar update with Maintenance link (Wrench icon in Tools section).
+- Collapsible sidebar sections and scrollable nav.
+- OfflineBanner SSR hydration fix.
+- Next.js 16 middleware-to-proxy migration (`src/proxy.ts`).
+- Merge conflict resolution (pagination + org-context + security features).
+
 ### Partially Implemented or Needs Completion
-- Depreciation reporting in the reports dashboard.
-- Assets dashboard migration to `ResponsiveTable`.
 - Workflow execution engine (UI/API exists; trigger runner not wired).
 - Organization scoping and RBAC enforcement across all APIs/pages.
 - SSO/LDAP/Freshdesk integrations (settings exist; auth/data flows not wired).
@@ -49,11 +59,14 @@ This document consolidates all planning, roadmap, and implementation notes into 
 ## Roadmap
 
 ### Phase 1: Alignment and Stabilization (Now–2 weeks)
+- ~~Finish maintenance schedule management UI and hook into `/api/maintenance`.~~ Done (2026-02-18)
+- ~~Add warranty section to reports.~~ Done (2026-02-18)
+- ~~Add depreciation section to reports.~~ Done (2026-02-18)
+- ~~Migrate Assets DashboardTable to ResponsiveTable (mobile card view).~~ Done (2026-02-18)
 - Validate this master plan against current UI flows and API endpoints.
 - Update documentation references to use `plans/MASTER_PLAN.md`.
-- Finish maintenance schedule management UI and hook into `/api/maintenance`.
-- Add depreciation and warranty sections to reports.
-- Run `bun run lint` and Playwright (install browsers, fix failures).
+- ~~Fix `bun run lint` (was broken on Next.js 16; now uses eslint directly, 0 errors / 7 pre-existing warnings).~~ Done (2026-02-18)
+- Run Playwright E2E tests (install browsers, fix failures).
 - Verify labels, attachments, reservations, transfers, and saved filters via a manual test script.
 
 ### Phase 2: Multi-tenancy and RBAC (2–6 weeks)
@@ -104,7 +117,7 @@ This list mirrors all unchecked tasks across plan files. Some items are implemen
 <!-- OPEN_TASKS_START -->
 
 ### FEATURES.md
-- [ ] 🚧 In Progress — Depreciation reporting (asset views done; reports pending)
+- [x] Depreciation reporting (Done 2026-02-18 — report tab with summary cards, bar chart, asset table)
 - [ ] Asset History — Asset check-in/check-out history (explicit workflow)
 - [ ] Consumables Enhancement — Automatic reorder alerts (beyond low-stock notifications)
 - [ ] Partially Implemented (DB/API Only) — User preferences (sidebar collapsed cookie only)
@@ -149,7 +162,7 @@ This list mirrors all unchecked tasks across plan files. Some items are implemen
 - [ ] Compliance & Security — GDPR compliance features
 - [ ] Compliance & Security — Security hardening beyond current feature flags
 - [ ] Compliance & Security — MFA/2FA
-- [ ] Compliance & Security — Password reset flow
+- [x] Compliance & Security — Password reset flow (Done 2026-02-18)
 - [ ] Compliance & Security — Concurrent session management
 - [ ] Compliance & Security — CAPTCHA for login
 - [ ] Compliance & Security — Suspicious activity detection
@@ -233,7 +246,7 @@ This list mirrors all unchecked tasks across plan files. Some items are implemen
 - [ ] 1.4 Database Resilience — Set up automated backups with point-in-time recovery - *Deferred: requires infrastructure*
 - [ ] 1.4 Database Resilience — Create database maintenance scripts - *Future enhancement*
 - [ ] 2.2 Authentication Improvements — Implement Multi-Factor Authentication (MFA/2FA) - *Deferred: major feature*
-- [ ] 2.2 Authentication Improvements — Add password reset flow via email - *Deferred: requires email service setup*
+- [x] 2.2 Authentication Improvements — Add password reset flow via email - Done (2026-02-18)
 - [ ] 2.2 Authentication Improvements — Implement concurrent session management - *Deferred: future enhancement*
 - [ ] 2.3 Additional Security Measures — Add CAPTCHA for login form
 - [ ] 2.3 Additional Security Measures — Implement IP-based suspicious activity detection
@@ -300,10 +313,10 @@ This list mirrors all unchecked tasks across plan files. Some items are implemen
 - [ ] 6.1 Asset Management Enhancements — **Bulk Import/Export** - API exists; UI pending
 - [ ] 6.1 Asset Management Enhancements — **Asset Images** - Photo uploads with thumbnail generation (DB only)
 - [ ] 6.1 Asset Management Enhancements — **Barcode/QR Scanning** - Mobile scanning for quick asset lookup
-- [ ] 6.1 Asset Management Enhancements — **Asset Depreciation** - Settings exist; UI pending
-- [ ] 6.1 Asset Management Enhancements — **Warranty Tracking** - DB + notifications exist; UI pending
-- [ ] 6.1 Asset Management Enhancements — **Maintenance Scheduling** - DB + notifications exist; UI pending
-- [ ] 6.1 Asset Management Enhancements — **Asset Reservations** - DB/API exists; UI pending
+- [x] 6.1 Asset Management Enhancements — **Asset Depreciation** - Done (2026-02-18, report tab added)
+- [x] 6.1 Asset Management Enhancements — **Warranty Tracking** - Done (2026-02-18, warranty report tab added)
+- [x] 6.1 Asset Management Enhancements — **Maintenance Scheduling** - Done (2026-02-18, full CRUD page)
+- [x] 6.1 Asset Management Enhancements — **Asset Reservations** - Done (UI exists on asset detail page)
 - [ ] 6.2 Reporting & Analytics — **Dashboard Widgets** - Customizable dashboard
 - [ ] 6.2 Reporting & Analytics — **Report Builder** - Custom report generation
 - [ ] 6.2 Reporting & Analytics — **Scheduled Reports** - Automated report delivery via email
@@ -341,7 +354,7 @@ This list mirrors all unchecked tasks across plan files. Some items are implemen
 - [ ] Quick Wins (Remaining) — Configure security headers
 
 ### plans/IMPLEMENTATION_PLAN.md
-- [ ] 1. Complete Table Migrations (1 remaining) — Assets DashboardTable (45KB)
+- [x] 1. Complete Table Migrations — Assets DashboardTable (Done 2026-02-18, mobile card view added)
 - [ ] 2. Testing & Validation — Install Playwright browsers
 - [ ] 2. Testing & Validation — Run E2E test suite
 - [ ] 2. Testing & Validation — Fix any failing tests
@@ -353,15 +366,15 @@ This list mirrors all unchecked tasks across plan files. Some items are implemen
 - [ ] 4. Documentation Updates — Update README.md with new test commands
 - [ ] 4. Documentation Updates — Document ResponsiveTable component usage
 - [ ] 4. Documentation Updates — Add screenshots of mobile vs desktop views
-- [ ] 5. Code Quality — Fix eslint configuration issue
-- [ ] 5. Code Quality — Run linter on all files
+- [x] 5. Code Quality — Fix eslint configuration issue (Done 2026-02-18, next lint→eslint src/)
+- [x] 5. Code Quality — Run linter on all files (Done 2026-02-18, 0 errors / 7 warnings)
 - [ ] 5. Code Quality — Add JSDoc comments to ResponsiveTable
 - [ ] 5. Code Quality — Review and optimize bundle size
 - [ ] 6. Future Enhancements — Performance testing with Lighthouse
 - [ ] 6. Future Enhancements — Accessibility audit (WCAG compliance)
 - [ ] 6. Future Enhancements — Visual regression testing
 - [ ] 6. Future Enhancements — Load testing with large datasets
-- [ ] Phase 3 Complete (Responsive Layouts) — All tables migrated to ResponsiveTable (7/8 so far)
+- [x] Phase 3 Complete (Responsive Layouts) — All tables migrated to ResponsiveTable (8/8 done)
 - [ ] Phase 3 Complete (Responsive Layouts) — Forms stack properly on mobile
 - [ ] Phase 3 Complete (Responsive Layouts) — All E2E tests passing
 - [ ] Overall Success — Zero console errors or warnings

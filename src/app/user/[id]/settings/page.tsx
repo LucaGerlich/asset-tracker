@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import Breadcrumb from "@/components/Breadcrumb";
 import prisma from "@/lib/prisma";
 import UserSettingsClient from "./ui/UserSettingsClient";
+import SessionManagement from "./SessionManagement";
 
 export const metadata = {
   title: "Asset Tracker - User Settings",
@@ -57,6 +58,9 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     <>
       <Breadcrumb options={breadcrumbOptions} />
       <UserSettingsClient user={user} preferences={preferences} />
+      <div className="mt-6 max-w-2xl">
+        <SessionManagement />
+      </div>
     </>
   );
 }

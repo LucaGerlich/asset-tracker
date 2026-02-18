@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
 import prisma from "@/lib/prisma";
+import { getOrganizationContext, scopeToOrganization } from "@/lib/organization-context";
 
 interface SearchResult {
   type: "asset" | "user" | "consumable";
@@ -13,6 +14,8 @@ interface SearchResult {
 export async function GET(req: Request) {
   try {
     await requireApiAuth();
+    const orgContext = await getOrganizationContext();
+    const orgId = orgContext?.organization?.id;
 
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("q") || "";
@@ -25,12 +28,12 @@ export async function GET(req: Request) {
 
     // Search assets (max 3)
     const assets = await prisma.asset.findMany({
-      where: {
+      where: scopeToOrganization({
         OR: [
           { assetname: { contains: query, mode: "insensitive" } },
           { assettag: { contains: query, mode: "insensitive" } },
         ],
-      },
+      }, orgId),
       take: 3,
     });
 
@@ -46,13 +49,13 @@ export async function GET(req: Request) {
 
     // Search users (max 3)
     const users = await prisma.user.findMany({
-      where: {
+      where: scopeToOrganization({
         OR: [
           { firstname: { contains: query, mode: "insensitive" } },
           { lastname: { contains: query, mode: "insensitive" } },
           { email: { contains: query, mode: "insensitive" } },
         ],
-      },
+      }, orgId),
       take: 3,
     });
 
@@ -68,9 +71,9 @@ export async function GET(req: Request) {
 
     // Search consumables (max 2)
     const consumables = await prisma.consumable.findMany({
-      where: {
+      where: scopeToOrganization({
         consumablename: { contains: query, mode: "insensitive" },
-      },
+      }, orgId),
       take: 2,
     });
 

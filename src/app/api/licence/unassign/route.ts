@@ -1,11 +1,11 @@
 import prisma from "../../../../lib/prisma";
-import { requireApiAdmin } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
 
 // DELETE /api/licence/unassign
 // Body: { licenceId }
 export async function DELETE(req) {
   try {
-    await requireApiAdmin();
+    await requirePermission('license:assign');
     const { licenceId } = await req.json();
     if (!licenceId) {
       return new Response(JSON.stringify({ error: "licenceId is required" }), { status: 400 });

@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { hasPermission, hasAnyPermission, type Permission } from './rbac';
 
 interface AuthUser {
   id?: string;
@@ -53,6 +54,33 @@ export async function requireApiCanRequest(): Promise<AuthUser> {
 
   if (!user.canRequest && !user.isAdmin) {
     throw new Error("Forbidden: Request permission required");
+  }
+
+  return user;
+}
+
+/**
+ * Require specific permission(s) for API routes
+ * Checks RBAC permissions via user roles. Admin users pass all checks.
+ */
+export async function requirePermission(...permissions: Permission[]): Promise<AuthUser> {
+  const user = await getAuthUser();
+
+  if (!user.id) {
+    throw new Error("Unauthorized");
+  }
+
+  // Admin users bypass permission checks
+  if (user.isAdmin) {
+    return user;
+  }
+
+  const hasAccess = permissions.length === 1
+    ? await hasPermission(user.id, permissions[0])
+    : await hasAnyPermission(user.id, permissions);
+
+  if (!hasAccess) {
+    throw new Error("Forbidden: Insufficient permissions");
   }
 
   return user;

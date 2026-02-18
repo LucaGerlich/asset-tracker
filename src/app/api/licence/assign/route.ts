@@ -1,11 +1,12 @@
 import prisma from "../../../../lib/prisma";
-import { requireApiAdmin } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
+import { triggerWebhook } from "@/lib/webhooks";
 
 // POST /api/licence/assign
 // Body: { licenceId, userId }
 export async function POST(req) {
   try {
-    await requireApiAdmin();
+    await requirePermission('license:assign');
     const { licenceId, userId } = await req.json();
     if (!licenceId || !userId) {
       return new Response(JSON.stringify({ error: "licenceId and userId are required" }), { status: 400 });
@@ -14,6 +15,9 @@ export async function POST(req) {
       where: { licenceid: licenceId },
       data: { licenceduserid: userId, change_date: new Date() },
     });
+
+    triggerWebhook('license.assigned', { licenceId, userId, licenceKey: updated.licencekey }).catch(() => {});
+
     return new Response(JSON.stringify(updated), { status: 200 });
   } catch (e) {
     console.error("POST /api/licence/assign error:", e);

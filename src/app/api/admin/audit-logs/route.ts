@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
 import {
   parsePaginationParams,
   buildPrismaArgs,
@@ -18,7 +18,7 @@ const AUDIT_LOG_SORT_FIELDS = [
 // GET /api/admin/audit-logs
 export async function GET(req: Request) {
   try {
-    await requireApiAdmin();
+    await requirePermission('audit:view');
 
     const { searchParams } = new URL(req.url);
     const params = parsePaginationParams(searchParams);

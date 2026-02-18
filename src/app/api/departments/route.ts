@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
+import { requirePermission } from '@/lib/api-auth';
 import { departmentSchema } from '@/lib/validation-organization';
 import { createAuditLog, AUDIT_ACTIONS } from '@/lib/audit-log';
+import { getOrganizationContext, scopeToOrganization } from '@/lib/organization-context';
 import { z } from 'zod';
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    await requirePermission('dept:view');
+
+    const orgContext = await getOrganizationContext();
+    const orgId = orgContext?.organization?.id;
 
     const organizationId = req.nextUrl.searchParams.get('organizationId');
 
-    const where = organizationId ? { organizationId } : {};
+    // Use the query param if provided, otherwise scope to user's org
+    const where = scopeToOrganization(
+      organizationId ? { organizationId } : {},
+      orgId
+    );
 
     const departments = await prisma.department.findMany({
       where,
@@ -35,19 +40,30 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(departments);
   } catch (error) {
     console.error('Error fetching departments:', error);
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Failed to fetch departments' }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.isAdmin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const authUser = await requirePermission('dept:manage');
+
+    const orgContext = await getOrganizationContext();
+    const orgId = orgContext?.organization?.id;
 
     const body = await req.json();
     const validated = departmentSchema.parse(body);
+
+    // If user has an org, ensure they can only create departments in their own org
+    if (orgId && validated.organizationId !== orgId) {
+      return NextResponse.json({ error: 'Cannot create department in another organization' }, { status: 403 });
+    }
 
     // Verify organization exists
     const organization = await prisma.organization.findUnique({
@@ -87,7 +103,7 @@ export async function POST(req: NextRequest) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: authUser.id!,
       action: AUDIT_ACTIONS.CREATE,
       entity: 'Department',
       entityId: department.id,
@@ -97,6 +113,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(department, { status: 201 });
   } catch (error) {
     console.error('Error creating department:', error);
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }

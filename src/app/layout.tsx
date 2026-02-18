@@ -18,12 +18,16 @@ import { cookies } from "next/headers";
 
 export const metadata = {
   title: "Dashboard",
-  description: "Asset management tool",
+  description: "Track and manage your organization's assets, licenses, and consumables",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Asset Tracker",
+  },
+  icons: {
+    icon: "/icons/icon.svg",
+    apple: "/icons/icon.svg",
   },
 };
 

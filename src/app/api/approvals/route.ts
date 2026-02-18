@@ -1,50 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
+import { hasPermission } from "@/lib/rbac";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { validateBody, createApprovalSchema } from "@/lib/validations";
+import {
+  parsePaginationParams,
+  buildPrismaArgs,
+  buildPaginatedResponse,
+} from "@/lib/pagination";
+
+const APPROVAL_SORT_FIELDS = ["status", "createdAt"];
 
 // GET /api/approvals - List approval requests
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireApiAuth();
+    const user = await requirePermission('reservation:view');
 
-    const status = req.nextUrl.searchParams.get("status");
-    const requesterId = req.nextUrl.searchParams.get("requesterId");
+    const searchParams = req.nextUrl.searchParams;
+    const status = searchParams.get("status");
+    const requesterId = searchParams.get("requesterId");
 
-    const where: {
-      status?: string;
-      requesterId?: string;
-    } = {};
+    const where: Record<string, unknown> = {};
 
     if (status) where.status = status;
     if (requesterId) where.requesterId = requesterId;
 
-    // Non-admin users can only see their own approval requests
-    if (!user.isAdmin) {
+    // Non-admin users without reservation:approve can only see their own approval requests
+    const canApprove = user.isAdmin || (user.id ? await hasPermission(user.id, 'reservation:approve') : false);
+    if (!canApprove) {
       where.requesterId = user.id!;
     }
 
-    const approvals = await prisma.approvalRequest.findMany({
-      where,
-      include: {
-        requester: {
-          select: { userid: true, firstname: true, lastname: true, email: true },
-        },
-        approver: {
-          select: { userid: true, firstname: true, lastname: true, email: true },
-        },
+    const include = {
+      requester: {
+        select: { userid: true, firstname: true, lastname: true, email: true },
       },
-      orderBy: { createdAt: "desc" },
-    });
+      approver: {
+        select: { userid: true, firstname: true, lastname: true, email: true },
+      },
+    };
 
-    return NextResponse.json(approvals);
+    // If no `page` param, return all results for backward compatibility
+    if (!searchParams.has("page")) {
+      const approvals = await prisma.approvalRequest.findMany({
+        where,
+        include,
+        orderBy: { createdAt: "desc" },
+      });
+      return NextResponse.json(approvals);
+    }
+
+    // Paginated path
+    const params = parsePaginationParams(searchParams);
+    const prismaArgs = buildPrismaArgs(params, APPROVAL_SORT_FIELDS);
+
+    const [approvals, total] = await Promise.all([
+      prisma.approvalRequest.findMany({ where, include, ...prismaArgs }),
+      prisma.approvalRequest.count({ where }),
+    ]);
+
+    return NextResponse.json(
+      buildPaginatedResponse(approvals, total, params),
+      { status: 200 },
+    );
   } catch (e: unknown) {
     const error = e as Error;
     console.error("GET /api/approvals error:", error);
 
     if (error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error.message?.startsWith("Forbidden")) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
 
     return NextResponse.json(
@@ -57,7 +85,7 @@ export async function GET(req: NextRequest) {
 // POST /api/approvals - Create a new approval request
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireApiAuth();
+    const user = await requirePermission('reservation:create');
 
     const body = await req.json();
     const validated = validateBody(createApprovalSchema, body);
@@ -98,6 +126,9 @@ export async function POST(req: NextRequest) {
 
     if (error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error.message?.startsWith("Forbidden")) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
 
     return NextResponse.json(

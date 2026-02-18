@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
 import { updateDepartmentSchema } from '@/lib/validation-organization';
 import { createAuditLog, AUDIT_ACTIONS } from '@/lib/audit-log';
+import { getOrganizationContext, scopeToOrganization } from '@/lib/organization-context';
 import { z } from 'zod';
 
 interface RouteParams {
@@ -20,8 +21,11 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const department = await prisma.department.findUnique({
-      where: { id },
+    const orgContext = await getOrganizationContext();
+    const orgId = orgContext?.organization?.id;
+
+    const department = await prisma.department.findFirst({
+      where: scopeToOrganization({ id }, orgId),
       include: {
         organization: {
           select: { id: true, name: true, slug: true }
@@ -60,11 +64,14 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const orgContext = await getOrganizationContext();
+    const orgId = orgContext?.organization?.id;
+
     const body = await req.json();
     const validated = updateDepartmentSchema.parse(body);
 
-    const existingDepartment = await prisma.department.findUnique({
-      where: { id }
+    const existingDepartment = await prisma.department.findFirst({
+      where: scopeToOrganization({ id }, orgId)
     });
 
     if (!existingDepartment) {
@@ -127,8 +134,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const department = await prisma.department.findUnique({
-      where: { id },
+    const orgContext = await getOrganizationContext();
+    const orgId = orgContext?.organization?.id;
+
+    const department = await prisma.department.findFirst({
+      where: scopeToOrganization({ id }, orgId),
       include: {
         _count: {
           select: { children: true, users: true }

@@ -56,6 +56,7 @@ import { Toaster, toast } from "sonner";
 import { asset } from "@/components/testData";
 import SavedFilters from "@/components/SavedFilters";
 import PrintLabelDialog from "@/components/PrintLabelDialog";
+import { Card, CardContent } from "@/components/ui/card";
 
 const statusColorMap = {
   Active: "default",
@@ -1043,7 +1044,117 @@ export default function App({
   return (
     <div className="w-full space-y-4">
       {topContent}
-      <div className="w-full overflow-x-auto rounded-md border">
+      {/* Mobile: Card view */}
+      <div className="block lg:hidden space-y-3">
+        {sortedItems.length === 0 ? (
+          <div className="rounded-md border p-8 text-center">
+            <p className="text-sm text-muted-foreground">No assets found</p>
+          </div>
+        ) : (
+          sortedItems.map((item) => {
+            const stat = status.find((s) => s.statustypeid === item.statustypeid);
+            const cat = categories.find((c) => c.assetcategorytypeid === item.assetcategorytypeid);
+            const loc = locations.find((l) => l.locationid === item.locationid);
+            const manu = manufacturers.find((m) => m.manufacturerid === item.manufacturerid);
+            const userAssetEntry = userAssetsData.find((ua) => ua.assetid === item.assetid);
+            const assignedUser = userAssetEntry ? user.find((u) => u.userid === userAssetEntry.userid) : null;
+            const badgeVariant = statusColorMap[stat?.statustypename] || "default";
+
+            return (
+              <Card key={item.assetid} className="overflow-hidden">
+                <CardContent className="px-4 py-3">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="min-w-0 flex-1">
+                      <Link href={`assets/${item.assetid}/`} className="font-semibold text-sm hover:underline">
+                        {item.assetname}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">{item.assettag}</p>
+                    </div>
+                    <Badge className="capitalize shrink-0 ml-2" variant={badgeVariant}>
+                      {stat?.statustypename || "Unknown"}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Serial</span>
+                      <span className="truncate ml-2">{item.serialnumber}</span>
+                    </div>
+                    {cat && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Category</span>
+                        <span>{cat.assetcategorytypename}</span>
+                      </div>
+                    )}
+                    {loc && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Location</span>
+                        <span>{loc.locationname}</span>
+                      </div>
+                    )}
+                    {manu && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Manufacturer</span>
+                        <span>{manu.manufacturername}</span>
+                      </div>
+                    )}
+                    {assignedUser && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Assigned To</span>
+                        <span>{assignedUser.firstname} {assignedUser.lastname}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 mt-3 pt-2 border-t">
+                    <Button size="sm" variant="ghost" asChild className="h-8 px-2">
+                      <Link href={`assets/${item.assetid}/`}>
+                        <EyeIcon className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button size="sm" variant="ghost" asChild className="h-8 px-2">
+                      <Link href={`assets/${item.assetid}/edit`}>
+                        <EditIcon className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2"
+                      onClick={() => handleOpenModal(item, "assign")}
+                      disabled={!item.requestable}
+                    >
+                      <AssignIcon className="h-4 w-4" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="ghost" className="h-8 px-2 ml-auto">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleOpenModal(item, "delete")} className="text-destructive focus:text-destructive">
+                          <DeleteIcon className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenModal(item, "status")}>
+                          <Status className="mr-2 h-4 w-4" /> Change Status
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenModal(item, "qrcode")}>
+                          <QrCode className="mr-2 h-4 w-4" /> QR Code
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenModal(item, "label")}>
+                          <Label className="mr-2 h-4 w-4" /> Label
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop: Table view */}
+      <div className="hidden lg:block w-full overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>

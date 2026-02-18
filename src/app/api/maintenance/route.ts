@@ -1,33 +1,76 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
+import { getOrganizationContext, scopeToOrganization } from "@/lib/organization-context";
+import { triggerWebhook } from "@/lib/webhooks";
+import {
+  parsePaginationParams,
+  buildPrismaArgs,
+  buildPaginatedResponse,
+} from "@/lib/pagination";
+
+const MAINTENANCE_SORT_FIELDS = ["title", "frequency", "nextDueDate", "status", "createdAt"];
 
 // GET: List all maintenance schedules, optionally filtered by assetId
 export async function GET(req: NextRequest) {
   try {
     await requireApiAuth();
+    const orgContext = await getOrganizationContext();
+    const orgId = orgContext?.organization?.id;
 
-    const assetId = req.nextUrl.searchParams.get("assetId");
+    const searchParams = req.nextUrl.searchParams;
+    const assetId = searchParams.get("assetId");
 
-    const where: { assetId?: string } = {};
+    const where: Record<string, unknown> = {};
     if (assetId) {
       where.assetId = assetId;
     }
 
-    const schedules = await prisma.maintenance_schedules.findMany({
-      where,
-      include: {
-        asset: {
-          select: { assetid: true, assetname: true },
-        },
-        user: {
-          select: { userid: true, firstname: true, lastname: true },
-        },
-      },
-      orderBy: { nextDueDate: "asc" },
-    });
+    // Scope through the related asset's organizationId
+    if (orgId) {
+      where.asset = { ...((where.asset as Record<string, unknown>) || {}), organizationId: orgId };
+    }
 
-    return NextResponse.json(schedules);
+    const include = {
+      asset: {
+        select: { assetid: true, assetname: true },
+      },
+      user: {
+        select: { userid: true, firstname: true, lastname: true },
+      },
+    };
+
+    // If no `page` param, return all results for backward compatibility
+    if (!searchParams.has("page")) {
+      const schedules = await prisma.maintenance_schedules.findMany({
+        where,
+        include,
+        orderBy: { nextDueDate: "asc" },
+      });
+      return NextResponse.json(schedules);
+    }
+
+    // Paginated path
+    const params = parsePaginationParams(searchParams);
+    const prismaArgs = buildPrismaArgs(params, MAINTENANCE_SORT_FIELDS);
+
+    // Search filter
+    if (params.search) {
+      where.OR = [
+        { title: { contains: params.search, mode: "insensitive" } },
+        { description: { contains: params.search, mode: "insensitive" } },
+      ];
+    }
+
+    const [schedules, total] = await Promise.all([
+      prisma.maintenance_schedules.findMany({ where, include, ...prismaArgs }),
+      prisma.maintenance_schedules.count({ where }),
+    ]);
+
+    return NextResponse.json(
+      buildPaginatedResponse(schedules, total, params),
+      { status: 200 },
+    );
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,6 +87,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await requireApiAuth();
+    const orgContext = await getOrganizationContext();
+    const orgId = orgContext?.organization?.id;
 
     const body = await req.json();
 
@@ -66,9 +111,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify asset exists
-    const asset = await prisma.asset.findUnique({
-      where: { assetid: assetId },
+    // Verify asset exists and belongs to user's organization
+    const asset = await prisma.asset.findFirst({
+      where: scopeToOrganization({ assetid: assetId }, orgId),
     });
 
     if (!asset) {
@@ -106,6 +151,8 @@ export async function POST(req: NextRequest) {
         },
       },
     });
+
+    triggerWebhook('maintenance.due', { maintenanceId: schedule.id, assetId: schedule.assetId, title: schedule.title }, orgId).catch(() => {});
 
     return NextResponse.json(schedule, { status: 201 });
   } catch (error) {

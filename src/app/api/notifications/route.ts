@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
+import {
+  parsePaginationParams,
+  buildPrismaArgs,
+  buildPaginatedResponse,
+} from "@/lib/pagination";
+
+const NOTIFICATION_SORT_FIELDS = ["createdAt", "type", "status"];
 
 // GET /api/notifications - Fetch notifications for the current user
 export async function GET(request: NextRequest) {
@@ -11,26 +18,15 @@ export async function GET(request: NextRequest) {
         }
 
         const { searchParams } = new URL(request.url);
-        const limit = parseInt(searchParams.get('limit') || '20');
         const status = searchParams.get('status'); // 'pending', 'sent', 'all'
 
-        const whereClause: { userId: string; status?: string } = {
+        const where: Record<string, unknown> = {
             userId: session.user.id,
         };
 
         if (status && status !== 'all') {
-            whereClause.status = status;
+            where.status = status;
         }
-
-        const notifications = await prisma.notification_queue.findMany({
-            where: whereClause,
-            orderBy: { createdAt: 'desc' },
-            take: limit,
-        });
-
-        const total = await prisma.notification_queue.count({
-            where: whereClause,
-        });
 
         const unreadCount = await prisma.notification_queue.count({
             where: {
@@ -39,9 +35,46 @@ export async function GET(request: NextRequest) {
             },
         });
 
+        // If no `page` param, return all results for backward compatibility
+        if (!searchParams.has("page")) {
+            const limit = parseInt(searchParams.get('limit') || '20');
+
+            const notifications = await prisma.notification_queue.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+            });
+
+            const total = await prisma.notification_queue.count({
+                where,
+            });
+
+            return NextResponse.json({
+                notifications,
+                total,
+                unreadCount,
+            });
+        }
+
+        // Paginated path
+        const params = parsePaginationParams(searchParams);
+        const prismaArgs = buildPrismaArgs(params, NOTIFICATION_SORT_FIELDS);
+
+        // Search filter
+        if (params.search) {
+            where.OR = [
+                { subject: { contains: params.search, mode: "insensitive" } },
+                { body: { contains: params.search, mode: "insensitive" } },
+            ];
+        }
+
+        const [notifications, total] = await Promise.all([
+            prisma.notification_queue.findMany({ where, ...prismaArgs }),
+            prisma.notification_queue.count({ where }),
+        ]);
+
         return NextResponse.json({
-            notifications,
-            total,
+            ...buildPaginatedResponse(notifications, total, params),
             unreadCount,
         });
     } catch (error) {

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
+import { hasPermission } from "@/lib/rbac";
+import { getOrganizationContext, scopeToOrganization } from "@/lib/organization-context";
 import { updateUserSchema } from "@/lib/validation";
 import { hashPassword } from "@/lib/auth-utils";
 import {
@@ -8,12 +10,13 @@ import {
   buildPrismaArgs,
   buildPaginatedResponse,
 } from "@/lib/pagination";
+import { triggerWebhook } from "@/lib/webhooks";
 
 const USER_SORT_FIELDS = ["firstname", "lastname", "email", "creation_date"];
 
 const stripPassword = (user) => {
   if (!user) return user;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const { password, ...rest } = user;
   return rest;
 };
@@ -28,8 +31,12 @@ export async function GET(req) {
     const id = searchParams.get("id");
 
     if (id) {
-      if (!authUser.isAdmin && authUser.id !== id) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      // Users can view their own profile; others need user:view permission
+      if (authUser.id !== id) {
+        const canViewUsers = authUser.isAdmin || (authUser.id ? await hasPermission(authUser.id, 'user:view') : false);
+        if (!canViewUsers) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
       }
       const user = await prisma.user.findUnique({ where: { userid: id } });
       if (!user) {
@@ -41,13 +48,19 @@ export async function GET(req) {
       return NextResponse.json(stripPassword(user), { status: 200 });
     }
 
-    if (!authUser.isAdmin) {
+    // Listing all users requires user:view permission
+    const canViewUsers = authUser.isAdmin || (authUser.id ? await hasPermission(authUser.id, 'user:view') : false);
+    if (!canViewUsers) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const orgContext = await getOrganizationContext();
+    const orgId = orgContext?.organization?.id;
+
     // If no `page` param, return all results for backward compatibility
     if (!searchParams.has("page")) {
-      const users = await prisma.user.findMany({});
+      const where = scopeToOrganization({}, orgId);
+      const users = await prisma.user.findMany({ where });
       return NextResponse.json(users.map(stripPassword), { status: 200 });
     }
 
@@ -55,7 +68,7 @@ export async function GET(req) {
     const params = parsePaginationParams(searchParams);
     const prismaArgs = buildPrismaArgs(params, USER_SORT_FIELDS);
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
     // Search filter (firstname, lastname, email, username)
     if (params.search) {
@@ -132,6 +145,9 @@ export async function PUT(req) {
         change_date: new Date(),
       },
     });
+
+    triggerWebhook('user.updated', { userId: userid, changes: Object.keys(updateData) }).catch(() => {});
+
     return NextResponse.json(stripPassword(updated), { status: 200 });
   } catch (error) {
     console.error("PUT /api/user error:", error);

@@ -3,6 +3,13 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
 import { createFreshdeskClient, SUPPORTED_TICKET_TYPES } from "@/lib/freshdesk";
+import {
+  parsePaginationParams,
+  buildPrismaArgs,
+  buildPaginatedResponse,
+} from "@/lib/pagination";
+
+const TICKET_SORT_FIELDS = ["title", "status", "priority", "createdAt", "updatedAt"];
 
 // GET /api/tickets
 // Supports two sources:
@@ -16,56 +23,88 @@ export async function GET(req: Request) {
     return getFreshdeskTickets(req, url);
   }
 
-  return getLocalTickets();
+  return getLocalTickets(url);
 }
 
 // Fetch tickets from the local Prisma database
-async function getLocalTickets() {
+async function getLocalTickets(url: URL) {
   try {
     const user = await requireApiAuth();
+    const searchParams = url.searchParams;
 
     // Admins see all tickets, users see only their own
-    const rawTickets = await prisma.tickets.findMany({
-      where: user.isAdmin ? {} : { createdBy: user.id },
-      include: {
-        user_tickets_createdByTouser: {
-          select: {
-            userid: true,
-            username: true,
-            firstname: true,
-            lastname: true,
-            email: true,
-          },
+    const where: Record<string, unknown> = user.isAdmin ? {} : { createdBy: user.id };
+
+    const include = {
+      user_tickets_createdByTouser: {
+        select: {
+          userid: true,
+          username: true,
+          firstname: true,
+          lastname: true,
+          email: true,
         },
-        user_tickets_assignedToTouser: {
-          select: {
-            userid: true,
-            username: true,
-            firstname: true,
-            lastname: true,
-            email: true,
-          },
+      },
+      user_tickets_assignedToTouser: {
+        select: {
+          userid: true,
+          username: true,
+          firstname: true,
+          lastname: true,
+          email: true,
         },
-        ticket_comments: {
-          include: {
-            user: {
-              select: {
-                userid: true,
-                username: true,
-                firstname: true,
-                lastname: true,
-              },
+      },
+      ticket_comments: {
+        include: {
+          user: {
+            select: {
+              userid: true,
+              username: true,
+              firstname: true,
+              lastname: true,
             },
           },
-          orderBy: {
-            createdAt: 'asc',
-          },
+        },
+        orderBy: {
+          createdAt: 'asc' as const,
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    };
+
+    // If no `page` param, return all results for backward compatibility
+    if (!searchParams.has("page")) {
+      const rawTickets = await prisma.tickets.findMany({
+        where,
+        include,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const tickets = rawTickets.map((ticket) => ({
+        ...ticket,
+        creator: ticket.user_tickets_createdByTouser,
+        assignee: ticket.user_tickets_assignedToTouser,
+        comments: ticket.ticket_comments,
+      }));
+
+      return NextResponse.json(tickets, { status: 200 });
+    }
+
+    // Paginated path
+    const params = parsePaginationParams(searchParams);
+    const prismaArgs = buildPrismaArgs(params, TICKET_SORT_FIELDS);
+
+    // Search filter
+    if (params.search) {
+      where.OR = [
+        { title: { contains: params.search, mode: "insensitive" } },
+        { description: { contains: params.search, mode: "insensitive" } },
+      ];
+    }
+
+    const [rawTickets, total] = await Promise.all([
+      prisma.tickets.findMany({ where, include, ...prismaArgs }),
+      prisma.tickets.count({ where }),
+    ]);
 
     // Map Prisma relation names to expected interface names
     const tickets = rawTickets.map((ticket) => ({
@@ -75,7 +114,10 @@ async function getLocalTickets() {
       comments: ticket.ticket_comments,
     }));
 
-    return NextResponse.json(tickets, { status: 200 });
+    return NextResponse.json(
+      buildPaginatedResponse(tickets, total, params),
+      { status: 200 },
+    );
   } catch (error) {
     console.error("GET /api/tickets error:", error);
     if (error instanceof Error && error.message === "Unauthorized") {

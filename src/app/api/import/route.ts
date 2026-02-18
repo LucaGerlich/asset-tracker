@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
+import { requirePermission } from '@/lib/api-auth';
 import { importJobSchema } from '@/lib/validation-organization';
 import { createAuditLog, AUDIT_ACTIONS } from '@/lib/audit-log';
 import { triggerWebhook } from '@/lib/webhooks';
@@ -19,14 +19,11 @@ const ENTITY_FIELDS: Record<string, string[]> = {
 // Get list of import jobs
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.isAdmin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const authUser = await requirePermission('import:execute');
 
     const jobs = await prisma.importJob.findMany({
       where: {
-        userId: session.user.id!
+        userId: authUser.id!
       },
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -35,6 +32,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(jobs);
   } catch (error) {
     console.error('Error fetching import jobs:', error);
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Failed to fetch import jobs' }, { status: 500 });
   }
 }
@@ -42,10 +45,7 @@ export async function GET(req: NextRequest) {
 // Create a new import job (CSV processing)
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.isAdmin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const authUser = await requirePermission('import:execute');
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     // Create import job
     const job = await prisma.importJob.create({
       data: {
-        userId: session.user.id!,
+        userId: authUser.id!,
         entityType: validatedInput.entityType,
         fileName: validatedInput.fileName,
         fileSize: validatedInput.fileSize,
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
         const values = parseCSVLine(lines[i]);
         const rowData = createRowObject(headers, values);
         
-        await createEntity(validatedInput.entityType, rowData, session.user.id!);
+        await createEntity(validatedInput.entityType, rowData, authUser.id!);
         successCount++;
       } catch (err) {
         errors.push({ 
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: authUser.id!,
       action: AUDIT_ACTIONS.CREATE,
       entity: 'ImportJob',
       entityId: job.id,
@@ -169,6 +169,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(completedJob, { status: 201 });
   } catch (error) {
     console.error('Error processing import:', error);
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }

@@ -1,16 +1,18 @@
 import prisma from "../../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { requireApiAdmin } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
+import { getOrganizationContext } from "@/lib/organization-context";
 import { hashPassword } from "@/lib/auth-utils";
 import { createUserSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { triggerWebhook } from "@/lib/webhooks";
 
 // POST /api/user/addUser
 export async function POST(request) {
   try {
-    // Require admin authentication
-    const admin = await requireApiAdmin();
+    // Require user:create permission
+    const admin = await requirePermission('user:create');
 
     const body = await request.json();
 
@@ -40,6 +42,9 @@ export async function POST(request) {
     // Hash the password before storing
     const hashedPassword = await hashPassword(password);
 
+    // Get organization context for the creating admin
+    const orgContext = await getOrganizationContext();
+
     // Create user with hashed password
     const created = await prisma.user.create({
       data: {
@@ -52,6 +57,7 @@ export async function POST(request) {
         lan: lan ?? null,
         password: hashedPassword,
         creation_date: new Date(),
+        organizationId: orgContext?.organization?.id || null,
       } as Prisma.userUncheckedCreateInput,
     });
 
@@ -67,6 +73,8 @@ export async function POST(request) {
         canrequest: created.canrequest,
       },
     });
+
+    triggerWebhook('user.created', { userId: created.userid, email: created.email }, created.organizationId).catch(() => {});
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = created;

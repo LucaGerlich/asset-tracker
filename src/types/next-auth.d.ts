@@ -12,6 +12,7 @@ declare module "next-auth" {
       organizationId?: string;
       departmentId?: string;
       permissions?: string[];
+      mfaPending?: boolean;
     } & DefaultSession["user"];
   }
 
@@ -24,6 +25,7 @@ declare module "next-auth" {
     lastname?: string;
     organizationId?: string;
     departmentId?: string;
+    mfaPending?: boolean;
   }
 }
 
@@ -38,5 +40,6 @@ declare module "next-auth/jwt" {
     organizationId?: string;
     departmentId?: string;
     permissions?: string[];
+    mfaPending?: boolean;
   }
 }

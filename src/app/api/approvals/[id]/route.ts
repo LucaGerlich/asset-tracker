@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireApiAdmin } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
+import { hasPermission } from "@/lib/rbac";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { validateBody, resolveApprovalSchema } from "@/lib/validations";
 
@@ -15,7 +16,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const user = await requireApiAuth();
+    const user = await requirePermission('reservation:view');
 
     const approval = await prisma.approvalRequest.findUnique({
       where: { id },
@@ -33,8 +34,9 @@ export async function GET(
       return NextResponse.json({ error: "Approval not found" }, { status: 404 });
     }
 
-    // Non-admin users can only see their own approval requests
-    if (!user.isAdmin && approval.requesterId !== user.id) {
+    // Users without reservation:approve can only see their own approval requests
+    const canApprove = user.isAdmin || (user.id ? await hasPermission(user.id, 'reservation:approve') : false);
+    if (!canApprove && approval.requesterId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -45,6 +47,9 @@ export async function GET(
 
     if (error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error.message?.startsWith("Forbidden")) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
     }
 
     return NextResponse.json(
@@ -61,7 +66,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const admin = await requireApiAdmin();
+    const admin = await requirePermission('reservation:approve');
 
     const body = await req.json();
     const validated = validateBody(resolveApprovalSchema, body);

@@ -12,6 +12,7 @@ interface ExtendedUser extends User {
   lastname?: string;
   organizationId?: string;
   departmentId?: string;
+  mfaPending?: boolean;
 }
 
 // Extended JWT type with custom fields
@@ -25,6 +26,7 @@ interface ExtendedJWT extends JWT {
   organizationId?: string;
   departmentId?: string;
   permissions?: string[];
+  mfaPending?: boolean;
 }
 
 // Extended Session type with custom fields
@@ -39,6 +41,7 @@ interface ExtendedSession extends Session {
     organizationId?: string;
     departmentId?: string;
     permissions?: string[];
+    mfaPending?: boolean;
     name?: string | null;
     email?: string | null;
     image?: string | null;
@@ -56,9 +59,34 @@ export const authConfig: NextAuthConfig = {
     authorized({ auth, request: { nextUrl } }: { auth: Session | null; request: { nextUrl: NextURL } }) {
       const isLoggedIn = !!auth?.user;
       const isPublicRoute = nextUrl.pathname === "/login";
+      const isMfaVerifyRoute = nextUrl.pathname === "/mfa-verify";
+      const isMfaApiRoute = nextUrl.pathname.startsWith("/api/auth/mfa/validate");
+      const isAuthApiRoute = nextUrl.pathname.startsWith("/api/auth");
+
+      // Check if user has MFA pending
+      const extSession = auth as ExtendedSession | null;
+      const mfaPending = extSession?.user?.mfaPending === true;
 
       if (isPublicRoute) {
         return true;
+      }
+
+      if (!isLoggedIn) {
+        return false;
+      }
+
+      // If MFA is pending, only allow MFA verify page, auth API routes, and login
+      if (mfaPending) {
+        if (isMfaVerifyRoute || isMfaApiRoute || isAuthApiRoute) {
+          return true;
+        }
+        // Redirect to MFA verify page
+        return Response.redirect(new URL("/mfa-verify", nextUrl));
+      }
+
+      // If MFA is not pending but user is on MFA verify page, redirect to home
+      if (isMfaVerifyRoute && !mfaPending) {
+        return Response.redirect(new URL("/", nextUrl));
       }
 
       return isLoggedIn;
@@ -74,6 +102,7 @@ export const authConfig: NextAuthConfig = {
         token.lastname = user.lastname;
         token.organizationId = user.organizationId;
         token.departmentId = user.departmentId;
+        token.mfaPending = user.mfaPending;
       }
       return token;
     },
@@ -89,6 +118,7 @@ export const authConfig: NextAuthConfig = {
         session.user.organizationId = token.organizationId;
         session.user.departmentId = token.departmentId;
         session.user.permissions = token.permissions;
+        session.user.mfaPending = token.mfaPending;
       }
       return session;
     },

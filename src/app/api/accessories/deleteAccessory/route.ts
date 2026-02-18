@@ -1,12 +1,12 @@
 import prisma from "../../../../lib/prisma";
 import { logger } from "@/lib/logger";
-import { requireApiAdmin } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
 
 export async function DELETE(req) {
   const startTime = Date.now();
   
   try {
-    await requireApiAdmin();
+    await requirePermission('accessory:delete');
     const { accessoryId } = await req.json();
 
     if (!accessoryId) {

@@ -1,8 +1,10 @@
 import prisma from "../../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { requireApiAdmin } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
+import { getOrganizationContext } from "@/lib/organization-context";
 import { createAssetSchema } from "@/lib/validation";
+import { triggerWebhook } from "@/lib/webhooks";
 
 const assetSchema = createAssetSchema.extend({
   purchaseprice: z.number().nonnegative().nullable().optional(),
@@ -29,7 +31,7 @@ const normalizeNumberInput = (value: unknown) => {
 // Create asset via POST /api/asset/addAsset
 export async function POST(req) {
   try {
-    await requireApiAdmin();
+    await requirePermission('asset:create');
     const body = await req.json();
 
     const normalized = {
@@ -47,6 +49,9 @@ export async function POST(req) {
     }
 
     const { assetname, assettag, serialnumber, ...rest } = validationResult.data;
+
+    // Get organization context for the creating admin
+    const orgContext = await getOrganizationContext();
 
     const created = await prisma.asset.create({
       data: {
@@ -66,8 +71,11 @@ export async function POST(req) {
         locationid: rest.locationid ?? null,
         manufacturerid: rest.manufacturerid ?? null,
         creation_date: new Date(),
+        organizationId: orgContext?.organization?.id || null,
       } as Prisma.assetUncheckedCreateInput,
     });
+
+    triggerWebhook('asset.created', { assetId: created.assetid, assetName: created.assetname, assetTag: created.assettag }, created.organizationId).catch(() => {});
 
     return new Response(JSON.stringify(created), { status: 201 });
   } catch (error) {

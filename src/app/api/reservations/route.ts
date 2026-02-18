@@ -1,63 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
+import { requirePermission } from '@/lib/api-auth';
+import { hasPermission } from '@/lib/rbac';
 import { assetReservationSchema } from '@/lib/validation-organization';
 import { createAuditLog, AUDIT_ACTIONS } from '@/lib/audit-log';
 import { triggerWebhook } from '@/lib/webhooks';
 import { z } from 'zod';
+import {
+  parsePaginationParams,
+  buildPrismaArgs,
+  buildPaginatedResponse,
+} from "@/lib/pagination";
+
+const RESERVATION_SORT_FIELDS = ["startDate", "endDate", "status", "createdAt"];
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const authUser = await requirePermission('reservation:view');
 
-    const assetId = req.nextUrl.searchParams.get('assetId');
-    const userId = req.nextUrl.searchParams.get('userId');
-    const status = req.nextUrl.searchParams.get('status');
+    const searchParams = req.nextUrl.searchParams;
+    const assetId = searchParams.get('assetId');
+    const userId = searchParams.get('userId');
+    const status = searchParams.get('status');
 
-    const where: {
-      assetId?: string;
-      userId?: string;
-      status?: string;
-    } = {};
+    const where: Record<string, unknown> = {};
 
     if (assetId) where.assetId = assetId;
     if (userId) where.userId = userId;
     if (status) where.status = status;
 
-    // Non-admin users can only see their own reservations
-    if (!session.user.isAdmin) {
-      where.userId = session.user.id!;
+    // Non-admin users without reservation:approve can only see their own reservations
+    const canApprove = authUser.isAdmin || (authUser.id ? await hasPermission(authUser.id, 'reservation:approve') : false);
+    if (!canApprove) {
+      where.userId = authUser.id!;
     }
 
-    const reservations = await prisma.assetReservation.findMany({
-      where,
-      include: {
-        asset: {
-          select: { assetid: true, assetname: true, assettag: true }
-        },
-        user: {
-          select: { userid: true, firstname: true, lastname: true, email: true }
-        }
+    const include = {
+      asset: {
+        select: { assetid: true, assetname: true, assettag: true }
       },
-      orderBy: { startDate: 'desc' }
-    });
+      user: {
+        select: { userid: true, firstname: true, lastname: true, email: true }
+      }
+    };
 
-    return NextResponse.json(reservations);
+    // If no `page` param, return all results for backward compatibility
+    if (!searchParams.has("page")) {
+      const reservations = await prisma.assetReservation.findMany({
+        where,
+        include,
+        orderBy: { startDate: 'desc' }
+      });
+      return NextResponse.json(reservations);
+    }
+
+    // Paginated path
+    const params = parsePaginationParams(searchParams);
+    const prismaArgs = buildPrismaArgs(params, RESERVATION_SORT_FIELDS);
+
+    // Search filter
+    if (params.search) {
+      where.OR = [
+        { notes: { contains: params.search, mode: "insensitive" } },
+      ];
+    }
+
+    const [reservations, total] = await Promise.all([
+      prisma.assetReservation.findMany({ where, include, ...prismaArgs }),
+      prisma.assetReservation.count({ where }),
+    ]);
+
+    return NextResponse.json(
+      buildPaginatedResponse(reservations, total, params),
+      { status: 200 },
+    );
   } catch (error) {
     console.error('Error fetching reservations:', error);
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Failed to fetch reservations' }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const authUser = await requirePermission('reservation:create');
 
     const body = await req.json();
     const validated = assetReservationSchema.parse(body);
@@ -104,7 +135,7 @@ export async function POST(req: NextRequest) {
     const reservation = await prisma.assetReservation.create({
       data: {
         assetId: validated.assetId,
-        userId: session.user.id!,
+        userId: authUser.id!,
         startDate,
         endDate,
         notes: validated.notes,
@@ -117,7 +148,7 @@ export async function POST(req: NextRequest) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: authUser.id!,
       action: AUDIT_ACTIONS.REQUEST,
       entity: 'AssetReservation',
       entityId: reservation.id,
@@ -134,6 +165,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(reservation, { status: 201 });
   } catch (error) {
     console.error('Error creating reservation:', error);
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }
