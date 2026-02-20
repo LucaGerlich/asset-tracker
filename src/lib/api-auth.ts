@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { hasPermission, hasAnyPermission, type Permission } from './rbac';
+import { hasPermission, hasAnyPermission, type Permission } from "./rbac";
 
 interface AuthUser {
   id?: string;
@@ -21,6 +21,11 @@ export async function getAuthUser(): Promise<AuthUser> {
   const session = await auth();
 
   if (!session || !session.user) {
+    throw new Error("Unauthorized");
+  }
+
+  // Block API access if MFA verification is still pending
+  if ((session.user as AuthUser & { mfaPending?: boolean }).mfaPending) {
     throw new Error("Unauthorized");
   }
 
@@ -64,7 +69,9 @@ export async function requireApiCanRequest(): Promise<AuthUser> {
  * Require specific permission(s) for API routes
  * Checks RBAC permissions via user roles. Admin users pass all checks.
  */
-export async function requirePermission(...permissions: Permission[]): Promise<AuthUser> {
+export async function requirePermission(
+  ...permissions: Permission[]
+): Promise<AuthUser> {
   const user = await getAuthUser();
 
   if (!user.id) {
@@ -76,9 +83,10 @@ export async function requirePermission(...permissions: Permission[]): Promise<A
     return user;
   }
 
-  const hasAccess = permissions.length === 1
-    ? await hasPermission(user.id, permissions[0])
-    : await hasAnyPermission(user.id, permissions);
+  const hasAccess =
+    permissions.length === 1
+      ? await hasPermission(user.id, permissions[0])
+      : await hasAnyPermission(user.id, permissions);
 
   if (!hasAccess) {
     throw new Error("Forbidden: Insufficient permissions");

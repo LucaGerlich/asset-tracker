@@ -32,14 +32,16 @@ export const ENV_CONFIG: EnvVarConfig[] = [
     required: true,
     description: "PostgreSQL database connection string",
     sensitive: true,
-    validate: (v) => v.startsWith("postgresql://") || v.startsWith("postgres://"),
+    validate: (v) =>
+      v.startsWith("postgresql://") || v.startsWith("postgres://"),
     validateMessage: "Must be a valid PostgreSQL connection string",
   },
   {
     name: "DATABASE_SSL",
     required: false,
     default: "false",
-    description: "Enable SSL for database connection (auto-detected for Supabase)",
+    description:
+      "Enable SSL for database connection (auto-detected for Supabase)",
     validate: (v) => ["true", "false"].includes(v),
     validateMessage: "Must be 'true' or 'false'",
   },
@@ -62,7 +64,8 @@ export const ENV_CONFIG: EnvVarConfig[] = [
   {
     name: "NEXTAUTH_SECRET",
     required: true,
-    description: "Secret key for NextAuth.js session encryption (generate with: openssl rand -base64 32)",
+    description:
+      "Secret key for NextAuth.js session encryption (generate with: openssl rand -base64 32)",
     sensitive: true,
     validate: (v) => v.length >= 32,
     validateMessage: "Must be at least 32 characters long",
@@ -113,7 +116,8 @@ export const ENV_CONFIG: EnvVarConfig[] = [
     name: "EMAIL_PROVIDER",
     required: false,
     description: "Email provider (brevo, sendgrid, mailgun, postmark, ses)",
-    validate: (v) => ["brevo", "sendgrid", "mailgun", "postmark", "ses"].includes(v),
+    validate: (v) =>
+      ["brevo", "sendgrid", "mailgun", "postmark", "ses"].includes(v),
     validateMessage: "Must be one of: brevo, sendgrid, mailgun, postmark, ses",
   },
   {
@@ -133,7 +137,7 @@ export const ENV_CONFIG: EnvVarConfig[] = [
   // Encryption
   {
     name: "ENCRYPTION_KEY",
-    required: false,
+    required: process.env.NODE_ENV === "production",
     description:
       "64-character hex string (32 bytes) for AES-256-GCM encryption of sensitive data at rest. Generate with: openssl rand -hex 32",
     sensitive: true,
@@ -191,7 +195,10 @@ function maskValue(value: string): string {
 export function validateEnvironment(): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
-  const variables: Record<string, { value: string | undefined; masked?: boolean }> = {};
+  const variables: Record<
+    string,
+    { value: string | undefined; masked?: boolean }
+  > = {};
 
   for (const config of ENV_CONFIG) {
     const value = process.env[config.name];
@@ -199,13 +206,18 @@ export function validateEnvironment(): ValidationResult {
 
     // Track variable for reporting
     variables[config.name] = {
-      value: config.sensitive && effectiveValue ? maskValue(effectiveValue) : effectiveValue,
+      value:
+        config.sensitive && effectiveValue
+          ? maskValue(effectiveValue)
+          : effectiveValue,
       masked: config.sensitive,
     };
 
     // Check required
     if (config.required && !effectiveValue) {
-      errors.push(`Missing required environment variable: ${config.name}${config.description ? ` (${config.description})` : ""}`);
+      errors.push(
+        `Missing required environment variable: ${config.name}${config.description ? ` (${config.description})` : ""}`,
+      );
       continue;
     }
 
@@ -254,7 +266,7 @@ export function validateAndLogEnvironment(): boolean {
   if (result.valid) {
     logger.info("Environment validation passed", {
       variables: Object.keys(result.variables).filter(
-        (k) => result.variables[k].value !== undefined
+        (k) => result.variables[k].value !== undefined,
       ),
     });
   }
@@ -276,7 +288,10 @@ export function getEnvVar(name: string, defaultValue?: string): string {
 /**
  * Get the value of an optional environment variable
  */
-export function getOptionalEnvVar(name: string, defaultValue?: string): string | undefined {
+export function getOptionalEnvVar(
+  name: string,
+  defaultValue?: string,
+): string | undefined {
   return process.env[name] || defaultValue;
 }
 
@@ -328,7 +343,9 @@ export function generateEnvDocs(): string {
       lines.push(`**Validation:** ${config.validateMessage}`);
     }
     if (config.sensitive) {
-      lines.push(`**Note:** This is a sensitive value and should be kept secret.`);
+      lines.push(
+        `**Note:** This is a sensitive value and should be kept secret.`,
+      );
     }
     lines.push("");
   }
@@ -347,7 +364,9 @@ export function generateEnvDocs(): string {
       lines.push(`**Validation:** ${config.validateMessage}`);
     }
     if (config.sensitive) {
-      lines.push(`**Note:** This is a sensitive value and should be kept secret.`);
+      lines.push(
+        `**Note:** This is a sensitive value and should be kept secret.`,
+      );
     }
     lines.push("");
   }

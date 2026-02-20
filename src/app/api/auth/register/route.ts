@@ -3,6 +3,11 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth-utils";
 import { randomBytes } from "crypto";
+import {
+  checkRateLimit,
+  getClientIP,
+  createRateLimitResponse,
+} from "@/lib/rate-limit";
 
 const registerSchema = z.object({
   firstname: z.string().min(1, "First name is required").max(100),
@@ -10,7 +15,10 @@ const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
   organization: z.string().min(1, "Organization name is required").max(100),
   username: z.string().min(3, "Username must be at least 3 characters").max(50),
-  password: z.string().min(8, "Password must be at least 8 characters").max(128),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128),
 });
 
 function generateSlug(name: string): string {
@@ -27,6 +35,19 @@ function generateSlug(name: string): string {
 
 export async function POST(req: Request) {
   try {
+    // Rate limit: 5 registrations per hour per IP
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(`register:${ip}`, {
+      maxRequests: 5,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!rl.success) {
+      return createRateLimitResponse(
+        rl,
+        "Too many registration attempts. Please try again later.",
+      );
+    }
+
     const body = await req.json();
 
     const parsed = registerSchema.safeParse(body);
@@ -34,7 +55,7 @@ export async function POST(req: Request) {
       const firstError = parsed.error.issues[0];
       return NextResponse.json(
         { message: firstError.message },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -44,10 +65,7 @@ export async function POST(req: Request) {
     // Check for existing username or email
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [
-          { username: username },
-          { email: email.toLowerCase().trim() },
-        ],
+        OR: [{ username: username }, { email: email.toLowerCase().trim() }],
       },
     });
 
@@ -56,7 +74,7 @@ export async function POST(req: Request) {
         existingUser.username === username ? "Username" : "Email";
       return NextResponse.json(
         { message: `${conflict} is already taken.` },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -87,13 +105,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { message: "Registration successful" },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("POST /api/auth/register error:", error);
     return NextResponse.json(
       { message: "An unexpected error occurred. Please try again later." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

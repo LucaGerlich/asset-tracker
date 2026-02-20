@@ -13,6 +13,7 @@ import {
   formatLockoutMessage,
 } from "@/lib/account-lockout";
 import { createSessionRecord } from "@/lib/session-tracking";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
 import { verifyMfaToken, verifyBackupCode } from "@/lib/mfa";
 
@@ -31,6 +32,65 @@ const mfaLoginSchema = z.object({
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    async jwt({ token, user }) {
+      // Add user info to JWT token on initial login
+      if (user) {
+        token.id = user.id;
+        token.username = (user as Record<string, unknown>).username as
+          | string
+          | undefined;
+        token.isAdmin = (user as Record<string, unknown>).isAdmin as
+          | boolean
+          | undefined;
+        token.canRequest = (user as Record<string, unknown>).canRequest as
+          | boolean
+          | undefined;
+        token.firstname = (user as Record<string, unknown>).firstname as
+          | string
+          | undefined;
+        token.lastname = (user as Record<string, unknown>).lastname as
+          | string
+          | undefined;
+        token.organizationId = (user as Record<string, unknown>)
+          .organizationId as string | undefined;
+        token.departmentId = (user as Record<string, unknown>).departmentId as
+          | string
+          | undefined;
+        token.mfaPending = (user as Record<string, unknown>).mfaPending as
+          | boolean
+          | undefined;
+        token.sessionVersion = Date.now();
+      }
+
+      // Re-validate user exists every hour
+      if (
+        token.id &&
+        token.sessionVersion &&
+        typeof token.sessionVersion === "number"
+      ) {
+        const hourAgo = Date.now() - 60 * 60 * 1000;
+        if (token.sessionVersion < hourAgo) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { userid: token.id as string },
+              select: { userid: true },
+            });
+            if (!dbUser) {
+              // User deleted — invalidate session
+              return null as unknown as typeof token;
+            }
+            token.sessionVersion = Date.now();
+          } catch {
+            // DB error — don't invalidate, just skip revalidation
+          }
+        }
+      }
+
+      return token;
+    },
+  },
   providers: [
     Credentials({
       name: "Credentials",
@@ -42,12 +102,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         try {
+          // Rate limit login attempts by IP
+          const headersList = await headers();
+          const loginIp =
+            headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+            headersList.get("x-real-ip") ||
+            "127.0.0.1";
+          const loginRl = checkRateLimit(`login:${loginIp}`, {
+            maxRequests: 10,
+            windowMs: 15 * 60 * 1000, // 10 attempts per 15 min
+          });
+          if (!loginRl.success) {
+            throw new Error("Too many login attempts. Please try again later.");
+          }
+
           const rawMfaToken = credentials?.mfaToken as string | undefined;
 
           // ---- MFA VERIFICATION PATH ----
           // If mfaToken is provided, this is the second step of login
           if (rawMfaToken && rawMfaToken.length > 0) {
-            const { username, mfaToken, isBackupCode } = mfaLoginSchema.parse(credentials);
+            const { username, mfaToken, isBackupCode } =
+              mfaLoginSchema.parse(credentials);
 
             const user = await prisma.user.findUnique({
               where: { username },
@@ -68,7 +143,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             });
 
             if (!user || !user.mfaEnabled || !user.mfaSecret) {
-              logger.warn("MFA verification failed - invalid user or MFA not enabled", { username });
+              logger.warn(
+                "MFA verification failed - invalid user or MFA not enabled",
+                { username },
+              );
               return null;
             }
 
@@ -91,7 +169,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
 
             if (!isValid) {
-              logger.warn("MFA verification failed - invalid token", { username });
+              logger.warn("MFA verification failed - invalid token", {
+                username,
+              });
               await createAuditLog({
                 userId: user.userid,
                 action: AUDIT_ACTIONS.LOGIN_FAILED,
@@ -99,7 +179,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 entityId: user.userid,
                 details: {
                   username,
-                  reason: useBackupCode ? "Invalid MFA backup code" : "Invalid MFA token",
+                  reason: useBackupCode
+                    ? "Invalid MFA backup code"
+                    : "Invalid MFA token",
                 },
               });
               return null;
@@ -119,14 +201,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               },
             });
 
-            logger.info("MFA login successful", { username, userId: user.userid });
+            logger.info("MFA login successful", {
+              username,
+              userId: user.userid,
+            });
 
             // Create session record
             try {
               const headersList = await headers();
-              const ipAddress = headersList.get("x-forwarded-for")?.split(",")[0].trim()
-                || headersList.get("x-real-ip")
-                || null;
+              const ipAddress =
+                headersList.get("x-forwarded-for")?.split(",")[0].trim() ||
+                headersList.get("x-real-ip") ||
+                null;
               const userAgent = headersList.get("user-agent") || null;
               await createSessionRecord(user.userid, ipAddress, userAgent);
             } catch (sessionError) {
@@ -228,7 +314,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // If MFA is enabled, return user with mfaPending flag
           // The user will need to complete MFA verification before getting full access
           if (user.mfaEnabled) {
-            logger.info("Login requires MFA verification", { username, userId: user.userid });
+            logger.info("Login requires MFA verification", {
+              username,
+              userId: user.userid,
+            });
 
             return {
               id: user.userid,
@@ -261,9 +350,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // Create session record for concurrent session tracking
           try {
             const headersList = await headers();
-            const ipAddress = headersList.get("x-forwarded-for")?.split(",")[0].trim()
-              || headersList.get("x-real-ip")
-              || null;
+            const ipAddress =
+              headersList.get("x-forwarded-for")?.split(",")[0].trim() ||
+              headersList.get("x-real-ip") ||
+              null;
             const userAgent = headersList.get("user-agent") || null;
             await createSessionRecord(user.userid, ipAddress, userAgent);
           } catch (sessionError) {

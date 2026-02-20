@@ -3,6 +3,11 @@ import prisma from "@/lib/prisma";
 import { verifyMfaToken, verifyBackupCode } from "@/lib/mfa";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { decrypt, decryptArray, encryptArray } from "@/lib/encryption";
+import {
+  checkRateLimit,
+  getClientIP,
+  createRateLimitResponse,
+} from "@/lib/rate-limit";
 
 /**
  * POST /api/auth/mfa/validate
@@ -11,19 +16,41 @@ import { decrypt, decryptArray, encryptArray } from "@/lib/encryption";
  */
 export async function POST(req: Request) {
   try {
+    // Rate limit: 5 MFA attempts per 15 min per IP
+    const ip = getClientIP(req);
+    const ipRl = checkRateLimit(`mfa:${ip}`, {
+      maxRequests: 5,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!ipRl.success) {
+      return createRateLimitResponse(
+        ipRl,
+        "Too many MFA attempts. Please try again later.",
+      );
+    }
+
     const { token, isBackupCode, pendingUserId } = await req.json();
 
     if (!token || typeof token !== "string") {
-      return NextResponse.json(
-        { error: "Token is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Token is required" }, { status: 400 });
     }
 
     if (!pendingUserId || typeof pendingUserId !== "string") {
       return NextResponse.json(
         { error: "User ID is required" },
-        { status: 400 }
+        { status: 400 },
+      );
+    }
+
+    // Rate limit: 5 MFA attempts per 15 min per user
+    const userRl = checkRateLimit(`mfa:user:${pendingUserId}`, {
+      maxRequests: 5,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!userRl.success) {
+      return createRateLimitResponse(
+        userRl,
+        "Too many MFA attempts for this account. Please try again later.",
       );
     }
 
@@ -40,10 +67,7 @@ export async function POST(req: Request) {
     });
 
     if (!user || !user.mfaEnabled || !user.mfaSecret) {
-      return NextResponse.json(
-        { error: "Invalid request" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
     let isValid = false;
@@ -77,13 +101,15 @@ export async function POST(req: Request) {
         entityId: user.userid,
         details: {
           username: user.username,
-          reason: isBackupCode ? "Invalid MFA backup code" : "Invalid MFA token",
+          reason: isBackupCode
+            ? "Invalid MFA backup code"
+            : "Invalid MFA token",
         },
       });
 
       return NextResponse.json(
         { error: "Invalid verification code" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -104,7 +130,7 @@ export async function POST(req: Request) {
     console.error("POST /api/auth/mfa/validate error:", error);
     return NextResponse.json(
       { error: "Failed to validate MFA" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

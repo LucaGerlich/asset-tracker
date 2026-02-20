@@ -27,6 +27,7 @@ interface ExtendedJWT extends JWT {
   departmentId?: string;
   permissions?: string[];
   mfaPending?: boolean;
+  sessionVersion?: number;
 }
 
 // Extended Session type with custom fields
@@ -56,7 +57,13 @@ export const authConfig: NextAuthConfig = {
     signIn: "/login",
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }: { auth: Session | null; request: { nextUrl: NextURL } }) {
+    authorized({
+      auth,
+      request: { nextUrl },
+    }: {
+      auth: Session | null;
+      request: { nextUrl: NextURL };
+    }) {
       const isLoggedIn = !!auth?.user;
       const { pathname } = nextUrl;
 
@@ -73,7 +80,9 @@ export const authConfig: NextAuthConfig = {
       ];
       const isPublicRoute =
         pathname === "/" ||
-        publicRoutes.some((r) => pathname === r || pathname.startsWith(r + "/"));
+        publicRoutes.some(
+          (r) => pathname === r || pathname.startsWith(r + "/"),
+        );
       const isApiRoute = pathname.startsWith("/api/");
 
       // Static files (service worker, manifest, icons) should never be intercepted
@@ -127,7 +136,13 @@ export const authConfig: NextAuthConfig = {
       }
       return token;
     },
-    async session({ session, token }: { session: ExtendedSession; token: ExtendedJWT }) {
+    async session({
+      session,
+      token,
+    }: {
+      session: ExtendedSession;
+      token: ExtendedJWT;
+    }) {
       // Add user info to session
       if (token) {
         session.user.id = token.id;
@@ -146,7 +161,7 @@ export const authConfig: NextAuthConfig = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   },
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true,
