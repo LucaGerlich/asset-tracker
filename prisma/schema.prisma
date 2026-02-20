@@ -34,6 +34,7 @@ model Organization {
   consumables consumable[]
   roles       Role[]
   webhooks    Webhook[]
+  teamInvitations TeamInvitation[]
 
   @@map("organizations")
 }
@@ -71,7 +72,8 @@ model Role {
   createdAt      DateTime      @default(now()) @db.Timestamp(6)
   updatedAt      DateTime      @updatedAt @db.Timestamp(6)
 
-  userRoles UserRole[]
+  userRoles       UserRole[]
+  teamInvitations TeamInvitation[]
 
   @@unique([name, organizationId])
   @@index([organizationId])
@@ -349,6 +351,7 @@ model asset {
   maintenance_schedules maintenance_schedules[]
   reservations          AssetReservation[]
   transfers             AssetTransfer[]
+  checkouts             AssetCheckout[]
   userAssets            userAssets[]
 
   @@index([assetname])
@@ -795,6 +798,10 @@ model user {
   approvalRequests                 ApprovalRequest[]         @relation("approval_requester")
   approvalDecisions                ApprovalRequest[]         @relation("approval_approver")
   automationRules                  AutomationRule[]          @relation("automation_creator")
+  checkoutsReceived                AssetCheckout[]           @relation("checkout_to")
+  checkoutsInitiated               AssetCheckout[]           @relation("checkout_by")
+  teamInvitations                  TeamInvitation[]          @relation("invitation_inviter")
+  dashboardWidgets                 DashboardWidget[]
 
   @@index([firstname, lastname])
   @@index([organizationId])
@@ -848,17 +855,21 @@ model userHistory {
 }
 
 model user_preferences {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String   @unique @db.Uuid
-  theme     String   @default("system") @db.VarChar(20)
-  locale    String   @default("en") @db.VarChar(10)
-  timezone  String   @default("UTC") @db.VarChar(50)
-  currency  String   @default("USD") @db.VarChar(10)
-  pageSize             Int      @default(20)
-  onboardingCompleted  Boolean  @default(false)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @db.Timestamp(6)
-  user      user     @relation(fields: [userId], references: [userid], onDelete: Cascade)
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String   @unique @db.Uuid
+  theme               String   @default("system") @db.VarChar(20)
+  locale              String   @default("en") @db.VarChar(10)
+  timezone            String   @default("UTC") @db.VarChar(50)
+  currency            String   @default("USD") @db.VarChar(10)
+  dateFormat          String   @default("MM/DD/YYYY") @db.VarChar(20)
+  numberFormat        String   @default("1,234.56") @db.VarChar(20)
+  pageSize            Int      @default(20)
+  onboardingCompleted Boolean  @default(false)
+  dashboardLayout     Json?
+  helpDismissed       Json?
+  createdAt           DateTime @default(now()) @db.Timestamp(6)
+  updatedAt           DateTime @db.Timestamp(6)
+  user                user     @relation(fields: [userId], references: [userid], onDelete: Cascade)
 }
 
 model consumable_checkouts {
@@ -882,4 +893,69 @@ model verification_tokens {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// Asset Check-in/Check-out History
+model AssetCheckout {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId        String    @db.Uuid
+  asset          asset     @relation(fields: [assetId], references: [assetid], onDelete: Cascade)
+  checkedOutTo   String    @db.Uuid
+  checkedOutToUser user    @relation("checkout_to", fields: [checkedOutTo], references: [userid], onDelete: Cascade)
+  checkedOutBy   String    @db.Uuid
+  checkedOutByUser user    @relation("checkout_by", fields: [checkedOutBy], references: [userid], onDelete: Cascade)
+  checkoutDate   DateTime  @default(now()) @db.Timestamp(6)
+  expectedReturn DateTime? @db.Timestamp(6)
+  returnDate     DateTime? @db.Timestamp(6)
+  notes          String?
+  status         String    @default("checked_out") @db.VarChar(20) // checked_out, returned, overdue
+  createdAt      DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([assetId])
+  @@index([checkedOutTo])
+  @@index([status])
+  @@index([assetId, status])
+  @@map("asset_checkouts")
+}
+
+// Team Invitation System
+model TeamInvitation {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email          String    @db.VarChar(255)
+  organizationId String    @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  roleId         String?   @db.Uuid
+  role           Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  invitedBy      String    @db.Uuid
+  inviter        user      @relation("invitation_inviter", fields: [invitedBy], references: [userid], onDelete: Cascade)
+  token          String    @unique @db.VarChar(255)
+  status         String    @default("pending") @db.VarChar(20) // pending, accepted, expired, revoked
+  expiresAt      DateTime  @db.Timestamp(6)
+  acceptedAt     DateTime? @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@map("team_invitations")
+}
+
+// Customizable Dashboard Widgets
+model DashboardWidget {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @db.Uuid
+  user       user     @relation(fields: [userId], references: [userid], onDelete: Cascade)
+  widgetType String   @db.VarChar(50) // stats, assetsByStatus, recentActivity, upcomingMaintenance, expiringLicences, costOverview
+  position   Int
+  visible    Boolean  @default(true)
+  config     Json?
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([userId])
+  @@index([userId, position])
+  @@map("dashboard_widgets")
 }

@@ -1,11 +1,13 @@
 # Asset Tracker Master Plan (Consolidated)
 
-**Last Updated:** 2026-02-18 (Phase 7 complete)
+**Last Updated:** 2026-02-20 (UX Polish & Feature Sprint complete)
 
 ## Purpose
+
 This document consolidates all planning, roadmap, and implementation notes into a single source of truth aligned with the current codebase. It supersedes legacy plans scattered across the repository.
 
 ## Sources Merged
+
 - FEATURES.md
 - IMPLEMENTATION_PLAN.md
 - IMPLEMENTATION.md
@@ -25,6 +27,7 @@ This document consolidates all planning, roadmap, and implementation notes into 
 ## Current State Summary (Codebase Observations)
 
 ### Implemented Capabilities
+
 - Core CRUD for assets, accessories, licences, consumables, models, categories, manufacturers, suppliers, locations, and status types.
 - Asset detail experience with QR generation, label printing, attachments, warranty tracking, depreciation summary, maintenance schedule list, lifecycle timeline, reservations, and transfers.
 - User detail experience with history timeline and assignment management (assets, accessories, licences).
@@ -38,6 +41,7 @@ This document consolidates all planning, roadmap, and implementation notes into 
 - QR scanner page with camera scanning and search fallback.
 
 ### Recently Completed (2026-02-18)
+
 - Maintenance schedule management page (full CRUD, status badges, complete/delete actions).
 - Warranty expiration dashboard in reports (summary cards, bar chart, sortable table).
 - Custom fields admin UI in admin settings (full CRUD for field definitions).
@@ -55,8 +59,18 @@ This document consolidates all planning, roadmap, and implementation notes into 
 - **Phase 6**: PWA manifest, service worker (network-first + stale-while-revalidate), offline page, install prompt, and service worker registration.
 - **Phase 7**: Marketing landing page with AppShell layout pattern, pricing page (3-tier), self-service registration with org creation, Stripe billing (checkout sessions, webhooks, customer portal), tenant resource limits (asset/user caps), terms of service, privacy policy.
 - **Quick Wins Sprint**: Prettier + Husky pre-commit hooks, 56 database indexes across 24 models, Excel export (SheetJS), response compression, CSP security headers, 9 skeleton loading pages, shareable URLs (filter state in query params for all list pages), commitlint, AES-256-GCM encryption at rest for sensitive fields.
+- **UX Polish & Feature Sprint** (2026-02-20):
+  - Persisted user preferences with regional formatting (date format, number format, currency, locale, timezone) via UserPreferencesContext + useFormatting hook.
+  - Asset check-in/check-out history system (AssetCheckout model, API routes, checkout history UI with check-out/check-in dialogs).
+  - Guided onboarding wizard with animated step transitions (6-step modal, auto-show for new users, restart from settings).
+  - Tooltips & help system (HelpTooltip component, DismissibleHelpTip with persisted dismissal state).
+  - Hover/animation polish (StatCard lift effect, table row transitions, button press feedback, sidebar icon animations, page fade-in transitions via PageTransition component).
+  - Advanced data visualization (5 new Recharts charts: AssetLifecycle, CostBreakdown, LocationDistribution, MaintenanceTrend, DepreciationForecast + advanced reports API).
+  - Customizable dashboard widgets with drag-to-reorder (DashboardWidget model, widget registry, DndKit sortable grid, add/remove widgets, CRUD API).
+  - Team invitation system (TeamInvitation model, invite/accept API, email template, invitation acceptance page, team management admin UI, sidebar link).
 
 ### Partially Implemented or Needs Completion
+
 - SSO/LDAP/Freshdesk integrations (settings exist; auth/data flows not wired).
 - Bulk import UI (API exists).
 - Slack/Teams notification wiring to events.
@@ -64,6 +78,7 @@ This document consolidates all planning, roadmap, and implementation notes into 
 ## Roadmap
 
 ### Phase 1: Alignment and Stabilization (Now–2 weeks)
+
 - ~~Finish maintenance schedule management UI and hook into `/api/maintenance`.~~ Done (2026-02-18)
 - ~~Add warranty section to reports.~~ Done (2026-02-18)
 - ~~Add depreciation section to reports.~~ Done (2026-02-18)
@@ -75,12 +90,14 @@ This document consolidates all planning, roadmap, and implementation notes into 
 - Verify labels, attachments, reservations, transfers, and saved filters via a manual test script.
 
 ### Phase 2: Multi-tenancy and RBAC (2–6 weeks) -- DONE (2026-02-18)
+
 - ~~Enforce organization scoping in all data access paths (API routes and server helpers).~~ Done
 - ~~Extend role permissions beyond admin/requester and enforce in UI and APIs.~~ Done (35 permissions, `requirePermission()` on 30+ routes)
 - Add org/department assignment workflows and default org behavior.
 - Add org-aware audit log views and exports.
 
 ### Phase 3: Integrations and Automation (6–10 weeks) -- DONE (2026-02-18)
+
 - ~~Implement workflow execution service (cron/queue) for triggers and actions.~~ Done (`workflow-engine.ts`, cron endpoints)
 - ~~Expand webhook event coverage and retries/backoff.~~ Done (10+ routes with `triggerWebhook`)
 - Wire Slack/Teams notifications to events and workflows.
@@ -88,31 +105,36 @@ This document consolidates all planning, roadmap, and implementation notes into 
 - Implement SSO/SAML and LDAP authentication flows.
 
 ### Phase 4: Security, Compliance, and Governance (10–14 weeks) -- DONE (2026-02-18)
+
 - ~~Add MFA/2FA and password reset flows.~~ Done (TOTP with otplib, QR setup, backup codes, `/mfa-verify` page)
 - ~~Harden session management (concurrent sessions, device list).~~ Done (session tracking, revoke UI, cron cleanup)
 - Automate GDPR retention tasks and data export pipelines.
 - Complete security review for CSP, request signing, and sensitive endpoints.
 
 ### Phase 5: Performance and Scale (14–18 weeks) -- DONE (2026-02-18)
+
 - ~~Standardize pagination and filtering on all list endpoints.~~ Done (18 additional endpoints)
 - Complete query optimization and indexing review.
 - Add caching layer (optional Redis) and background jobs for notifications.
 - Enable streaming exports and batch operations for large data sets.
 
 ### Phase 6: UX, Mobile, and PWA (18–24 weeks) -- DONE (2026-02-18)
+
 - ~~Add PWA manifest, offline shell, and installable experience.~~ Done (manifest, service worker, offline page, install prompt)
 - Mobile-first refinement for asset workflows and approvals.
 - Accessibility pass (WCAG) and UI polish.
 
 ### Phase 7: Business and SaaS Readiness (Parallel) -- DONE (2026-02-18)
+
 - ~~Homepage with login~~ Done (marketing landing page, AppShell layout, `/dashboard` relocation)
 - ~~Billing, plans, and tenant limits.~~ Done (Stripe checkout/webhooks/portal, 3-tier plans, asset/user limit enforcement)
 - ~~Self-service registration.~~ Done (signup form, org creation, `/register` route)
 - ~~Pricing and legal pages.~~ Done (pricing page with 3 tiers, terms of service, privacy policy)
 - Self-hosted vs SaaS packaging. (Future)
-- Support, onboarding, and customer success workflows. (Future)
+- ~~Support, onboarding, and customer success workflows.~~ Partially done (2026-02-20 — onboarding wizard, team invitations, help system)
 
 ## Definition of Done
+
 - Master plan reflects the current codebase and is referenced by all plan docs.
 - All Phase 1 items complete with updated docs and validated flows.
 - Remaining phases tracked with clear ownership, estimates, and acceptance criteria.
@@ -130,11 +152,12 @@ Most unchecked items are in categories 2 and 3. Core application features (Phase
 <!-- OPEN_TASKS_START -->
 
 ### FEATURES.md
+
 - [x] Depreciation reporting (Done 2026-02-18 — report tab with summary cards, bar chart, asset table)
-- [ ] Asset History — Asset check-in/check-out history (explicit workflow)
+- [x] Asset History — Asset check-in/check-out history (Done 2026-02-20 — AssetCheckout model, API routes, UI with check-out/check-in dialogs)
 - [ ] Consumables Enhancement — Automatic reorder alerts (beyond low-stock notifications)
-- [ ] Partially Implemented (DB/API Only) — User preferences (sidebar collapsed cookie only)
-- [ ] Partially Implemented (DB/API Only) — Bulk import (API only)
+- [x] Partially Implemented (DB/API Only) — User preferences (Done 2026-02-20 — full preferences context, regional formatting, date/number format settings)
+- [x] Partially Implemented (DB/API Only) — Bulk import (Done 2026-02-20 — /import page with full UI)
 - [ ] Multi-tenancy & Organization — White-labeling support
 - [x] Multi-tenancy & Organization — Per-tenant billing (Done 2026-02-18 — Stripe billing with 3-tier plans)
 - [ ] Integration & APIs — Third-party integrations (Slack, Teams, etc.)
@@ -205,9 +228,9 @@ Most unchecked items are in categories 2 and 3. Core application features (Phase
 - [ ] Infrastructure & Ops — Read replicas for scale
 - [ ] Infrastructure & Ops — CDN/WAF deployment recommendations
 - [ ] Infrastructure & Ops — Database maintenance scripts
-- [ ] UI/UX Improvements — Drag-and-drop file uploads
-- [ ] UI/UX Improvements — Bulk import functionality (CSV)
-- [ ] UI/UX Improvements — Customizable table columns
+- [x] UI/UX Improvements — Drag-and-drop file uploads (Done 2026-02-20 — FileDropZone component, AssetAttachments integration)
+- [x] UI/UX Improvements — Bulk import functionality (CSV) (Done 2026-02-20 — /import page with FileDropZone, template download, history)
+- [x] UI/UX Improvements — Customizable table columns (Done 2026-02-20 — ResponsiveTable column toggle with localStorage persistence)
 - [ ] UI/UX Improvements — Advanced data visualization (charts, graphs)
 - [ ] UI/UX Improvements — Guided tours for new users (enhanced)
 - [ ] UI/UX Improvements — Tooltips and help system
@@ -260,10 +283,10 @@ Most unchecked items are in categories 2 and 3. Core application features (Phase
 
 > **Note:** These are future enhancement ideas. Items marked "Deferred" require infrastructure or business decisions beyond code.
 
-- [ ] 1.3 Environment Configuration — Use secret management service (AWS Secrets Manager, Vault) - *Deferred: requires infrastructure*
-- [ ] 1.4 Database Resilience — Configure read replicas for scaling - *Deferred: requires infrastructure*
-- [ ] 1.4 Database Resilience — Set up automated backups with point-in-time recovery - *Deferred: requires infrastructure*
-- [ ] 1.4 Database Resilience — Create database maintenance scripts - *Future enhancement*
+- [ ] 1.3 Environment Configuration — Use secret management service (AWS Secrets Manager, Vault) - _Deferred: requires infrastructure_
+- [ ] 1.4 Database Resilience — Configure read replicas for scaling - _Deferred: requires infrastructure_
+- [ ] 1.4 Database Resilience — Set up automated backups with point-in-time recovery - _Deferred: requires infrastructure_
+- [ ] 1.4 Database Resilience — Create database maintenance scripts - _Future enhancement_
 - [x] 2.2 Authentication Improvements — Implement Multi-Factor Authentication (MFA/2FA) - Done (2026-02-18 — TOTP with otplib, QR setup, backup codes)
 - [x] 2.2 Authentication Improvements — Add password reset flow via email - Done (2026-02-18)
 - [x] 2.2 Authentication Improvements — Implement concurrent session management - Done (2026-02-18 — device tracking, session list UI, revoke)
@@ -329,7 +352,7 @@ Most unchecked items are in categories 2 and 3. Core application features (Phase
 - [ ] 5.4 Business Metrics — Dashboard for key performance indicators
 - [ ] 5.4 Business Metrics — License expiration tracking
 - [ ] 5.4 Business Metrics — Asset maintenance due dates
-- [ ] 6.1 Asset Management Enhancements — **Bulk Import/Export** - API exists; UI pending
+- [x] 6.1 Asset Management Enhancements — **Bulk Import/Export** - Done 2026-02-20 (Import UI + existing export)
 - [ ] 6.1 Asset Management Enhancements — **Asset Images** - Photo uploads with thumbnail generation (DB only)
 - [ ] 6.1 Asset Management Enhancements — **Barcode/QR Scanning** - Mobile scanning for quick asset lookup
 - [x] 6.1 Asset Management Enhancements — **Asset Depreciation** - Done (2026-02-18, report tab added)
@@ -342,8 +365,8 @@ Most unchecked items are in categories 2 and 3. Core application features (Phase
 - [ ] 6.2 Reporting & Analytics — **Cost Analysis** - Basic totals implemented; deeper TCO pending
 - [ ] 6.2 Reporting & Analytics — **Compliance Reports** - Audit-ready documentation
 - [ ] 6.3 User Experience Improvements — **Saved Filters** - Save and share filter presets
-- [ ] 6.3 User Experience Improvements — **Customizable Tables** - Column selection and ordering
-- [ ] 6.3 User Experience Improvements — **Bulk Actions** - Multi-select for mass operations (bulk delete assets only)
+- [x] 6.3 User Experience Improvements — **Customizable Tables** - Done 2026-02-20 (column toggle on all 5 tables with localStorage)
+- [x] 6.3 User Experience Improvements — **Bulk Actions** - Done 2026-02-20 (multi-select + bulk delete on assets, accessories, licences, consumables)
 - [ ] 6.3 User Experience Improvements — **Mobile App** - Native iOS/Android application
 - [x] 6.3 User Experience Improvements — **Offline Mode** - Done (2026-02-18 — PWA, service worker, offline page)
 - [ ] 6.4 Notification System — **In-App Notifications** - Real-time notification center
@@ -373,6 +396,7 @@ Most unchecked items are in categories 2 and 3. Core application features (Phase
 - [x] Quick Wins (Remaining) — Configure security headers (Done 2026-02-18 — CSP + full header set)
 
 ### plans/IMPLEMENTATION_PLAN.md
+
 - [x] 1. Complete Table Migrations — Assets DashboardTable (Done 2026-02-18, mobile card view added)
 - [ ] 2. Testing & Validation — Install Playwright browsers
 - [ ] 2. Testing & Validation — Run E2E test suite
@@ -401,6 +425,7 @@ Most unchecked items are in categories 2 and 3. Core application features (Phase
 - [ ] Overall Success — All critical user flows tested (E2E)
 
 ### plans/IMPLEMENTATION_SUMMARY.md
+
 - [ ] Post-Deployment — Enable HTTPS (production)
 - [ ] Post-Deployment — Set up monitoring
 - [ ] Post-Deployment — Configure backups

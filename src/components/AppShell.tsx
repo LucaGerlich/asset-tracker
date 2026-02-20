@@ -8,6 +8,7 @@ import MobileNav from "./MobileNav";
 import KeyboardShortcuts from "./KeyboardShortcuts";
 import DemoBanner from "./DemoBanner";
 import OnboardingWizard from "./OnboardingWizard";
+import PageTransition from "./PageTransition";
 
 const PUBLIC_ROUTES = [
   "/login",
@@ -27,13 +28,17 @@ interface AppShellProps {
   isDemo: boolean;
 }
 
-export default function AppShell({ children, initialSidebarCollapsed, isDemo }: AppShellProps) {
+export default function AppShell({
+  children,
+  initialSidebarCollapsed,
+  isDemo,
+}: AppShellProps) {
   const pathname = usePathname();
 
   const isPublicRoute =
     pathname === "/" ||
     PUBLIC_ROUTES.some(
-      (route) => pathname === route || pathname.startsWith(route + "/")
+      (route) => pathname === route || pathname.startsWith(route + "/"),
     );
 
   if (isPublicRoute) {
@@ -44,7 +49,7 @@ export default function AppShell({ children, initialSidebarCollapsed, isDemo }: 
     <>
       <KeyboardShortcuts />
       <DemoBanner isDemo={isDemo} />
-      <div className="flex min-h-screen bg-background">
+      <div className="bg-background flex min-h-screen">
         <Sidebar initialCollapsed={initialSidebarCollapsed} />
         <div className="flex flex-1 flex-col">
           <Navigation />
@@ -52,7 +57,7 @@ export default function AppShell({ children, initialSidebarCollapsed, isDemo }: 
             id="main-content"
             className="flex-1 overflow-y-auto p-4 pb-20 md:p-8 md:pb-8"
           >
-            {children}
+            <PageTransition>{children}</PageTransition>
           </main>
           <Footer />
           <MobileNav />

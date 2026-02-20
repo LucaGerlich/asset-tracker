@@ -15,6 +15,7 @@ import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { FileDropZone } from "@/components/FileDropZone";
 import { toast } from "sonner";
 import { Download, Upload } from "lucide-react";
+import HelpTooltip from "@/components/HelpTooltip";
 
 const ENTITY_TYPES = [
   { value: "asset", label: "Assets" },
@@ -26,10 +27,40 @@ const ENTITY_TYPES = [
 ] as const;
 
 const ENTITY_FIELDS: Record<string, string[]> = {
-  asset: ["assetname", "assettag", "serialnumber", "specs", "notes", "purchaseprice", "purchasedate", "mobile", "requestable"],
-  accessory: ["accessoriename", "accessorietag", "purchaseprice", "purchasedate", "requestable"],
-  consumable: ["consumablename", "purchaseprice", "purchasedate", "quantity", "minQuantity"],
-  licence: ["licencekey", "licensedtoemail", "purchaseprice", "purchasedate", "expirationdate", "notes", "requestable"],
+  asset: [
+    "assetname",
+    "assettag",
+    "serialnumber",
+    "specs",
+    "notes",
+    "purchaseprice",
+    "purchasedate",
+    "mobile",
+    "requestable",
+  ],
+  accessory: [
+    "accessoriename",
+    "accessorietag",
+    "purchaseprice",
+    "purchasedate",
+    "requestable",
+  ],
+  consumable: [
+    "consumablename",
+    "purchaseprice",
+    "purchasedate",
+    "quantity",
+    "minQuantity",
+  ],
+  licence: [
+    "licencekey",
+    "licensedtoemail",
+    "purchaseprice",
+    "purchasedate",
+    "expirationdate",
+    "notes",
+    "requestable",
+  ],
   user: ["username", "email", "firstname", "lastname", "isadmin", "canrequest"],
   location: ["locationname", "street", "housenumber", "city", "country"],
 };
@@ -66,17 +97,29 @@ const historyColumns = [
 function formatDate(value: string) {
   const date = new Date(value);
   if (isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return (
+    date.toLocaleDateString() +
+    " " +
+    date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  );
 }
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case "completed":
-      return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Completed</Badge>;
+      return (
+        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+          Completed
+        </Badge>
+      );
     case "failed":
       return <Badge variant="destructive">Failed</Badge>;
     case "processing":
-      return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">Processing</Badge>;
+      return (
+        <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">
+          Processing
+        </Badge>
+      );
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -153,7 +196,9 @@ export default function ImportPageClient() {
       });
 
       if (data.errorCount === 0) {
-        toast.success(`Imported ${data.successCount} ${entityType}(s) successfully`);
+        toast.success(
+          `Imported ${data.successCount} ${entityType}(s) successfully`,
+        );
       } else {
         toast.warning(`Import completed with ${data.errorCount} error(s)`);
       }
@@ -172,14 +217,20 @@ export default function ImportPageClient() {
       case "entityType":
         return <span className="capitalize">{item.entityType}</span>;
       case "fileName":
-        return <span className="truncate max-w-[200px] block">{item.fileName}</span>;
+        return (
+          <span className="block max-w-[200px] truncate">{item.fileName}</span>
+        );
       case "totalRows":
         return item.totalRows;
       case "successCount":
-        return <span className="text-green-600 font-medium">{item.successCount}</span>;
+        return (
+          <span className="font-medium text-green-600">
+            {item.successCount}
+          </span>
+        );
       case "errorCount":
         return item.errorCount > 0 ? (
-          <span className="text-red-600 font-medium">{item.errorCount}</span>
+          <span className="font-medium text-red-600">{item.errorCount}</span>
         ) : (
           <span className="text-muted-foreground">0</span>
         );
@@ -202,8 +253,11 @@ export default function ImportPageClient() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="flex-1 max-w-xs">
-              <label className="text-sm font-medium mb-1.5 block">Entity Type</label>
+            <div className="max-w-xs flex-1">
+              <label className="mb-1.5 flex items-center text-sm font-medium">
+                Entity Type
+                <HelpTooltip text="Select the type of data you want to import. Each type has specific required columns — download a template to see the expected format." />
+              </label>
               <Select value={entityType} onValueChange={setEntityType}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select type..." />
@@ -218,7 +272,11 @@ export default function ImportPageClient() {
               </Select>
             </div>
             {entityType && (
-              <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadTemplate}
+              >
                 <Download className="mr-2 h-4 w-4" />
                 Download Template
               </Button>
@@ -230,7 +288,11 @@ export default function ImportPageClient() {
               onFilesSelected={(files) => setSelectedFile(files[0])}
               accept=".csv"
               uploading={uploading}
-              label={selectedFile ? selectedFile.name : "Drag & drop a CSV file here, or click to browse"}
+              label={
+                selectedFile
+                  ? selectedFile.name
+                  : "Drag & drop a CSV file here, or click to browse"
+              }
             />
           )}
 
@@ -241,7 +303,11 @@ export default function ImportPageClient() {
                 {uploading ? "Importing..." : "Import"}
               </Button>
               {!uploading && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedFile(null)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedFile(null)}
+                >
                   Clear
                 </Button>
               )}
@@ -250,22 +316,26 @@ export default function ImportPageClient() {
 
           {result && (
             <Card className="bg-muted/50">
-              <CardContent className="pt-4 space-y-3">
+              <CardContent className="space-y-3 pt-4">
                 <div className="flex flex-wrap gap-3">
                   <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
                     {result.successCount} succeeded
                   </Badge>
                   {result.errorCount > 0 && (
-                    <Badge variant="destructive">{result.errorCount} failed</Badge>
+                    <Badge variant="destructive">
+                      {result.errorCount} failed
+                    </Badge>
                   )}
-                  <Badge variant="secondary">{result.totalRows} total rows</Badge>
+                  <Badge variant="secondary">
+                    {result.totalRows} total rows
+                  </Badge>
                 </div>
                 {result.errors && result.errors.length > 0 && (
-                  <div className="max-h-48 overflow-y-auto rounded border bg-background p-3">
-                    <p className="text-sm font-medium mb-2">Errors:</p>
+                  <div className="bg-background max-h-48 overflow-y-auto rounded border p-3">
+                    <p className="mb-2 text-sm font-medium">Errors:</p>
                     <ul className="space-y-1">
                       {result.errors.map((err, i) => (
-                        <li key={i} className="text-sm text-destructive">
+                        <li key={i} className="text-destructive text-sm">
                           Row {err.row}: {err.error}
                         </li>
                       ))}
@@ -284,7 +354,7 @@ export default function ImportPageClient() {
         </CardHeader>
         <CardContent>
           {loadingHistory ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <p className="text-muted-foreground text-sm">Loading...</p>
           ) : (
             <ResponsiveTable
               columns={historyColumns}

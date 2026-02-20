@@ -7,7 +7,10 @@ export interface TemplateVariables {
   [key: string]: string | number | boolean | undefined;
 }
 
-export function renderTemplate(template: string, variables: TemplateVariables): string {
+export function renderTemplate(
+  template: string,
+  variables: TemplateVariables,
+): string {
   return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
     return variables[key]?.toString() || match;
   });
@@ -15,7 +18,7 @@ export function renderTemplate(template: string, variables: TemplateVariables): 
 
 export const emailTemplates = {
   assetAssignment: {
-    subject: 'Asset Assigned: {{assetName}}',
+    subject: "Asset Assigned: {{assetName}}",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Asset Assignment Notification</h2>
@@ -46,7 +49,7 @@ export const emailTemplates = {
   },
 
   assetUnassignment: {
-    subject: 'Asset Unassigned: {{assetName}}',
+    subject: "Asset Unassigned: {{assetName}}",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Asset Unassignment Notification</h2>
@@ -73,7 +76,7 @@ export const emailTemplates = {
   },
 
   licenseExpiring: {
-    subject: 'License Expiring Soon: {{licenseName}}',
+    subject: "License Expiring Soon: {{licenseName}}",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #d97706;">License Expiration Warning</h2>
@@ -104,7 +107,7 @@ export const emailTemplates = {
   },
 
   maintenanceDue: {
-    subject: 'Maintenance Due: {{assetName}}',
+    subject: "Maintenance Due: {{assetName}}",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2563eb;">Maintenance Reminder</h2>
@@ -136,7 +139,7 @@ export const emailTemplates = {
   },
 
   lowStockAlert: {
-    subject: 'Low Stock Alert: {{consumableName}}',
+    subject: "Low Stock Alert: {{consumableName}}",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #dc2626;">Low Stock Alert</h2>
@@ -163,7 +166,7 @@ export const emailTemplates = {
   },
 
   warrantyExpiring: {
-    subject: 'Warranty Expiring: {{assetName}}',
+    subject: "Warranty Expiring: {{assetName}}",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #d97706;">Warranty Expiration Notice</h2>
@@ -198,7 +201,7 @@ export const emailTemplates = {
   },
 
   passwordReset: {
-    subject: 'Reset Your Password - Asset Tracker',
+    subject: "Reset Your Password - Asset Tracker",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Password Reset Request</h2>
@@ -213,6 +216,23 @@ export const emailTemplates = {
         <p>Best regards,<br>Asset Tracker System</p>
       </div>
     `,
+  },
+
+  teamInvitation: {
+    subject:
+      "You've been invited to join {{organizationName}} on Asset Tracker",
+    html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #333;">Team Invitation</h2>
+    <p>Hello,</p>
+    <p><strong>{{inviterName}}</strong> has invited you to join <strong>{{organizationName}}</strong> on Asset Tracker.</p>
+    <p style="margin: 30px 0;">
+      <a href="{{inviteUrl}}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Accept Invitation</a>
+    </p>
+    <p>Or copy and paste this link into your browser:</p>
+    <p style="word-break: break-all; color: #2563eb;">{{inviteUrl}}</p>
+    <p style="color: #666; font-size: 14px; margin-top: 30px;">This invitation expires in 7 days.</p>
+    <p>Best regards,<br>Asset Tracker System</p>
+  </div>`,
   },
 };
 

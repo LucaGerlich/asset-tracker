@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,11 +35,18 @@ import {
   Users,
   AlertTriangle,
   DollarSign,
+  Loader2,
 } from "lucide-react";
 import WarrantyReport from "./WarrantyReport";
 import DepreciationReport from "./DepreciationReport";
 import type { DepreciationMethod } from "@/lib/depreciation";
 import { toast } from "sonner";
+import HelpTooltip from "@/components/HelpTooltip";
+import AssetLifecycleChart from "@/components/charts/AssetLifecycleChart";
+import CostBreakdownChart from "@/components/charts/CostBreakdownChart";
+import LocationDistributionChart from "@/components/charts/LocationDistributionChart";
+import MaintenanceTrendChart from "@/components/charts/MaintenanceTrendChart";
+import DepreciationForecastChart from "@/components/charts/DepreciationForecastChart";
 
 interface ReportData {
   summary: {
@@ -130,7 +137,91 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export default function ReportsPage({ data, warrantyAssets, depreciationAssets }: ReportsPageProps) {
+interface AdvancedData {
+  lifecycle: Array<{ month: string; acquisitions: number; disposals: number }>;
+  costBreakdown: Array<{
+    category: string;
+    assets: number;
+    accessories: number;
+    consumables: number;
+    licences: number;
+  }>;
+  locationDistribution: Array<{ name: string; value: number }>;
+  maintenanceTrend: Array<{ month: string; count: number }>;
+  depreciationForecast: {
+    currentTotal: number;
+    projections: Array<{ year: string; value: number }>;
+  };
+}
+
+function AdvancedCharts() {
+  const [data, setData] = useState<AdvancedData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch("/api/reports/advanced");
+        if (!res.ok) {
+          throw new Error("Failed to load advanced reports");
+        }
+        const json = await res.json();
+        setData(json);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        setError(message);
+        toast.error("Failed to load advanced reports");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+        <span className="text-muted-foreground ml-3">
+          Loading advanced reports...
+        </span>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center">
+          <p className="text-muted-foreground">
+            {error || "No data available"}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <AssetLifecycleChart data={data.lifecycle} />
+      <CostBreakdownChart data={data.costBreakdown} />
+      <LocationDistributionChart data={data.locationDistribution} />
+      <MaintenanceTrendChart data={data.maintenanceTrend} />
+      <div className="lg:col-span-2">
+        <DepreciationForecastChart data={data.depreciationForecast} />
+      </div>
+    </div>
+  );
+}
+
+export default function ReportsPage({
+  data,
+  warrantyAssets,
+  depreciationAssets,
+}: ReportsPageProps) {
   const [activeTab, setActiveTab] = useState("overview");
 
   const exportToCSV = () => {
@@ -155,7 +246,9 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
       asset.location,
       asset.manufacturer,
       asset.purchasePrice,
-      asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : "",
+      asset.purchaseDate
+        ? new Date(asset.purchaseDate).toLocaleDateString()
+        : "",
     ]);
 
     const csvContent = [headers, ...rows]
@@ -166,7 +259,10 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `asset-report-${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `asset-report-${new Date().toISOString().split("T")[0]}.csv`,
+    );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -258,7 +354,7 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
                 <td>${asset.location}</td>
                 <td>${formatCurrency(asset.purchasePrice)}</td>
               </tr>
-            `
+            `,
               )
               .join("")}
           </tbody>
@@ -279,21 +375,21 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Reports & Analytics</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             View insights and export reports about your assets
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportToCSV}>
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
           <Button variant="outline" onClick={exportToExcel}>
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
             Export Excel
           </Button>
           <Button variant="outline" onClick={exportToPDF}>
-            <FileText className="h-4 w-4 mr-2" />
+            <FileText className="mr-2 h-4 w-4" />
             Export PDF
           </Button>
         </div>
@@ -302,10 +398,10 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
       <Separator />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-5">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
               <Package className="h-4 w-4" />
               Total Assets
             </CardTitle>
@@ -317,7 +413,7 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
               <DollarSign className="h-4 w-4" />
               Total Value
             </CardTitle>
@@ -331,7 +427,7 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
               <Users className="h-4 w-4" />
               Utilization
             </CardTitle>
@@ -339,7 +435,10 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
           <CardContent>
             <div className="text-2xl font-bold">
               {data.summary.totalAssets > 0
-                ? Math.round((data.summary.assignedAssets / data.summary.totalAssets) * 100)
+                ? Math.round(
+                    (data.summary.assignedAssets / data.summary.totalAssets) *
+                      100,
+                  )
                 : 0}
               %
             </div>
@@ -348,27 +447,31 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
               <AlertTriangle className="h-4 w-4 text-yellow-500" />
               Expiring Licenses
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.summary.expiringLicenses}</div>
-            <p className="text-xs text-muted-foreground">Next 90 days</p>
+            <div className="text-2xl font-bold">
+              {data.summary.expiringLicenses}
+            </div>
+            <p className="text-muted-foreground text-xs">Next 90 days</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
               <AlertTriangle className="h-4 w-4 text-red-500" />
               Low Stock
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.summary.lowStockConsumables}</div>
-            <p className="text-xs text-muted-foreground">Consumables</p>
+            <div className="text-2xl font-bold">
+              {data.summary.lowStockConsumables}
+            </div>
+            <p className="text-muted-foreground text-xs">Consumables</p>
           </CardContent>
         </Card>
       </div>
@@ -376,16 +479,29 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
       {/* Charts */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview" className="gap-1">
+            Overview
+            <HelpTooltip
+              text="Status distribution and category breakdown of your asset inventory."
+              side="bottom"
+            />
+          </TabsTrigger>
           <TabsTrigger value="utilization">Utilization</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
           <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
           <TabsTrigger value="warranty">Warranty</TabsTrigger>
-          <TabsTrigger value="depreciation">Depreciation</TabsTrigger>
+          <TabsTrigger value="depreciation" className="gap-1">
+            Depreciation
+            <HelpTooltip
+              text="Track asset value loss over time based on category depreciation settings."
+              side="bottom"
+            />
+          </TabsTrigger>
+          <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Assets by Status</CardTitle>
@@ -438,13 +554,11 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
         </TabsContent>
 
         <TabsContent value="utilization" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Asset Utilization</CardTitle>
-                <CardDescription>
-                  Assigned vs Unassigned assets
-                </CardDescription>
+                <CardDescription>Assigned vs Unassigned assets</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -477,7 +591,10 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={data.charts.assetsByLocation} layout="vertical">
+                  <BarChart
+                    data={data.charts.assetsByLocation}
+                    layout="vertical"
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
                     <YAxis dataKey="name" type="category" width={100} />
@@ -520,7 +637,7 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
         </TabsContent>
 
         <TabsContent value="breakdown" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Assets by Manufacturer</CardTitle>
@@ -544,23 +661,31 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
+                  <div className="bg-muted flex items-center justify-between rounded-lg p-4">
                     <span>Total Assets</span>
-                    <span className="font-bold">{data.summary.totalAssets}</span>
+                    <span className="font-bold">
+                      {data.summary.totalAssets}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
+                  <div className="bg-muted flex items-center justify-between rounded-lg p-4">
                     <span>Total Accessories</span>
-                    <span className="font-bold">{data.summary.totalAccessories}</span>
+                    <span className="font-bold">
+                      {data.summary.totalAccessories}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
+                  <div className="bg-muted flex items-center justify-between rounded-lg p-4">
                     <span>Total Licenses</span>
-                    <span className="font-bold">{data.summary.totalLicenses}</span>
+                    <span className="font-bold">
+                      {data.summary.totalLicenses}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
+                  <div className="bg-muted flex items-center justify-between rounded-lg p-4">
                     <span>Total Consumables</span>
-                    <span className="font-bold">{data.summary.totalConsumables}</span>
+                    <span className="font-bold">
+                      {data.summary.totalConsumables}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center p-4 bg-muted rounded-lg">
+                  <div className="bg-muted flex items-center justify-between rounded-lg p-4">
                     <span>Total Users</span>
                     <span className="font-bold">{data.summary.totalUsers}</span>
                   </div>
@@ -576,6 +701,10 @@ export default function ReportsPage({ data, warrantyAssets, depreciationAssets }
 
         <TabsContent value="depreciation" className="mt-6">
           <DepreciationReport depreciationAssets={depreciationAssets} />
+        </TabsContent>
+
+        <TabsContent value="advanced" className="mt-6">
+          <AdvancedCharts />
         </TabsContent>
       </Tabs>
     </div>

@@ -7,8 +7,12 @@ const DEFAULTS = {
   locale: "en",
   timezone: "UTC",
   currency: "USD",
+  dateFormat: "MM/DD/YYYY",
+  numberFormat: "1,234.56",
   pageSize: 20,
   onboardingCompleted: false,
+  dashboardLayout: null,
+  helpDismissed: null,
 };
 
 export async function GET() {
@@ -30,7 +34,7 @@ export async function GET() {
     }
     return NextResponse.json(
       { error: "Failed to fetch preferences" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -40,15 +44,31 @@ export async function PUT(request: NextRequest) {
     const user = await requireApiAuth();
 
     const body = await request.json();
-    const { theme, locale, timezone, currency, pageSize, onboardingCompleted } = body;
+    const {
+      theme,
+      locale,
+      timezone,
+      currency,
+      dateFormat,
+      numberFormat,
+      pageSize,
+      onboardingCompleted,
+      dashboardLayout,
+      helpDismissed,
+    } = body;
 
-    const values: Record<string, string | number | boolean> = {};
+    const values: Record<string, unknown> = {};
     if (theme !== undefined) values.theme = theme;
     if (locale !== undefined) values.locale = locale;
     if (timezone !== undefined) values.timezone = timezone;
     if (currency !== undefined) values.currency = currency;
+    if (dateFormat !== undefined) values.dateFormat = dateFormat;
+    if (numberFormat !== undefined) values.numberFormat = numberFormat;
     if (pageSize !== undefined) values.pageSize = pageSize;
-    if (onboardingCompleted !== undefined) values.onboardingCompleted = onboardingCompleted;
+    if (onboardingCompleted !== undefined)
+      values.onboardingCompleted = onboardingCompleted;
+    if (dashboardLayout !== undefined) values.dashboardLayout = dashboardLayout;
+    if (helpDismissed !== undefined) values.helpDismissed = helpDismissed;
 
     const preferences = await prisma.user_preferences.upsert({
       where: { userId: user.id },
@@ -70,7 +90,7 @@ export async function PUT(request: NextRequest) {
     }
     return NextResponse.json(
       { error: "Failed to update preferences" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

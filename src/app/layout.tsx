@@ -8,12 +8,14 @@ import { SessionProvider } from "../components/SessionProvider";
 import PWAInstallPrompt from "../components/PWAInstallPrompt";
 import ServiceWorkerRegistration from "../components/ServiceWorkerRegistration";
 import AppShell from "../components/AppShell";
+import { UserPreferencesProvider } from "../contexts/UserPreferencesContext";
 import { auth } from "../auth";
 import { cookies } from "next/headers";
 
 export const metadata = {
   title: "Asset Tracker",
-  description: "Track and manage your organization's assets, licenses, and consumables",
+  description:
+    "Track and manage your organization's assets, licenses, and consumables",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -48,15 +50,17 @@ export default async function RootLayout({ children }) {
         <OfflineBanner />
         <ServiceWorkerRegistration />
         <SessionProvider session={session}>
-          <Providers>
-            <AppShell
-              initialSidebarCollapsed={initialSidebarCollapsed}
-              isDemo={isDemo}
-            >
-              {children}
-            </AppShell>
-            <PWAInstallPrompt />
-          </Providers>
+          <UserPreferencesProvider>
+            <Providers>
+              <AppShell
+                initialSidebarCollapsed={initialSidebarCollapsed}
+                isDemo={isDemo}
+              >
+                {children}
+              </AppShell>
+              <PWAInstallPrompt />
+            </Providers>
+          </UserPreferencesProvider>
         </SessionProvider>
       </body>
     </html>

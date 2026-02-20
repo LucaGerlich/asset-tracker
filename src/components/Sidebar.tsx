@@ -37,7 +37,11 @@ import {
   ScrollText,
   ChevronDown,
 } from "lucide-react";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
 import { PlusIcon as SidebarPlusIcon } from "../ui/Icons";
 import SearchTypeahead from "./SearchTypeahead";
 
@@ -66,8 +70,16 @@ const navSections = [
     collapsible: true,
     items: [
       { label: "Asset Categories", href: "/assetCategories", icon: Layers },
-      { label: "Accessory Categories", href: "/accessoryCategories", icon: Layers },
-      { label: "Consumable Categories", href: "/consumableCategories", icon: Layers },
+      {
+        label: "Accessory Categories",
+        href: "/accessoryCategories",
+        icon: Layers,
+      },
+      {
+        label: "Consumable Categories",
+        href: "/consumableCategories",
+        icon: Layers,
+      },
       { label: "Licence Categories", href: "/licenceCategories", icon: Layers },
       { label: "Models", href: "/models", icon: Tags },
       { label: "Status Types", href: "/statusTypes", icon: CircleDot },
@@ -88,12 +100,33 @@ const navSections = [
     collapsible: true,
     items: [
       { label: "Reports", href: "/reports", icon: LayoutDashboard },
-      { label: "Workflows", href: "/admin/workflows", icon: Zap, adminOnly: true },
+      {
+        label: "Workflows",
+        href: "/admin/workflows",
+        icon: Zap,
+        adminOnly: true,
+      },
       { label: "API Docs", href: "/api-docs", icon: FileJson },
-      { label: "Audit Logs", href: "/admin/audit-logs", icon: ScrollText, adminOnly: true },
+      {
+        label: "Audit Logs",
+        href: "/admin/audit-logs",
+        icon: ScrollText,
+        adminOnly: true,
+      },
       { label: "GDPR", href: "/admin/gdpr", icon: Shield, adminOnly: true },
-      { label: "Compliance", href: "/admin/compliance", icon: ShieldCheck, adminOnly: true },
-      { label: "Admin Settings", href: "/admin/settings", icon: LayoutDashboard, adminOnly: true },
+      {
+        label: "Compliance",
+        href: "/admin/compliance",
+        icon: ShieldCheck,
+        adminOnly: true,
+      },
+      { label: "Team", href: "/admin/team", icon: Users, adminOnly: true },
+      {
+        label: "Admin Settings",
+        href: "/admin/settings",
+        icon: LayoutDashboard,
+        adminOnly: true,
+      },
     ],
   },
 ];
@@ -119,9 +152,14 @@ const Sidebar = ({ initialCollapsed = false }) => {
     const stored = window.localStorage.getItem("sidebar:collapsed");
     if (stored !== null) {
       const storedCollapsed = stored === "true";
-      setCollapsed((prev) => (prev === storedCollapsed ? prev : storedCollapsed));
+      setCollapsed((prev) =>
+        prev === storedCollapsed ? prev : storedCollapsed,
+      );
     } else {
-      window.localStorage.setItem("sidebar:collapsed", String(initialCollapsed));
+      window.localStorage.setItem(
+        "sidebar:collapsed",
+        String(initialCollapsed),
+      );
     }
   }, [initialCollapsed]);
 
@@ -141,13 +179,20 @@ const Sidebar = ({ initialCollapsed = false }) => {
         role="navigation"
         aria-label="Main navigation"
         className={cx(
-          "hidden border-r border-default-200 bg-content1/60 backdrop-blur lg:flex lg:flex-col transition-[width] duration-300 ease-in-out",
-          collapsed ? "w-20" : "w-64"
+          "border-default-200 bg-content1/60 hidden border-r backdrop-blur transition-[width] duration-300 ease-in-out lg:flex lg:flex-col",
+          collapsed ? "w-20" : "w-64",
         )}
       >
         <div className="flex h-16 shrink-0 items-center justify-between px-3">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-foreground">
-            <span className={cx("text-lg tracking-tight", collapsed && "sr-only")}>Asset Tracker</span>
+          <Link
+            href="/dashboard"
+            className="text-foreground flex items-center gap-2 font-semibold"
+          >
+            <span
+              className={cx("text-lg tracking-tight", collapsed && "sr-only")}
+            >
+              Asset Tracker
+            </span>
           </Link>
           <Button
             size="sm"
@@ -156,7 +201,10 @@ const Sidebar = ({ initialCollapsed = false }) => {
               setCollapsed((prev) => {
                 const next = !prev;
                 if (typeof window !== "undefined") {
-                  window.localStorage.setItem("sidebar:collapsed", String(next));
+                  window.localStorage.setItem(
+                    "sidebar:collapsed",
+                    String(next),
+                  );
                   document.cookie = `sidebar_collapsed=${next}; path=/; max-age=31536000`;
                 }
                 return next;
@@ -165,7 +213,11 @@ const Sidebar = ({ initialCollapsed = false }) => {
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className="h-8 w-8 p-0"
           >
-            {collapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            {collapsed ? (
+              <PanelRightOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
           </Button>
         </div>
         {!collapsed && (
@@ -175,7 +227,9 @@ const Sidebar = ({ initialCollapsed = false }) => {
         )}
         <div className="flex-1 overflow-y-scroll px-2 py-4">
           {navSections.map((section) => {
-            const hasActiveChild = section.items.some((item) => activeMap.get(item.href));
+            const hasActiveChild = section.items.some((item) =>
+              activeMap.get(item.href),
+            );
 
             const renderItems = () => (
               <div className="space-y-1">
@@ -183,25 +237,25 @@ const Sidebar = ({ initialCollapsed = false }) => {
                   const Icon = item.icon;
                   const active = activeMap.get(item.href);
                   const linkClasses = cx(
-                    "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
                     collapsed && "justify-center px-2",
                     active
                       ? "bg-primary/10 text-primary"
-                      : "text-foreground-500 hover:bg-content2 hover:text-foreground"
+                      : "text-foreground-500 hover:bg-content2 hover:text-foreground",
                   );
                   const content = (
                     <Link href={item.href} className={linkClasses}>
-                      <Icon className="h-5 w-5 shrink-0" />
-                      {!collapsed && <span className="truncate">{item.label}</span>}
+                      <Icon className="h-5 w-5 shrink-0 transition-transform duration-150 group-hover:scale-110" />
+                      {!collapsed && (
+                        <span className="truncate">{item.label}</span>
+                      )}
                     </Link>
                   );
 
                   if (collapsed) {
                     return (
                       <Tooltip key={item.href}>
-                        <TooltipTrigger asChild>
-                          {content}
-                        </TooltipTrigger>
+                        <TooltipTrigger asChild>{content}</TooltipTrigger>
                         <TooltipContent side="right">
                           <p>{item.label}</p>
                         </TooltipContent>
@@ -209,21 +263,25 @@ const Sidebar = ({ initialCollapsed = false }) => {
                     );
                   }
 
-                  return <React.Fragment key={item.href}>{content}</React.Fragment>;
+                  return (
+                    <React.Fragment key={item.href}>{content}</React.Fragment>
+                  );
                 })}
               </div>
             );
 
             if (section.collapsible && !collapsed) {
               return (
-                <Collapsible key={section.title} defaultOpen={hasActiveChild} className="mb-4">
-                  <CollapsibleTrigger className="group flex w-full items-center justify-between px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-foreground-400 hover:text-foreground-600 transition-colors">
+                <Collapsible
+                  key={section.title}
+                  defaultOpen={hasActiveChild}
+                  className="mb-4"
+                >
+                  <CollapsibleTrigger className="group text-foreground-400 hover:text-foreground-600 flex w-full items-center justify-between px-3 pb-2 text-xs font-semibold tracking-wide uppercase transition-colors">
                     {section.title}
                     <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
                   </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    {renderItems()}
-                  </CollapsibleContent>
+                  <CollapsibleContent>{renderItems()}</CollapsibleContent>
                 </Collapsible>
               );
             }
@@ -231,7 +289,7 @@ const Sidebar = ({ initialCollapsed = false }) => {
             return (
               <div key={section.title} className="mb-4">
                 {!collapsed && (
-                  <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-foreground-400">
+                  <p className="text-foreground-400 px-3 pb-2 text-xs font-semibold tracking-wide uppercase">
                     {section.title}
                   </p>
                 )}
@@ -241,16 +299,21 @@ const Sidebar = ({ initialCollapsed = false }) => {
           })}
         </div>
         <div className="p-3">
-          <p className={cx("text-xs text-foreground-400", collapsed && "sr-only")}>Quick actions</p>
+          <p
+            className={cx(
+              "text-foreground-400 text-xs",
+              collapsed && "sr-only",
+            )}
+          >
+            Quick actions
+          </p>
           <div className="mt-2 flex items-center gap-2">
-            <Button
-              asChild
-              size="sm"
-              className="w-full"
-            >
+            <Button asChild size="sm" className="w-full">
               <Link href="/assets/create">
-                <SidebarPlusIcon className="h-4 w-4 mr-2" />
-                <span className={collapsed ? "sr-only" : "inline"}>Create Asset</span>
+                <SidebarPlusIcon className="mr-2 h-4 w-4" />
+                <span className={collapsed ? "sr-only" : "inline"}>
+                  Create Asset
+                </span>
               </Link>
             </Button>
           </div>

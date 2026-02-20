@@ -124,52 +124,89 @@ export default function OnboardingWizard() {
 
   const currentStep = STEPS[step];
   const Icon = currentStep.icon;
+  const [animating, setAnimating] = useState(false);
+  const [direction, setDirection] = useState<"next" | "back">("next");
+
+  const animatedNext = () => {
+    setDirection("next");
+    setAnimating(true);
+    setTimeout(() => {
+      handleNext();
+      setAnimating(false);
+    }, 150);
+  };
+
+  const animatedBack = () => {
+    setDirection("back");
+    setAnimating(true);
+    setTimeout(() => {
+      handleBack();
+      setAnimating(false);
+    }, 150);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) completeOnboarding(); }}>
-      <DialogContent className="max-w-lg" onPointerDownOutside={(e) => e.preventDefault()}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) completeOnboarding();
+      }}
+    >
+      <DialogContent
+        className="max-w-lg"
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         {/* Step indicator dots */}
         <div className="flex justify-center gap-1.5 pt-1">
           {STEPS.map((_, i) => (
             <div
               key={i}
-              className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                i === step ? "bg-primary" : "bg-muted-foreground/25"
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === step ? "bg-primary w-4" : "bg-muted-foreground/25 w-1.5"
               }`}
             />
           ))}
         </div>
 
-        <DialogHeader className="items-center text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-            <Icon className="h-7 w-7 text-primary" />
-          </div>
-          <DialogTitle className="text-xl">{currentStep.title}</DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed">
-            {currentStep.description}
-          </DialogDescription>
-        </DialogHeader>
+        <div
+          className="transition-all duration-200 ease-in-out"
+          style={{
+            opacity: animating ? 0 : 1,
+            transform: animating
+              ? `translateX(${direction === "next" ? "-12px" : "12px"})`
+              : "translateX(0)",
+          }}
+        >
+          <DialogHeader className="items-center text-center">
+            <div className="bg-primary/10 mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full">
+              <Icon className="text-primary h-7 w-7" />
+            </div>
+            <DialogTitle className="text-xl">{currentStep.title}</DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed">
+              {currentStep.description}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
         <DialogFooter className="flex-row items-center justify-between sm:justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={completeOnboarding}
-          >
+          <Button variant="ghost" size="sm" onClick={completeOnboarding}>
             Skip
           </Button>
 
-          <span className="text-xs text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             {step + 1} / {STEPS.length}
           </span>
 
           <div className="flex gap-2">
             {step > 0 && (
-              <Button variant="outline" size="sm" onClick={handleBack}>
+              <Button variant="outline" size="sm" onClick={animatedBack}>
                 Back
               </Button>
             )}
-            <Button size="sm" onClick={handleNext}>
+            <Button
+              size="sm"
+              onClick={step === STEPS.length - 1 ? handleNext : animatedNext}
+            >
               {step === STEPS.length - 1 ? "Get Started" : "Next"}
             </Button>
           </div>

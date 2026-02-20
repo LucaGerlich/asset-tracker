@@ -23,7 +23,13 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   const user = await prisma.user.findUnique({
     where: { userid: params.id },
-    select: { userid: true, firstname: true, lastname: true, email: true, mfaEnabled: true },
+    select: {
+      userid: true,
+      firstname: true,
+      lastname: true,
+      email: true,
+      mfaEnabled: true,
+    },
   });
 
   if (!user) redirect("/user");
@@ -38,6 +44,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         locale: prefs.locale,
         timezone: prefs.timezone,
         currency: prefs.currency,
+        dateFormat: prefs.dateFormat,
+        numberFormat: prefs.numberFormat,
         pageSize: prefs.pageSize,
       }
     : {
@@ -45,13 +53,18 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         locale: "en",
         timezone: "UTC",
         currency: "USD",
+        dateFormat: "MM/DD/YYYY",
+        numberFormat: "1,234.56",
         pageSize: 20,
       };
 
   const breadcrumbOptions = [
     { label: "Home", href: "/" },
     { label: "Users", href: "/user" },
-    { label: `${user.firstname} ${user.lastname}`, href: `/user/${user.userid}` },
+    {
+      label: `${user.firstname} ${user.lastname}`,
+      href: `/user/${user.userid}`,
+    },
     { label: "Settings", href: `/user/${user.userid}/settings` },
   ];
 
