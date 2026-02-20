@@ -532,14 +532,14 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           </section>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
-          <section className="border-default-200 rounded-lg border p-4">
+        <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+          <section className="border-default-200 overflow-hidden rounded-lg border p-4">
             <AssetReservations
               assetId={asset.assetid}
               assetName={asset.assetname}
             />
           </section>
-          <section className="border-default-200 rounded-lg border p-4">
+          <section className="border-default-200 overflow-hidden rounded-lg border p-4">
             <AssetTransfers
               assetId={asset.assetid}
               currentUserId={userByAsset?.userid}
@@ -547,7 +547,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
               currentOrgId={asset.organizationId ?? undefined}
             />
           </section>
-          <section className="border-default-200 rounded-lg border p-4">
+          <section className="border-default-200 overflow-hidden rounded-lg border p-4 md:col-span-2">
             <AssetCheckoutHistory
               assetId={asset.assetid}
               assetName={asset.assetname}

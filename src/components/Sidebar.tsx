@@ -99,7 +99,7 @@ const navSections = [
     title: "Administration",
     collapsible: true,
     items: [
-      { label: "Reports", href: "/reports", icon: LayoutDashboard },
+      { label: "Reports", href: "/reports", icon: ScrollText },
       {
         label: "Workflows",
         href: "/admin/workflows",
@@ -124,7 +124,7 @@ const navSections = [
       {
         label: "Admin Settings",
         href: "/admin/settings",
-        icon: LayoutDashboard,
+        icon: Wrench,
         adminOnly: true,
       },
     ],
@@ -225,7 +225,7 @@ const Sidebar = ({ initialCollapsed = false }) => {
             <SearchTypeahead />
           </div>
         )}
-        <div className="flex-1 overflow-y-scroll px-2 py-4">
+        <div className="flex-1 overflow-y-auto px-2 py-4">
           {navSections.map((section) => {
             const hasActiveChild = section.items.some((item) =>
               activeMap.get(item.href),
@@ -310,7 +310,7 @@ const Sidebar = ({ initialCollapsed = false }) => {
           <div className="mt-2 flex items-center gap-2">
             <Button asChild size="sm" className="w-full">
               <Link href="/assets/create">
-                <SidebarPlusIcon className="mr-2 h-4 w-4" />
+                <SidebarPlusIcon className={collapsed ? "h-4 w-4" : "mr-2 h-4 w-4"} />
                 <span className={collapsed ? "sr-only" : "inline"}>
                   Create Asset
                 </span>

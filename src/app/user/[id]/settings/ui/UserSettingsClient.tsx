@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 interface UserSettingsClientProps {
@@ -110,7 +110,6 @@ export default function UserSettingsClient({
 
   return (
     <div className="max-w-2xl">
-      <Toaster position="bottom-right" />
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-foreground-500 mt-1 text-sm">

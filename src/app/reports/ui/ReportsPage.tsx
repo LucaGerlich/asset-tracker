@@ -372,25 +372,25 @@ export default function ReportsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Reports & Analytics</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             View insights and export reports about your assets
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportToCSV}>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={exportToCSV}>
             <Download className="mr-2 h-4 w-4" />
-            Export CSV
+            CSV
           </Button>
-          <Button variant="outline" onClick={exportToExcel}>
+          <Button variant="outline" size="sm" onClick={exportToExcel}>
             <FileSpreadsheet className="mr-2 h-4 w-4" />
-            Export Excel
+            Excel
           </Button>
-          <Button variant="outline" onClick={exportToPDF}>
+          <Button variant="outline" size="sm" onClick={exportToPDF}>
             <FileText className="mr-2 h-4 w-4" />
-            Export PDF
+            PDF
           </Button>
         </div>
       </div>
@@ -478,27 +478,17 @@ export default function ReportsPage({
 
       {/* Charts */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="overview" className="gap-1">
-            Overview
-            <HelpTooltip
-              text="Status distribution and category breakdown of your asset inventory."
-              side="bottom"
-            />
-          </TabsTrigger>
-          <TabsTrigger value="utilization">Utilization</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
-          <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
-          <TabsTrigger value="warranty">Warranty</TabsTrigger>
-          <TabsTrigger value="depreciation" className="gap-1">
-            Depreciation
-            <HelpTooltip
-              text="Track asset value loss over time based on category depreciation settings."
-              side="bottom"
-            />
-          </TabsTrigger>
-          <TabsTrigger value="advanced">Advanced</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="utilization">Utilization</TabsTrigger>
+            <TabsTrigger value="trends">Trends</TabsTrigger>
+            <TabsTrigger value="breakdown">Breakdown</TabsTrigger>
+            <TabsTrigger value="warranty">Warranty</TabsTrigger>
+            <TabsTrigger value="depreciation">Depreciation</TabsTrigger>
+            <TabsTrigger value="advanced">Advanced</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="mt-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

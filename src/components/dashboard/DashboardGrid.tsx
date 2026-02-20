@@ -12,7 +12,7 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
   useSortable,
   arrayMove,
 } from "@dnd-kit/sortable";
@@ -435,7 +435,7 @@ export default function DashboardGrid() {
             <DialogHeader>
               <DialogTitle>Add Widget</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-3 py-4">
+            <div className="grid max-h-[60vh] gap-3 overflow-y-auto py-4">
               {availableWidgets.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   All widgets have been added.
@@ -466,7 +466,7 @@ export default function DashboardGrid() {
       >
         <SortableContext
           items={widgets.map((w) => w.id)}
-          strategy={verticalListSortingStrategy}
+          strategy={rectSortingStrategy}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {widgets.map((widget) => (

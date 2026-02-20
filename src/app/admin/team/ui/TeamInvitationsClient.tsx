@@ -182,19 +182,19 @@ export default function TeamInvitationsClient() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Team Management</h1>
           <p className="text-muted-foreground">
             Invite and manage team members
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>Invite User</Button>
+        <Button onClick={() => setDialogOpen(true)} className="w-fit">Invite User</Button>
       </div>
 
       <div className="rounded-md border">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[700px] text-sm">
             <thead>
               <tr className="bg-muted/50 border-b">
                 <th className="px-4 py-3 text-left font-medium">Email</th>
