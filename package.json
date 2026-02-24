@@ -12,7 +12,7 @@
     "db:demo-seed": "node prisma/demo-seed.js",
     "db:demo-reset": "node scripts/reset-demo-db.mjs",
     "create-admin": "node scripts/create-admin.mjs",
-    "test": "npx playwright test",
+    "test": "vitest run",
     "test:ui": "npx playwright test --ui",
     "test:mobile": "npx playwright test --project='Mobile Chrome'",
     "test:report": "npx playwright show-report",
