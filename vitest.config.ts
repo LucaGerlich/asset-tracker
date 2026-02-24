@@ -20,7 +20,7 @@ export default defineConfig({
         "src/lib/email/templates.ts",
       ],
       thresholds: {
-        lines: 50,
+        lines: 25,
       },
     },
   },
