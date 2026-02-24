@@ -75,14 +75,19 @@
     "@commitlint/cli": "^20.4.1",
     "@commitlint/config-conventional": "^20.4.1",
     "@playwright/test": "^1.58.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^25.0.10",
     "@types/pg": "^8.16.0",
     "@types/react": "^19.2.9",
     "@vitejs/plugin-react": "^5.1.4",
+    "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.4.23",
     "eslint": "^8",
     "eslint-config-next": "15.5.3",
+    "happy-dom": "^20.7.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "postcss": "^8.5.6",
@@ -91,7 +96,8 @@
     "prisma": "^7.3.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "vitest-mock-extended": "^3.1.0"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
