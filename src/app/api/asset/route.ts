@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
-import { requireApiAuth, requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requirePermission,
+  requireNotDemoMode,
+} from "@/lib/api-auth";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -17,6 +21,7 @@ import {
   updateAssetSchema,
 } from "@/lib/validations";
 import { triggerWebhook } from "@/lib/webhooks";
+import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { checkAssetLimit } from "@/lib/tenant-limits";
 import { logger } from "@/lib/logger";
 
@@ -152,6 +157,10 @@ export async function POST(req) {
       assetName: created.assetname,
       assetTag: created.assettag,
     }).catch(() => {});
+    notifyIntegrations("asset.created", {
+      assetName: created.assetname,
+      assetTag: created.assettag,
+    }).catch(() => {});
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
@@ -205,6 +214,10 @@ export async function PUT(req) {
       assetId: updated.assetid,
       assetName: updated.assetname,
       changes: Object.keys(data),
+    }).catch(() => {});
+    notifyIntegrations("asset.updated", {
+      assetName: updated.assetname,
+      assetTag: updated.assettag,
     }).catch(() => {});
 
     return NextResponse.json(updated, { status: 200 });

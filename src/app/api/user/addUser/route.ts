@@ -7,6 +7,7 @@ import { hashPassword } from "@/lib/auth-utils";
 import { createUserSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
+import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { checkUserLimit } from "@/lib/tenant-limits";
 import { logger } from "@/lib/logger";
 
@@ -94,6 +95,9 @@ export async function POST(request) {
       { userId: created.userid, email: created.email },
       created.organizationId,
     ).catch(() => {});
+    notifyIntegrations("user.created", {
+      email: created.email,
+    }).catch(() => {});
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = created;

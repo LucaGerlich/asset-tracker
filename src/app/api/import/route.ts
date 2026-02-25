@@ -4,6 +4,7 @@ import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { importJobSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
+import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 
@@ -223,6 +224,12 @@ export async function POST(req: NextRequest) {
       successCount,
       errorCount: errors.length,
     });
+    notifyIntegrations(webhookEvent, {
+      entityType: validatedInput.entityType,
+      successCount,
+      errorCount: errors.length,
+      totalRows: lines.length - 1,
+    }).catch(() => {});
 
     return NextResponse.json(completedJob, { status: 201 });
   } catch (error) {

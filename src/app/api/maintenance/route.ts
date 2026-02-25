@@ -6,6 +6,7 @@ import {
   scopeToOrganization,
 } from "@/lib/organization-context";
 import { triggerWebhook } from "@/lib/webhooks";
+import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import {
   parsePaginationParams,
   buildPrismaArgs,
@@ -199,6 +200,10 @@ export async function POST(req: NextRequest) {
       },
       orgId,
     ).catch(() => {});
+    notifyIntegrations("maintenance.due", {
+      maintenanceTitle: schedule.title,
+      assetName: schedule.asset?.assetname,
+    }).catch(() => {});
 
     return NextResponse.json(schedule, { status: 201 });
   } catch (error) {

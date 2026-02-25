@@ -1,8 +1,12 @@
 import prisma from "../../../../lib/prisma";
 import { logger } from "@/lib/logger";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import { getOrganizationContext, scopeToOrganization } from "@/lib/organization-context";
+import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
 import { triggerWebhook } from "@/lib/webhooks";
+import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 
 // PUT /api/asset/updateStatus
 // Body: { assetId: string, statusTypeId?: string, statusName?: string }
@@ -12,7 +16,7 @@ export async function PUT(req) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requirePermission('asset:edit');
+    await requirePermission("asset:edit");
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
 
@@ -26,8 +30,10 @@ export async function PUT(req) {
         hasStatusName: !!statusName,
       });
       return new Response(
-        JSON.stringify({ error: "assetId and statusTypeId or statusName are required" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: "assetId and statusTypeId or statusName are required",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -42,7 +48,7 @@ export async function PUT(req) {
         });
         return new Response(
           JSON.stringify({ error: `Status '${statusName}' not found` }),
-          { status: 404, headers: { "Content-Type": "application/json" } }
+          { status: 404, headers: { "Content-Type": "application/json" } },
         );
       }
       statusId = found.statustypeid;
@@ -54,10 +60,10 @@ export async function PUT(req) {
     });
 
     if (!existingAsset) {
-      return new Response(
-        JSON.stringify({ error: "Asset not found" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Asset not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const updated = await prisma.asset.update({
@@ -65,7 +71,15 @@ export async function PUT(req) {
       data: { statustypeid: statusId, change_date: new Date() },
     });
 
-    triggerWebhook('asset.updated', { assetId, statusChanged: true, newStatus: statusId }, orgId).catch(() => {});
+    triggerWebhook(
+      "asset.updated",
+      { assetId, statusChanged: true, newStatus: statusId },
+      orgId,
+    ).catch(() => {});
+    notifyIntegrations("asset.updated", {
+      assetName: updated.assetname,
+      assetTag: updated.assettag,
+    }).catch(() => {});
 
     const duration = Date.now() - startTime;
     logger.apiResponse("PUT", "/api/asset/updateStatus", 200, duration, {
@@ -73,9 +87,9 @@ export async function PUT(req) {
       statusId,
     });
 
-    return new Response(JSON.stringify(updated), { 
+    return new Response(JSON.stringify(updated), {
       status: 200,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -93,11 +107,11 @@ export async function PUT(req) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    
+
     // Handle Prisma-specific errors
     let errorMessage = "Failed to update status";
     let statusCode = 500;
-    
+
     if (error.code === "P2025") {
       errorMessage = "Asset not found";
       statusCode = 404;
@@ -107,16 +121,16 @@ export async function PUT(req) {
     } else if (error.message) {
       errorMessage = error.message;
     }
-    
+
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: errorMessage,
-        code: error.code || "UNKNOWN"
-      }), 
-      { 
+        code: error.code || "UNKNOWN",
+      }),
+      {
         status: statusCode,
-        headers: { "Content-Type": "application/json" }
-      }
+        headers: { "Content-Type": "application/json" },
+      },
     );
   }
 }

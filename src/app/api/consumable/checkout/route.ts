@@ -4,6 +4,7 @@ import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, consumableCheckoutSchema } from "@/lib/validations";
 import { triggerWebhook } from "@/lib/webhooks";
+import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger } from "@/lib/logger";
 
 // GET /api/consumable/checkout?consumableId=...
@@ -143,11 +144,21 @@ export async function POST(req: Request) {
         remainingStock,
         minQuantity: minQty,
       }).catch(() => {});
+      notifyIntegrations("consumable.critical_stock", {
+        consumableName: consumable.consumablename,
+        quantity: remainingStock,
+        minQuantity: minQty,
+      }).catch(() => {});
     } else if (minQty > 0 && remainingStock <= minQty) {
       triggerWebhook("consumable.low_stock", {
         consumableId,
         consumableName: consumable.consumablename,
         remainingStock,
+        minQuantity: minQty,
+      }).catch(() => {});
+      notifyIntegrations("consumable.low_stock", {
+        consumableName: consumable.consumablename,
+        quantity: remainingStock,
         minQuantity: minQty,
       }).catch(() => {});
     }

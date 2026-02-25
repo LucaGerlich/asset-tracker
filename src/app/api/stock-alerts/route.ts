@@ -8,6 +8,7 @@ import {
 } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
+import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
@@ -196,6 +197,11 @@ export async function PUT() {
             alert.consumable.organizationId,
           );
         }
+        notifyIntegrations("consumable.critical_stock", {
+          consumableName: alert.consumable.consumablename,
+          quantity: qty,
+          minQuantity: alert.criticalThreshold,
+        }).catch(() => {});
         triggered.push({
           consumableName: alert.consumable.consumablename,
           quantity: qty,
@@ -220,6 +226,11 @@ export async function PUT() {
             alert.consumable.organizationId,
           );
         }
+        notifyIntegrations("consumable.low_stock", {
+          consumableName: alert.consumable.consumablename,
+          quantity: qty,
+          minQuantity: alert.minThreshold,
+        }).catch(() => {});
         triggered.push({
           consumableName: alert.consumable.consumablename,
           quantity: qty,

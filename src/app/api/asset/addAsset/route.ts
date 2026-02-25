@@ -5,6 +5,7 @@ import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { createAssetSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
+import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { checkAssetLimit } from "@/lib/tenant-limits";
 import { logger } from "@/lib/logger";
 
@@ -106,6 +107,10 @@ export async function POST(req) {
       },
       created.organizationId,
     ).catch(() => {});
+    notifyIntegrations("asset.created", {
+      assetName: created.assetname,
+      assetTag: created.assettag,
+    }).catch(() => {});
 
     return new Response(JSON.stringify(created), { status: 201 });
   } catch (error) {
