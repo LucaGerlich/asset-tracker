@@ -152,6 +152,8 @@ export default function LDAPSettingsTab() {
     }
   };
 
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const handleTestConnection = async () => {
     const missingFields: string[] = [];
     if (!serverUrl) missingFields.push("Server URL");
@@ -168,28 +170,43 @@ export default function LDAPSettingsTab() {
 
     setIsTesting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await fetch("/api/admin/settings/ldap/test", {
+        method: "POST",
+      });
+      const data = await res.json();
 
-      // Validate URL format
-      try {
-        const url = serverUrl.startsWith("ldap")
-          ? serverUrl
-          : `ldap://${serverUrl}`;
-        new URL(url);
-      } catch {
-        toast.error("Invalid server URL format");
-        setIsTesting(false);
-        return;
+      if (data.success) {
+        toast.success(data.message, { duration: 5000 });
+      } else {
+        toast.error(data.message || "Connection test failed");
       }
-
-      toast.success(
-        "Configuration validated. All required fields are present and the server URL is well-formed. To test actual LDAP connectivity, save settings and run a sync.",
-        { duration: 5000 }
-      );
     } catch {
-      toast.error("Configuration validation failed");
+      toast.error("Connection test failed");
     } finally {
       setIsTesting(false);
+    }
+  };
+
+  const handleSyncNow = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/admin/settings/ldap/sync", {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success(
+          `Sync complete: ${data.created} created, ${data.updated} updated, ${data.deactivated} deactivated`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(data.errors?.[0] || "Sync failed");
+      }
+    } catch {
+      toast.error("Sync failed");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -481,18 +498,32 @@ export default function LDAPSettingsTab() {
 
       {/* Actions */}
       <div className="flex justify-between">
-        <Button
-          variant="outline"
-          onClick={handleTestConnection}
-          disabled={isTesting || !ldapEnabled}
-        >
-          {isTesting ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <CheckCircle className="h-4 w-4 mr-2" />
-          )}
-          Test Connection
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleTestConnection}
+            disabled={isTesting || !ldapEnabled}
+          >
+            {isTesting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <CheckCircle className="h-4 w-4 mr-2" />
+            )}
+            Test Connection
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleSyncNow}
+            disabled={isSyncing || !ldapEnabled}
+          >
+            {isSyncing ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Server className="h-4 w-4 mr-2" />
+            )}
+            Sync Now
+          </Button>
+        </div>
         <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />

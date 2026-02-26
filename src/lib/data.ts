@@ -309,6 +309,111 @@ export async function getModelById(id: string) {
   return model;
 }
 
+// Component data functions
+export async function getComponents() {
+  const components = await prisma.component.findMany({
+    include: {
+      category: true,
+      manufacturer: true,
+      supplier: true,
+      location: true,
+    },
+    orderBy: { name: "asc" },
+  });
+  return components;
+}
+
+export async function getComponentById(id: string) {
+  if (!id) throw new Error("Invalid ID parameter");
+  const component = await prisma.component.findUnique({
+    where: { id },
+    include: {
+      category: true,
+      manufacturer: true,
+      supplier: true,
+      location: true,
+      checkouts: {
+        orderBy: { checkedOutAt: "desc" },
+        include: {
+          asset: { select: { assetid: true, assetname: true, assettag: true } },
+          checkedOutByUser: { select: { userid: true, firstname: true, lastname: true } },
+        },
+      },
+    },
+  });
+  if (!component) throw new Error(`Component with ID ${id} not found`);
+  return component;
+}
+
+export async function getComponentCategories() {
+  return prisma.componentCategory.findMany({ orderBy: { name: "asc" } });
+}
+
+// EULA Templates
+export async function getEulaTemplates() {
+  return prisma.eulaTemplate.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getEulaTemplateById(id: string) {
+  if (!id) throw new Error("Invalid ID parameter");
+  const template = await prisma.eulaTemplate.findUnique({ where: { id } });
+  if (!template) throw new Error(`EULA template with ID ${id} not found`);
+  return template;
+}
+
+// Kits
+export async function getKits() {
+  return prisma.kit.findMany({
+    include: { items: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getKitById(id: string) {
+  if (!id) throw new Error("Invalid ID parameter");
+  const kit = await prisma.kit.findUnique({
+    where: { id },
+    include: { items: true },
+  });
+  if (!kit) throw new Error(`Kit with ID ${id} not found`);
+  return kit;
+}
+
+// Audit Campaigns
+export async function getAuditCampaigns() {
+  return prisma.auditCampaign.findMany({
+    include: {
+      creator: { select: { userid: true, firstname: true, lastname: true } },
+      _count: { select: { entries: true, auditors: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getAuditCampaignById(id: string) {
+  if (!id) throw new Error("Invalid ID parameter");
+  const campaign = await prisma.auditCampaign.findUnique({
+    where: { id },
+    include: {
+      creator: { select: { userid: true, firstname: true, lastname: true } },
+      auditors: {
+        include: { user: { select: { userid: true, firstname: true, lastname: true } } },
+      },
+      entries: {
+        include: {
+          asset: { select: { assetid: true, assetname: true, assettag: true } },
+          auditor: { select: { userid: true, firstname: true, lastname: true } },
+          location: { select: { locationid: true, locationname: true } },
+        },
+      },
+    },
+  });
+  if (!campaign) throw new Error(`Audit campaign with ID ${id} not found`);
+  return campaign;
+}
+
 export async function getStatusById(id: string) {
   if (!id) {
     throw new Error("Invalid ID parameter");

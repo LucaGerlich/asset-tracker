@@ -274,6 +274,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               organizationId: true,
               departmentId: true,
               mfaEnabled: true,
+              authProvider: true,
+              isActive: true,
             },
           });
 
@@ -290,6 +292,99 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null;
           }
 
+          // Check if user account is active
+          if (user.isActive === false) {
+            logger.warn("Login failed - account deactivated", { username });
+            await createAuditLog({
+              userId: user.userid,
+              action: AUDIT_ACTIONS.LOGIN_FAILED,
+              entity: AUDIT_ENTITIES.USER,
+              entityId: user.userid,
+              details: { username, reason: "Account deactivated" },
+            });
+            return null;
+          }
+
+          // ---- LDAP AUTHENTICATION PATH ----
+          // If user's authProvider is "ldap", authenticate via LDAP bind
+          if (user.authProvider === "ldap") {
+            const { authenticateUser: ldapAuth } = await import("@/lib/ldap");
+            const ldapResult = await ldapAuth(username, password);
+
+            if (!ldapResult.success) {
+              logger.warn("Login failed - LDAP bind failed", { username });
+              const lockoutResult = recordFailedAttempt(username);
+              await createAuditLog({
+                userId: user.userid,
+                action: AUDIT_ACTIONS.LOGIN_FAILED,
+                entity: AUDIT_ENTITIES.USER,
+                entityId: user.userid,
+                details: {
+                  username,
+                  reason: "LDAP authentication failed",
+                  attemptsRemaining: lockoutResult.attemptsRemaining,
+                },
+              });
+              return null;
+            }
+
+            // LDAP auth succeeded — skip password check, proceed to MFA / return
+            recordSuccessfulLogin(username);
+
+            await createAuditLog({
+              userId: user.userid,
+              action: AUDIT_ACTIONS.LOGIN,
+              entity: AUDIT_ENTITIES.USER,
+              entityId: user.userid,
+              details: { username, method: "ldap" },
+            });
+
+            logger.info("LDAP login successful", { username, userId: user.userid });
+
+            if (user.mfaEnabled) {
+              return {
+                id: user.userid,
+                name: `${user.firstname} ${user.lastname}`,
+                email: user.email,
+                username: user.username,
+                isAdmin: user.isadmin,
+                canRequest: user.canrequest,
+                firstname: user.firstname,
+                lastname: user.lastname,
+                organizationId: user.organizationId || undefined,
+                departmentId: user.departmentId || undefined,
+                mfaPending: true,
+              };
+            }
+
+            try {
+              const headersList = await headers();
+              const ipAddress =
+                headersList.get("x-forwarded-for")?.split(",")[0].trim() ||
+                headersList.get("x-real-ip") ||
+                null;
+              const userAgent = headersList.get("user-agent") || null;
+              await createSessionRecord(user.userid, ipAddress, userAgent);
+            } catch (sessionError) {
+              logger.error("Failed to create session record", { sessionError });
+            }
+
+            return {
+              id: user.userid,
+              name: `${user.firstname} ${user.lastname}`,
+              email: user.email,
+              username: user.username,
+              isAdmin: user.isadmin,
+              canRequest: user.canrequest,
+              firstname: user.firstname,
+              lastname: user.lastname,
+              organizationId: user.organizationId || undefined,
+              departmentId: user.departmentId || undefined,
+              mfaPending: false,
+            };
+          }
+
+          // ---- LOCAL PASSWORD VERIFICATION ----
           // Verify password
           const isValidPassword = await bcrypt.compare(password, user.password);
 

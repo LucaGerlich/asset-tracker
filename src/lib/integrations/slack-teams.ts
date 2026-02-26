@@ -107,6 +107,66 @@ function getEventMessage(
         title: "Import Failed",
         description: `Import failed: ${data.errorCount ?? "?"} errors in ${data.entityType || "import"}`,
       };
+    case "component.created":
+      return {
+        title: "Component Created",
+        description: `Component *${data.componentName || "Unknown"}* was created`,
+      };
+    case "component.checked_out":
+      return {
+        title: "Component Checked Out",
+        description: `Component *${data.componentName || "Unknown"}* — ${data.quantity ?? 1} unit(s) checked out to asset *${data.assetName || "Unknown"}*`,
+      };
+    case "component.low_stock":
+      return {
+        title: "Component Low Stock",
+        description: `Low stock: *${data.componentName || "Unknown"}* — ${data.remaining ?? "?"}/${data.minQuantity ?? "?"} remaining`,
+      };
+    case "license.seat_assigned":
+      return {
+        title: "License Seat Assigned",
+        description: `License seat assigned to *${data.userName || "Unknown"}* for *${data.licenceName || "Unknown"}*`,
+      };
+    case "license.seat_unassigned":
+      return {
+        title: "License Seat Unassigned",
+        description: `License seat unassigned from *${data.userName || "Unknown"}* for *${data.licenceName || "Unknown"}*`,
+      };
+    case "kit.checked_out":
+      return {
+        title: "Kit Checked Out",
+        description: `Kit *${data.kitName || "Unknown"}* checked out to *${data.userName || "Unknown"}*`,
+      };
+    case "audit.campaign_created":
+      return {
+        title: "Audit Campaign Created",
+        description: `Audit campaign *${data.campaignName || "Unknown"}* was created`,
+      };
+    case "audit.campaign_completed":
+      return {
+        title: "Audit Campaign Completed",
+        description: `Audit campaign *${data.campaignName || "Unknown"}* completed — ${data.found ?? "?"}/${data.total ?? "?"} assets found`,
+      };
+    case "asset.bulk_checked_out":
+      return {
+        title: "Bulk Asset Checkout",
+        description: `${data.count ?? "?"} assets bulk-checked out to *${data.targetLabel || "Unknown"}*`,
+      };
+    case "eula.accepted":
+      return {
+        title: "EULA Accepted",
+        description: `*${data.userName || "Unknown"}* accepted EULA *${data.eulaName || "Unknown"}* for asset checkout`,
+      };
+    case "ldap.sync_completed":
+      return {
+        title: "LDAP Sync Completed",
+        description: `LDAP sync: ${data.created ?? 0} created, ${data.updated ?? 0} updated, ${data.deactivated ?? 0} deactivated`,
+      };
+    case "user.sso_login":
+      return {
+        title: "SSO Login",
+        description: `*${data.userName || "Unknown"}* logged in via ${data.method || "SSO"}`,
+      };
     default:
       return {
         title: "Notification",

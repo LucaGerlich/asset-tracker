@@ -12,6 +12,10 @@
  */
 
 import en from "./locales/en";
+import de from "./locales/de";
+import fr from "./locales/fr";
+import es from "./locales/es";
+import nl from "./locales/nl";
 
 // ---------------------------------------------------------------------------
 // Translation store
@@ -21,7 +25,22 @@ type Translations = Record<string, string>;
 
 const translationStore: Record<string, Translations> = {
   en,
+  de,
+  fr,
+  es,
+  nl,
 };
+
+/** Available locale codes and their display names */
+export const AVAILABLE_LOCALES = {
+  en: "English",
+  de: "Deutsch",
+  fr: "Fran\u00e7ais",
+  es: "Espa\u00f1ol",
+  nl: "Nederlands",
+} as const;
+
+export type LocaleCode = keyof typeof AVAILABLE_LOCALES;
 
 let currentLocale = "en";
 

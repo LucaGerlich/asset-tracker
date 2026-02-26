@@ -171,3 +171,166 @@ export const createUserSchema = z.object({
   isadmin: z.boolean().optional(),
   canrequest: z.boolean().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// Component schemas (Phase 1A)
+// ---------------------------------------------------------------------------
+
+export const createComponentSchema = z.object({
+  name: trimmedString,
+  serialNumber: optionalString,
+  categoryId: uuidField,
+  totalQuantity: z.number().int().nonnegative("Must be >= 0").default(0),
+  purchasePrice: z.coerce.number().nonnegative("Must be >= 0").optional().nullable(),
+  purchaseDate: z.string().optional().nullable(),
+  minQuantity: z.number().int().nonnegative().default(0),
+  manufacturerId: optionalUuid,
+  supplierId: optionalUuid,
+  locationId: optionalUuid,
+});
+
+export const updateComponentSchema = createComponentSchema.partial();
+
+export const componentCheckoutSchema = z.object({
+  componentId: uuidField,
+  assetId: uuidField,
+  quantity: z.number().int().positive("Must be a positive integer").default(1),
+  notes: optionalString,
+});
+
+export const componentCheckinSchema = z.object({
+  checkoutId: uuidField,
+  quantity: z.number().int().positive("Must be a positive integer").optional(),
+  notes: optionalString,
+});
+
+export const createComponentCategorySchema = z.object({
+  name: trimmedString,
+});
+
+export const updateComponentCategorySchema = createComponentCategorySchema.partial();
+
+// ---------------------------------------------------------------------------
+// Asset checkout schema (Phase 1B: Polymorphic Checkout)
+// ---------------------------------------------------------------------------
+
+export const assetCheckoutSchema = z.object({
+  assetId: uuidField,
+  checkedOutToType: z.enum(["user", "location", "asset"], {
+    message: "Must be user, location, or asset",
+  }).default("user"),
+  checkedOutTo: optionalUuid,
+  checkedOutToLocationId: optionalUuid,
+  checkedOutToAssetId: optionalUuid,
+  expectedReturn: z.string().optional().nullable(),
+  notes: optionalString,
+}).refine(
+  (data) => {
+    if (data.checkedOutToType === "user") return !!data.checkedOutTo;
+    if (data.checkedOutToType === "location") return !!data.checkedOutToLocationId;
+    if (data.checkedOutToType === "asset") return !!data.checkedOutToAssetId;
+    return false;
+  },
+  { message: "Target ID is required for the selected checkout type" },
+);
+
+export const assetCheckinSchema = z.object({
+  checkoutId: uuidField,
+  notes: optionalString,
+});
+
+// ---------------------------------------------------------------------------
+// Licence seat schemas (Phase 1C)
+// ---------------------------------------------------------------------------
+
+export const assignLicenceSeatSchema = z.object({
+  licenceId: uuidField,
+  userId: uuidField,
+  notes: optionalString,
+});
+
+export const unassignLicenceSeatSchema = z.object({
+  assignmentId: uuidField,
+});
+
+// ---------------------------------------------------------------------------
+// Phase 2A: EULA Templates
+// ---------------------------------------------------------------------------
+
+export const createEulaTemplateSchema = z.object({
+  name: trimmedString,
+  content: z.string().min(1, "EULA content is required"),
+  version: z.number().int().positive().optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const updateEulaTemplateSchema = createEulaTemplateSchema.partial();
+
+// ---------------------------------------------------------------------------
+// Phase 2B: Bulk Checkout
+// ---------------------------------------------------------------------------
+
+export const bulkCheckoutSchema = z.object({
+  assetIds: z.array(uuidField).min(1, "At least one asset is required"),
+  checkedOutToType: z.enum(["user", "location", "asset"]).default("user"),
+  checkedOutTo: optionalUuid,
+  checkedOutToLocationId: optionalUuid,
+  checkedOutToAssetId: optionalUuid,
+  expectedReturn: z.string().optional().nullable(),
+  notes: optionalString,
+}).refine(
+  (data) => {
+    if (data.checkedOutToType === "user") return !!data.checkedOutTo;
+    if (data.checkedOutToType === "location") return !!data.checkedOutToLocationId;
+    if (data.checkedOutToType === "asset") return !!data.checkedOutToAssetId;
+    return false;
+  },
+  { message: "Target ID is required for the selected checkout type" },
+);
+
+// ---------------------------------------------------------------------------
+// Phase 3A: Predefined Kits
+// ---------------------------------------------------------------------------
+
+export const createKitSchema = z.object({
+  name: trimmedString,
+  description: optionalString,
+  isActive: z.boolean().optional(),
+  items: z.array(z.object({
+    entityType: z.enum(["asset_category", "accessory", "licence", "component"]),
+    entityId: uuidField,
+    quantity: z.number().int().positive().default(1),
+    isRequired: z.boolean().default(true),
+    notes: optionalString,
+  })).optional(),
+});
+
+export const updateKitSchema = createKitSchema.partial();
+
+export const kitCheckoutSchema = z.object({
+  kitId: uuidField,
+  userId: uuidField,
+  notes: optionalString,
+});
+
+// ---------------------------------------------------------------------------
+// Phase 3B: Audit Campaigns
+// ---------------------------------------------------------------------------
+
+export const createAuditCampaignSchema = z.object({
+  name: trimmedString,
+  description: optionalString,
+  dueDate: z.string().optional().nullable(),
+  scopeType: z.enum(["all", "location", "category"]).default("all"),
+  scopeId: optionalUuid,
+  auditorIds: z.array(uuidField).optional(),
+});
+
+export const updateAuditCampaignSchema = createAuditCampaignSchema.partial();
+
+export const auditScanSchema = z.object({
+  assetId: uuidField,
+  locationId: optionalUuid,
+  status: z.enum(["found", "missing", "moved"]).default("found"),
+  notes: optionalString,
+});

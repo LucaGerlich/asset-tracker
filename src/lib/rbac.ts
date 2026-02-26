@@ -64,6 +64,29 @@ export const PERMISSIONS = {
 
   // Import
   'import:execute': 'Execute bulk imports',
+
+  // Components
+  'component:view': 'View components',
+  'component:create': 'Create components',
+  'component:edit': 'Edit components',
+  'component:delete': 'Delete components',
+
+  // EULA
+  'eula:view': 'View EULA templates',
+  'eula:manage': 'Manage EULA templates',
+
+  // Kits
+  'kit:view': 'View predefined kits',
+  'kit:create': 'Create predefined kits',
+  'kit:edit': 'Edit predefined kits',
+  'kit:delete': 'Delete predefined kits',
+  'kit:checkout': 'Checkout predefined kits',
+
+  // Audits
+  'audit_campaign:view': 'View audit campaigns',
+  'audit_campaign:create': 'Create audit campaigns',
+  'audit_campaign:edit': 'Edit audit campaigns',
+  'audit_campaign:scan': 'Scan assets in audit campaigns',
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -86,6 +109,9 @@ export const DEFAULT_ROLES = {
       'accessory:view', 'accessory:create', 'accessory:edit',
       'license:view', 'license:assign',
       'consumable:view',
+      'component:view', 'component:create', 'component:edit',
+      'kit:view', 'kit:checkout',
+      'audit_campaign:view', 'audit_campaign:scan',
       'reservation:view', 'reservation:approve',
       'report:view', 'report:export',
     ] as Permission[],
@@ -99,6 +125,8 @@ export const DEFAULT_ROLES = {
       'accessory:view',
       'license:view',
       'consumable:view',
+      'component:view',
+      'kit:view',
       'reservation:view', 'reservation:create',
       'report:view',
     ] as Permission[],

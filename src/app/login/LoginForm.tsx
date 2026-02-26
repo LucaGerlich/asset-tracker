@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -8,10 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Info } from "lucide-react";
+import { Info, Shield } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface LoginPageProps {
   isDemo?: boolean;
+}
+
+interface SsoStatus {
+  enabled: boolean;
+  provider: string;
+  providerName: string;
 }
 
 export default function LoginPage({ isDemo = false }: LoginPageProps) {
@@ -22,6 +29,16 @@ export default function LoginPage({ isDemo = false }: LoginPageProps) {
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [ssoStatus, setSsoStatus] = useState<SsoStatus | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/sso-status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.enabled) setSsoStatus(data);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -156,6 +173,26 @@ export default function LoginPage({ isDemo = false }: LoginPageProps) {
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
+          {ssoStatus && (
+            <>
+              <div className="relative my-4">
+                <Separator />
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+                  or
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  window.location.href = "/api/auth/sso-init";
+                }}
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Sign in with {ssoStatus.providerName}
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

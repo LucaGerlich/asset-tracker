@@ -135,6 +135,105 @@ const en: Record<string, string> = {
   "table.expirationDate": "Expiration Date",
   "table.seats": "Seats",
 
+  // Components
+  "nav.components": "Components",
+  "nav.componentCategories": "Component Categories",
+  "component.title": "Components",
+  "component.create": "Create Component",
+  "component.edit": "Edit Component",
+  "component.detail": "Component Details",
+  "component.checkout": "Checkout Component",
+  "component.checkin": "Check In Component",
+  "component.name": "Component Name",
+  "component.serialNumber": "Serial Number",
+  "component.category": "Category",
+  "component.totalQuantity": "Total Quantity",
+  "component.remainingQuantity": "Remaining",
+  "component.minQuantity": "Minimum Quantity",
+  "component.checkoutToAsset": "Checkout to Asset",
+  "component.checkedOutBy": "Checked Out By",
+  "component.insufficientStock": "Insufficient stock",
+
+  // Kits
+  "nav.kits": "Kits",
+  "kit.title": "Predefined Kits",
+  "kit.create": "Create Kit",
+  "kit.edit": "Edit Kit",
+  "kit.detail": "Kit Details",
+  "kit.checkout": "Checkout Kit",
+  "kit.items": "Kit Items",
+  "kit.addItem": "Add Item",
+
+  // Audits
+  "nav.audits": "Audits",
+  "audit.title": "Audit Campaigns",
+  "audit.create": "Create Campaign",
+  "audit.scan": "Scan Asset",
+  "audit.found": "Found",
+  "audit.missing": "Missing",
+  "audit.unscanned": "Unscanned",
+  "audit.progress": "Audit Progress",
+
+  // Licence Seats
+  "license.seats": "License Seats",
+  "license.assignSeat": "Assign Seat",
+  "license.unassignSeat": "Unassign Seat",
+  "license.availableSeats": "Available Seats",
+  "license.totalSeats": "Total Seats",
+
+  // Checkout types
+  "checkout.toUser": "Checkout to User",
+  "checkout.toLocation": "Checkout to Location",
+  "checkout.toAsset": "Checkout to Asset",
+  "checkout.type": "Checkout Type",
+  "checkout.bulk": "Bulk Checkout",
+
+  // EULA
+  "eula.title": "EULA Templates",
+  "eula.create": "Create EULA Template",
+  "eula.edit": "Edit EULA Template",
+  "eula.accept": "Accept EULA",
+  "eula.signature": "Digital Signature",
+  "eula.signBelow": "Sign below to accept",
+  "eula.required": "EULA acceptance required",
+  "eula.version": "Version",
+  "eula.active": "Active",
+  "eula.inactive": "Inactive",
+
+  // Bulk Checkout
+  "checkout.bulkTitle": "Bulk Asset Checkout",
+  "checkout.selectedAssets": "{{count}} assets selected",
+  "checkout.bulkSuccess": "Successfully checked out {{count}} assets",
+  "checkout.bulkPartial": "{{success}} succeeded, {{failed}} failed",
+
+  // Audit Campaigns (extended)
+  "audit.edit": "Edit Campaign",
+  "audit.detail": "Campaign Details",
+  "audit.status.draft": "Draft",
+  "audit.status.active": "Active",
+  "audit.status.completed": "Completed",
+  "audit.status.cancelled": "Cancelled",
+  "audit.activate": "Activate Campaign",
+  "audit.complete": "Complete Campaign",
+  "audit.moved": "Moved",
+  "audit.auditors": "Auditors",
+  "audit.scope": "Scope",
+  "audit.dueDate": "Due Date",
+
+  // LDAP / SSO
+  "ldap.title": "LDAP / Active Directory",
+  "ldap.testConnection": "Test Connection",
+  "ldap.syncNow": "Sync Now",
+  "ldap.syncComplete": "Sync complete: {{created}} created, {{updated}} updated, {{deactivated}} deactivated",
+  "ldap.connectionSuccess": "Connection successful. Found {{count}} users.",
+  "ldap.connectionFailed": "Connection failed: {{message}}",
+  "sso.title": "Single Sign-On",
+  "sso.signInWith": "Sign in with {{provider}}",
+  "sso.saml": "SAML 2.0",
+  "sso.oidc": "OpenID Connect",
+  "sso.enabled": "SSO Enabled",
+  "sso.disabled": "SSO Disabled",
+
   // Greeting / interpolation example
   "greeting": "Hello, {{name}}",
   "welcome": "Welcome back, {{name}}",

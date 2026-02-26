@@ -204,10 +204,7 @@ export default function SSOSettingsTab() {
 
     setIsTesting(true);
     try {
-      // Since actual SSO requires a browser redirect flow, we validate that
-      // the configuration is complete and well-formed
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
+      // Validate URLs client-side first
       if (provider === "saml") {
         try {
           new URL(entityId);
@@ -232,10 +229,28 @@ export default function SSOSettingsTab() {
           setIsTesting(false);
           return;
         }
+
+        // For OIDC with discovery URL, try to fetch the discovery document
+        if (discoveryUrl) {
+          try {
+            const discoRes = await fetch(discoveryUrl);
+            if (discoRes.ok) {
+              const disco = await discoRes.json();
+              toast.success(
+                `OIDC Discovery successful. Found authorization endpoint: ${disco.authorization_endpoint ? "Yes" : "No"}, token endpoint: ${disco.token_endpoint ? "Yes" : "No"}`,
+                { duration: 5000 }
+              );
+              setIsTesting(false);
+              return;
+            }
+          } catch {
+            // Discovery fetch failed — continue with basic validation
+          }
+        }
       }
 
       toast.success(
-        "Configuration validated successfully. All required fields are present and URLs are well-formed. To complete SSO setup, save the settings and test with an actual login.",
+        "Configuration validated. All required fields are present and URLs are well-formed. Save settings and test with an actual login to verify the full flow.",
         { duration: 5000 }
       );
     } catch {

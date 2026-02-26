@@ -39,8 +39,22 @@ export async function GET(req) {
       const items = await prisma.licence.findMany({
         where,
         orderBy: { creation_date: "desc" },
+        include: {
+          _count: {
+            select: {
+              seatAssignments: {
+                where: { unassignedAt: null },
+              },
+            },
+          },
+        },
       });
-      return NextResponse.json(items, { status: 200 });
+      const itemsWithAvailability = items.map((item) => ({
+        ...item,
+        assignedSeats: item._count.seatAssignments,
+        availableSeats: item.seatCount - item._count.seatAssignments,
+      }));
+      return NextResponse.json(itemsWithAvailability, { status: 200 });
     }
 
     // Paginated path
@@ -55,13 +69,32 @@ export async function GET(req) {
     }
 
     const [items, total] = await Promise.all([
-      prisma.licence.findMany({ where, ...prismaArgs }),
+      prisma.licence.findMany({
+        where,
+        ...prismaArgs,
+        include: {
+          _count: {
+            select: {
+              seatAssignments: {
+                where: { unassignedAt: null },
+              },
+            },
+          },
+        },
+      }),
       prisma.licence.count({ where }),
     ]);
 
-    return NextResponse.json(buildPaginatedResponse(items, total, params), {
-      status: 200,
-    });
+    const itemsWithAvailability = items.map((item) => ({
+      ...item,
+      assignedSeats: item._count.seatAssignments,
+      availableSeats: item.seatCount - item._count.seatAssignments,
+    }));
+
+    return NextResponse.json(
+      buildPaginatedResponse(itemsWithAvailability, total, params),
+      { status: 200 },
+    );
   } catch (e) {
     logger.error("GET /api/licence error", { error: e });
 
@@ -115,6 +148,12 @@ export async function POST(req) {
       supplierid,
     } = validationResult.data;
 
+    // Accept seatCount from body (default 1)
+    const seatCount =
+      typeof body.seatCount === "number" && body.seatCount >= 1
+        ? body.seatCount
+        : 1;
+
     const created = await prisma.licence.create({
       data: {
         licencekey: licencekey ?? null,
@@ -128,6 +167,7 @@ export async function POST(req) {
         licencecategorytypeid,
         manufacturerid,
         supplierid,
+        seatCount,
         creation_date: new Date(),
       } as Prisma.licenceUncheckedCreateInput,
     });
@@ -211,6 +251,7 @@ export async function PUT(req) {
       licencecategorytypeid,
       manufacturerid,
       supplierid,
+      seatCount,
     } = body;
 
     const updated = await prisma.licence.update({
@@ -237,6 +278,9 @@ export async function PUT(req) {
         ...(licencecategorytypeid !== undefined && { licencecategorytypeid }),
         ...(manufacturerid !== undefined && { manufacturerid }),
         ...(supplierid !== undefined && { supplierid }),
+        ...(seatCount !== undefined &&
+          typeof seatCount === "number" &&
+          seatCount >= 1 && { seatCount }),
         change_date: new Date(),
       },
     });

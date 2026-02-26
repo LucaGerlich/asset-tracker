@@ -32,9 +32,13 @@ model Organization {
   accessories accessories[]
   licences    licence[]
   consumables consumable[]
+  components  Component[]
   roles       Role[]
   webhooks    Webhook[]
   teamInvitations TeamInvitation[]
+  eulaTemplates   EulaTemplate[]
+  kits            Kit[]
+  auditCampaigns  AuditCampaign[]
 
   @@map("organizations")
 }
@@ -352,7 +356,10 @@ model asset {
   reservations          AssetReservation[]
   transfers             AssetTransfer[]
   checkouts             AssetCheckout[]
+  checkoutsReceivedAsAsset AssetCheckout[] @relation("checkout_to_asset")
+  componentCheckouts    ComponentCheckout[]
   userAssets            userAssets[]
+  auditEntries          AuditEntry[]
 
   @@index([assetname])
   @@index([statustypeid])
@@ -371,6 +378,8 @@ model assetCategoryType {
   assetcategorytypename String                 @db.VarChar
   asset                 asset[]
   depreciation_settings depreciation_settings?
+  eulaTemplateId        String?                @db.Uuid
+  eulaTemplate          EulaTemplate?          @relation("category_eula", fields: [eulaTemplateId], references: [id])
 }
 
 model asset_attachments {
@@ -522,6 +531,7 @@ model licence {
   licencecategorytypeid String              @db.Uuid
   manufacturerid        String              @db.Uuid
   supplierid            String              @db.Uuid
+  seatCount             Int                 @default(1)
   organizationId        String?             @db.Uuid
   creation_date         DateTime            @db.Timestamp(6)
   change_date           DateTime?           @db.Timestamp(6)
@@ -530,6 +540,7 @@ model licence {
   organization          Organization?       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   supplier              supplier            @relation(fields: [supplierid], references: [supplierid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_supplier_c_supplierid")
   user                  user?               @relation(fields: [licenceduserid], references: [userid], onDelete: NoAction, onUpdate: NoAction, map: "fk_licence_user_c_licenceduser_userid")
+  seatAssignments       LicenceSeatAssignment[]
 
   @@index([organizationId])
   @@index([licenceduserid])
@@ -557,6 +568,9 @@ model location {
   change_date   DateTime?     @db.Timestamp(6)
   accessories   accessories[]
   asset         asset[]
+  components    Component[]
+  checkoutsReceived AssetCheckout[] @relation("checkout_to_location")
+  auditEntries  AuditEntry[]
 }
 
 model maintenance_logs {
@@ -607,6 +621,7 @@ model manufacturer {
   asset            asset[]
   consumable       consumable[]
   licence          licence[]
+  components       Component[]
 }
 
 model model {
@@ -708,6 +723,7 @@ model supplier {
   asset         asset[]
   consumable    consumable[]
   licence       licence[]
+  components    Component[]
 }
 
 model system_settings {
@@ -772,6 +788,15 @@ model user {
   mfaEnabled                       Boolean                   @default(false)
   mfaSecret                        String?                   @db.VarChar(255)
   mfaBackupCodes                   String[]
+  // Phase 4A: LDAP/SSO fields
+  authProvider                     String                    @default("local") @db.VarChar(20)
+  externalId                       String?                   @db.VarChar(255)
+  ldapDN                           String?
+  lastSyncedAt                     DateTime?                 @db.Timestamp(6)
+  isActive                         Boolean                   @default(true)
+  // Phase 4B: SCIM fields
+  scimProviderId                   String?                   @db.VarChar(255)
+  scimLastSync                     DateTime?                 @db.Timestamp(6)
   accounts                         accounts[]
   asset_attachments                asset_attachments[]
   assetReservations                AssetReservation[]
@@ -800,8 +825,15 @@ model user {
   automationRules                  AutomationRule[]          @relation("automation_creator")
   checkoutsReceived                AssetCheckout[]           @relation("checkout_to")
   checkoutsInitiated               AssetCheckout[]           @relation("checkout_by")
+  componentCheckoutsInitiated      ComponentCheckout[]       @relation("component_checkout_by")
+  licenceSeatAssignments           LicenceSeatAssignment[]   @relation("licence_seat_user")
+  licenceSeatAssignmentsGranted    LicenceSeatAssignment[]   @relation("licence_seat_assigner")
   teamInvitations                  TeamInvitation[]          @relation("invitation_inviter")
   dashboardWidgets                 DashboardWidget[]
+  eulaAcceptances                  EulaAcceptance[]
+  auditCampaignsCreated            AuditCampaign[]           @relation("audit_campaign_creator")
+  auditCampaignAuditorRoles        AuditCampaignAuditor[]
+  auditEntriesAudited              AuditEntry[]              @relation("audit_entry_auditor")
 
   @@index([firstname, lastname])
   @@index([organizationId])
@@ -895,25 +927,33 @@ model verification_tokens {
   @@unique([identifier, token])
 }
 
-// Asset Check-in/Check-out History
+// Asset Check-in/Check-out History (Phase 1B: Polymorphic Checkout)
 model AssetCheckout {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  assetId        String    @db.Uuid
-  asset          asset     @relation(fields: [assetId], references: [assetid], onDelete: Cascade)
-  checkedOutTo   String    @db.Uuid
-  checkedOutToUser user    @relation("checkout_to", fields: [checkedOutTo], references: [userid], onDelete: Cascade)
-  checkedOutBy   String    @db.Uuid
-  checkedOutByUser user    @relation("checkout_by", fields: [checkedOutBy], references: [userid], onDelete: Cascade)
-  checkoutDate   DateTime  @default(now()) @db.Timestamp(6)
-  expectedReturn DateTime? @db.Timestamp(6)
-  returnDate     DateTime? @db.Timestamp(6)
-  notes          String?
-  status         String    @default("checked_out") @db.VarChar(20) // checked_out, returned, overdue
-  createdAt      DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt      DateTime  @updatedAt @db.Timestamp(6)
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId               String    @db.Uuid
+  asset                 asset     @relation(fields: [assetId], references: [assetid], onDelete: Cascade)
+  checkedOutToType      String    @default("user") @db.VarChar(20) // user, location, asset
+  checkedOutTo          String?   @db.Uuid
+  checkedOutToUser      user?     @relation("checkout_to", fields: [checkedOutTo], references: [userid], onDelete: Cascade)
+  checkedOutToLocationId String?  @db.Uuid
+  checkedOutToLocation  location? @relation("checkout_to_location", fields: [checkedOutToLocationId], references: [locationid])
+  checkedOutToAssetId   String?   @db.Uuid
+  checkedOutToAsset     asset?    @relation("checkout_to_asset", fields: [checkedOutToAssetId], references: [assetid])
+  checkedOutBy          String    @db.Uuid
+  checkedOutByUser      user      @relation("checkout_by", fields: [checkedOutBy], references: [userid], onDelete: Cascade)
+  checkoutDate          DateTime  @default(now()) @db.Timestamp(6)
+  expectedReturn        DateTime? @db.Timestamp(6)
+  returnDate            DateTime? @db.Timestamp(6)
+  notes                 String?
+  status                String    @default("checked_out") @db.VarChar(20) // checked_out, returned, overdue
+  createdAt             DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime  @updatedAt @db.Timestamp(6)
+  eulaAcceptance        EulaAcceptance?
 
   @@index([assetId])
   @@index([checkedOutTo])
+  @@index([checkedOutToLocationId])
+  @@index([checkedOutToAssetId])
   @@index([status])
   @@index([assetId, status])
   @@map("asset_checkouts")
@@ -941,6 +981,243 @@ model TeamInvitation {
   @@index([token])
   @@index([status])
   @@map("team_invitations")
+}
+
+// ============================================================================
+// Phase 1A: Components Tracking
+// ============================================================================
+
+model ComponentCategory {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @db.VarChar(100)
+
+  components Component[]
+
+  @@map("component_categories")
+}
+
+model Component {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String    @db.VarChar(255)
+  serialNumber      String?   @db.VarChar(255)
+  categoryId        String    @db.Uuid
+  category          ComponentCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  totalQuantity     Int       @default(0)
+  remainingQuantity Int       @default(0)
+  purchasePrice     Decimal?  @db.Decimal(10, 2)
+  purchaseDate      DateTime? @db.Date
+  minQuantity       Int       @default(0)
+  manufacturerId    String?   @db.Uuid
+  manufacturer      manufacturer? @relation(fields: [manufacturerId], references: [manufacturerid])
+  supplierId        String?   @db.Uuid
+  supplier          supplier? @relation(fields: [supplierId], references: [supplierid])
+  locationId        String?   @db.Uuid
+  location          location? @relation(fields: [locationId], references: [locationid])
+  organizationId    String?   @db.Uuid
+  organization      Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime  @updatedAt @db.Timestamp(6)
+
+  checkouts ComponentCheckout[]
+
+  @@index([categoryId])
+  @@index([organizationId])
+  @@index([manufacturerId])
+  @@index([supplierId])
+  @@index([locationId])
+  @@map("components")
+}
+
+model ComponentCheckout {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  componentId    String    @db.Uuid
+  component      Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  assetId        String    @db.Uuid
+  asset          asset     @relation(fields: [assetId], references: [assetid], onDelete: Cascade)
+  quantity       Int       @default(1)
+  checkedOutBy   String    @db.Uuid
+  checkedOutByUser user    @relation("component_checkout_by", fields: [checkedOutBy], references: [userid])
+  checkedOutAt   DateTime  @default(now()) @db.Timestamp(6)
+  returnedAt     DateTime? @db.Timestamp(6)
+  notes          String?
+
+  @@index([componentId])
+  @@index([assetId])
+  @@map("component_checkouts")
+}
+
+// ============================================================================
+// Phase 1C: Multi-seat License Management
+// ============================================================================
+
+model LicenceSeatAssignment {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  licenceId  String    @db.Uuid
+  licence    licence   @relation(fields: [licenceId], references: [licenceid], onDelete: Cascade)
+  userId     String    @db.Uuid
+  user       user      @relation("licence_seat_user", fields: [userId], references: [userid], onDelete: Cascade)
+  seatNumber Int
+  assignedAt DateTime  @default(now()) @db.Timestamp(6)
+  assignedBy String?   @db.Uuid
+  assignedByUser user? @relation("licence_seat_assigner", fields: [assignedBy], references: [userid])
+  unassignedAt DateTime? @db.Timestamp(6)
+  notes      String?
+
+  @@unique([licenceId, seatNumber])
+  @@unique([licenceId, userId])
+  @@index([licenceId])
+  @@index([userId])
+  @@map("licence_seat_assignments")
+}
+
+// Phase 2A: EULA Templates
+model EulaTemplate {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String   @db.VarChar(200)
+  content        String   // full EULA text (HTML/Markdown)
+  version        Int      @default(1)
+  isActive       Boolean  @default(true)
+  organizationId String?  @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime @updatedAt @db.Timestamp(6)
+
+  acceptances    EulaAcceptance[]
+  categories     assetCategoryType[] @relation("category_eula")
+
+  @@index([organizationId])
+  @@index([isActive])
+  @@map("eula_templates")
+}
+
+// Phase 2A: EULA Acceptances (digital signatures)
+model EulaAcceptance {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eulaTemplateId  String   @db.Uuid
+  eulaTemplate    EulaTemplate @relation(fields: [eulaTemplateId], references: [id], onDelete: Cascade)
+  userId          String   @db.Uuid
+  user            user     @relation(fields: [userId], references: [userid], onDelete: Cascade)
+  checkoutId      String   @unique @db.Uuid
+  checkout        AssetCheckout @relation(fields: [checkoutId], references: [id], onDelete: Cascade)
+  signatureData   String?  // base64 PNG from canvas signature
+  ipAddress       String?  @db.VarChar(45)
+  userAgent       String?  @db.VarChar(500)
+  acceptedAt      DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([eulaTemplateId])
+  @@index([userId])
+  @@index([checkoutId])
+  @@map("eula_acceptances")
+}
+
+// Phase 3A: Predefined Kits
+model Kit {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String   @db.VarChar(200)
+  description    String?
+  isActive       Boolean  @default(true)
+  organizationId String?  @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime @updatedAt @db.Timestamp(6)
+
+  items          KitItem[]
+
+  @@index([organizationId])
+  @@index([isActive])
+  @@map("kits")
+}
+
+// Phase 3A: Kit Items (references categories/templates, not specific instances)
+model KitItem {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kitId      String  @db.Uuid
+  kit        Kit     @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  entityType String  @db.VarChar(30) // asset_category, accessory, licence, component
+  entityId   String  @db.Uuid        // ID of the category/template entity
+  quantity   Int     @default(1)
+  isRequired Boolean @default(true)
+  notes      String?
+
+  @@index([kitId])
+  @@map("kit_items")
+}
+
+// Phase 3B: Audit Campaigns
+model AuditCampaign {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String    @db.VarChar(200)
+  description    String?
+  status         String    @default("draft") @db.VarChar(20) // draft, active, completed, cancelled
+  startDate      DateTime? @db.Timestamp(6)
+  dueDate        DateTime? @db.Timestamp(6)
+  completedAt    DateTime? @db.Timestamp(6)
+  organizationId String?   @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      String    @db.Uuid
+  creator        user      @relation("audit_campaign_creator", fields: [createdBy], references: [userid])
+  scopeType      String    @default("all") @db.VarChar(20) // all, location, category
+  scopeId        String?   @db.Uuid
+  createdAt      DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamp(6)
+
+  auditors       AuditCampaignAuditor[]
+  entries        AuditEntry[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([createdBy])
+  @@map("audit_campaigns")
+}
+
+// Phase 3B: Audit Campaign Auditors
+model AuditCampaignAuditor {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId String        @db.Uuid
+  campaign   AuditCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId     String        @db.Uuid
+  user       user          @relation(fields: [userId], references: [userid], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+  @@map("audit_campaign_auditors")
+}
+
+// Phase 3B: Audit Entries (one per asset per campaign)
+model AuditEntry {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId String        @db.Uuid
+  campaign   AuditCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  assetId    String        @db.Uuid
+  asset      asset         @relation(fields: [assetId], references: [assetid], onDelete: Cascade)
+  status     String        @default("unscanned") @db.VarChar(20) // unscanned, found, missing, moved
+  auditedBy  String?       @db.Uuid
+  auditor    user?         @relation("audit_entry_auditor", fields: [auditedBy], references: [userid])
+  auditedAt  DateTime?     @db.Timestamp(6)
+  locationId String?       @db.Uuid
+  location   location?     @relation(fields: [locationId], references: [locationid])
+  notes      String?
+
+  @@unique([campaignId, assetId])
+  @@index([campaignId])
+  @@index([assetId])
+  @@index([status])
+  @@map("audit_entries")
+}
+
+// Phase 4A: LDAP Sync Log
+model LdapSyncLog {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  status            String   @db.VarChar(20) // success, failed, partial
+  usersCreated      Int      @default(0)
+  usersUpdated      Int      @default(0)
+  usersDeactivated  Int      @default(0)
+  errors            Json?
+  triggeredBy       String?  @db.VarChar(50) // cron, manual, api
+  durationMs        Int?
+  createdAt         DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([createdAt])
+  @@map("ldap_sync_logs")
 }
 
 // Customizable Dashboard Widgets

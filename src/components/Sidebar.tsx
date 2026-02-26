@@ -42,6 +42,9 @@ import {
   BarChart3,
   FileSearch,
   ChevronDown,
+  Cpu,
+  Package,
+  SearchCheck,
 } from "lucide-react";
 import {
   Collapsible,
@@ -65,6 +68,7 @@ const navSections = [
     title: "Inventory",
     items: [
       { label: "Consumables", href: "/consumables", icon: ClipboardList },
+      { label: "Components", href: "/components", icon: Cpu },
       { label: "Licences", href: "/licences", icon: BadgeCheck },
       { label: "Manufacturers", href: "/manufacturers", icon: Factory },
       { label: "Suppliers", href: "/suppliers", icon: Truck },
@@ -96,6 +100,8 @@ const navSections = [
     title: "Tools",
     items: [
       { label: "Maintenance", href: "/maintenance", icon: Wrench },
+      { label: "Kits", href: "/kits", icon: Package },
+      { label: "Audits", href: "/audits", icon: SearchCheck },
       { label: "Approvals", href: "/approvals", icon: ClipboardCheck },
       { label: "QR Scanner", href: "/scanner", icon: QrCode },
       { label: "Import", href: "/import", icon: Upload },

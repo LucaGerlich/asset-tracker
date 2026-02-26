@@ -19,6 +19,10 @@
     {
       "path": "/api/cron/gdpr-retention",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/ldap-sync",
+      "schedule": "0 */2 * * *"
     }
   ]
 }
