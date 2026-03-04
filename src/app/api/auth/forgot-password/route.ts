@@ -46,6 +46,21 @@ export async function POST(req: Request) {
       );
     }
 
+    // Per-email rate limit (prevents flooding a single account)
+    const emailRl = checkRateLimit(
+      `password-reset-email:${email.toLowerCase().trim()}`,
+      { maxRequests: 3, windowMs: 60 * 60 * 1000 },
+    );
+    if (!emailRl.success) {
+      return NextResponse.json(
+        {
+          message:
+            "If an account with that email exists, we've sent a password reset link.",
+        },
+        { status: 200 },
+      );
+    }
+
     const user = await prisma.user.findFirst({
       where: { email: email.toLowerCase().trim() },
     });

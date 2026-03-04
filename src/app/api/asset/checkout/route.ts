@@ -5,6 +5,10 @@ import { validateBody, assetCheckoutSchema } from "@/lib/validations";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
+import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
 // GET /api/asset/checkout?assetId=<uuid>
@@ -65,6 +69,8 @@ export async function POST(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const user = await requireApiAuth();
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
 
     const body = await req.json();
     const data = validateBody(assetCheckoutSchema, body);
@@ -80,9 +86,9 @@ export async function POST(req: Request) {
       notes,
     } = data;
 
-    // Validate asset exists
-    const asset = await prisma.asset.findUnique({
-      where: { assetid: assetId },
+    // Validate asset exists and belongs to user's organization
+    const asset = await prisma.asset.findFirst({
+      where: scopeToOrganization({ assetid: assetId }, orgId),
     });
 
     if (!asset) {
@@ -138,8 +144,10 @@ export async function POST(req: Request) {
         assetId,
         checkedOutToType,
         checkedOutTo: checkedOutToType === "user" ? checkedOutTo : null,
-        checkedOutToLocationId: checkedOutToType === "location" ? checkedOutToLocationId : null,
-        checkedOutToAssetId: checkedOutToType === "asset" ? checkedOutToAssetId : null,
+        checkedOutToLocationId:
+          checkedOutToType === "location" ? checkedOutToLocationId : null,
+        checkedOutToAssetId:
+          checkedOutToType === "asset" ? checkedOutToAssetId : null,
         checkedOutBy: user.id as string,
         expectedReturn: expectedReturn ? new Date(expectedReturn) : null,
         notes: notes || null,

@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import { requireNotDemoMode, requirePermission } from "@/lib/api-auth";
 import { validateBody, bulkCheckoutSchema } from "@/lib/validations";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
+import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
 // POST /api/asset/checkout/bulk
@@ -13,7 +17,9 @@ export async function POST(req: Request) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    const user = await requireApiAuth();
+    const user = await requirePermission("asset:assign");
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
 
     const body = await req.json();
     const data = validateBody(bulkCheckoutSchema, body);
@@ -67,13 +73,15 @@ export async function POST(req: Request) {
       targetLabel = targetAsset.assetname || targetAsset.assettag;
     }
 
-    // Fetch all requested assets
+    // Fetch all requested assets scoped to organization
     const foundAssets = await prisma.asset.findMany({
-      where: { assetid: { in: assetIds } },
+      where: scopeToOrganization({ assetid: { in: assetIds } }, orgId),
     });
 
     const foundAssetIds = new Set(foundAssets.map((a) => a.assetid));
-    const missingAssetIds = assetIds.filter((id: string) => !foundAssetIds.has(id));
+    const missingAssetIds = assetIds.filter(
+      (id: string) => !foundAssetIds.has(id),
+    );
 
     // Prevent checking out an asset to itself
     if (checkedOutToType === "asset") {
@@ -144,10 +152,7 @@ export async function POST(req: Request) {
       reason: "Asset not found",
     }));
 
-    return NextResponse.json(
-      { success: checkouts, failed },
-      { status: 201 },
-    );
+    return NextResponse.json({ success: checkouts, failed }, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     logger.error("POST /api/asset/checkout/bulk error", { error: message });

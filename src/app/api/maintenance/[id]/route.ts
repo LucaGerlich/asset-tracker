@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
 interface RouteParams {
@@ -11,11 +15,16 @@ interface RouteParams {
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     await requireApiAuth();
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
 
     const { id } = await params;
 
-    const schedule = await prisma.maintenance_schedules.findUnique({
-      where: { id },
+    const schedule = await prisma.maintenance_schedules.findFirst({
+      where: {
+        id,
+        ...(orgId ? { asset: { organizationId: orgId } } : {}),
+      },
       include: {
         asset: {
           select: { assetid: true, assetname: true },
@@ -65,8 +74,14 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const body = await req.json();
 
-    const existing = await prisma.maintenance_schedules.findUnique({
-      where: { id },
+    const orgCtx2 = await getOrganizationContext();
+    const orgId2 = orgCtx2?.organization?.id;
+
+    const existing = await prisma.maintenance_schedules.findFirst({
+      where: {
+        id,
+        ...(orgId2 ? { asset: { organizationId: orgId2 } } : {}),
+      },
     });
 
     if (!existing) {
@@ -153,11 +168,16 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     await requireApiAuth();
+    const orgCtx3 = await getOrganizationContext();
+    const orgId3 = orgCtx3?.organization?.id;
 
     const { id } = await params;
 
-    const existing = await prisma.maintenance_schedules.findUnique({
-      where: { id },
+    const existing = await prisma.maintenance_schedules.findFirst({
+      where: {
+        id,
+        ...(orgId3 ? { asset: { organizationId: orgId3 } } : {}),
+      },
     });
 
     if (!existing) {

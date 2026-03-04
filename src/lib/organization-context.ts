@@ -1,5 +1,5 @@
-import { auth } from '@/auth';
-import prisma from './prisma';
+import { auth } from "@/auth";
+import prisma from "./prisma";
 
 export interface OrganizationContext {
   organization: {
@@ -30,10 +30,10 @@ export async function getOrganizationContext(): Promise<OrganizationContext | nu
       organization: true,
       roles: {
         include: {
-          role: true
-        }
-      }
-    }
+          role: true,
+        },
+      },
+    },
   });
 
   if (!user) {
@@ -42,8 +42,8 @@ export async function getOrganizationContext(): Promise<OrganizationContext | nu
 
   // Collect permissions from roles
   const permissions = new Set<string>();
-  user.roles.forEach(userRole => {
-    userRole.role.permissions.forEach(perm => {
+  user.roles.forEach((userRole) => {
+    userRole.role.permissions.forEach((perm) => {
       permissions.add(perm);
     });
   });
@@ -51,17 +51,22 @@ export async function getOrganizationContext(): Promise<OrganizationContext | nu
   // Admins have all permissions
   if (user.isadmin) {
     // Import permission list from rbac
-    const { PERMISSIONS } = await import('./rbac');
-    Object.keys(PERMISSIONS).forEach(perm => permissions.add(perm));
+    const { PERMISSIONS } = await import("./rbac");
+    Object.keys(PERMISSIONS).forEach((perm) => permissions.add(perm));
   }
 
   return {
-    organization: user.organization ? {
-      id: user.organization.id,
-      name: user.organization.name,
-      slug: user.organization.slug,
-      settings: user.organization.settings as Record<string, unknown> | null,
-    } : null,
+    organization: user.organization
+      ? {
+          id: user.organization.id,
+          name: user.organization.name,
+          slug: user.organization.slug,
+          settings: user.organization.settings as Record<
+            string,
+            unknown
+          > | null,
+        }
+      : null,
     userId: user.userid,
     departmentId: user.departmentId,
     isAdmin: user.isadmin,
@@ -75,10 +80,15 @@ export async function getOrganizationContext(): Promise<OrganizationContext | nu
  */
 export function scopeToOrganization<T extends Record<string, unknown>>(
   baseWhere: T,
-  organizationId?: string | null
+  organizationId?: string | null,
 ): T {
   if (!organizationId) {
-    return baseWhere;
+    // Fail closed: when no org is available, only match records with no org
+    // This prevents users without an organization from seeing all tenant data
+    return {
+      ...baseWhere,
+      organizationId: null,
+    };
   }
 
   return {
@@ -93,11 +103,13 @@ export function scopeToOrganization<T extends Record<string, unknown>>(
 export async function canAccessResource(
   resourceOrganizationId: string | null | undefined,
   userOrganizationId: string | null | undefined,
-  isAdmin: boolean
+  isAdmin: boolean,
 ): Promise<boolean> {
-  // Admins can access all resources
+  // Admins can access resources within their own organization or unscoped resources
   if (isAdmin) {
-    return true;
+    if (!resourceOrganizationId) return true;
+    if (!userOrganizationId) return true;
+    return resourceOrganizationId === userOrganizationId;
   }
 
   // If resource has no organization, it's accessible by all

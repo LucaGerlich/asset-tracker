@@ -43,7 +43,9 @@ export function getSecurityHeaders(): Record<string, string> {
 
   if (!isLocalhost()) {
     headers["Strict-Transport-Security"] =
-      "max-age=31536000; includeSubDomains";
+      "max-age=31536000; includeSubDomains; preload";
+    headers["Content-Security-Policy"] =
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
   }
 
   return headers;

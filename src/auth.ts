@@ -16,6 +16,7 @@ import { createSessionRecord } from "@/lib/session-tracking";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
 import { verifyMfaToken, verifyBackupCode } from "@/lib/mfa";
+import crypto from "crypto";
 
 // Login schema validation
 const loginSchema = z.object({
@@ -23,12 +24,51 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-// MFA login schema (second step — username + mfaToken, no password)
+// MFA login schema (second step — username + mfaToken + mfaChallenge, no password)
 const mfaLoginSchema = z.object({
   username: z.string().min(3).max(50),
   mfaToken: z.string().min(1),
   isBackupCode: z.string().optional(),
+  mfaChallenge: z.string().optional(),
 });
+
+// MFA challenge token helpers — binds step 2 to a successful step 1
+const MFA_CHALLENGE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function createMfaChallenge(userId: string): string {
+  const secret =
+    process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "fallback";
+  const expires = Date.now() + MFA_CHALLENGE_TTL;
+  const payload = `${userId}:${expires}`;
+  const hmac = crypto
+    .createHmac("sha256", secret)
+    .update(payload)
+    .digest("hex");
+  return `${payload}:${hmac}`;
+}
+
+function verifyMfaChallenge(
+  challenge: string | undefined,
+  userId: string,
+): boolean {
+  if (!challenge) return false;
+  const secret =
+    process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "fallback";
+  const parts = challenge.split(":");
+  if (parts.length !== 3) return false;
+  const [challengeUserId, expiresStr, providedHmac] = parts;
+  if (challengeUserId !== userId) return false;
+  const expires = parseInt(expiresStr, 10);
+  if (Date.now() > expires) return false;
+  const expectedHmac = crypto
+    .createHmac("sha256", secret)
+    .update(`${challengeUserId}:${expiresStr}`)
+    .digest("hex");
+  return crypto.timingSafeEqual(
+    Buffer.from(providedHmac),
+    Buffer.from(expectedHmac),
+  );
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -61,6 +101,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.mfaPending = (user as Record<string, unknown>).mfaPending as
           | boolean
           | undefined;
+        token.mfaChallenge = (user as Record<string, unknown>).mfaChallenge as
+          | string
+          | undefined;
         token.sessionVersion = Date.now();
       }
 
@@ -75,12 +118,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           try {
             const dbUser = await prisma.user.findUnique({
               where: { userid: token.id as string },
-              select: { userid: true },
+              select: { userid: true, isadmin: true, isActive: true },
             });
-            if (!dbUser) {
-              // User deleted — invalidate session
+            if (!dbUser || dbUser.isActive === false) {
+              // User deleted or deactivated — invalidate session
               return null as unknown as typeof token;
             }
+            // Refresh admin status from DB to catch privilege changes
+            token.isAdmin = dbUser.isadmin;
             token.sessionVersion = Date.now();
           } catch {
             // DB error — don't invalidate, just skip revalidation
@@ -99,6 +144,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
         mfaToken: { label: "MFA Token", type: "text" },
         isBackupCode: { label: "Is Backup Code", type: "text" },
+        mfaChallenge: { label: "MFA Challenge", type: "text" },
       },
       async authorize(credentials) {
         try {
@@ -121,7 +167,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // ---- MFA VERIFICATION PATH ----
           // If mfaToken is provided, this is the second step of login
           if (rawMfaToken && rawMfaToken.length > 0) {
-            const { username, mfaToken, isBackupCode } =
+            const { username, mfaToken, isBackupCode, mfaChallenge } =
               mfaLoginSchema.parse(credentials);
 
             const user = await prisma.user.findUnique({
@@ -145,6 +191,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             if (!user || !user.mfaEnabled || !user.mfaSecret) {
               logger.warn(
                 "MFA verification failed - invalid user or MFA not enabled",
+                { username },
+              );
+              return null;
+            }
+
+            // Verify the MFA challenge token from step 1 (binds step 2 to step 1)
+            if (!verifyMfaChallenge(mfaChallenge, user.userid)) {
+              logger.warn(
+                "MFA verification failed - invalid or expired challenge token",
                 { username },
               );
               return null;
@@ -339,7 +394,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               details: { username, method: "ldap" },
             });
 
-            logger.info("LDAP login successful", { username, userId: user.userid });
+            logger.info("LDAP login successful", {
+              username,
+              userId: user.userid,
+            });
 
             if (user.mfaEnabled) {
               return {
@@ -354,6 +412,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 organizationId: user.organizationId || undefined,
                 departmentId: user.departmentId || undefined,
                 mfaPending: true,
+                mfaChallenge: createMfaChallenge(user.userid),
               };
             }
 
@@ -406,7 +465,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null;
           }
 
-          // If MFA is enabled, return user with mfaPending flag
+          // If MFA is enabled, return user with mfaPending flag + challenge token
           // The user will need to complete MFA verification before getting full access
           if (user.mfaEnabled) {
             logger.info("Login requires MFA verification", {
@@ -426,6 +485,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               organizationId: user.organizationId || undefined,
               departmentId: user.departmentId || undefined,
               mfaPending: true,
+              mfaChallenge: createMfaChallenge(user.userid),
             };
           }
 

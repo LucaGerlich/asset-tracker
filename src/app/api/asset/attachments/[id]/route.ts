@@ -1,28 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
 import prisma from "@/lib/prisma";
+import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
 import { unlink } from "fs/promises";
 import { join } from "path";
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     await requireApiAuth();
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
 
     const { id } = await params;
 
-    const attachment = await prisma.asset_attachments.findUnique({
-      where: { id },
+    const attachment = await prisma.asset_attachments.findFirst({
+      where: {
+        id,
+        ...(orgId ? { asset: { organizationId: orgId } } : {}),
+      },
     });
 
     if (!attachment) {
       return NextResponse.json(
         { error: "Attachment not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -44,32 +53,37 @@ export async function DELETE(
     }
     return NextResponse.json(
       { error: "Failed to delete attachment" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     await requireApiAuth();
+    const orgCtx2 = await getOrganizationContext();
+    const orgId2 = orgCtx2?.organization?.id;
 
     const { id } = await params;
     const body = await req.json();
     const { isPrimary } = body;
 
-    const attachment = await prisma.asset_attachments.findUnique({
-      where: { id },
+    const attachment = await prisma.asset_attachments.findFirst({
+      where: {
+        id,
+        ...(orgId2 ? { asset: { organizationId: orgId2 } } : {}),
+      },
     });
 
     if (!attachment) {
       return NextResponse.json(
         { error: "Attachment not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -92,7 +106,7 @@ export async function PATCH(
     }
     return NextResponse.json(
       { error: "Failed to update attachment" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

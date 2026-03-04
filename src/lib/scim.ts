@@ -9,6 +9,7 @@ import prisma from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import crypto from "crypto";
 
 // ---------------------------------------------------------------------------
 // SCIM Bearer Token Auth
@@ -24,10 +25,10 @@ export async function authenticateScim(
   const authHeader = req.headers.get("authorization");
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return NextResponse.json(
-      scimError("Unauthorized", 401),
-      { status: 401, headers: scimHeaders() },
-    );
+    return NextResponse.json(scimError("Unauthorized", 401), {
+      status: 401,
+      headers: scimHeaders(),
+    });
   }
 
   const token = authHeader.slice(7);
@@ -37,21 +38,26 @@ export async function authenticateScim(
   });
 
   if (!tokenRow || !tokenRow.settingValue) {
-    return NextResponse.json(
-      scimError("SCIM is not configured", 403),
-      { status: 403, headers: scimHeaders() },
-    );
+    return NextResponse.json(scimError("SCIM is not configured", 403), {
+      status: 403,
+      headers: scimHeaders(),
+    });
   }
 
   const storedToken = tokenRow.isEncrypted
     ? decrypt(tokenRow.settingValue)
     : tokenRow.settingValue;
 
-  if (token !== storedToken) {
-    return NextResponse.json(
-      scimError("Invalid bearer token", 401),
-      { status: 401, headers: scimHeaders() },
-    );
+  const tokenBuf = Buffer.from(token);
+  const storedBuf = Buffer.from(storedToken);
+  if (
+    tokenBuf.length !== storedBuf.length ||
+    !crypto.timingSafeEqual(tokenBuf, storedBuf)
+  ) {
+    return NextResponse.json(scimError("Invalid bearer token", 401), {
+      status: 401,
+      headers: scimHeaders(),
+    });
   }
 
   return null; // Auth passed

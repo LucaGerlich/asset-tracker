@@ -47,7 +47,9 @@ export async function GET(req) {
     const id = searchParams.get("id");
 
     if (id) {
-      const asset = await prisma.asset.findUnique({ where: { assetid: id } });
+      const asset = await prisma.asset.findFirst({
+        where: scopeToOrganization({ assetid: id }, orgId),
+      });
       if (!asset) {
         return NextResponse.json(
           { error: `Asset with id ${id} not found` },

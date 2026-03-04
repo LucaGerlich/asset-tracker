@@ -135,9 +135,15 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, status } = body as { id: string; status: string };
 
-    if (!id || !status) {
+    const allowedStatuses = ["cancelled", "revoked"];
+    if (!id || !status || !allowedStatuses.includes(status)) {
       return NextResponse.json(
-        { error: "Invitation ID and status are required" },
+        {
+          error:
+            !id || !status
+              ? "Invitation ID and status are required"
+              : `Status must be one of: ${allowedStatuses.join(", ")}`,
+        },
         { status: 400 },
       );
     }

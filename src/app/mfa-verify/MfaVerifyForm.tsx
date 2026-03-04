@@ -29,18 +29,21 @@ export default function MfaVerifyForm() {
 
     try {
       const username = session?.user?.username;
-      if (!username) {
+      const mfaChallenge = (session?.user as Record<string, unknown>)
+        ?.mfaChallenge as string | undefined;
+      if (!username || !mfaChallenge) {
         setError("Session expired. Please log in again.");
         setIsLoading(false);
         return;
       }
 
-      // Call signIn with MFA token — this triggers the mfaToken path in authorize()
+      // Call signIn with MFA token + challenge — this triggers the mfaToken path in authorize()
       const result = await signIn("credentials", {
         username,
         password: "mfa-bypass",
         mfaToken: code.trim(),
         isBackupCode: useBackupCode ? "true" : "false",
+        mfaChallenge,
         redirect: false,
       });
 
@@ -48,7 +51,7 @@ export default function MfaVerifyForm() {
         setError(
           useBackupCode
             ? "Invalid backup code. Please try again."
-            : "Invalid verification code. Please try again."
+            : "Invalid verification code. Please try again.",
         );
         setIsLoading(false);
       } else {
@@ -64,7 +67,7 @@ export default function MfaVerifyForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="bg-background flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">
@@ -98,7 +101,7 @@ export default function MfaVerifyForm() {
             </div>
 
             {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
                 {error}
               </div>
             )}
@@ -110,7 +113,7 @@ export default function MfaVerifyForm() {
             <div className="text-center">
               <button
                 type="button"
-                className="text-sm text-muted-foreground hover:text-foreground underline"
+                className="text-muted-foreground hover:text-foreground text-sm underline"
                 onClick={() => {
                   setUseBackupCode(!useBackupCode);
                   setCode("");

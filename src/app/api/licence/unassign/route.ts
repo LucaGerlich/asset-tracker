@@ -1,5 +1,9 @@
 import prisma from "../../../../lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
 // DELETE /api/licence/unassign
@@ -9,12 +13,26 @@ export async function DELETE(req) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     await requirePermission("license:assign");
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
     const { licenceId } = await req.json();
     if (!licenceId) {
       return new Response(JSON.stringify({ error: "licenceId is required" }), {
         status: 400,
       });
     }
+
+    // Verify licence belongs to user's organization
+    const licence = await prisma.licence.findFirst({
+      where: scopeToOrganization({ licenceid: licenceId }, orgId),
+      select: { licenceid: true },
+    });
+    if (!licence) {
+      return new Response(JSON.stringify({ error: "Licence not found" }), {
+        status: 404,
+      });
+    }
+
     const updated = await prisma.licence.update({
       where: { licenceid: licenceId },
       data: { licenceduserid: null, change_date: new Date() },

@@ -84,13 +84,22 @@ function createClient(settings: LdapSettings): ldap.Client {
 
   return ldap.createClient({
     url,
-    tlsOptions: settings.useTLS ? { rejectUnauthorized: false } : undefined,
+    tlsOptions: settings.useTLS
+      ? {
+          rejectUnauthorized:
+            process.env.LDAP_TLS_REJECT_UNAUTHORIZED !== "false",
+        }
+      : undefined,
     connectTimeout: 10_000,
     timeout: 30_000,
   });
 }
 
-function bindAsync(client: ldap.Client, dn: string, password: string): Promise<void> {
+function bindAsync(
+  client: ldap.Client,
+  dn: string,
+  password: string,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     client.bind(dn, password, (err) => {
       if (err) reject(err);
@@ -177,7 +186,11 @@ export async function testConnection(settings?: LdapSettings): Promise<{
       userCount: users.length,
     };
   } catch (err: any) {
-    try { await unbindAsync(client); } catch { /* ignore */ }
+    try {
+      await unbindAsync(client);
+    } catch {
+      /* ignore */
+    }
     const msg = err.message || String(err);
     logger.error("LDAP test connection failed", { error: msg });
     return { success: false, message: `Connection failed: ${msg}` };
@@ -206,7 +219,13 @@ export async function syncUsers(
   let deactivated = 0;
 
   if (!cfg.enabled) {
-    return { success: false, created: 0, updated: 0, deactivated: 0, errors: ["LDAP is not enabled"] };
+    return {
+      success: false,
+      created: 0,
+      updated: 0,
+      deactivated: 0,
+      errors: ["LDAP is not enabled"],
+    };
   }
 
   const client = createClient(cfg);
@@ -254,10 +273,7 @@ export async function syncUsers(
         // Check if user already exists by externalId or username
         const existingUser = await prisma.user.findFirst({
           where: {
-            OR: [
-              { externalId },
-              { username },
-            ],
+            OR: [{ externalId }, { username }],
           },
         });
 
@@ -348,7 +364,11 @@ export async function syncUsers(
 
     return { success: true, created, updated, deactivated, errors };
   } catch (err: any) {
-    try { await unbindAsync(client); } catch { /* ignore */ }
+    try {
+      await unbindAsync(client);
+    } catch {
+      /* ignore */
+    }
 
     const durationMs = Date.now() - startTime;
     await prisma.ldapSyncLog.create({
@@ -364,7 +384,13 @@ export async function syncUsers(
     });
 
     logger.error("LDAP sync failed", { error: err.message });
-    return { success: false, created, updated, deactivated, errors: [err.message, ...errors] };
+    return {
+      success: false,
+      created,
+      updated,
+      deactivated,
+      errors: [err.message, ...errors],
+    };
   }
 }
 
@@ -412,11 +438,19 @@ export async function authenticateUser(
       await unbindAsync(userClient);
       return { success: true, dn: userDN };
     } catch {
-      try { await unbindAsync(userClient); } catch { /* ignore */ }
+      try {
+        await unbindAsync(userClient);
+      } catch {
+        /* ignore */
+      }
       return { success: false };
     }
   } catch (err: any) {
-    try { await unbindAsync(client); } catch { /* ignore */ }
+    try {
+      await unbindAsync(client);
+    } catch {
+      /* ignore */
+    }
     logger.error("LDAP authentication error", { error: err.message, username });
     return { success: false };
   }

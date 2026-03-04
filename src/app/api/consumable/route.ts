@@ -269,10 +269,13 @@ export async function DELETE(req) {
       );
     }
 
-    // Get consumable details before deletion for audit log
-    const consumable = await prisma.consumable.findUnique({
-      where: { consumableid },
-      select: { consumablename: true },
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+
+    // Verify consumable belongs to user's organization
+    const consumable = await prisma.consumable.findFirst({
+      where: scopeToOrganization({ consumableid }, orgId),
+      select: { consumablename: true, consumableid: true },
     });
 
     if (!consumable) {

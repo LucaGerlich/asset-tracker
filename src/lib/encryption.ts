@@ -28,7 +28,7 @@ function getKey(): Buffer | null {
     if (!_warnedMissingKey) {
       console.warn(
         "[encryption] ENCRYPTION_KEY is not set — sensitive data will NOT be " +
-          "encrypted at rest. Generate one with: openssl rand -hex 32"
+          "encrypted at rest. Generate one with: openssl rand -hex 32",
       );
       _warnedMissingKey = true;
     }
@@ -36,7 +36,7 @@ function getKey(): Buffer | null {
   }
   if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
     throw new Error(
-      "ENCRYPTION_KEY must be a 64-character hex string (32 bytes)."
+      "ENCRYPTION_KEY must be a 64-character hex string (32 bytes).",
     );
   }
   return Buffer.from(hex, "hex");
@@ -50,7 +50,14 @@ function getKey(): Buffer | null {
  */
 export function encrypt(plaintext: string): string {
   const key = getKey();
-  if (!key) return plaintext;
+  if (!key) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "ENCRYPTION_KEY is required in production. Generate one with: openssl rand -hex 32",
+      );
+    }
+    return plaintext;
+  }
 
   const iv = crypto.randomBytes(IV_LENGTH);
 

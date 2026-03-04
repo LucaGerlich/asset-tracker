@@ -13,6 +13,7 @@ interface ExtendedUser extends User {
   organizationId?: string;
   departmentId?: string;
   mfaPending?: boolean;
+  mfaChallenge?: string;
 }
 
 // Extended JWT type with custom fields
@@ -27,6 +28,7 @@ interface ExtendedJWT extends JWT {
   departmentId?: string;
   permissions?: string[];
   mfaPending?: boolean;
+  mfaChallenge?: string;
   sessionVersion?: number;
 }
 
@@ -43,6 +45,7 @@ interface ExtendedSession extends Session {
     departmentId?: string;
     permissions?: string[];
     mfaPending?: boolean;
+    mfaChallenge?: string;
     name?: string | null;
     email?: string | null;
     image?: string | null;
@@ -133,6 +136,7 @@ export const authConfig: NextAuthConfig = {
         token.organizationId = user.organizationId;
         token.departmentId = user.departmentId;
         token.mfaPending = user.mfaPending;
+        token.mfaChallenge = user.mfaChallenge;
       }
       return token;
     },
@@ -155,6 +159,7 @@ export const authConfig: NextAuthConfig = {
         session.user.departmentId = token.departmentId;
         session.user.permissions = token.permissions;
         session.user.mfaPending = token.mfaPending;
+        session.user.mfaChallenge = token.mfaChallenge;
       }
       return session;
     },

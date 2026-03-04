@@ -88,45 +88,51 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
     }
 
-    // Check for overlapping reservations (same asset, overlapping dates, status not cancelled/rejected)
-    const overlapping = await prisma.assetReservation.findFirst({
-      where: {
-        assetId,
-        status: { notIn: ["cancelled", "rejected"] },
-        OR: [
-          {
-            startDate: { lte: end },
-            endDate: { gte: start },
+    // Atomic overlap check + create to prevent race conditions
+    const reservation = await prisma.$transaction(async (tx) => {
+      const overlapping = await tx.assetReservation.findFirst({
+        where: {
+          assetId,
+          status: { notIn: ["cancelled", "rejected"] },
+          OR: [
+            {
+              startDate: { lte: end },
+              endDate: { gte: start },
+            },
+          ],
+        },
+      });
+
+      if (overlapping) {
+        return null;
+      }
+
+      return tx.assetReservation.create({
+        data: {
+          assetId,
+          userId: session.user.id!,
+          startDate: start,
+          endDate: end,
+          notes: notes || null,
+          status: "pending",
+        },
+        include: {
+          asset: {
+            select: { assetid: true, assetname: true, assettag: true },
           },
-        ],
-      },
+          user: {
+            select: { userid: true, firstname: true, lastname: true },
+          },
+        },
+      });
     });
 
-    if (overlapping) {
+    if (!reservation) {
       return NextResponse.json(
         { error: "Asset already has a reservation for the selected dates" },
         { status: 409 },
       );
     }
-
-    const reservation = await prisma.assetReservation.create({
-      data: {
-        assetId,
-        userId: session.user.id!,
-        startDate: start,
-        endDate: end,
-        notes: notes || null,
-        status: "pending",
-      },
-      include: {
-        asset: {
-          select: { assetid: true, assetname: true, assettag: true },
-        },
-        user: {
-          select: { userid: true, firstname: true, lastname: true },
-        },
-      },
-    });
 
     return NextResponse.json(reservation, { status: 201 });
   } catch (error) {

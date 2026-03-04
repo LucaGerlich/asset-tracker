@@ -2,6 +2,31 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { logger } from "@/lib/logger";
 
+function isInternalUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    if (url.protocol !== "https:") return true;
+    const hostname = url.hostname.toLowerCase();
+    // Block localhost, private IPs, link-local, metadata endpoints
+    if (
+      hostname === "localhost" ||
+      hostname === "[::1]" ||
+      /^127\./.test(hostname) ||
+      /^10\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      /^169\.254\./.test(hostname) ||
+      hostname.endsWith(".internal") ||
+      hostname.endsWith(".local")
+    ) {
+      return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const session = await auth();
@@ -15,6 +40,13 @@ export async function POST(req: Request) {
     if (!webhookUrl) {
       return NextResponse.json(
         { error: "Webhook URL is required" },
+        { status: 400 },
+      );
+    }
+
+    if (isInternalUrl(webhookUrl)) {
+      return NextResponse.json(
+        { error: "Webhook URL must be a public HTTPS URL" },
         { status: 400 },
       );
     }

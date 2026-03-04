@@ -18,71 +18,69 @@ export async function POST(req: Request) {
       );
     }
 
-    if (typeof password !== "string" || password.length < 8) {
+    if (typeof password !== "string" || password.length < 12) {
       return NextResponse.json(
-        { error: "Password must be at least 8 characters" },
+        { error: "Password must be at least 12 characters" },
         { status: 400 },
       );
     }
 
-    // Find and validate token
-    const verificationToken = await prisma.verification_tokens.findFirst({
-      where: {
-        identifier: email.toLowerCase().trim(),
-        token,
-      },
-    });
+    // Hash password before transaction to minimize transaction duration
+    const normalizedEmail = email.toLowerCase().trim();
+    const hashedPassword = await hashPassword(password);
 
-    if (!verificationToken) {
-      return NextResponse.json(
-        { error: "Invalid or expired reset link" },
-        { status: 400 },
-      );
-    }
+    // Atomic transaction: find token, validate, update password, delete token
+    const result = await prisma.$transaction(async (tx) => {
+      const verificationToken = await tx.verification_tokens.findFirst({
+        where: { identifier: normalizedEmail, token },
+      });
 
-    if (verificationToken.expires < new Date()) {
-      // Clean up expired token
-      await prisma.verification_tokens.deleteMany({
+      if (!verificationToken) {
+        return { error: "Invalid or expired reset link", status: 400 };
+      }
+
+      if (verificationToken.expires < new Date()) {
+        await tx.verification_tokens.deleteMany({
+          where: {
+            identifier: verificationToken.identifier,
+            token: verificationToken.token,
+          },
+        });
+        return {
+          error: "Reset link has expired. Please request a new one.",
+          status: 400,
+        };
+      }
+
+      const user = await tx.user.findFirst({
+        where: { email: normalizedEmail },
+      });
+
+      if (!user) {
+        return { error: "Invalid or expired reset link", status: 400 };
+      }
+
+      await tx.user.update({
+        where: { userid: user.userid },
+        data: { password: hashedPassword, change_date: new Date() },
+      });
+
+      await tx.verification_tokens.deleteMany({
         where: {
           identifier: verificationToken.identifier,
           token: verificationToken.token,
         },
       });
+
+      return null;
+    });
+
+    if (result) {
       return NextResponse.json(
-        { error: "Reset link has expired. Please request a new one." },
-        { status: 400 },
+        { error: result.error },
+        { status: result.status },
       );
     }
-
-    // Find user
-    const user = await prisma.user.findFirst({
-      where: { email: email.toLowerCase().trim() },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Invalid or expired reset link" },
-        { status: 400 },
-      );
-    }
-
-    // Hash new password and update user
-    const hashedPassword = await hashPassword(password);
-    await prisma.user.update({
-      where: { userid: user.userid },
-      data: {
-        password: hashedPassword,
-        change_date: new Date(),
-      },
-    });
-
-    // Delete the used token
-    await prisma.verification_tokens.deleteMany({
-      where: {
-        identifier: verificationToken.identifier,
-        token: verificationToken.token,
-      },
-    });
 
     return NextResponse.json(
       { message: "Password has been reset successfully" },
