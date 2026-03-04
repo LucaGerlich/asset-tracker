@@ -1,8 +1,8 @@
 {
-  "name": "frontend",
+  "name": "asset-tracker",
   "version": "0.1.0",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "dev": "NODE_OPTIONS='--inspect' next dev --turbopack",
     "build": "next build",

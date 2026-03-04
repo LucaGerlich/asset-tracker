@@ -45,3 +45,7 @@ next-env.d.ts
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# lockfiles (bun.lock is the canonical lockfile)
+package-lock.json
+bun.lockb
