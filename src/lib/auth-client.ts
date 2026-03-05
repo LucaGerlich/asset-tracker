@@ -7,6 +7,7 @@
 
 import { createAuthClient } from "better-auth/react";
 import { twoFactorClient } from "better-auth/client/plugins";
+import { usernameClient } from "better-auth/plugins/username/client";
 
 /** User fields available in BetterAuth session (includes additionalFields) */
 export interface SessionUser {
@@ -33,7 +34,7 @@ export interface SessionUser {
 
 export const authClient = createAuthClient({
   baseURL: typeof window !== "undefined" ? window.location.origin : undefined,
-  plugins: [twoFactorClient()],
+  plugins: [usernameClient(), twoFactorClient()],
 });
 
 // Re-export commonly used methods for convenience

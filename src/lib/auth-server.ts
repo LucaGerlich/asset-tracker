@@ -8,6 +8,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { twoFactor } from "better-auth/plugins/two-factor";
+import { username } from "better-auth/plugins/username";
 import { nextCookies } from "better-auth/next-js";
 import { createAuthMiddleware } from "@better-auth/core/api";
 import prisma from "@/lib/prisma";
@@ -55,11 +56,6 @@ export const auth = betterAuth({
       updatedAt: "updatedAt",
     },
     additionalFields: {
-      username: {
-        type: "string",
-        required: false,
-        input: true,
-      },
       lastname: {
         type: "string",
         required: true,
@@ -144,6 +140,7 @@ export const auth = betterAuth({
   },
 
   plugins: [
+    username(),
     twoFactor({
       issuer: "AssetTracker",
     }),
@@ -158,12 +155,13 @@ export const auth = betterAuth({
 
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== "/sign-in/email") return;
+      if (ctx.path !== "/sign-in/email" && ctx.path !== "/sign-in/username") return;
 
       const body = ctx.body as
-        | { email?: string; password?: string }
+        | { email?: string; username?: string; password?: string }
         | undefined;
-      if (!body?.email) return;
+      const identifier = body?.email || body?.username;
+      if (!identifier) return;
 
       // Rate limit by IP
       const ip =
@@ -179,21 +177,22 @@ export const auth = betterAuth({
       }
 
       // Check account lockout
-      const lockStatus = isAccountLocked(body.email);
+      const lockStatus = isAccountLocked(identifier);
       if (lockStatus.locked) {
         logger.securityEvent("Login attempt on locked account", {
-          identifier: body.email,
+          identifier,
         });
         throw new Error("Account is temporarily locked.");
       }
 
-      // Handle LDAP users — sync password to credential account
+      // Look up user by email OR username
       const user = await prisma.user.findFirst({
         where: {
-          OR: [{ email: body.email }, { username: body.email }],
+          OR: [{ email: identifier }, { username: identifier }],
         },
         select: {
           userid: true,
+          email: true,
           authProvider: true,
           username: true,
           isActive: true,
@@ -204,15 +203,16 @@ export const auth = betterAuth({
         throw new Error("Account has been deactivated.");
       }
 
-      if (user?.authProvider === "ldap" && body.password) {
+      // Handle LDAP users — sync password to credential account
+      if (user?.authProvider === "ldap" && body?.password) {
         const { authenticateUser: ldapAuth } = await import("@/lib/ldap");
         const ldapResult = await ldapAuth(
-          user.username || body.email,
+          user.username || identifier,
           body.password,
         );
 
         if (!ldapResult.success) {
-          recordFailedAttempt(body.email);
+          recordFailedAttempt(identifier);
           throw new Error("Invalid credentials");
         }
 
@@ -236,20 +236,21 @@ export const auth = betterAuth({
       }
     }),
     after: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== "/sign-in/email") return;
+      if (ctx.path !== "/sign-in/email" && ctx.path !== "/sign-in/username") return;
 
-      const body = ctx.body as { email?: string } | undefined;
-      if (!body?.email) return;
+      const body = ctx.body as { email?: string; username?: string } | undefined;
+      const identifier = body?.email || body?.username;
+      if (!identifier) return;
 
       // Check if login succeeded (session cookie was set)
       const setCookie = ctx.context.responseHeaders?.get("set-cookie");
       if (setCookie) {
         // Login succeeded
-        recordSuccessfulLogin(body.email);
+        recordSuccessfulLogin(identifier);
 
         const user = await prisma.user.findFirst({
           where: {
-            OR: [{ email: body.email }, { username: body.email }],
+            OR: [{ email: identifier }, { username: identifier }],
           },
           select: { userid: true, username: true },
         });
@@ -295,7 +296,7 @@ export const auth = betterAuth({
         }
       } else {
         // Login failed
-        recordFailedAttempt(body.email);
+        recordFailedAttempt(identifier);
       }
     }),
   },

@@ -7,14 +7,23 @@
  * Environment: Requires DATABASE_URL in .env
  */
 
-import { PrismaClient } from "@prisma/client";
+import "dotenv/config";
+import pg from "pg";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import * as readline from "readline";
 
-const prisma = new PrismaClient();
+const isCloudDatabase =
+  process.env.DATABASE_SSL === "true" ||
+  process.env.DATABASE_URL?.includes("supabase") ||
+  process.env.DATABASE_URL?.includes("pooler.supabase");
 
-function ask(question: string, hidden = false): Promise<string> {
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: isCloudDatabase ? { rejectUnauthorized: false } : false,
+});
+
+function ask(question: string): Promise<string> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -42,63 +51,68 @@ async function main() {
     process.exit(1);
   }
 
-  // Check if user already exists
-  const existing = await prisma.user.findFirst({
-    where: { OR: [{ email }, { username }] },
-  });
-  if (existing) {
-    console.error("Error: A user with that email or username already exists.");
-    process.exit(1);
-  }
+  const client = await pool.connect();
+  try {
+    // Check if user already exists
+    const existing = await client.query(
+      `SELECT userid FROM "user" WHERE email = $1 OR username = $2 LIMIT 1`,
+      [email.toLowerCase(), username],
+    );
+    if (existing.rows.length > 0) {
+      console.error(
+        "Error: A user with that email or username already exists.",
+      );
+      process.exit(1);
+    }
 
-  const hashedPassword = await bcrypt.hash(password, 12);
-  const slug =
-    orgName
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .slice(0, 40) +
-    "-" +
-    randomBytes(3).toString("hex");
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const slug =
+      orgName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .slice(0, 40) +
+      "-" +
+      randomBytes(3).toString("hex");
 
-  // Create org + user + BetterAuth account in a transaction
-  const user = await prisma.$transaction(async (tx) => {
-    const org = await tx.organization.create({
-      data: { name: orgName, slug },
-    });
+    await client.query("BEGIN");
 
-    const newUser = await tx.user.create({
-      data: {
-        firstname,
-        lastname,
-        email: email.toLowerCase(),
-        username,
-        password: hashedPassword,
-        isadmin: true,
-        canrequest: true,
-        organizationId: org.id,
-        creation_date: new Date(),
-      },
-    });
+    // Create organization
+    const orgResult = await client.query(
+      `INSERT INTO "organizations" (name, slug, "updatedAt") VALUES ($1, $2, NOW()) RETURNING id`,
+      [orgName, slug],
+    );
+    const orgId = orgResult.rows[0].id;
+
+    // Create user
+    const userResult = await client.query(
+      `INSERT INTO "user" (firstname, lastname, email, username, password, isadmin, canrequest, "organizationId", creation_date)
+       VALUES ($1, $2, $3, $4, $5, true, true, $6, NOW())
+       RETURNING userid, email, username`,
+      [firstname, lastname, email.toLowerCase(), username, hashedPassword, orgId],
+    );
+    const user = userResult.rows[0];
 
     // BetterAuth credential account (required for email/password login)
-    await tx.accounts.create({
-      data: {
-        userId: newUser.userid,
-        providerId: "credential",
-        accountId: newUser.userid,
-        password: hashedPassword,
-      },
-    });
+    await client.query(
+      `INSERT INTO "accounts" ("userId", "providerId", "accountId", password, "createdAt", "updatedAt")
+       VALUES ($1::uuid, 'credential', $2::text, $3, NOW(), NOW())`,
+      [user.userid, user.userid, hashedPassword],
+    );
 
-    return newUser;
-  });
+    await client.query("COMMIT");
 
-  console.log(`\nAdmin user created successfully!`);
-  console.log(`  ID: ${user.userid}`);
-  console.log(`  Email: ${user.email}`);
-  console.log(`  Username: ${user.username}`);
-  console.log(`\nYou can now log in at /login\n`);
+    console.log(`\nAdmin user created successfully!`);
+    console.log(`  ID: ${user.userid}`);
+    console.log(`  Email: ${user.email}`);
+    console.log(`  Username: ${user.username}`);
+    console.log(`\nYou can now log in at /login\n`);
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
 main()
@@ -106,4 +120,4 @@ main()
     console.error("Error:", e.message);
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(() => pool.end());

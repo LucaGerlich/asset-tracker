@@ -52,10 +52,17 @@ export default function LoginPage({ isDemo = false }: LoginPageProps) {
     setIsLoading(true);
 
     try {
-      const result = await signIn.email({
-        email: formData.username,
-        password: formData.password,
-      });
+      // Support both username and email login
+      const isEmail = formData.username.includes("@");
+      const result = isEmail
+        ? await signIn.email({
+            email: formData.username,
+            password: formData.password,
+          })
+        : await (signIn as any).username({
+            username: formData.username,
+            password: formData.password,
+          });
 
       if (result?.error) {
         setError(result.error.message || "Invalid username or password");
