@@ -94,7 +94,7 @@ export async function POST(req: Request) {
     });
 
     // Create the user as the first admin of the organization
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         firstname,
         lastname,
@@ -105,6 +105,16 @@ export async function POST(req: Request) {
         canrequest: true,
         organizationId: org.id,
         creation_date: new Date(),
+      },
+    });
+
+    // Create BetterAuth credential account for email/password login
+    await prisma.accounts.create({
+      data: {
+        userId: user.userid,
+        providerId: "credential",
+        accountId: user.userid,
+        password: hashedPassword,
       },
     });
 
