@@ -25,10 +25,19 @@ interface AuditLogWhereInput {
 /**
  * Create an audit log entry
  */
-export async function createAuditLog({ userId, action, entity, entityId, details }: AuditLogParams): Promise<void> {
+export async function createAuditLog({
+  userId,
+  action,
+  entity,
+  entityId,
+  details,
+}: AuditLogParams): Promise<void> {
   try {
     const headersList = await headers();
-    const ipAddress = headersList.get("x-forwarded-for") || headersList.get("x-real-ip") || "unknown";
+    const ipAddress =
+      headersList.get("x-forwarded-for") ||
+      headersList.get("x-real-ip") ||
+      "unknown";
     const userAgent = headersList.get("user-agent") || "unknown";
 
     await prisma.audit_logs.create({
@@ -51,7 +60,12 @@ export async function createAuditLog({ userId, action, entity, entityId, details
 /**
  * Get recent audit logs
  */
-export async function getAuditLogs({ limit = 50, userId, entity, action }: GetAuditLogsOptions = {}) {
+export async function getAuditLogs({
+  limit = 50,
+  userId,
+  entity,
+  action,
+}: GetAuditLogsOptions = {}) {
   const where: AuditLogWhereInput = {};
 
   if (userId) where.userId = userId;
@@ -141,6 +155,7 @@ export const AUDIT_ACTIONS = {
   REQUEST: "REQUEST",
   APPROVE: "APPROVE",
   REJECT: "REJECT",
+  SECURITY_ALERT: "SECURITY_ALERT",
 } as const;
 
 /**

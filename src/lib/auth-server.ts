@@ -21,6 +21,11 @@ import {
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { parseDeviceName, parseBrowser } from "@/lib/session-tracking";
+import {
+  recordLoginAttempt,
+  checkSuspiciousActivity,
+  logSuspiciousActivity,
+} from "@/lib/suspicious-activity";
 
 /**
  * BetterAuth-specific Prisma client extension.
@@ -429,10 +434,57 @@ export const auth = betterAuth({
           } catch {
             // Non-critical — don't break login
           }
+
+          // --- Suspicious activity detection ---
+          try {
+            recordLoginAttempt(
+              user.userid,
+              ip || "unknown",
+              userAgent || "unknown",
+              true,
+            );
+            const suspiciousResult = checkSuspiciousActivity(
+              user.userid,
+              ip || "unknown",
+              userAgent || "unknown",
+            );
+            logSuspiciousActivity(
+              user.userid,
+              ip || "unknown",
+              userAgent || "unknown",
+              suspiciousResult,
+            );
+
+            // Persist suspicious events to audit_logs
+            if (suspiciousResult.suspicious) {
+              await createAuditLog({
+                userId: user.userid,
+                action: AUDIT_ACTIONS.SECURITY_ALERT,
+                entity: AUDIT_ENTITIES.USER,
+                entityId: user.userid,
+                details: {
+                  type: "suspicious_login",
+                  reasons: suspiciousResult.reasons,
+                  ip: ip || "unknown",
+                  userAgent: userAgent || "unknown",
+                },
+              });
+            }
+          } catch {
+            // Non-critical — don't break login
+          }
         }
       } else {
         // Login failed — single place for recording failed attempts
         recordFailedAttempt(identifier);
+
+        // Record failed attempt for suspicious activity detection (IP-based)
+        const failedIp =
+          ctx.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          ctx.headers?.get("x-real-ip") ||
+          "unknown";
+        const failedUa = ctx.headers?.get("user-agent") || "unknown";
+        recordLoginAttempt(null, failedIp, failedUa, false);
       }
     }),
   },
