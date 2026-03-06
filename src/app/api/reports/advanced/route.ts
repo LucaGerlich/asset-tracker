@@ -92,11 +92,25 @@ export async function GET() {
       _sum: { purchaseprice: true },
     });
 
-    // Fetch category names
-    const assetCategories = await prisma.assetCategoryType.findMany();
-    const accessoryCategories = await prisma.accessorieCategoryType.findMany();
-    const consumableCategories = await prisma.consumableCategoryType.findMany();
-    const licenceCategories = await prisma.licenceCategoryType.findMany();
+    // Fetch category names (only ID and name needed for mapping)
+    const assetCategories = await prisma.assetCategoryType.findMany({
+      select: { assetcategorytypeid: true, assetcategorytypename: true },
+    });
+    const accessoryCategories = await prisma.accessorieCategoryType.findMany({
+      select: {
+        accessoriecategorytypeid: true,
+        accessoriecategorytypename: true,
+      },
+    });
+    const consumableCategories = await prisma.consumableCategoryType.findMany({
+      select: {
+        consumablecategorytypeid: true,
+        consumablecategorytypename: true,
+      },
+    });
+    const licenceCategories = await prisma.licenceCategoryType.findMany({
+      select: { licencecategorytypeid: true, licencecategorytypename: true },
+    });
 
     const assetCatMap = new Map(
       assetCategories.map((c) => [
@@ -183,7 +197,9 @@ export async function GET() {
       where: { locationid: { not: null } },
     });
 
-    const locations = await prisma.location.findMany();
+    const locations = await prisma.location.findMany({
+      select: { locationid: true, locationname: true },
+    });
     const locationNameMap = new Map(
       locations.map((l) => [l.locationid, l.locationname || "Unknown"]),
     );

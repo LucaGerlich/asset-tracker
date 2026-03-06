@@ -17,6 +17,21 @@ export async function GET(req) {
     if (id) {
       const asset = await prisma.asset.findFirst({
         where: scopeToOrganization({ assetid: id }, orgId),
+        include: {
+          statusType: { select: { statustypeid: true, statustypename: true } },
+          manufacturer: {
+            select: { manufacturerid: true, manufacturername: true },
+          },
+          model: { select: { modelid: true, modelname: true } },
+          location: { select: { locationid: true, locationname: true } },
+          supplier: { select: { supplierid: true, suppliername: true } },
+          assetCategoryType: {
+            select: {
+              assetcategorytypeid: true,
+              assetcategorytypename: true,
+            },
+          },
+        },
       });
       if (!asset) {
         return new Response(
@@ -28,7 +43,29 @@ export async function GET(req) {
     }
 
     const where = scopeToOrganization({}, orgId);
-    const assets = await prisma.asset.findMany({ where });
+    const assets = await prisma.asset.findMany({
+      where,
+      select: {
+        assetid: true,
+        assetname: true,
+        assettag: true,
+        serialnumber: true,
+        statustypeid: true,
+        assetcategorytypeid: true,
+        manufacturerid: true,
+        modelid: true,
+        locationid: true,
+        supplierid: true,
+        purchaseprice: true,
+        purchasedate: true,
+        requestable: true,
+        mobile: true,
+        specs: true,
+        notes: true,
+        creation_date: true,
+        change_date: true,
+      },
+    });
     return new Response(JSON.stringify(assets), { status: 200 });
   } catch (error) {
     logger.error("Error fetching asset(s)", { error });

@@ -20,7 +20,17 @@ export async function GET() {
       where.asset = { organizationId: orgId };
     }
 
-    const items = await prisma.userAssets.findMany({ where });
+    const items = await prisma.userAssets.findMany({
+      where,
+      include: {
+        asset: {
+          select: { assetid: true, assetname: true, assettag: true },
+        },
+        user: {
+          select: { userid: true, firstname: true, lastname: true },
+        },
+      },
+    });
     return NextResponse.json(items, { status: 200 });
   } catch (error) {
     logger.error("GET /api/userAssets error", { error });

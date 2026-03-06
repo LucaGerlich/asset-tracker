@@ -56,7 +56,25 @@ export async function GET(req) {
     // If no `page` param, return all results for backward compatibility
     if (!searchParams.has("page")) {
       const where = scopeToOrganization({}, orgId);
-      const items = await prisma.accessories.findMany({ where });
+      const items = await prisma.accessories.findMany({
+        where,
+        select: {
+          accessorieid: true,
+          accessoriename: true,
+          accessorietag: true,
+          manufacturerid: true,
+          statustypeid: true,
+          accessoriecategorytypeid: true,
+          locationid: true,
+          supplierid: true,
+          modelid: true,
+          purchaseprice: true,
+          purchasedate: true,
+          requestable: true,
+          creation_date: true,
+          change_date: true,
+        },
+      });
       return NextResponse.json(items, { status: 200 });
     }
 

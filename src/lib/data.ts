@@ -1,8 +1,60 @@
 import prisma from "./prisma";
 import { cached } from "./cache";
 
+export async function getAssetCount() {
+  return cached("asset_count", () => prisma.asset.count(), 2 * 60 * 1000);
+}
+
+export async function getUserCount() {
+  return cached("user_count", () => prisma.user.count(), 2 * 60 * 1000);
+}
+
+export async function getAccessoryCount() {
+  return cached(
+    "accessory_count",
+    () => prisma.accessories.count(),
+    2 * 60 * 1000,
+  );
+}
+
+export async function getAssetStatusDistribution() {
+  return cached(
+    "asset_status_distribution",
+    async () => {
+      const assets = await prisma.asset.groupBy({
+        by: ["statustypeid"],
+        _count: { assetid: true },
+      });
+      return assets.map((a) => ({
+        statustypeid: a.statustypeid,
+        count: a._count.assetid,
+      }));
+    },
+    2 * 60 * 1000,
+  );
+}
+
 export async function getUsers() {
-  return cached("users", () => prisma.user.findMany({}), 2 * 60 * 1000);
+  return cached(
+    "users",
+    () =>
+      prisma.user.findMany({
+        select: {
+          userid: true,
+          username: true,
+          firstname: true,
+          lastname: true,
+          email: true,
+          isadmin: true,
+          canrequest: true,
+          lan: true,
+          creation_date: true,
+          change_date: true,
+          organizationId: true,
+        },
+      }),
+    2 * 60 * 1000,
+  );
 }
 
 export async function getAssets() {
@@ -180,12 +232,28 @@ export async function getCategories() {
 }
 
 export async function getUserAssets() {
-  const accessories = await prisma.userAssets.findMany({});
-  return accessories;
+  const userAssets = await prisma.userAssets.findMany({
+    select: {
+      userassetsid: true,
+      userid: true,
+      assetid: true,
+      creation_date: true,
+      change_date: true,
+    },
+  });
+  return userAssets;
 }
 
 export async function getUserAccessoires() {
-  const res = await prisma.userAccessoires.findMany({});
+  const res = await prisma.userAccessoires.findMany({
+    select: {
+      useraccessoiresid: true,
+      userid: true,
+      accessorieid: true,
+      creation_date: true,
+      change_date: true,
+    },
+  });
   return res;
 }
 
@@ -336,7 +404,9 @@ export async function getComponentById(id: string) {
         orderBy: { checkedOutAt: "desc" },
         include: {
           asset: { select: { assetid: true, assetname: true, assettag: true } },
-          checkedOutByUser: { select: { userid: true, firstname: true, lastname: true } },
+          checkedOutByUser: {
+            select: { userid: true, firstname: true, lastname: true },
+          },
         },
       },
     },
@@ -399,12 +469,16 @@ export async function getAuditCampaignById(id: string) {
     include: {
       creator: { select: { userid: true, firstname: true, lastname: true } },
       auditors: {
-        include: { user: { select: { userid: true, firstname: true, lastname: true } } },
+        include: {
+          user: { select: { userid: true, firstname: true, lastname: true } },
+        },
       },
       entries: {
         include: {
           asset: { select: { assetid: true, assetname: true, assettag: true } },
-          auditor: { select: { userid: true, firstname: true, lastname: true } },
+          auditor: {
+            select: { userid: true, firstname: true, lastname: true },
+          },
           location: { select: { locationid: true, locationname: true } },
         },
       },

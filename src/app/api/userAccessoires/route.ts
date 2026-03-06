@@ -22,7 +22,21 @@ export async function GET(req) {
       where.accessories = { organizationId: orgId };
     }
 
-    const rows = await prisma.userAccessoires.findMany({ where });
+    const rows = await prisma.userAccessoires.findMany({
+      where,
+      include: {
+        accessories: {
+          select: {
+            accessorieid: true,
+            accessoriename: true,
+            accessorietag: true,
+          },
+        },
+        user: {
+          select: { userid: true, firstname: true, lastname: true },
+        },
+      },
+    });
     return NextResponse.json(rows, { status: 200 });
   } catch (e) {
     logger.error("GET /api/userAccessoires error", { error: e });

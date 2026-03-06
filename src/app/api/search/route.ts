@@ -41,6 +41,7 @@ export async function GET(req: Request) {
         },
         orgId,
       ),
+      select: { assetid: true, assetname: true, assettag: true },
       take: 3,
     });
 
@@ -66,6 +67,7 @@ export async function GET(req: Request) {
         },
         orgId,
       ),
+      select: { userid: true, firstname: true, lastname: true, email: true },
       take: 3,
     });
 
@@ -87,6 +89,7 @@ export async function GET(req: Request) {
         },
         orgId,
       ),
+      select: { consumableid: true, consumablename: true, quantity: true },
       take: 2,
     });
 

@@ -113,6 +113,20 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
       const items = await prisma.asset.findMany({
         where,
         orderBy: { creation_date: "desc" },
+        select: {
+          assetname: true,
+          assettag: true,
+          serialnumber: true,
+          specs: true,
+          notes: true,
+          purchaseprice: true,
+          purchasedate: true,
+          warrantyExpires: true,
+          warrantyMonths: true,
+          mobile: true,
+          requestable: true,
+          creation_date: true,
+        },
       });
       return items as unknown as Record<string, unknown>[];
     },
@@ -123,6 +137,20 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
         orderBy: { creation_date: "desc" },
         skip,
         take,
+        select: {
+          assetname: true,
+          assettag: true,
+          serialnumber: true,
+          specs: true,
+          notes: true,
+          purchaseprice: true,
+          purchasedate: true,
+          warrantyExpires: true,
+          warrantyMonths: true,
+          mobile: true,
+          requestable: true,
+          creation_date: true,
+        },
       });
       return items as unknown as Record<string, unknown>[];
     },
@@ -135,10 +163,17 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
       const items = await prisma.user.findMany({
         where,
         orderBy: { lastname: "asc" },
+        select: {
+          username: true,
+          firstname: true,
+          lastname: true,
+          email: true,
+          isadmin: true,
+          canrequest: true,
+          creation_date: true,
+        },
       });
-      return items.map((u) =>
-        stripPassword(u as unknown as Record<string, unknown>),
-      );
+      return items as unknown as Record<string, unknown>[];
     },
     fetchBatch: async (orgId, { skip, take }) => {
       const where = scopeToOrganization({}, orgId);
@@ -147,10 +182,18 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
         orderBy: { lastname: "asc" },
         skip,
         take,
+        select: {
+          username: true,
+          firstname: true,
+          lastname: true,
+          email: true,
+          isadmin: true,
+          canrequest: true,
+          creation_date: true,
+        },
       });
       return items as unknown as Record<string, unknown>[];
     },
-    transformRow: stripPassword,
   },
   licences: {
     columns: LICENCE_COLUMNS,
@@ -160,6 +203,16 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
       const items = await prisma.licence.findMany({
         where,
         orderBy: { creation_date: "desc" },
+        select: {
+          licencekey: true,
+          licensedtoemail: true,
+          purchaseprice: true,
+          purchasedate: true,
+          expirationdate: true,
+          notes: true,
+          requestable: true,
+          creation_date: true,
+        },
       });
       return items as unknown as Record<string, unknown>[];
     },
@@ -170,6 +223,16 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
         orderBy: { creation_date: "desc" },
         skip,
         take,
+        select: {
+          licencekey: true,
+          licensedtoemail: true,
+          purchaseprice: true,
+          purchasedate: true,
+          expirationdate: true,
+          notes: true,
+          requestable: true,
+          creation_date: true,
+        },
       });
       return items as unknown as Record<string, unknown>[];
     },
@@ -182,6 +245,14 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
       const items = await prisma.accessories.findMany({
         where,
         orderBy: { creation_date: "desc" },
+        select: {
+          accessoriename: true,
+          accessorietag: true,
+          purchaseprice: true,
+          purchasedate: true,
+          requestable: true,
+          creation_date: true,
+        },
       });
       return items as unknown as Record<string, unknown>[];
     },
@@ -192,6 +263,14 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
         orderBy: { creation_date: "desc" },
         skip,
         take,
+        select: {
+          accessoriename: true,
+          accessorietag: true,
+          purchaseprice: true,
+          purchasedate: true,
+          requestable: true,
+          creation_date: true,
+        },
       });
       return items as unknown as Record<string, unknown>[];
     },
@@ -204,6 +283,14 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
       const items = await prisma.consumable.findMany({
         where,
         orderBy: { consumablename: "asc" },
+        select: {
+          consumablename: true,
+          quantity: true,
+          minQuantity: true,
+          purchaseprice: true,
+          purchasedate: true,
+          creation_date: true,
+        },
       });
       return items as unknown as Record<string, unknown>[];
     },
@@ -214,6 +301,14 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
         orderBy: { consumablename: "asc" },
         skip,
         take,
+        select: {
+          consumablename: true,
+          quantity: true,
+          minQuantity: true,
+          purchaseprice: true,
+          purchasedate: true,
+          creation_date: true,
+        },
       });
       return items as unknown as Record<string, unknown>[];
     },

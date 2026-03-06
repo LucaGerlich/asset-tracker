@@ -1,4 +1,10 @@
-import { getAssets, getUsers, getAccessories, getStatus } from "@/lib/data";
+import {
+  getAssetCount,
+  getUserCount,
+  getAccessoryCount,
+  getAssetStatusDistribution,
+  getStatus,
+} from "@/lib/data";
 import StatCard from "../../components/StatCard";
 import AssetStatusChart from "@/components/charts/AssetStatusChart";
 import DismissibleHelpTip from "@/components/DismissibleHelpTip";
@@ -8,18 +14,22 @@ export const metadata = {
 };
 
 export default async function DashboardPage() {
-  const [user, assets, accessories, statuses] = await Promise.all([
-    getUsers(),
-    getAssets(),
-    getAccessories(),
-    getStatus(),
-  ]);
+  const [userCount, assetCount, accessoryCount, statusDistribution, statuses] =
+    await Promise.all([
+      getUserCount(),
+      getAssetCount(),
+      getAccessoryCount(),
+      getAssetStatusDistribution(),
+      getStatus(),
+    ]);
 
-  const statusCounts = new Map();
+  const statusCounts = new Map<string, number>();
+  let totalCounted = 0;
 
-  assets.forEach((asset) => {
-    const key = asset.statustypeid ?? "__unassigned";
-    statusCounts.set(key, (statusCounts.get(key) ?? 0) + 1);
+  statusDistribution.forEach((entry) => {
+    const key = entry.statustypeid ?? "__unassigned";
+    statusCounts.set(key, entry.count);
+    totalCounted += entry.count;
   });
 
   const chartData = [];
@@ -39,7 +49,9 @@ export default async function DashboardPage() {
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
         Dashboard
       </h1>
-      <p className="mt-1 text-sm text-muted-foreground">Overview of your asset management system</p>
+      <p className="text-muted-foreground mt-1 text-sm">
+        Overview of your asset management system
+      </p>
       <DismissibleHelpTip id="dashboard-welcome">
         Welcome to your dashboard! Here you can see a quick overview of your
         assets, accessories, and users. Use the sidebar to navigate to specific
@@ -47,14 +59,24 @@ export default async function DashboardPage() {
       </DismissibleHelpTip>
       <div className="mt-6 sm:mt-8 md:mt-10">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 md:grid-cols-2 md:gap-8 lg:grid-cols-3 xl:grid-cols-4">
-          <StatCard href="/assets" title="Total Assets" value={assets.length} icon="Boxes" />
+          <StatCard
+            href="/assets"
+            title="Total Assets"
+            value={assetCount}
+            icon="Boxes"
+          />
           <StatCard
             href="/accessories"
             title="Total Accessories"
-            value={accessories.length}
+            value={accessoryCount}
             icon="Puzzle"
           />
-          <StatCard href="/user" title="Total Users" value={user.length} icon="Users" />
+          <StatCard
+            href="/user"
+            title="Total Users"
+            value={userCount}
+            icon="Users"
+          />
         </div>
       </div>
       <div className="mt-6 sm:mt-8 md:mt-10">
