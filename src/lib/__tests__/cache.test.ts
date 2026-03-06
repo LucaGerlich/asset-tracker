@@ -6,6 +6,8 @@ let cacheModule: typeof import("../cache");
 beforeEach(async () => {
   vi.resetModules();
   vi.restoreAllMocks();
+  // Ensure no REDIS_URL so tests use in-memory backend
+  delete process.env.REDIS_URL;
   cacheModule = await import("../cache");
 });
 
@@ -81,7 +83,7 @@ describe("invalidateCache", () => {
       .mockResolvedValueOnce("second");
 
     await cacheModule.cached("key", fetcher);
-    cacheModule.invalidateCache("key");
+    await cacheModule.invalidateCache("key");
     const result = await cacheModule.cached("key", fetcher);
 
     expect(fetcher).toHaveBeenCalledTimes(2);
@@ -95,7 +97,7 @@ describe("invalidateCache", () => {
     await cacheModule.cached("keyA", fetcherA);
     await cacheModule.cached("keyB", fetcherB);
 
-    cacheModule.invalidateCache("keyA");
+    await cacheModule.invalidateCache("keyA");
 
     await cacheModule.cached("keyB", fetcherB);
     expect(fetcherB).toHaveBeenCalledOnce(); // Still cached
@@ -112,7 +114,7 @@ describe("invalidateCacheByPrefix", () => {
     await cacheModule.cached("user:2", fetcherB);
     await cacheModule.cached("asset:1", fetcherC);
 
-    cacheModule.invalidateCacheByPrefix("user:");
+    await cacheModule.invalidateCacheByPrefix("user:");
 
     await cacheModule.cached("user:1", fetcherA);
     await cacheModule.cached("user:2", fetcherB);
@@ -132,12 +134,56 @@ describe("clearCache", () => {
     await cacheModule.cached("keyA", fetcherA);
     await cacheModule.cached("keyB", fetcherB);
 
-    cacheModule.clearCache();
+    await cacheModule.clearCache();
 
     await cacheModule.cached("keyA", fetcherA);
     await cacheModule.cached("keyB", fetcherB);
 
     expect(fetcherA).toHaveBeenCalledTimes(2);
     expect(fetcherB).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("cache object API", () => {
+  it("supports get/set/del", async () => {
+    const { cache } = cacheModule;
+
+    // Initially empty
+    expect(await cache.get("foo")).toBeNull();
+
+    // Set and get
+    await cache.set("foo", { bar: 42 }, 60);
+    expect(await cache.get("foo")).toEqual({ bar: 42 });
+
+    // Delete
+    await cache.del("foo");
+    expect(await cache.get("foo")).toBeNull();
+  });
+
+  it("supports invalidatePattern", async () => {
+    const { cache } = cacheModule;
+
+    await cache.set("ref:cats", ["a"], 60);
+    await cache.set("ref:dogs", ["b"], 60);
+    await cache.set("other:x", ["c"], 60);
+
+    await cache.invalidatePattern("ref:");
+
+    expect(await cache.get("ref:cats")).toBeNull();
+    expect(await cache.get("ref:dogs")).toBeNull();
+    expect(await cache.get("other:x")).toEqual(["c"]);
+  });
+
+  it("respects TTL expiration", async () => {
+    vi.useFakeTimers();
+    const { cache } = cacheModule;
+
+    await cache.set("ttl-test", "value", 10); // 10 seconds
+    expect(await cache.get("ttl-test")).toBe("value");
+
+    vi.advanceTimersByTime(11_000); // 11 seconds
+    expect(await cache.get("ttl-test")).toBeNull();
+
+    vi.useRealTimers();
   });
 });

@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
-import { requireApiAuth, requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireApiAdmin,
+  requireNotDemoMode,
+} from "@/lib/api-auth";
 import {
   createStatusTypeSchema,
   updateStatusTypeSchema,
   uuidSchema,
 } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
-import { invalidateCache } from "@/lib/cache";
+import { cached, invalidateCache } from "@/lib/cache";
 import {
   parsePaginationParams,
   buildPrismaArgs,
@@ -25,11 +29,14 @@ export async function GET(req) {
 
     const searchParams = req.nextUrl.searchParams;
 
-    // If no `page` param, return all results for backward compatibility
+    // If no `page` param, return all results (cached) for backward compatibility
     if (!searchParams.has("page")) {
-      const items = await prisma.statusType.findMany({
-        orderBy: { statustypename: "asc" },
-      });
+      const items = await cached(
+        "status_types",
+        () =>
+          prisma.statusType.findMany({ orderBy: { statustypename: "asc" } }),
+        5 * 60 * 1000,
+      );
       return NextResponse.json(items, { status: 200 });
     }
 
@@ -100,7 +107,7 @@ export async function POST(req) {
     });
 
     // Invalidate cached status types so subsequent reads reflect the new entry
-    invalidateCache("status_types");
+    await invalidateCache("status_types");
 
     // Create audit log
     await createAuditLog({
@@ -171,7 +178,7 @@ export async function PUT(req) {
     });
 
     // Invalidate cached status types so subsequent reads reflect the update
-    invalidateCache("status_types");
+    await invalidateCache("status_types");
 
     // Create audit log
     await createAuditLog({
