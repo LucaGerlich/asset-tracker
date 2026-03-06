@@ -48,8 +48,9 @@ function translateIdToUserid(where: Record<string, unknown>) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const authPrisma = (prisma as any).$extends({
+const authPrisma = (
+  prisma as Record<string, unknown> & { $extends: Function }
+).$extends({
   result: {
     user: {
       id: {
@@ -62,8 +63,13 @@ const authPrisma = (prisma as any).$extends({
   },
   query: {
     user: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      $allOperations({ args, query }: { args: any; query: any }) {
+      $allOperations({
+        args,
+        query,
+      }: {
+        args: Record<string, unknown>;
+        query: Function;
+      }) {
         if (args.where) translateIdToUserid(args.where);
         if (args.data && "id" in args.data) {
           args.data.userid = args.data.id;
@@ -223,6 +229,42 @@ export const auth = betterAuth({
         | undefined;
       if (!body?.email) return;
       const rawIdentifier = body.email;
+
+      // Cloudflare Turnstile verification (opt-in: only when secret key is configured)
+      const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+      if (turnstileSecret) {
+        const turnstileToken = ctx.headers?.get("x-turnstile-token") || "";
+        if (!turnstileToken) {
+          throw new Error("CAPTCHA verification required");
+        }
+
+        const ip =
+          ctx.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          ctx.headers?.get("x-real-ip") ||
+          undefined;
+
+        const verifyRes = await fetch(
+          "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              secret: turnstileSecret,
+              response: turnstileToken,
+              ...(ip && { remoteip: ip }),
+            }),
+          },
+        );
+
+        const verifyData = (await verifyRes.json()) as { success: boolean };
+        if (!verifyData.success) {
+          logger.securityEvent("Turnstile CAPTCHA verification failed", {
+            identifier: rawIdentifier,
+            ip: ip || "unknown",
+          });
+          throw new Error("CAPTCHA verification failed");
+        }
+      }
 
       // Rate limit by IP
       const ip =

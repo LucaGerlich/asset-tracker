@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { signIn } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -16,6 +16,72 @@ import {
 } from "@/components/ui/card";
 import { Info, Shield } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
+
+/**
+ * Lightweight Turnstile hook — loads the script once and renders the widget
+ * in managed (invisible) mode. Returns the current token and a reset function.
+ */
+function useTurnstile(containerRef: React.RefObject<HTMLDivElement | null>) {
+  const [token, setToken] = useState<string | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
+
+  const reset = useCallback(() => {
+    setToken(null);
+    if (
+      widgetIdRef.current !== null &&
+      typeof window !== "undefined" &&
+      (window as any).turnstile
+    ) {
+      (window as any).turnstile.reset(widgetIdRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || !containerRef.current) return;
+
+    function renderWidget() {
+      if (!containerRef.current) return;
+      // Avoid double-render
+      if (widgetIdRef.current !== null) return;
+      widgetIdRef.current = (window as any).turnstile.render(
+        containerRef.current,
+        {
+          sitekey: TURNSTILE_SITE_KEY,
+          size: "flexible",
+          callback: (tok: string) => setToken(tok),
+          "expired-callback": () => setToken(null),
+          "error-callback": () => setToken(null),
+        },
+      );
+    }
+
+    // If script already loaded, render immediately
+    if ((window as any).turnstile) {
+      renderWidget();
+      return;
+    }
+
+    // Load the Turnstile script
+    const script = document.createElement("script");
+    script.src =
+      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.onload = () => renderWidget();
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup widget on unmount
+      if (widgetIdRef.current !== null && (window as any).turnstile) {
+        (window as any).turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+    };
+  }, [containerRef]);
+
+  return { token, reset };
+}
 
 interface LoginPageProps {
   isDemo?: boolean;
@@ -36,6 +102,9 @@ export default function LoginPage({ isDemo = false }: LoginPageProps) {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [ssoStatus, setSsoStatus] = useState<SsoStatus | null>(null);
+  const turnstileRef = useRef<HTMLDivElement | null>(null);
+  const { token: turnstileToken, reset: resetTurnstile } =
+    useTurnstile(turnstileRef);
 
   useEffect(() => {
     fetch("/api/auth/sso-status")
@@ -55,10 +124,18 @@ export default function LoginPage({ isDemo = false }: LoginPageProps) {
       const result = await signIn.email({
         email: formData.username, // accepts username or email; hook resolves username→email
         password: formData.password,
+        fetchOptions: TURNSTILE_SITE_KEY
+          ? {
+              headers: {
+                "x-turnstile-token": turnstileToken || "",
+              },
+            }
+          : undefined,
       });
 
       if (result?.error) {
         setError(result.error.message || "Invalid username or password");
+        resetTurnstile();
         setIsLoading(false);
       } else if ((result?.data as any)?.twoFactorRedirect) {
         // User has 2FA enabled — redirect to MFA verification
@@ -71,6 +148,7 @@ export default function LoginPage({ isDemo = false }: LoginPageProps) {
     } catch (err) {
       console.error("Login error:", err);
       setError("An error occurred during login");
+      resetTurnstile();
       setIsLoading(false);
     }
   };
@@ -182,6 +260,9 @@ export default function LoginPage({ isDemo = false }: LoginPageProps) {
               <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
                 {error}
               </div>
+            )}
+            {TURNSTILE_SITE_KEY && (
+              <div ref={turnstileRef} className="flex justify-center" />
             )}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Signing in..." : "Sign In"}
