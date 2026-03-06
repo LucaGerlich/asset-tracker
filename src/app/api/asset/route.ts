@@ -15,6 +15,7 @@ import {
   buildPrismaArgs,
   buildPaginatedResponse,
 } from "@/lib/pagination";
+import { parseCursorParams, cursorPaginate } from "@/lib/cursor-pagination";
 import {
   validateBody,
   createAssetSchema,
@@ -59,17 +60,7 @@ export async function GET(req) {
       return NextResponse.json(asset, { status: 200 });
     }
 
-    // If no `page` param, return all results for backward compatibility
-    if (!searchParams.has("page")) {
-      const where = scopeToOrganization({}, orgId);
-      const assets = await prisma.asset.findMany({ where });
-      return NextResponse.json(assets, { status: 200 });
-    }
-
-    // Paginated path
-    const params = parsePaginationParams(searchParams);
-    const prismaArgs = buildPrismaArgs(params, ASSET_SORT_FIELDS);
-
+    // Build shared where clause for filtered/paginated paths
     const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
     // Status filter
@@ -79,13 +70,50 @@ export async function GET(req) {
     }
 
     // Search filter (assetname, assettag, serialnumber)
-    if (params.search) {
+    const search = searchParams.get("search") ?? undefined;
+    if (search) {
       where.OR = [
-        { assetname: { contains: params.search, mode: "insensitive" } },
-        { assettag: { contains: params.search, mode: "insensitive" } },
-        { serialnumber: { contains: params.search, mode: "insensitive" } },
+        { assetname: { contains: search, mode: "insensitive" } },
+        { assettag: { contains: search, mode: "insensitive" } },
+        { serialnumber: { contains: search, mode: "insensitive" } },
       ];
     }
+
+    // --- Cursor-based pagination -----------------------------------------
+    // Activated when `cursor` or `limit`/`direction` params are present.
+    const cursorParams = parseCursorParams(searchParams);
+    if (cursorParams) {
+      const sortBy = searchParams.get("sortBy");
+      const sortOrder =
+        searchParams.get("sortOrder") === "desc"
+          ? ("desc" as const)
+          : ("asc" as const);
+      const orderBy =
+        sortBy && ASSET_SORT_FIELDS.includes(sortBy)
+          ? { [sortBy]: sortOrder }
+          : { creation_date: "desc" as const };
+
+      const result = await cursorPaginate(prisma.asset, {
+        where,
+        orderBy,
+        cursorField: "assetid",
+        limit: cursorParams.limit,
+        cursor: cursorParams.cursor,
+        direction: cursorParams.direction,
+      });
+
+      return NextResponse.json(result, { status: 200 });
+    }
+
+    // --- Offset-based pagination (legacy) --------------------------------
+    // If no `page` param, return all results for backward compatibility
+    if (!searchParams.has("page")) {
+      const assets = await prisma.asset.findMany({ where });
+      return NextResponse.json(assets, { status: 200 });
+    }
+
+    const params = parsePaginationParams(searchParams);
+    const prismaArgs = buildPrismaArgs(params, ASSET_SORT_FIELDS);
 
     const [assets, total] = await Promise.all([
       prisma.asset.findMany({ where, ...prismaArgs }),
