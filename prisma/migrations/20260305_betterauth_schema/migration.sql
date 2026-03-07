@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS "assettool";
+SET search_path TO "assettool";
 -- BetterAuth Schema Migration
 -- Renames columns to match BetterAuth conventions (preserves data)
 

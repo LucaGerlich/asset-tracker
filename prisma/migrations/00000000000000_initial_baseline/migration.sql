@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS "assettool";
+SET search_path TO "assettool";
 -- CreateSchema
 -- Schema is managed by Prisma via DATABASE_URL ?schema= parameter
 
