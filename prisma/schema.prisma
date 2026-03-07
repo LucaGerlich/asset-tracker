@@ -1,9 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["assettool"]
 }
 
 // Multi-tenancy: Organization model
@@ -41,6 +43,7 @@ model Organization {
   auditCampaigns  AuditCampaign[]
 
   @@map("organizations")
+  @@schema("assettool")
 }
 
 // Multi-tenancy: Department model (hierarchical)
@@ -62,6 +65,7 @@ model Department {
   @@index([organizationId])
   @@index([parentId])
   @@map("departments")
+  @@schema("assettool")
 }
 
 // RBAC: Role model
@@ -82,6 +86,7 @@ model Role {
   @@unique([name, organizationId])
   @@index([organizationId])
   @@map("roles")
+  @@schema("assettool")
 }
 
 // RBAC: UserRole junction model
@@ -96,6 +101,7 @@ model UserRole {
 
   @@unique([userId, roleId])
   @@map("user_roles")
+  @@schema("assettool")
 }
 
 // Webhook System
@@ -118,6 +124,7 @@ model Webhook {
   @@index([isActive])
   @@index([organizationId, isActive])
   @@map("webhooks")
+  @@schema("assettool")
 }
 
 model WebhookDelivery {
@@ -136,6 +143,7 @@ model WebhookDelivery {
   @@index([webhookId])
   @@index([deliveredAt])
   @@map("webhook_deliveries")
+  @@schema("assettool")
 }
 
 // Asset Reservation/Booking System
@@ -159,6 +167,7 @@ model AssetReservation {
   @@index([status])
   @@index([assetId, status])
   @@map("asset_reservations")
+  @@schema("assettool")
 }
 
 // Asset Transfer Log
@@ -180,6 +189,7 @@ model AssetTransfer {
   @@index([assetId])
   @@index([transferredAt])
   @@map("asset_transfers")
+  @@schema("assettool")
 }
 
 // Approval Workflow
@@ -201,6 +211,7 @@ model ApprovalRequest {
   @@index([status])
   @@index([approverId])
   @@map("approval_requests")
+  @@schema("assettool")
 }
 
 // Automation Rules / Workflows Engine
@@ -222,6 +233,7 @@ model AutomationRule {
   @@index([trigger])
   @@index([isActive])
   @@map("automation_rules")
+  @@schema("assettool")
 }
 
 // Stock Alert Configuration
@@ -238,6 +250,7 @@ model StockAlert {
   updatedAt         DateTime   @updatedAt @db.Timestamp(6)
 
   @@map("stock_alerts")
+  @@schema("assettool")
 }
 
 // Bulk Import Jobs
@@ -260,12 +273,14 @@ model ImportJob {
 
   @@index([userId])
   @@map("import_jobs")
+  @@schema("assettool")
 }
 
 model accessorieCategoryType {
   accessoriecategorytypeid   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   accessoriecategorytypename String        @db.VarChar
   accessories                accessories[]
+  @@schema("assettool")
 }
 
 model accessories {
@@ -300,6 +315,7 @@ model accessories {
   @@index([locationid])
   @@index([supplierid])
   @@index([modelid])
+  @@schema("assettool")
 }
 
 model accounts {
@@ -321,6 +337,7 @@ model accounts {
   @@unique([providerId, accountId])
   @@index([userId])
   @@map("accounts")
+  @@schema("assettool")
 }
 
 model asset {
@@ -373,6 +390,7 @@ model asset {
   @@index([supplierid])
   @@index([manufacturerid])
   @@index([organizationId, creation_date])
+  @@schema("assettool")
 }
 
 model assetCategoryType {
@@ -382,6 +400,7 @@ model assetCategoryType {
   depreciation_settings depreciation_settings?
   eulaTemplateId        String?                @db.Uuid
   eulaTemplate          EulaTemplate?          @relation("category_eula", fields: [eulaTemplateId], references: [id])
+  @@schema("assettool")
 }
 
 model asset_attachments {
@@ -400,6 +419,7 @@ model asset_attachments {
   user         user?    @relation(fields: [uploadedBy], references: [userid])
 
   @@index([assetId])
+  @@schema("assettool")
 }
 
 model audit_logs {
@@ -419,6 +439,7 @@ model audit_logs {
   @@index([userId])
   @@index([action])
   @@index([userId, createdAt])
+  @@schema("assettool")
 }
 
 model consumable {
@@ -447,12 +468,14 @@ model consumable {
   @@index([supplierid])
   @@index([consumablecategorytypeid])
   @@index([organizationId, consumablename])
+  @@schema("assettool")
 }
 
 model consumableCategoryType {
   consumablecategorytypeid   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   consumablecategorytypename String       @db.VarChar
   consumable                 consumable[]
+  @@schema("assettool")
 }
 
 model custom_field_definitions {
@@ -470,6 +493,7 @@ model custom_field_definitions {
 
   @@index([entityType])
   @@index([isActive])
+  @@schema("assettool")
 }
 
 model custom_field_values {
@@ -483,6 +507,7 @@ model custom_field_values {
 
   @@unique([fieldId, entityId])
   @@index([entityId])
+  @@schema("assettool")
 }
 
 model depreciation_settings {
@@ -494,6 +519,7 @@ model depreciation_settings {
   createdAt         DateTime          @default(now()) @db.Timestamp(6)
   updatedAt         DateTime          @db.Timestamp(6)
   assetCategoryType assetCategoryType @relation(fields: [categoryId], references: [assetcategorytypeid], onDelete: Cascade)
+  @@schema("assettool")
 }
 
 model email_templates {
@@ -505,6 +531,7 @@ model email_templates {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now()) @db.Timestamp(6)
   updatedAt DateTime @db.Timestamp(6)
+  @@schema("assettool")
 }
 
 model label_templates {
@@ -519,6 +546,7 @@ model label_templates {
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now()) @db.Timestamp(6)
   updatedAt   DateTime @db.Timestamp(6)
+  @@schema("assettool")
 }
 
 model licence {
@@ -552,12 +580,14 @@ model licence {
   @@index([licencecategorytypeid])
   @@index([expirationdate])
   @@index([organizationId, expirationdate])
+  @@schema("assettool")
 }
 
 model licenceCategoryType {
   licencecategorytypeid   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   licencecategorytypename String    @db.VarChar
   licence                 licence[]
+  @@schema("assettool")
 }
 
 model location {
@@ -574,6 +604,7 @@ model location {
   components    Component[]
   checkoutsReceived AssetCheckout[] @relation("checkout_to_location")
   auditEntries  AuditEntry[]
+  @@schema("assettool")
 }
 
 model maintenance_logs {
@@ -589,6 +620,7 @@ model maintenance_logs {
 
   @@index([scheduleId])
   @@index([completedBy])
+  @@schema("assettool")
 }
 
 model maintenance_schedules {
@@ -613,6 +645,7 @@ model maintenance_schedules {
   @@index([assignedTo])
   @@index([isActive])
   @@index([isActive, nextDueDate])
+  @@schema("assettool")
 }
 
 model manufacturer {
@@ -625,6 +658,7 @@ model manufacturer {
   consumable       consumable[]
   licence          licence[]
   components       Component[]
+  @@schema("assettool")
 }
 
 model model {
@@ -635,6 +669,7 @@ model model {
   change_date   DateTime?     @db.Timestamp(6)
   accessories   accessories[]
   asset         asset[]
+  @@schema("assettool")
 }
 
 model notification_preferences {
@@ -651,6 +686,7 @@ model notification_preferences {
   createdAt               DateTime @default(now()) @db.Timestamp(6)
   updatedAt               DateTime @db.Timestamp(6)
   user                    user     @relation(fields: [userId], references: [userid], onDelete: Cascade)
+  @@schema("assettool")
 }
 
 model notification_queue {
@@ -671,6 +707,7 @@ model notification_queue {
   @@index([userId])
   @@index([status])
   @@index([status, scheduledAt])
+  @@schema("assettool")
 }
 
 model saved_filters {
@@ -686,6 +723,7 @@ model saved_filters {
   user      user     @relation(fields: [userId], references: [userid], onDelete: Cascade)
 
   @@index([userId])
+  @@schema("assettool")
 }
 
 model sessions {
@@ -705,6 +743,7 @@ model sessions {
   @@index([userId])
   @@index([expiresAt])
   @@map("sessions")
+  @@schema("assettool")
 }
 
 model statusType {
@@ -712,6 +751,7 @@ model statusType {
   statustypename String        @db.VarChar
   accessories    accessories[]
   asset          asset[]
+  @@schema("assettool")
 }
 
 model supplier {
@@ -729,6 +769,7 @@ model supplier {
   consumable    consumable[]
   licence       licence[]
   components    Component[]
+  @@schema("assettool")
 }
 
 model system_settings {
@@ -741,6 +782,7 @@ model system_settings {
   isEncrypted  Boolean  @default(false)
   createdAt    DateTime @default(now()) @db.Timestamp(6)
   updatedAt    DateTime @db.Timestamp(6)
+  @@schema("assettool")
 }
 
 model ticket_comments {
@@ -754,6 +796,7 @@ model ticket_comments {
 
   @@index([ticketId])
   @@index([userId])
+  @@schema("assettool")
 }
 
 model tickets {
@@ -774,6 +817,7 @@ model tickets {
   @@index([createdBy])
   @@index([assignedTo])
   @@index([createdAt])
+  @@schema("assettool")
 }
 
 model user {
@@ -850,6 +894,7 @@ model user {
   @@index([organizationId])
   @@index([departmentId])
   @@index([organizationId, lastname, firstname])
+  @@schema("assettool")
 }
 
 model ApiKey {
@@ -869,6 +914,7 @@ model ApiKey {
   @@index([keyPrefix])
   @@index([isActive])
   @@map("api_keys")
+  @@schema("assettool")
 }
 
 model userAccessoires {
@@ -882,6 +928,7 @@ model userAccessoires {
 
   @@index([userid])
   @@index([accessorieid])
+  @@schema("assettool")
 }
 
 model userAssets {
@@ -895,6 +942,7 @@ model userAssets {
 
   @@index([userid])
   @@index([assetid])
+  @@schema("assettool")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -914,6 +962,7 @@ model userHistory {
   @@index([userid])
   @@index([referenceid])
   @@index([creation_date])
+  @@schema("assettool")
 }
 
 model user_preferences {
@@ -932,6 +981,7 @@ model user_preferences {
   createdAt           DateTime @default(now()) @db.Timestamp(6)
   updatedAt           DateTime @db.Timestamp(6)
   user                user     @relation(fields: [userId], references: [userid], onDelete: Cascade)
+  @@schema("assettool")
 }
 
 model consumable_checkouts {
@@ -947,6 +997,7 @@ model consumable_checkouts {
 
   @@index([consumableId])
   @@index([userId])
+  @@schema("assettool")
 }
 
 model verification {
@@ -958,6 +1009,7 @@ model verification {
   updatedAt  DateTime @default(now())
 
   @@map("verification")
+  @@schema("assettool")
 }
 
 model twoFactor {
@@ -968,6 +1020,7 @@ model twoFactor {
   user        user    @relation(fields: [userId], references: [userid], onDelete: Cascade)
 
   @@map("twoFactor")
+  @@schema("assettool")
 }
 
 // Asset Check-in/Check-out History (Phase 1B: Polymorphic Checkout)
@@ -1000,6 +1053,7 @@ model AssetCheckout {
   @@index([status])
   @@index([assetId, status])
   @@map("asset_checkouts")
+  @@schema("assettool")
 }
 
 // Team Invitation System
@@ -1024,6 +1078,7 @@ model TeamInvitation {
   @@index([token])
   @@index([status])
   @@map("team_invitations")
+  @@schema("assettool")
 }
 
 // ============================================================================
@@ -1037,6 +1092,7 @@ model ComponentCategory {
   components Component[]
 
   @@map("component_categories")
+  @@schema("assettool")
 }
 
 model Component {
@@ -1069,6 +1125,7 @@ model Component {
   @@index([supplierId])
   @@index([locationId])
   @@map("components")
+  @@schema("assettool")
 }
 
 model ComponentCheckout {
@@ -1087,6 +1144,7 @@ model ComponentCheckout {
   @@index([componentId])
   @@index([assetId])
   @@map("component_checkouts")
+  @@schema("assettool")
 }
 
 // ============================================================================
@@ -1111,6 +1169,7 @@ model LicenceSeatAssignment {
   @@index([licenceId])
   @@index([userId])
   @@map("licence_seat_assignments")
+  @@schema("assettool")
 }
 
 // Phase 2A: EULA Templates
@@ -1131,6 +1190,7 @@ model EulaTemplate {
   @@index([organizationId])
   @@index([isActive])
   @@map("eula_templates")
+  @@schema("assettool")
 }
 
 // Phase 2A: EULA Acceptances (digital signatures)
@@ -1151,6 +1211,7 @@ model EulaAcceptance {
   @@index([userId])
   @@index([checkoutId])
   @@map("eula_acceptances")
+  @@schema("assettool")
 }
 
 // Phase 3A: Predefined Kits
@@ -1169,6 +1230,7 @@ model Kit {
   @@index([organizationId])
   @@index([isActive])
   @@map("kits")
+  @@schema("assettool")
 }
 
 // Phase 3A: Kit Items (references categories/templates, not specific instances)
@@ -1184,6 +1246,7 @@ model KitItem {
 
   @@index([kitId])
   @@map("kit_items")
+  @@schema("assettool")
 }
 
 // Phase 3B: Audit Campaigns
@@ -1211,6 +1274,7 @@ model AuditCampaign {
   @@index([status])
   @@index([createdBy])
   @@map("audit_campaigns")
+  @@schema("assettool")
 }
 
 // Phase 3B: Audit Campaign Auditors
@@ -1223,6 +1287,7 @@ model AuditCampaignAuditor {
 
   @@unique([campaignId, userId])
   @@map("audit_campaign_auditors")
+  @@schema("assettool")
 }
 
 // Phase 3B: Audit Entries (one per asset per campaign)
@@ -1245,6 +1310,7 @@ model AuditEntry {
   @@index([assetId])
   @@index([status])
   @@map("audit_entries")
+  @@schema("assettool")
 }
 
 // Phase 4A: LDAP Sync Log
@@ -1261,6 +1327,7 @@ model LdapSyncLog {
 
   @@index([createdAt])
   @@map("ldap_sync_logs")
+  @@schema("assettool")
 }
 
 // Customizable Dashboard Widgets
@@ -1278,4 +1345,5 @@ model DashboardWidget {
   @@index([userId])
   @@index([userId, position])
   @@map("dashboard_widgets")
+  @@schema("assettool")
 }
