@@ -13,6 +13,7 @@ import { isActivePath } from "@/lib/nav-config";
 const PUBLIC_ROUTES = [
   "/login",
   "/register",
+  "/setup",
   "/forgot-password",
   "/reset-password",
   "/mfa-verify",

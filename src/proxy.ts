@@ -25,6 +25,7 @@ export function proxy(req: NextRequest) {
     "/",
     "/login",
     "/register",
+    "/setup",
     "/forgot-password",
     "/reset-password",
     "/pricing",
