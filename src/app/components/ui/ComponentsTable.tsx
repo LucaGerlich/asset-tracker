@@ -46,7 +46,8 @@ export default function ComponentsTable({
       const matchesSearch =
         !search ||
         item.name.toLowerCase().includes(search.toLowerCase()) ||
-        (item.serialNumber?.toLowerCase().includes(search.toLowerCase()) ?? false);
+        (item.serialNumber?.toLowerCase().includes(search.toLowerCase()) ??
+          false);
       const matchesCategory =
         categoryFilter === "all" || item.category?.id === categoryFilter;
       return matchesSearch && matchesCategory;
@@ -68,10 +69,10 @@ export default function ComponentsTable({
   return (
     <div>
       <Toaster position="bottom-right" />
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Components</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             Track hardware parts like RAM, SSDs, and cables
           </p>
         </div>
@@ -80,30 +81,35 @@ export default function ComponentsTable({
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <Input
           placeholder="Search by name or serial..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="sm:max-w-xs"
         />
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="sm:max-w-[200px]">
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.id}>
-                {cat.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-1">
+          <span className="text-muted-foreground text-xs font-medium">
+            Category
+          </span>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="sm:max-w-[200px]">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
+        <div className="text-muted-foreground py-12 text-center">
           <p>No components found.</p>
           <Button asChild variant="link" className="mt-2">
             <Link href="/components/create">Create your first component</Link>
@@ -112,15 +118,15 @@ export default function ComponentsTable({
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <table className="min-w-full text-sm">
-            <thead className="bg-muted/50 text-left text-muted-foreground">
+            <thead className="bg-muted/50 text-muted-foreground text-left">
               <tr>
-                <th className="py-3 px-4 font-medium">Name</th>
-                <th className="py-3 px-4 font-medium">Category</th>
-                <th className="py-3 px-4 font-medium">Remaining</th>
-                <th className="py-3 px-4 font-medium">Total</th>
-                <th className="py-3 px-4 font-medium">Min Qty</th>
-                <th className="py-3 px-4 font-medium">Location</th>
-                <th className="py-3 px-4 font-medium">Actions</th>
+                <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Category</th>
+                <th className="px-4 py-3 font-medium">Remaining</th>
+                <th className="px-4 py-3 font-medium">Total</th>
+                <th className="px-4 py-3 font-medium">Min Qty</th>
+                <th className="px-4 py-3 font-medium">Location</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -130,47 +136,45 @@ export default function ComponentsTable({
                   item.remainingQuantity <= item.minQuantity;
                 return (
                   <tr key={item.id} className="border-t">
-                    <td className="py-3 px-4">
+                    <td className="px-4 py-3">
                       <Link
                         href={`/components/${item.id}`}
-                        className="text-primary hover:underline font-medium"
+                        className="text-primary font-medium hover:underline"
                       >
                         {item.name}
                       </Link>
                       {item.serialNumber && (
-                        <span className="block text-xs text-muted-foreground">
+                        <span className="text-muted-foreground block text-xs">
                           S/N: {item.serialNumber}
                         </span>
                       )}
                     </td>
-                    <td className="py-3 px-4">{item.category?.name ?? "-"}</td>
-                    <td className="py-3 px-4">
+                    <td className="px-4 py-3">{item.category?.name ?? "-"}</td>
+                    <td className="px-4 py-3">
                       <span
                         className={
-                          isLow
-                            ? "text-red-600 font-semibold"
-                            : "font-medium"
+                          isLow ? "font-semibold text-red-600" : "font-medium"
                         }
                       >
                         {item.remainingQuantity}
                       </span>
                     </td>
-                    <td className="py-3 px-4">{item.totalQuantity}</td>
-                    <td className="py-3 px-4">{item.minQuantity}</td>
-                    <td className="py-3 px-4">
+                    <td className="px-4 py-3">{item.totalQuantity}</td>
+                    <td className="px-4 py-3">{item.minQuantity}</td>
+                    <td className="px-4 py-3">
                       {item.location?.locationname ?? "-"}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <Link
                           href={`/components/${item.id}/edit`}
-                          className="text-xs text-muted-foreground hover:text-foreground"
+                          className="text-muted-foreground hover:text-foreground text-xs"
                         >
                           Edit
                         </Link>
                         <button
                           onClick={() => handleDelete(item.id, item.name)}
-                          className="text-xs text-destructive hover:underline"
+                          className="text-destructive text-xs hover:underline"
                         >
                           Delete
                         </button>

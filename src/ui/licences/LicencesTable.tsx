@@ -27,7 +27,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { PlusIcon, SearchIcon, EditIcon, DeleteIcon, MoreVertical } from "../Icons";
+import {
+  PlusIcon,
+  SearchIcon,
+  EditIcon,
+  DeleteIcon,
+  MoreVertical,
+} from "../Icons";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
@@ -68,37 +74,38 @@ export default function LicencesTable({
   const manufacturerFilter = urlState.manufacturer;
   const supplierFilter = urlState.supplier;
   const expirationFilter = urlState.expiration;
-  const rowsPerPage = Number(urlState.pageSize) || Number(ROWS_PER_PAGE_OPTIONS[0]);
+  const rowsPerPage =
+    Number(urlState.pageSize) || Number(ROWS_PER_PAGE_OPTIONS[0]);
   const page = Number(urlState.page) || 1;
 
   // Convenience setters that update URL state
   const setSearchValue = useCallback(
     (v: string) => setUrlState({ search: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setCategoryFilter = useCallback(
     (v: string) => setUrlState({ category: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setManufacturerFilter = useCallback(
     (v: string) => setUrlState({ manufacturer: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setSupplierFilter = useCallback(
     (v: string) => setUrlState({ supplier: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setExpirationFilter = useCallback(
     (v: string) => setUrlState({ expiration: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setRowsPerPage = useCallback(
     (n: number) => setUrlState({ pageSize: String(n), page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setPage = useCallback(
     (p: number) => setUrlState({ page: String(p) }),
-    [setUrlState]
+    [setUrlState],
   );
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -109,16 +116,23 @@ export default function LicencesTable({
   const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   const categoryById = useMemo(
-    () => new Map(categories.map((c) => [c.licencecategorytypeid, c.licencecategorytypename])),
-    [categories]
+    () =>
+      new Map(
+        categories.map((c) => [
+          c.licencecategorytypeid,
+          c.licencecategorytypename,
+        ]),
+      ),
+    [categories],
   );
   const manufacturerById = useMemo(
-    () => new Map(manufacturers.map((m) => [m.manufacturerid, m.manufacturername])),
-    [manufacturers]
+    () =>
+      new Map(manufacturers.map((m) => [m.manufacturerid, m.manufacturername])),
+    [manufacturers],
   );
   const supplierById = useMemo(
     () => new Map(suppliers.map((s) => [s.supplierid, s.suppliername])),
-    [suppliers]
+    [suppliers],
   );
 
   const filteredItems = useMemo(() => {
@@ -139,21 +153,32 @@ export default function LicencesTable({
           .some((value) => value.toLowerCase().includes(normalizedQuery));
 
       const matchesCategory =
-        categoryFilter === "all" || String(item.licencecategorytypeid ?? "") === categoryFilter;
+        categoryFilter === "all" ||
+        String(item.licencecategorytypeid ?? "") === categoryFilter;
       const matchesManufacturer =
-        manufacturerFilter === "all" || String(item.manufacturerid ?? "") === manufacturerFilter;
+        manufacturerFilter === "all" ||
+        String(item.manufacturerid ?? "") === manufacturerFilter;
       const matchesSupplier =
-        supplierFilter === "all" || String(item.supplierid ?? "") === supplierFilter;
+        supplierFilter === "all" ||
+        String(item.supplierid ?? "") === supplierFilter;
 
       const matchesExpiration = (() => {
         if (expirationFilter === "all") return true;
         if (!item.expirationdate) return expirationFilter !== "expired";
         const expiresAt = new Date(item.expirationdate);
         if (Number.isNaN(expiresAt.getTime())) return true;
-        return expirationFilter === "expired" ? expiresAt < now : expiresAt >= now;
+        return expirationFilter === "expired"
+          ? expiresAt < now
+          : expiresAt >= now;
       })();
 
-      return matchesSearch && matchesCategory && matchesManufacturer && matchesSupplier && matchesExpiration;
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesManufacturer &&
+        matchesSupplier &&
+        matchesExpiration
+      );
     });
   }, [
     licencesData,
@@ -174,13 +199,13 @@ export default function LicencesTable({
   }, [filteredItems, page, rowsPerPage]);
 
   const columns = [
-    { key: 'licencekey', label: 'Key' },
-    { key: 'licensedtoemail', label: 'Licensed To' },
-    { key: 'category', label: 'Category' },
-    { key: 'manufacturer', label: 'Manufacturer' },
-    { key: 'supplier', label: 'Supplier' },
-    { key: 'expirationdate', label: 'Expires' },
-    { key: 'actions', label: 'Actions', hideable: false },
+    { key: "licencekey", label: "Key" },
+    { key: "licensedtoemail", label: "Licensed To" },
+    { key: "category", label: "Category" },
+    { key: "manufacturer", label: "Manufacturer" },
+    { key: "supplier", label: "Supplier" },
+    { key: "expirationdate", label: "Expires" },
+    { key: "actions", label: "Actions", hideable: false },
   ];
 
   const handleDelete = async (licenceId: string) => {
@@ -202,7 +227,9 @@ export default function LicencesTable({
         description: `${licenceId} deleted successfully`,
       });
 
-      setLicencesData((prevItems) => prevItems.filter((item) => item.licenceid !== licenceId));
+      setLicencesData((prevItems) =>
+        prevItems.filter((item) => item.licenceid !== licenceId),
+      );
       setIsDeleteModalOpen(false);
     } catch (error) {
       console.error("Error deleting licence:", error);
@@ -223,7 +250,9 @@ export default function LicencesTable({
           body: JSON.stringify({ licenceid: id }),
         });
       }
-      setLicencesData((prev) => prev.filter((item) => !selectedKeys.has(item.licenceid)));
+      setLicencesData((prev) =>
+        prev.filter((item) => !selectedKeys.has(item.licenceid)),
+      );
       toast.success(`Deleted ${ids.length} licence(s)`);
       setSelectedKeys(new Set());
       setShowBulkDelete(false);
@@ -236,23 +265,23 @@ export default function LicencesTable({
 
   const renderCell = (item, columnKey) => {
     switch (columnKey) {
-      case 'licencekey':
+      case "licencekey":
         return item.licencekey ?? "-";
-      case 'licensedtoemail':
+      case "licensedtoemail":
         return item.licensedtoemail ?? "-";
-      case 'category':
+      case "category":
         return categoryById.get(item.licencecategorytypeid) ?? "-";
-      case 'manufacturer':
+      case "manufacturer":
         return manufacturerById.get(item.manufacturerid) ?? "-";
-      case 'supplier':
+      case "supplier":
         return supplierById.get(item.supplierid) ?? "-";
-      case 'expirationdate':
+      case "expirationdate":
         return formatDate(item.expirationdate);
-      case 'actions':
+      case "actions":
         return (
           <div className="flex items-center gap-2">
             <Button
-              className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+              className="text-muted-foreground h-6 w-6 cursor-pointer text-lg hover:opacity-80"
               size="icon"
               variant="ghost"
               asChild
@@ -264,7 +293,7 @@ export default function LicencesTable({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                  className="text-muted-foreground h-6 w-6 cursor-pointer text-lg hover:opacity-80"
                   size="icon"
                   variant="ghost"
                 >
@@ -299,7 +328,7 @@ export default function LicencesTable({
         </div>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="relative w-full lg:max-w-md">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
               className="pl-9"
               placeholder="Search by key, assignee, or metadata"
@@ -307,56 +336,93 @@ export default function LicencesTable({
               onChange={(e) => setSearchValue(e.target.value)}
             />
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={String(category.licencecategorytypeid)} value={String(category.licencecategorytypeid)}>
-                    {category.licencecategorytypename}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={manufacturerFilter} onValueChange={setManufacturerFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Manufacturer" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {manufacturers.map((manufacturer) => (
-                  <SelectItem key={String(manufacturer.manufacturerid)} value={String(manufacturer.manufacturerid)}>
-                    {manufacturer.manufacturername}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={supplierFilter} onValueChange={setSupplierFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Supplier" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {suppliers.map((supplier) => (
-                  <SelectItem key={String(supplier.supplierid)} value={String(supplier.supplierid)}>
-                    {supplier.suppliername}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={expirationFilter} onValueChange={setExpirationFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="State" />
-              </SelectTrigger>
-              <SelectContent>
-                {expirationOptions.map((option) => (
-                  <SelectItem key={option.key} value={option.key}>{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                Category
+              </span>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem
+                      key={String(category.licencecategorytypeid)}
+                      value={String(category.licencecategorytypeid)}
+                    >
+                      {category.licencecategorytypename}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                Manufacturer
+              </span>
+              <Select
+                value={manufacturerFilter}
+                onValueChange={setManufacturerFilter}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Manufacturers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Manufacturers</SelectItem>
+                  {manufacturers.map((manufacturer) => (
+                    <SelectItem
+                      key={String(manufacturer.manufacturerid)}
+                      value={String(manufacturer.manufacturerid)}
+                    >
+                      {manufacturer.manufacturername}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                Supplier
+              </span>
+              <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Suppliers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Suppliers</SelectItem>
+                  {suppliers.map((supplier) => (
+                    <SelectItem
+                      key={String(supplier.supplierid)}
+                      value={String(supplier.supplierid)}
+                    >
+                      {supplier.suppliername}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                State
+              </span>
+              <Select
+                value={expirationFilter}
+                onValueChange={setExpirationFilter}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="All States" />
+                </SelectTrigger>
+                <SelectContent>
+                  {expirationOptions.map((option) => (
+                    <SelectItem key={option.key} value={option.key}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button asChild>
               <Link href="/licences/create">
                 <PlusIcon className="mr-2 h-4 w-4" />
@@ -366,16 +432,21 @@ export default function LicencesTable({
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-sm text-muted-foreground">
+          <span className="text-muted-foreground text-sm">
             Showing {paginatedItems.length} of {filteredItems.length} licences
           </span>
-          <Select value={String(rowsPerPage)} onValueChange={(value) => setRowsPerPage(Number(value))}>
+          <Select
+            value={String(rowsPerPage)}
+            onValueChange={(value) => setRowsPerPage(Number(value))}
+          >
             <SelectTrigger className="w-24">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {ROWS_PER_PAGE_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -429,7 +500,9 @@ export default function LicencesTable({
           <DialogHeader>
             <DialogTitle>Delete Licence</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete licence &quot;{selectedLicence?.licencekey || selectedLicence?.licenceid}&quot;? This action cannot be undone.
+              Are you sure you want to delete licence &quot;
+              {selectedLicence?.licencekey || selectedLicence?.licenceid}&quot;?
+              This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -458,4 +531,3 @@ export default function LicencesTable({
     </div>
   );
 }
-

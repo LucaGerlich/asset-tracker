@@ -28,7 +28,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { PlusIcon, SearchIcon, EditIcon, DeleteIcon, MoreVertical } from "../Icons";
+import {
+  PlusIcon,
+  SearchIcon,
+  EditIcon,
+  DeleteIcon,
+  MoreVertical,
+} from "../Icons";
 import { toast } from "sonner";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
@@ -68,33 +74,34 @@ export default function ConsumablesTable({
   const categoryFilter = urlState.category;
   const manufacturerFilter = urlState.manufacturer;
   const supplierFilter = urlState.supplier;
-  const rowsPerPage = Number(urlState.pageSize) || Number(ROWS_PER_PAGE_OPTIONS[0]);
+  const rowsPerPage =
+    Number(urlState.pageSize) || Number(ROWS_PER_PAGE_OPTIONS[0]);
   const page = Number(urlState.page) || 1;
 
   // Convenience setters that update URL state
   const setSearchValue = useCallback(
     (v: string) => setUrlState({ search: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setCategoryFilter = useCallback(
     (v: string) => setUrlState({ category: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setManufacturerFilter = useCallback(
     (v: string) => setUrlState({ manufacturer: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setSupplierFilter = useCallback(
     (v: string) => setUrlState({ supplier: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setRowsPerPage = useCallback(
     (n: number) => setUrlState({ pageSize: String(n), page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setPage = useCallback(
     (p: number) => setUrlState({ page: String(p) }),
-    [setUrlState]
+    [setUrlState],
   );
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -105,16 +112,23 @@ export default function ConsumablesTable({
   const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   const categoryById = useMemo(
-    () => new Map(categories.map((c) => [c.consumablecategorytypeid, c.consumablecategorytypename])),
-    [categories]
+    () =>
+      new Map(
+        categories.map((c) => [
+          c.consumablecategorytypeid,
+          c.consumablecategorytypename,
+        ]),
+      ),
+    [categories],
   );
   const manufacturerById = useMemo(
-    () => new Map(manufacturers.map((m) => [m.manufacturerid, m.manufacturername])),
-    [manufacturers]
+    () =>
+      new Map(manufacturers.map((m) => [m.manufacturerid, m.manufacturername])),
+    [manufacturers],
   );
   const supplierById = useMemo(
     () => new Map(suppliers.map((s) => [s.supplierid, s.suppliername])),
-    [suppliers]
+    [suppliers],
   );
 
   const filteredItems = useMemo(() => {
@@ -132,13 +146,21 @@ export default function ConsumablesTable({
           .some((value) => value.toLowerCase().includes(normalizedQuery));
 
       const matchesCategory =
-        categoryFilter === "all" || String(item.consumablecategorytypeid ?? "") === categoryFilter;
+        categoryFilter === "all" ||
+        String(item.consumablecategorytypeid ?? "") === categoryFilter;
       const matchesManufacturer =
-        manufacturerFilter === "all" || String(item.manufacturerid ?? "") === manufacturerFilter;
+        manufacturerFilter === "all" ||
+        String(item.manufacturerid ?? "") === manufacturerFilter;
       const matchesSupplier =
-        supplierFilter === "all" || String(item.supplierid ?? "") === supplierFilter;
+        supplierFilter === "all" ||
+        String(item.supplierid ?? "") === supplierFilter;
 
-      return matchesSearch && matchesCategory && matchesManufacturer && matchesSupplier;
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesManufacturer &&
+        matchesSupplier
+      );
     });
   }, [
     consumablesData,
@@ -158,15 +180,15 @@ export default function ConsumablesTable({
   }, [filteredItems, page, rowsPerPage]);
 
   const columns = [
-    { key: 'consumablename', label: 'Name' },
-    { key: 'category', label: 'Category' },
-    { key: 'quantity', label: 'Qty' },
-    { key: 'stockStatus', label: 'Stock' },
-    { key: 'manufacturer', label: 'Manufacturer' },
-    { key: 'supplier', label: 'Supplier' },
-    { key: 'purchaseprice', label: 'Price' },
-    { key: 'purchasedate', label: 'Purchased' },
-    { key: 'actions', label: 'Actions', hideable: false },
+    { key: "consumablename", label: "Name" },
+    { key: "category", label: "Category" },
+    { key: "quantity", label: "Qty" },
+    { key: "stockStatus", label: "Stock" },
+    { key: "manufacturer", label: "Manufacturer" },
+    { key: "supplier", label: "Supplier" },
+    { key: "purchaseprice", label: "Price" },
+    { key: "purchasedate", label: "Purchased" },
+    { key: "actions", label: "Actions", hideable: false },
   ];
 
   const handleDelete = async (consumableId: string) => {
@@ -188,7 +210,9 @@ export default function ConsumablesTable({
         description: `${consumableId} deleted successfully`,
       });
 
-      setConsumablesData((prevItems) => prevItems.filter((item) => item.consumableid !== consumableId));
+      setConsumablesData((prevItems) =>
+        prevItems.filter((item) => item.consumableid !== consumableId),
+      );
       setIsDeleteModalOpen(false);
     } catch (error) {
       console.error("Error deleting consumable:", error);
@@ -209,7 +233,9 @@ export default function ConsumablesTable({
           body: JSON.stringify({ consumableid: id }),
         });
       }
-      setConsumablesData((prev) => prev.filter((item) => !selectedKeys.has(item.consumableid)));
+      setConsumablesData((prev) =>
+        prev.filter((item) => !selectedKeys.has(item.consumableid)),
+      );
       toast.success(`Deleted ${ids.length} consumable(s)`);
       setSelectedKeys(new Set());
       setShowBulkDelete(false);
@@ -222,43 +248,58 @@ export default function ConsumablesTable({
 
   const renderCell = (item, columnKey) => {
     switch (columnKey) {
-      case 'consumablename':
+      case "consumablename":
         return (
-          <Link href={`/consumables/${item.consumableid}`} className="text-primary hover:underline font-medium">
+          <Link
+            href={`/consumables/${item.consumableid}`}
+            className="text-primary font-medium hover:underline"
+          >
             {item.consumablename}
           </Link>
         );
-      case 'category':
+      case "category":
         return categoryById.get(item.consumablecategorytypeid) ?? "-";
-      case 'quantity':
+      case "quantity":
         return item.quantity ?? 0;
-      case 'stockStatus': {
+      case "stockStatus": {
         const qty = item.quantity ?? 0;
         const min = item.minQuantity ?? 0;
         if (min > 0 && qty <= 0) {
-          return <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700">Out of Stock</span>;
+          return (
+            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+              Out of Stock
+            </span>
+          );
         }
         if (min > 0 && qty <= min) {
-          return <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-700">Low Stock</span>;
+          return (
+            <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">
+              Low Stock
+            </span>
+          );
         }
         if (min > 0) {
-          return <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">In Stock</span>;
+          return (
+            <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+              In Stock
+            </span>
+          );
         }
         return <span className="text-muted-foreground text-xs">-</span>;
       }
-      case 'manufacturer':
+      case "manufacturer":
         return manufacturerById.get(item.manufacturerid) ?? "-";
-      case 'supplier':
+      case "supplier":
         return supplierById.get(item.supplierid) ?? "-";
-      case 'purchaseprice':
+      case "purchaseprice":
         return formatPrice(item.purchaseprice);
-      case 'purchasedate':
+      case "purchasedate":
         return formatDate(item.purchasedate);
-      case 'actions':
+      case "actions":
         return (
           <div className="flex items-center gap-2">
             <Button
-              className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+              className="text-muted-foreground h-6 w-6 cursor-pointer text-lg hover:opacity-80"
               size="icon"
               variant="ghost"
               asChild
@@ -270,7 +311,7 @@ export default function ConsumablesTable({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                  className="text-muted-foreground h-6 w-6 cursor-pointer text-lg hover:opacity-80"
                   size="icon"
                   variant="ghost"
                 >
@@ -305,7 +346,7 @@ export default function ConsumablesTable({
         </div>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="relative w-full lg:max-w-md">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
               className="pl-9"
               placeholder="Search by name, category, manufacturer, or supplier"
@@ -313,46 +354,73 @@ export default function ConsumablesTable({
               onChange={(e) => setSearchValue(e.target.value)}
             />
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={String(category.consumablecategorytypeid)} value={String(category.consumablecategorytypeid)}>
-                    {category.consumablecategorytypename}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={manufacturerFilter} onValueChange={setManufacturerFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Manufacturer" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {manufacturers.map((manufacturer) => (
-                  <SelectItem key={String(manufacturer.manufacturerid)} value={String(manufacturer.manufacturerid)}>
-                    {manufacturer.manufacturername}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={supplierFilter} onValueChange={setSupplierFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Supplier" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {suppliers.map((supplier) => (
-                  <SelectItem key={String(supplier.supplierid)} value={String(supplier.supplierid)}>
-                    {supplier.suppliername}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                Category
+              </span>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem
+                      key={String(category.consumablecategorytypeid)}
+                      value={String(category.consumablecategorytypeid)}
+                    >
+                      {category.consumablecategorytypename}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                Manufacturer
+              </span>
+              <Select
+                value={manufacturerFilter}
+                onValueChange={setManufacturerFilter}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Manufacturers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Manufacturers</SelectItem>
+                  {manufacturers.map((manufacturer) => (
+                    <SelectItem
+                      key={String(manufacturer.manufacturerid)}
+                      value={String(manufacturer.manufacturerid)}
+                    >
+                      {manufacturer.manufacturername}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                Supplier
+              </span>
+              <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Suppliers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Suppliers</SelectItem>
+                  {suppliers.map((supplier) => (
+                    <SelectItem
+                      key={String(supplier.supplierid)}
+                      value={String(supplier.supplierid)}
+                    >
+                      {supplier.suppliername}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button asChild>
               <Link href="/consumables/create">
                 <PlusIcon className="mr-2 h-4 w-4" />
@@ -362,16 +430,22 @@ export default function ConsumablesTable({
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-sm text-muted-foreground">
-            Showing {paginatedItems.length} of {filteredItems.length} consumables
+          <span className="text-muted-foreground text-sm">
+            Showing {paginatedItems.length} of {filteredItems.length}{" "}
+            consumables
           </span>
-          <Select value={String(rowsPerPage)} onValueChange={(value) => setRowsPerPage(Number(value))}>
+          <Select
+            value={String(rowsPerPage)}
+            onValueChange={(value) => setRowsPerPage(Number(value))}
+          >
             <SelectTrigger className="w-24">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {ROWS_PER_PAGE_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -425,7 +499,9 @@ export default function ConsumablesTable({
           <DialogHeader>
             <DialogTitle>Delete Consumable</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete consumable &quot;{selectedConsumable?.consumablename}&quot;? This action cannot be undone.
+              Are you sure you want to delete consumable &quot;
+              {selectedConsumable?.consumablename}&quot;? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -454,4 +530,3 @@ export default function ConsumablesTable({
     </div>
   );
 }
-

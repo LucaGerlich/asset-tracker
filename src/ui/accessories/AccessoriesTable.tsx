@@ -28,7 +28,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { PlusIcon, SearchIcon, EditIcon, DeleteIcon, MoreVertical } from "../Icons";
+import {
+  PlusIcon,
+  SearchIcon,
+  EditIcon,
+  DeleteIcon,
+  MoreVertical,
+} from "../Icons";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
@@ -66,37 +72,38 @@ export default function AccessoriesTable({
   const categoryFilter = urlState.category;
   const locationFilter = urlState.location;
   const requestableFilter = urlState.requestable;
-  const rowsPerPage = Number(urlState.pageSize) || Number(ROWS_PER_PAGE_OPTIONS[0]);
+  const rowsPerPage =
+    Number(urlState.pageSize) || Number(ROWS_PER_PAGE_OPTIONS[0]);
   const page = Number(urlState.page) || 1;
 
   // Convenience setters that update URL state
   const setSearchValue = useCallback(
     (v: string) => setUrlState({ search: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setStatusFilter = useCallback(
     (v: string) => setUrlState({ status: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setCategoryFilter = useCallback(
     (v: string) => setUrlState({ category: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setLocationFilter = useCallback(
     (v: string) => setUrlState({ location: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setRequestableFilter = useCallback(
     (v: string) => setUrlState({ requestable: v, page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setRowsPerPage = useCallback(
     (n: number) => setUrlState({ pageSize: String(n), page: "1" }),
-    [setUrlState]
+    [setUrlState],
   );
   const setPage = useCallback(
     (p: number) => setUrlState({ page: String(p) }),
-    [setUrlState]
+    [setUrlState],
   );
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -107,31 +114,35 @@ export default function AccessoriesTable({
   const [showBulkDelete, setShowBulkDelete] = useState(false);
 
   const manufacturerById = useMemo(
-    () => new Map(manufacturers.map((m) => [m.manufacturerid, m.manufacturername])),
-    [manufacturers]
+    () =>
+      new Map(manufacturers.map((m) => [m.manufacturerid, m.manufacturername])),
+    [manufacturers],
   );
   const modelById = useMemo(
     () => new Map(models.map((m) => [m.modelid, m.modelname])),
-    [models]
+    [models],
   );
   const statusById = useMemo(
     () => new Map(statuses.map((s) => [s.statustypeid, s.statustypename])),
-    [statuses]
+    [statuses],
   );
   const categoryById = useMemo(
     () =>
       new Map(
-        categories.map((c) => [c.accessoriecategorytypeid, c.accessoriecategorytypename])
+        categories.map((c) => [
+          c.accessoriecategorytypeid,
+          c.accessoriecategorytypename,
+        ]),
       ),
-    [categories]
+    [categories],
   );
   const locationById = useMemo(
     () => new Map(locations.map((l) => [l.locationid, l.locationname])),
-    [locations]
+    [locations],
   );
   const supplierById = useMemo(
     () => new Map(suppliers.map((s) => [s.supplierid, s.suppliername])),
-    [suppliers]
+    [suppliers],
   );
 
   const filteredItems = useMemo(() => {
@@ -139,25 +150,39 @@ export default function AccessoriesTable({
     return accessoriesData.filter((item) => {
       const matchesSearch =
         !normalizedQuery ||
-        [item.accessoriename, item.accessorietag, manufacturerById.get(item.manufacturerid), modelById.get(item.modelid)]
+        [
+          item.accessoriename,
+          item.accessorietag,
+          manufacturerById.get(item.manufacturerid),
+          modelById.get(item.modelid),
+        ]
           .filter(Boolean)
           .some((value) => value.toLowerCase().includes(normalizedQuery));
 
       const matchesStatus =
-        statusFilter === "all" || String(item.statustypeid ?? "") === statusFilter;
+        statusFilter === "all" ||
+        String(item.statustypeid ?? "") === statusFilter;
 
       const matchesCategory =
-        categoryFilter === "all" || String(item.accessoriecategorytypeid ?? "") === categoryFilter;
+        categoryFilter === "all" ||
+        String(item.accessoriecategorytypeid ?? "") === categoryFilter;
 
       const matchesLocation =
-        locationFilter === "all" || String(item.locationid ?? "") === locationFilter;
+        locationFilter === "all" ||
+        String(item.locationid ?? "") === locationFilter;
 
       const matchesRequestable =
         requestableFilter === "all" ||
         (requestableFilter === "yes" && item.requestable) ||
         (requestableFilter === "no" && !item.requestable);
 
-      return matchesSearch && matchesStatus && matchesCategory && matchesLocation && matchesRequestable;
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesCategory &&
+        matchesLocation &&
+        matchesRequestable
+      );
     });
   }, [
     accessoriesData,
@@ -196,7 +221,9 @@ export default function AccessoriesTable({
         description: `${accessoryId} deleted successfully`,
       });
 
-      setAccessoriesData((prevItems) => prevItems.filter((item) => item.accessorieid !== accessoryId));
+      setAccessoriesData((prevItems) =>
+        prevItems.filter((item) => item.accessorieid !== accessoryId),
+      );
       setIsDeleteModalOpen(false);
     } catch (error) {
       console.error("Error deleting accessory:", error);
@@ -215,7 +242,9 @@ export default function AccessoriesTable({
           body: JSON.stringify({ accessoryId: id }),
         });
       }
-      setAccessoriesData((prev) => prev.filter((item) => !selectedKeys.has(item.accessorieid)));
+      setAccessoriesData((prev) =>
+        prev.filter((item) => !selectedKeys.has(item.accessorieid)),
+      );
       toast.success(`Deleted ${ids.length} accessory(ies)`);
       setSelectedKeys(new Set());
       setShowBulkDelete(false);
@@ -227,48 +256,52 @@ export default function AccessoriesTable({
   };
 
   const columns = [
-    { key: 'accessoriename', label: 'Name' },
-    { key: 'accessorietag', label: 'Tag' },
-    { key: 'manufacturer', label: 'Manufacturer' },
-    { key: 'model', label: 'Model' },
-    { key: 'status', label: 'Status' },
-    { key: 'category', label: 'Category' },
-    { key: 'location', label: 'Location' },
-    { key: 'supplier', label: 'Supplier' },
-    { key: 'requestable', label: 'Requestable' },
-    { key: 'actions', label: 'Actions', hideable: false },
+    { key: "accessoriename", label: "Name" },
+    { key: "accessorietag", label: "Tag" },
+    { key: "manufacturer", label: "Manufacturer" },
+    { key: "model", label: "Model" },
+    { key: "status", label: "Status" },
+    { key: "category", label: "Category" },
+    { key: "location", label: "Location" },
+    { key: "supplier", label: "Supplier" },
+    { key: "requestable", label: "Requestable" },
+    { key: "actions", label: "Actions", hideable: false },
   ];
 
   const renderCell = (item: Record<string, unknown>, columnKey: string) => {
     switch (columnKey) {
-      case 'accessoriename':
+      case "accessoriename":
         return String(item.accessoriename ?? "-");
-      case 'accessorietag':
+      case "accessorietag":
         return String(item.accessorietag ?? "-");
-      case 'manufacturer':
-        return String(manufacturerById.get(item.manufacturerid as number) ?? "-");
-      case 'model':
+      case "manufacturer":
+        return String(
+          manufacturerById.get(item.manufacturerid as number) ?? "-",
+        );
+      case "model":
         return String(modelById.get(item.modelid as number) ?? "-");
-      case 'status':
+      case "status":
         const statusName = statusById.get(item.statustypeid as number);
         return statusName ? <Badge>{String(statusName)}</Badge> : "-";
-      case 'category':
-        return String(categoryById.get(item.accessoriecategorytypeid as number) ?? "-");
-      case 'location':
+      case "category":
+        return String(
+          categoryById.get(item.accessoriecategorytypeid as number) ?? "-",
+        );
+      case "location":
         return String(locationById.get(item.locationid as number) ?? "-");
-      case 'supplier':
+      case "supplier":
         return String(supplierById.get(item.supplierid as number) ?? "-");
-      case 'requestable':
+      case "requestable":
         return (
           <Badge variant={item.requestable ? "default" : "secondary"}>
             {item.requestable ? "Yes" : "No"}
           </Badge>
         );
-      case 'actions':
+      case "actions":
         return (
           <div className="flex items-center gap-2">
             <Button
-              className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+              className="text-muted-foreground h-6 w-6 cursor-pointer text-lg hover:opacity-80"
               size="icon"
               variant="ghost"
               asChild
@@ -280,7 +313,7 @@ export default function AccessoriesTable({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  className="text-lg text-muted-foreground cursor-pointer hover:opacity-80 h-6 w-6"
+                  className="text-muted-foreground h-6 w-6 cursor-pointer text-lg hover:opacity-80"
                   size="icon"
                   variant="ghost"
                 >
@@ -315,7 +348,7 @@ export default function AccessoriesTable({
         </div>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="relative w-full lg:max-w-md">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
               className="pl-9"
               placeholder="Search by name, tag, manufacturer, or model"
@@ -323,56 +356,90 @@ export default function AccessoriesTable({
               onChange={(e) => setSearchValue(e.target.value)}
             />
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {statuses.map((status) => (
-                  <SelectItem key={String(status.statustypeid)} value={String(status.statustypeid)}>
-                    {status.statustypename}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={String(category.accessoriecategorytypeid)} value={String(category.accessoriecategorytypeid)}>
-                    {category.accessoriecategorytypename}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Location" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {locations.map((location) => (
-                  <SelectItem key={String(location.locationid)} value={String(location.locationid)}>
-                    {location.locationname}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={requestableFilter} onValueChange={setRequestableFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Requestable" />
-              </SelectTrigger>
-              <SelectContent>
-                {requestableOptions.map((option) => (
-                  <SelectItem key={option.key} value={option.key}>{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                Status
+              </span>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {statuses.map((status) => (
+                    <SelectItem
+                      key={String(status.statustypeid)}
+                      value={String(status.statustypeid)}
+                    >
+                      {status.statustypename}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                Category
+              </span>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem
+                      key={String(category.accessoriecategorytypeid)}
+                      value={String(category.accessoriecategorytypeid)}
+                    >
+                      {category.accessoriecategorytypename}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                Location
+              </span>
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="All Locations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {locations.map((location) => (
+                    <SelectItem
+                      key={String(location.locationid)}
+                      value={String(location.locationid)}
+                    >
+                      {location.locationname}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                Requestable
+              </span>
+              <Select
+                value={requestableFilter}
+                onValueChange={setRequestableFilter}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  {requestableOptions.map((option) => (
+                    <SelectItem key={option.key} value={option.key}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button asChild>
               <Link href="/accessories/create">
                 <PlusIcon className="mr-2 h-4 w-4" />
@@ -382,16 +449,22 @@ export default function AccessoriesTable({
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-sm text-muted-foreground">
-            Showing {paginatedItems.length} of {filteredItems.length} accessories
+          <span className="text-muted-foreground text-sm">
+            Showing {paginatedItems.length} of {filteredItems.length}{" "}
+            accessories
           </span>
-          <Select value={String(rowsPerPage)} onValueChange={(value) => setRowsPerPage(Number(value))}>
+          <Select
+            value={String(rowsPerPage)}
+            onValueChange={(value) => setRowsPerPage(Number(value))}
+          >
             <SelectTrigger className="w-24">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {ROWS_PER_PAGE_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -401,7 +474,9 @@ export default function AccessoriesTable({
         columns={columns}
         data={paginatedItems}
         renderCell={renderCell}
-        keyExtractor={(item) => (item as Record<string, unknown>).accessorieid as number}
+        keyExtractor={(item) =>
+          (item as Record<string, unknown>).accessorieid as number
+        }
         emptyMessage="No accessories found"
         mobileCardView={true}
         storageKey="columns:accessories"
@@ -447,8 +522,9 @@ export default function AccessoriesTable({
             </DialogTitle>
           </DialogHeader>
           <DialogDescription>
-            <p className="text-sm text-muted-foreground">
-              This action permanently removes the accessory and its user assignment. This cannot be undone.
+            <p className="text-muted-foreground text-sm">
+              This action permanently removes the accessory and its user
+              assignment. This cannot be undone.
             </p>
           </DialogDescription>
           <DialogFooter>
@@ -460,7 +536,10 @@ export default function AccessoriesTable({
             </Button>
             <Button
               variant="destructive"
-              onClick={() => selectedAccessory && handleDelete(selectedAccessory.accessorieid)}
+              onClick={() =>
+                selectedAccessory &&
+                handleDelete(selectedAccessory.accessorieid)
+              }
             >
               Delete
             </Button>
