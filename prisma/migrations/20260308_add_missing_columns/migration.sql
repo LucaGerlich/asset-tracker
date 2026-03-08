@@ -14,6 +14,14 @@ ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "maxUsers" INTEGER NOT NULL
 CREATE UNIQUE INDEX IF NOT EXISTS "organizations_stripeCustomerId_key" ON "organizations"("stripeCustomerId");
 CREATE UNIQUE INDEX IF NOT EXISTS "organizations_stripeSubscriptionId_key" ON "organizations"("stripeSubscriptionId");
 
+-- Sessions columns (BetterAuth fields missing from migration)
+ALTER TABLE "sessions" ADD COLUMN IF NOT EXISTS "ipAddress" VARCHAR(45);
+ALTER TABLE "sessions" ADD COLUMN IF NOT EXISTS "userAgent" VARCHAR(500);
+ALTER TABLE "sessions" ADD COLUMN IF NOT EXISTS "deviceName" VARCHAR(100);
+ALTER TABLE "sessions" ADD COLUMN IF NOT EXISTS "lastActive" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "sessions" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "sessions" ADD COLUMN IF NOT EXISTS "isCurrent" BOOLEAN NOT NULL DEFAULT false;
+
 -- User MFA columns
 ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "mfaEnabled" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "mfaSecret" VARCHAR(255);
