@@ -467,8 +467,12 @@ CREATE TABLE IF NOT EXISTS "verification_tokens" (
     "expires" TIMESTAMP(3) NOT NULL
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX IF NOT EXISTS "accounts_provider_providerAccountId_key" ON "accounts"("provider" ASC, "providerAccountId" ASC);
+-- CreateIndex (accounts: skip if columns were already renamed by BetterAuth migration)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'assettool' AND table_name = 'accounts' AND column_name = 'provider') THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS "accounts_provider_providerAccountId_key" ON "accounts"("provider" ASC, "providerAccountId" ASC);
+  END IF;
+END $$;
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "asset_assettag_key" ON "asset"("assettag" ASC);
@@ -491,8 +495,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS "licence_licencekey_key" ON "licence"("licence
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "notification_preferences_userId_key" ON "notification_preferences"("userId" ASC);
 
--- CreateIndex
-CREATE UNIQUE INDEX IF NOT EXISTS "sessions_sessionToken_key" ON "sessions"("sessionToken" ASC);
+-- CreateIndex (sessions: skip if column was already renamed by BetterAuth migration)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'assettool' AND table_name = 'sessions' AND column_name = 'sessionToken') THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS "sessions_sessionToken_key" ON "sessions"("sessionToken" ASC);
+  END IF;
+END $$;
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "system_settings_settingKey_key" ON "system_settings"("settingKey" ASC);
@@ -503,11 +511,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS "user_email_key" ON "user"("email" ASC);
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "user_username_key" ON "user"("username" ASC);
 
--- CreateIndex
-CREATE UNIQUE INDEX IF NOT EXISTS "verification_tokens_identifier_token_key" ON "verification_tokens"("identifier" ASC, "token" ASC);
-
--- CreateIndex
-CREATE UNIQUE INDEX IF NOT EXISTS "verification_tokens_token_key" ON "verification_tokens"("token" ASC);
+-- CreateIndex (verification_tokens: skip if table was already dropped by BetterAuth migration)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'assettool' AND table_name = 'verification_tokens') THEN
+    CREATE UNIQUE INDEX IF NOT EXISTS "verification_tokens_identifier_token_key" ON "verification_tokens"("identifier" ASC, "token" ASC);
+    CREATE UNIQUE INDEX IF NOT EXISTS "verification_tokens_token_key" ON "verification_tokens"("token" ASC);
+  END IF;
+END $$;
 
 -- AddForeignKeys (idempotent: drop if exists, then re-add)
 DO $$ BEGIN
