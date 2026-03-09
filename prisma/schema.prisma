@@ -829,7 +829,7 @@ model user {
   firstname                        String                    @db.VarChar
   email                            String?                   @unique @db.VarChar
   lan                              String?                   @db.VarChar
-  password                         String                    @db.VarChar
+  password                         String?                   @db.VarChar
   organizationId                   String?                   @db.Uuid
   departmentId                     String?                   @db.Uuid
   creation_date                    DateTime                  @db.Timestamp(6)
