@@ -1,4 +1,6 @@
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import MarketingNav from "@/components/marketing/MarketingNav";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 
@@ -9,6 +11,9 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
+  if (isFeatureEnabled("selfHosted")) {
+    redirect("/login");
+  }
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <MarketingNav />

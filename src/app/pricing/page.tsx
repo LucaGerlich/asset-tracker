@@ -1,4 +1,6 @@
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 import PricingPageClient from "./PricingPageClient";
 
 export const metadata: Metadata = {
@@ -8,5 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default function PricingPage() {
+  if (isFeatureEnabled("selfHosted")) {
+    redirect("/login");
+  }
+
   return <PricingPageClient />;
 }
