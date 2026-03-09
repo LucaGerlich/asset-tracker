@@ -138,7 +138,8 @@ export const auth = betterAuth({
       },
       lastname: {
         type: "string",
-        required: true,
+        required: false,
+        defaultValue: "",
         input: true,
       },
       isadmin: {
@@ -229,11 +230,35 @@ export const auth = betterAuth({
             config: [
               {
                 ...microsoftEntraId({
-                  clientId: process.env.MICROSOFT_CLIENT_ID,
-                  clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+                  clientId: process.env.MICROSOFT_CLIENT_ID!,
+                  clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
                   tenantId: process.env.MICROSOFT_TENANT_ID || "common",
                 }),
                 providerId: "microsoft",
+                mapProfileToUser(profile) {
+                  const givenName =
+                    profile.given_name || profile.givenName || "";
+                  const familyName =
+                    profile.family_name || profile.surname || "";
+                  // Fallback: split displayName if individual parts are missing
+                  const displayName = profile.name || profile.displayName || "";
+                  const firstName = givenName || displayName.split(" ")[0] || "";
+                  const lastName =
+                    familyName ||
+                    displayName.split(" ").slice(1).join(" ") ||
+                    "";
+
+                  return {
+                    name: firstName,
+                    lastname: lastName,
+                    email:
+                      profile.email ||
+                      profile.mail ||
+                      profile.preferred_username ||
+                      "",
+                    image: profile.picture || profile.photo || null,
+                  };
+                },
               },
             ],
           }),
