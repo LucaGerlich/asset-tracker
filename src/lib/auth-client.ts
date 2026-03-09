@@ -6,8 +6,7 @@
  */
 
 import { createAuthClient } from "better-auth/react";
-import { twoFactorClient } from "better-auth/client/plugins";
-import { genericOAuthClient } from "better-auth/plugins/generic-oauth/client";
+import { twoFactorClient, genericOAuthClient } from "better-auth/client/plugins";
 
 /** User fields available in BetterAuth session (includes additionalFields) */
 export interface SessionUser {
