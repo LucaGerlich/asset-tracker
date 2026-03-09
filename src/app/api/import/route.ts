@@ -94,12 +94,26 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const entityType = formData.get("entityType") as string | null;
+    const columnMappingRaw = formData.get("columnMapping") as string | null;
 
     if (!file || !entityType) {
       return NextResponse.json(
         { error: "File and entityType are required" },
         { status: 400 },
       );
+    }
+
+    // Parse column mapping if provided (field name → CSV column index)
+    let columnMapping: Record<string, number> | null = null;
+    if (columnMappingRaw) {
+      try {
+        columnMapping = JSON.parse(columnMappingRaw);
+      } catch {
+        return NextResponse.json(
+          { error: "Invalid columnMapping JSON" },
+          { status: 400 },
+        );
+      }
     }
 
     // Validate entity type
@@ -123,19 +137,35 @@ export async function POST(req: NextRequest) {
     const headers = parseCSVLine(lines[0]);
     const expectedFields = ENTITY_FIELDS[validatedInput.entityType];
 
-    // Validate headers
+    // Validate that required fields are either mapped or present in headers
     const requiredFields = getRequiredFields(validatedInput.entityType);
-    const missingRequired = requiredFields.filter((f) => !headers.includes(f));
-
-    if (missingRequired.length > 0) {
-      return NextResponse.json(
-        {
-          error: `Missing required fields: ${missingRequired.join(", ")}`,
-          expectedFields,
-          receivedFields: headers,
-        },
-        { status: 400 },
+    if (columnMapping) {
+      const missingRequired = requiredFields.filter(
+        (f) => columnMapping![f] === undefined || columnMapping![f] === -1,
       );
+      if (missingRequired.length > 0) {
+        return NextResponse.json(
+          {
+            error: `Missing required field mappings: ${missingRequired.join(", ")}`,
+            expectedFields,
+          },
+          { status: 400 },
+        );
+      }
+    } else {
+      const missingRequired = requiredFields.filter(
+        (f) => !headers.includes(f),
+      );
+      if (missingRequired.length > 0) {
+        return NextResponse.json(
+          {
+            error: `Missing required fields: ${missingRequired.join(", ")}`,
+            expectedFields,
+            receivedFields: headers,
+          },
+          { status: 400 },
+        );
+      }
     }
 
     // Create import job
@@ -158,7 +188,9 @@ export async function POST(req: NextRequest) {
     for (let i = 1; i < lines.length; i++) {
       try {
         const values = parseCSVLine(lines[i]);
-        const rowData = createRowObject(headers, values);
+        const rowData = columnMapping
+          ? createRowObjectFromMapping(columnMapping, values)
+          : createRowObject(headers, values);
 
         await createEntity(
           validatedInput.entityType,
@@ -301,6 +333,20 @@ function createRowObject(
       obj[header.toLowerCase()] = values[index];
     }
   });
+  return obj;
+}
+
+/** Build a row object using explicit column mapping (field name → column index) */
+function createRowObjectFromMapping(
+  mapping: Record<string, number>,
+  values: string[],
+): Record<string, string> {
+  const obj: Record<string, string> = {};
+  for (const [field, colIndex] of Object.entries(mapping)) {
+    if (colIndex >= 0 && values[colIndex] !== undefined) {
+      obj[field] = values[colIndex];
+    }
+  }
   return obj;
 }
 

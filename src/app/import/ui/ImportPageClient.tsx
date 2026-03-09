@@ -14,7 +14,7 @@ import {
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { FileDropZone } from "@/components/FileDropZone";
 import { toast } from "sonner";
-import { Download, Upload } from "lucide-react";
+import { ArrowLeft, Download, Upload } from "lucide-react";
 import HelpTooltip from "@/components/HelpTooltip";
 
 const ENTITY_TYPES = [
@@ -64,6 +64,117 @@ const ENTITY_FIELDS: Record<string, string[]> = {
   user: ["username", "email", "firstname", "lastname", "isadmin", "canrequest"],
   location: ["locationname", "street", "housenumber", "city", "country"],
 };
+
+const REQUIRED_FIELDS: Record<string, string[]> = {
+  asset: ["assetname", "assettag", "serialnumber"],
+  accessory: ["accessoriename", "accessorietag"],
+  consumable: ["consumablename"],
+  licence: [],
+  user: ["username", "firstname", "lastname"],
+  location: ["locationname"],
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  assetname: "Asset Name",
+  assettag: "Asset Tag",
+  serialnumber: "Serial Number",
+  specs: "Specifications",
+  notes: "Notes",
+  purchaseprice: "Purchase Price",
+  purchasedate: "Purchase Date",
+  mobile: "Mobile",
+  requestable: "Requestable",
+  accessoriename: "Accessory Name",
+  accessorietag: "Accessory Tag",
+  consumablename: "Consumable Name",
+  quantity: "Quantity",
+  minQuantity: "Min Quantity",
+  licencekey: "Licence Key",
+  licensedtoemail: "Licensed To (Email)",
+  expirationdate: "Expiration Date",
+  username: "Username",
+  email: "Email",
+  firstname: "First Name",
+  lastname: "Last Name",
+  isadmin: "Is Admin",
+  canrequest: "Can Request",
+  locationname: "Location Name",
+  street: "Street",
+  housenumber: "House Number",
+  city: "City",
+  country: "Country",
+};
+
+// Column mapping type: entity field name → CSV column index (or -1 for skip)
+type ColumnMapping = Record<string, number>;
+
+/** Normalize a string for fuzzy matching: lowercase, strip non-alphanumeric */
+function normalize(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Fuzzy auto-match CSV headers to entity fields. Returns a mapping of field → column index. */
+function autoMatchColumns(
+  csvHeaders: string[],
+  entityFields: string[],
+): ColumnMapping {
+  const mapping: ColumnMapping = {};
+  const normalizedCsv = csvHeaders.map(normalize);
+
+  for (const field of entityFields) {
+    const normalizedField = normalize(field);
+
+    // 1. Exact normalized match
+    const exactIdx = normalizedCsv.indexOf(normalizedField);
+    if (exactIdx !== -1) {
+      mapping[field] = exactIdx;
+      continue;
+    }
+
+    // 2. CSV header contains the field name (e.g., "location_name" contains "locationname")
+    const containsIdx = normalizedCsv.findIndex((h) =>
+      h.includes(normalizedField),
+    );
+    if (containsIdx !== -1) {
+      mapping[field] = containsIdx;
+      continue;
+    }
+
+    // 3. Field name contains the CSV header (e.g., "purchaseprice" contains "price")
+    const reverseIdx = normalizedCsv.findIndex(
+      (h) => h.length >= 3 && normalizedField.includes(h),
+    );
+    if (reverseIdx !== -1) {
+      mapping[field] = reverseIdx;
+      continue;
+    }
+
+    // No match — skip
+    mapping[field] = -1;
+  }
+
+  return mapping;
+}
+
+/** Parse a single CSV line respecting quoted fields */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
 
 interface ImportJob {
   id: string;
@@ -133,6 +244,12 @@ export default function ImportPageClient() {
   const [history, setHistory] = useState<ImportJob[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
+  // Column mapping state
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvPreview, setCsvPreview] = useState<string[][]>([]);
+  const [columnMapping, setColumnMapping] = useState<ColumnMapping>({});
+  const [showMapping, setShowMapping] = useState(false);
+
   const fetchHistory = useCallback(async () => {
     try {
       const res = await fetch("/api/import");
@@ -167,6 +284,59 @@ export default function ImportPageClient() {
     URL.revokeObjectURL(url);
   };
 
+  // Parse CSV on file select to extract headers and preview rows
+  const handleFileSelected = useCallback(
+    (files: File[]) => {
+      const file = files[0];
+      if (!file || !entityType) return;
+      setSelectedFile(file);
+      setResult(null);
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        if (!text) return;
+        const lines = text.split("\n").filter((l) => l.trim());
+        if (lines.length < 1) return;
+
+        const headers = parseCSVLine(lines[0]);
+        setCsvHeaders(headers);
+
+        // First 3 data rows as preview
+        const preview: string[][] = [];
+        for (let i = 1; i < Math.min(lines.length, 4); i++) {
+          preview.push(parseCSVLine(lines[i]));
+        }
+        setCsvPreview(preview);
+
+        // Auto-match columns
+        const fields = ENTITY_FIELDS[entityType] || [];
+        const mapping = autoMatchColumns(headers, fields);
+        setColumnMapping(mapping);
+        setShowMapping(true);
+      };
+      reader.readAsText(file);
+    },
+    [entityType],
+  );
+
+  const handleMappingChange = (field: string, csvIndex: number) => {
+    setColumnMapping((prev) => ({ ...prev, [field]: csvIndex }));
+  };
+
+  const requiredFields = REQUIRED_FIELDS[entityType] || [];
+  const allRequiredMapped = requiredFields.every(
+    (f) => columnMapping[f] !== undefined && columnMapping[f] !== -1,
+  );
+
+  const handleBackToUpload = () => {
+    setShowMapping(false);
+    setSelectedFile(null);
+    setCsvHeaders([]);
+    setCsvPreview([]);
+    setColumnMapping({});
+  };
+
   const handleImport = async () => {
     if (!selectedFile || !entityType) return;
 
@@ -176,6 +346,7 @@ export default function ImportPageClient() {
       const formData = new FormData();
       formData.append("file", selectedFile);
       formData.append("entityType", entityType);
+      formData.append("columnMapping", JSON.stringify(columnMapping));
 
       const res = await fetch("/api/import", {
         method: "POST",
@@ -204,6 +375,10 @@ export default function ImportPageClient() {
       }
 
       setSelectedFile(null);
+      setShowMapping(false);
+      setCsvHeaders([]);
+      setCsvPreview([]);
+      setColumnMapping({});
       fetchHistory();
     } catch (err) {
       toast.error("Import failed", { description: (err as Error).message });
@@ -283,35 +458,102 @@ export default function ImportPageClient() {
             )}
           </div>
 
-          {entityType && (
+          {entityType && !showMapping && (
             <FileDropZone
-              onFilesSelected={(files) => setSelectedFile(files[0])}
+              onFilesSelected={handleFileSelected}
               accept=".csv"
               uploading={uploading}
-              label={
-                selectedFile
-                  ? selectedFile.name
-                  : "Drag & drop a CSV file here, or click to browse"
-              }
+              label="Drag & drop a CSV file here, or click to browse"
             />
           )}
 
-          {selectedFile && entityType && (
-            <div className="flex items-center gap-3">
-              <Button onClick={handleImport} disabled={uploading}>
-                <Upload className="mr-2 h-4 w-4" />
-                {uploading ? "Importing..." : "Import"}
-              </Button>
-              {!uploading && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedFile(null)}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
+          {showMapping && selectedFile && entityType && (
+            <Card className="border-dashed">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">
+                    Map Columns — {selectedFile.name}
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleBackToUpload}
+                  >
+                    <ArrowLeft className="mr-1 h-4 w-4" />
+                    Back
+                  </Button>
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  Match your CSV columns to the expected fields. Required fields
+                  are marked with *.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid gap-2">
+                  {(ENTITY_FIELDS[entityType] || []).map((field) => {
+                    const isRequired = requiredFields.includes(field);
+                    const mappedIdx = columnMapping[field] ?? -1;
+                    const previewValue =
+                      mappedIdx >= 0 && csvPreview[0]
+                        ? csvPreview[0][mappedIdx]
+                        : null;
+
+                    return (
+                      <div
+                        key={field}
+                        className="grid grid-cols-[1fr_1fr_1fr] items-center gap-3 sm:grid-cols-[200px_1fr_1fr]"
+                      >
+                        <span className="text-sm font-medium">
+                          {FIELD_LABELS[field] || field}
+                          {isRequired && (
+                            <span className="ml-0.5 text-red-500">*</span>
+                          )}
+                        </span>
+                        <Select
+                          value={String(mappedIdx)}
+                          onValueChange={(v) =>
+                            handleMappingChange(field, parseInt(v, 10))
+                          }
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="-1">— Skip —</SelectItem>
+                            {csvHeaders.map((header, idx) => (
+                              <SelectItem key={idx} value={String(idx)}>
+                                {header}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-muted-foreground truncate text-xs">
+                          {previewValue !== null && previewValue !== undefined
+                            ? `e.g. "${previewValue}"`
+                            : ""}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {!allRequiredMapped && (
+                  <p className="text-sm text-amber-600">
+                    All required fields (*) must be mapped before importing.
+                  </p>
+                )}
+
+                <div className="flex items-center gap-3 pt-2">
+                  <Button
+                    onClick={handleImport}
+                    disabled={uploading || !allRequiredMapped}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {uploading ? "Importing..." : "Import"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {result && (
