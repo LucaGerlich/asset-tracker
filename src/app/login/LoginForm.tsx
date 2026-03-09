@@ -294,7 +294,7 @@ export default function LoginPage({ isDemo = false, microsoftEnabled = false }: 
                     className="w-full"
                     onClick={async () => {
                       await authClient.signIn.oauth2({
-                        providerId: "microsoft-entra-id",
+                        providerId: "microsoft",
                         callbackURL: "/dashboard",
                       });
                     }}
