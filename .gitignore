@@ -49,3 +49,17 @@ next-env.d.ts
 # lockfiles (bun.lock is the canonical lockfile)
 package-lock.json
 bun.lockb
+
+# React Native / Expo (mobile app)
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/ios/
+mobile/android/
+mobile/web-build/
+mobile/*.jks
+mobile/*.p8
+mobile/*.p12
+mobile/*.key
+mobile/*.mobileprovision
+mobile/*.orig.*
