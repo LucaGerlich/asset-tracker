@@ -146,7 +146,6 @@ export function ResponsiveTable<T>({
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => estimatedRowHeight,
     overscan,
-    enabled: virtualized,
   });
 
   const measureRef = useCallback(

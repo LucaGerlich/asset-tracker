@@ -524,7 +524,6 @@ export default function App({
     getScrollElement: () => virtualScrollRef.current,
     estimateSize: () => 48,
     overscan: 15,
-    enabled: showAll,
   });
 
   const virtualMeasureRef = useCallback(
