@@ -6,6 +6,7 @@ import {
   getOrganizationContext,
   scopeToOrganization,
 } from "@/lib/organization-context";
+import { applyDepartmentScopeToUsers } from "@/lib/department-access";
 import { updateUserSchema } from "@/lib/validation";
 import { hashPassword } from "@/lib/auth-utils";
 import {
@@ -67,7 +68,8 @@ export async function GET(req) {
 
     // If no `page` param, return all results for backward compatibility
     if (!searchParams.has("page")) {
-      const where = scopeToOrganization({}, orgId);
+      const baseWhere = scopeToOrganization({}, orgId);
+      const where = await applyDepartmentScopeToUsers(baseWhere, authUser);
       const users = await prisma.user.findMany({ where });
       return NextResponse.json(users.map(stripPassword), { status: 200 });
     }
@@ -76,17 +78,19 @@ export async function GET(req) {
     const params = parsePaginationParams(searchParams);
     const prismaArgs = buildPrismaArgs(params, USER_SORT_FIELDS);
 
-    const where: Record<string, unknown> = scopeToOrganization({}, orgId);
+    const baseWhere: Record<string, unknown> = scopeToOrganization({}, orgId);
 
     // Search filter (firstname, lastname, email, username)
     if (params.search) {
-      where.OR = [
+      baseWhere.OR = [
         { firstname: { contains: params.search, mode: "insensitive" } },
         { lastname: { contains: params.search, mode: "insensitive" } },
         { email: { contains: params.search, mode: "insensitive" } },
         { username: { contains: params.search, mode: "insensitive" } },
       ];
     }
+
+    const where = await applyDepartmentScopeToUsers(baseWhere, authUser);
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({ where, ...prismaArgs }),

@@ -29,6 +29,8 @@ export interface AuthUser {
   firstname?: string;
   lastname?: string;
   organizationId?: string;
+  /** The department this user belongs to (null if unassigned) */
+  departmentId?: string | null;
   /** Set when authenticated via API key instead of session */
   apiKeyId?: string;
   /** Scopes granted to the API key (undefined for session auth) */
@@ -112,6 +114,7 @@ export async function getAuthUser(): Promise<AuthUser> {
       isadmin: true,
       canrequest: true,
       organizationId: true,
+      departmentId: true,
       isActive: true,
     },
   });
@@ -130,6 +133,7 @@ export async function getAuthUser(): Promise<AuthUser> {
     isAdmin: dbUser.isadmin,
     canRequest: dbUser.canrequest,
     organizationId: dbUser.organizationId || undefined,
+    departmentId: dbUser.departmentId,
   };
 }
 
