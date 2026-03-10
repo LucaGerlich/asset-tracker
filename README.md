@@ -125,7 +125,7 @@ Track hardware, software licences, consumables, and accessories — with role-ba
 | UI | [Tailwind CSS 4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/) |
 | Validation | [Zod](https://zod.dev/) |
 | Charts | [Recharts](https://recharts.org/) |
-| Monitoring | [Sentry](https://sentry.io/) |
+| Monitoring | [Sentry](https://sentry.io/) / [Glitchtip](https://glitchtip.com/) |
 | Testing | [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) |
 
 ---
