@@ -69,14 +69,30 @@ export async function GET(req) {
       where.statustypeid = statusId;
     }
 
-    // Search filter (assetname, assettag, serialnumber)
+    // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     const search = searchParams.get("search") ?? undefined;
     if (search) {
-      where.OR = [
-        { assetname: { contains: search, mode: "insensitive" } },
-        { assettag: { contains: search, mode: "insensitive" } },
-        { serialnumber: { contains: search, mode: "insensitive" } },
-      ];
+      // Use PostgreSQL full-text search via the generated search_vector column
+      const tsQuery = search.trim().split(/\s+/).join(" & ");
+      const matchingIds = await prisma
+        .$queryRawUnsafe<
+          Array<{ assetid: string }>
+        >(`SELECT "assetid" FROM "asset" WHERE "search_vector" @@ to_tsquery('english', $1)`, tsQuery)
+        .catch(() => null);
+
+      if (matchingIds && matchingIds.length > 0) {
+        where.assetid = { in: matchingIds.map((r) => r.assetid) };
+      } else if (matchingIds) {
+        // tsvector returned no results — empty set
+        where.assetid = { in: [] };
+      } else {
+        // Fallback to ILIKE if tsvector query failed (e.g. migration not applied yet)
+        where.OR = [
+          { assetname: { contains: search, mode: "insensitive" } },
+          { assettag: { contains: search, mode: "insensitive" } },
+          { serialnumber: { contains: search, mode: "insensitive" } },
+        ];
+      }
     }
 
     // --- Cursor-based pagination -----------------------------------------

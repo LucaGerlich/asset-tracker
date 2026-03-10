@@ -10,6 +10,17 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
+// Mock prisma with raw query methods
+const mockQueryRawUnsafe = vi.fn();
+const mockExecuteRawUnsafe = vi.fn();
+
+vi.mock("@/lib/prisma", () => ({
+  default: {
+    $queryRawUnsafe: (...args: unknown[]) => mockQueryRawUnsafe(...args),
+    $executeRawUnsafe: (...args: unknown[]) => mockExecuteRawUnsafe(...args),
+  },
+}));
+
 import {
   checkRateLimit,
   createRateLimitHeaders,
@@ -23,26 +34,36 @@ import { logger } from "@/lib/logger";
 const DEFAULT_CONFIG = { maxRequests: 3, windowMs: 100 };
 
 beforeEach(() => {
-  resetRateLimit("test");
   vi.clearAllMocks();
+  mockExecuteRawUnsafe.mockResolvedValue(0);
 });
 
 // ---------------------------------------------------------------------------
 // checkRateLimit
 // ---------------------------------------------------------------------------
 describe("checkRateLimit", () => {
-  it("allows the first request and reports correct remaining count", () => {
-    const result = checkRateLimit("test", DEFAULT_CONFIG);
+  it("allows the first request and reports correct remaining count", async () => {
+    const resetAt = new Date(Date.now() + 100);
+    mockQueryRawUnsafe.mockResolvedValue([{ count: 1, reset_at: resetAt }]);
+
+    const result = await checkRateLimit("test", DEFAULT_CONFIG);
 
     expect(result.success).toBe(true);
     expect(result.remaining).toBe(2);
     expect(result.total).toBe(3);
   });
 
-  it("allows requests up to the configured limit", () => {
-    const first = checkRateLimit("test", DEFAULT_CONFIG);
-    const second = checkRateLimit("test", DEFAULT_CONFIG);
-    const third = checkRateLimit("test", DEFAULT_CONFIG);
+  it("allows requests up to the configured limit", async () => {
+    const resetAt = new Date(Date.now() + 100);
+
+    mockQueryRawUnsafe.mockResolvedValueOnce([{ count: 1, reset_at: resetAt }]);
+    const first = await checkRateLimit("test", DEFAULT_CONFIG);
+
+    mockQueryRawUnsafe.mockResolvedValueOnce([{ count: 2, reset_at: resetAt }]);
+    const second = await checkRateLimit("test", DEFAULT_CONFIG);
+
+    mockQueryRawUnsafe.mockResolvedValueOnce([{ count: 3, reset_at: resetAt }]);
+    const third = await checkRateLimit("test", DEFAULT_CONFIG);
 
     expect(first.success).toBe(true);
     expect(first.remaining).toBe(2);
@@ -54,22 +75,21 @@ describe("checkRateLimit", () => {
     expect(third.remaining).toBe(0);
   });
 
-  it("blocks requests once the limit is exceeded", () => {
-    checkRateLimit("test", DEFAULT_CONFIG);
-    checkRateLimit("test", DEFAULT_CONFIG);
-    checkRateLimit("test", DEFAULT_CONFIG);
+  it("blocks requests once the limit is exceeded", async () => {
+    const resetAt = new Date(Date.now() + 100);
+    mockQueryRawUnsafe.mockResolvedValue([{ count: 4, reset_at: resetAt }]);
 
-    const blocked = checkRateLimit("test", DEFAULT_CONFIG);
+    const blocked = await checkRateLimit("test", DEFAULT_CONFIG);
 
     expect(blocked.success).toBe(false);
     expect(blocked.remaining).toBe(0);
   });
 
-  it("logs when the rate limit is exceeded", () => {
-    checkRateLimit("test", DEFAULT_CONFIG);
-    checkRateLimit("test", DEFAULT_CONFIG);
-    checkRateLimit("test", DEFAULT_CONFIG);
-    checkRateLimit("test", DEFAULT_CONFIG);
+  it("logs when the rate limit is exceeded", async () => {
+    const resetAt = new Date(Date.now() + 100);
+    mockQueryRawUnsafe.mockResolvedValue([{ count: 4, reset_at: resetAt }]);
+
+    await checkRateLimit("test", DEFAULT_CONFIG);
 
     expect(logger.rateLimitExceeded).toHaveBeenCalledWith(
       "test",
@@ -78,35 +98,40 @@ describe("checkRateLimit", () => {
     );
   });
 
-  it("resets the window after windowMs elapses", async () => {
-    checkRateLimit("test", DEFAULT_CONFIG);
-    checkRateLimit("test", DEFAULT_CONFIG);
-    checkRateLimit("test", DEFAULT_CONFIG);
+  it("fails open when the database is unavailable", async () => {
+    mockQueryRawUnsafe.mockRejectedValue(new Error("Connection refused"));
 
-    const blocked = checkRateLimit("test", DEFAULT_CONFIG);
-    expect(blocked.success).toBe(false);
+    const result = await checkRateLimit("test", DEFAULT_CONFIG);
 
-    await new Promise((r) => setTimeout(r, 150));
-
-    const afterReset = checkRateLimit("test", DEFAULT_CONFIG);
-    expect(afterReset.success).toBe(true);
-    expect(afterReset.remaining).toBe(2);
+    expect(result.success).toBe(true);
+    expect(result.remaining).toBe(3);
+    expect(logger.error).toHaveBeenCalled();
   });
 
-  it("tracks different identifiers independently", () => {
-    checkRateLimit("test", DEFAULT_CONFIG);
-    checkRateLimit("test", DEFAULT_CONFIG);
-    checkRateLimit("test", DEFAULT_CONFIG);
+  it("tracks different identifiers independently via separate queries", async () => {
+    const resetAt = new Date(Date.now() + 100);
+    mockQueryRawUnsafe.mockResolvedValue([{ count: 4, reset_at: resetAt }]);
 
-    const blockedTest = checkRateLimit("test", DEFAULT_CONFIG);
+    const blockedTest = await checkRateLimit("test", DEFAULT_CONFIG);
     expect(blockedTest.success).toBe(false);
 
-    const otherResult = checkRateLimit("other", DEFAULT_CONFIG);
+    // Verify the key passed to the query
+    expect(mockQueryRawUnsafe).toHaveBeenCalledWith(
+      expect.any(String),
+      "test",
+      expect.any(Number),
+    );
+
+    mockQueryRawUnsafe.mockResolvedValue([{ count: 1, reset_at: resetAt }]);
+    const otherResult = await checkRateLimit("other", DEFAULT_CONFIG);
     expect(otherResult.success).toBe(true);
     expect(otherResult.remaining).toBe(2);
 
-    // Clean up the extra identifier
-    resetRateLimit("other");
+    expect(mockQueryRawUnsafe).toHaveBeenLastCalledWith(
+      expect.any(String),
+      "other",
+      expect.any(Number),
+    );
   });
 });
 
@@ -114,23 +139,18 @@ describe("checkRateLimit", () => {
 // resetRateLimit
 // ---------------------------------------------------------------------------
 describe("resetRateLimit", () => {
-  it("clears the count for a specific identifier", () => {
-    checkRateLimit("test", DEFAULT_CONFIG);
-    checkRateLimit("test", DEFAULT_CONFIG);
-    checkRateLimit("test", DEFAULT_CONFIG);
+  it("deletes the rate limit row for a specific identifier", async () => {
+    await resetRateLimit("test");
 
-    const blocked = checkRateLimit("test", DEFAULT_CONFIG);
-    expect(blocked.success).toBe(false);
-
-    resetRateLimit("test");
-
-    const afterReset = checkRateLimit("test", DEFAULT_CONFIG);
-    expect(afterReset.success).toBe(true);
-    expect(afterReset.remaining).toBe(2);
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(
+      expect.stringContaining("DELETE"),
+      "test",
+    );
   });
 
-  it("does not throw when resetting a non-existent identifier", () => {
-    expect(() => resetRateLimit("nonexistent")).not.toThrow();
+  it("does not throw when resetting a non-existent identifier", async () => {
+    mockExecuteRawUnsafe.mockResolvedValue(0);
+    await expect(resetRateLimit("nonexistent")).resolves.not.toThrow();
   });
 });
 

@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
     // Rate limit: 5 registrations per hour per IP
     const ip = getClientIP(req);
-    const rl = checkRateLimit(`register:${ip}`, {
+    const rl = await checkRateLimit(`register:${ip}`, {
       maxRequests: 5,
       windowMs: 60 * 60 * 1000,
     });

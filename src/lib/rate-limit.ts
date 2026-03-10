@@ -1,16 +1,15 @@
 /**
- * In-memory rate limiter
- * For production, consider using Redis-based rate limiting (e.g., @upstash/ratelimit)
+ * PostgreSQL-backed rate limiter.
+ *
+ * Uses the "rate_limits" table for distributed, atomic rate limiting that works
+ * correctly in serverless environments (Vercel) where each invocation has its
+ * own memory. All state is persisted in PostgreSQL via Prisma raw queries.
  */
 
+import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-}
-
-interface RateLimitConfig {
+export interface RateLimitConfig {
   /** Maximum number of requests allowed in the window */
   maxRequests: number;
   /** Time window in milliseconds */
@@ -18,32 +17,6 @@ interface RateLimitConfig {
   /** Custom message when rate limit is exceeded */
   message?: string;
 }
-
-// In-memory storage for rate limits
-const rateLimitStore = new Map<string, RateLimitEntry>();
-
-// Clean up expired entries periodically
-const CLEANUP_INTERVAL = 60000; // 1 minute
-let cleanupTimer: NodeJS.Timeout | null = null;
-
-function startCleanup() {
-  if (cleanupTimer) return;
-  cleanupTimer = setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of rateLimitStore.entries()) {
-      if (entry.resetTime < now) {
-        rateLimitStore.delete(key);
-      }
-    }
-  }, CLEANUP_INTERVAL);
-  // Prevent cleanup timer from keeping Node.js alive
-  if (cleanupTimer.unref) {
-    cleanupTimer.unref();
-  }
-}
-
-// Start cleanup when module is loaded
-startCleanup();
 
 export interface RateLimitResult {
   success: boolean;
@@ -53,54 +26,72 @@ export interface RateLimitResult {
 }
 
 /**
- * Check if a request should be rate limited
+ * Check if a request should be rate limited.
+ *
+ * Uses an atomic INSERT ... ON CONFLICT to either create a new rate-limit
+ * entry or increment an existing one. Expired rows are treated as new windows.
  */
-export function checkRateLimit(
+export async function checkRateLimit(
   identifier: string,
-  config: RateLimitConfig
-): RateLimitResult {
-  const now = Date.now();
-  const key = identifier;
-  const entry = rateLimitStore.get(key);
+  config: RateLimitConfig,
+): Promise<RateLimitResult> {
+  const windowSeconds = config.windowMs / 1000;
 
-  if (!entry || entry.resetTime < now) {
-    // Create new entry
-    const resetTime = now + config.windowMs;
-    rateLimitStore.set(key, { count: 1, resetTime });
-    return {
-      success: true,
-      remaining: config.maxRequests - 1,
-      resetTime,
-      total: config.maxRequests,
-    };
-  }
+  try {
+    // Atomic upsert: if the row doesn't exist or has expired, (re-)create it
+    // with count=1; otherwise increment count. Returns the resulting row.
+    const rows = await prisma.$queryRawUnsafe<
+      Array<{ count: number; reset_at: Date }>
+    >(
+      `INSERT INTO "rate_limits" ("key", "count", "reset_at")
+       VALUES ($1, 1, NOW() + make_interval(secs => $2))
+       ON CONFLICT ("key") DO UPDATE
+         SET "count"    = CASE
+                            WHEN "rate_limits"."reset_at" <= NOW() THEN 1
+                            ELSE "rate_limits"."count" + 1
+                          END,
+             "reset_at" = CASE
+                            WHEN "rate_limits"."reset_at" <= NOW()
+                              THEN NOW() + make_interval(secs => $2)
+                            ELSE "rate_limits"."reset_at"
+                          END
+       RETURNING "count", "reset_at"`,
+      identifier,
+      windowSeconds,
+    );
 
-  // Check if limit exceeded
-  if (entry.count >= config.maxRequests) {
-    logger.rateLimitExceeded(identifier, "api", {
-      remaining: 0,
-      resetTime: entry.resetTime,
+    const row = rows[0];
+    const count = Number(row.count);
+    const resetTime = new Date(row.reset_at).getTime();
+    const remaining = Math.max(0, config.maxRequests - count);
+    const success = count <= config.maxRequests;
+
+    if (!success) {
+      logger.rateLimitExceeded(identifier, "api", {
+        remaining: 0,
+        resetTime,
+      });
+    }
+
+    return { success, remaining, resetTime, total: config.maxRequests };
+  } catch (error) {
+    // If the database is unreachable, fail open (allow the request) to avoid
+    // blocking all traffic when PG is temporarily unavailable.
+    logger.error("Rate limit check failed, allowing request", {
+      error,
+      identifier,
     });
     return {
-      success: false,
-      remaining: 0,
-      resetTime: entry.resetTime,
+      success: true,
+      remaining: config.maxRequests,
+      resetTime: Date.now() + config.windowMs,
       total: config.maxRequests,
     };
   }
-
-  // Increment counter
-  entry.count++;
-  return {
-    success: true,
-    remaining: config.maxRequests - entry.count,
-    resetTime: entry.resetTime,
-    total: config.maxRequests,
-  };
 }
 
 /**
- * Create rate limit headers for HTTP responses
+ * Create rate limit headers for HTTP responses.
  */
 export function createRateLimitHeaders(result: RateLimitResult): Headers {
   const headers = new Headers();
@@ -108,19 +99,19 @@ export function createRateLimitHeaders(result: RateLimitResult): Headers {
   headers.set("X-RateLimit-Remaining", result.remaining.toString());
   headers.set(
     "X-RateLimit-Reset",
-    Math.ceil(result.resetTime / 1000).toString()
+    Math.ceil(result.resetTime / 1000).toString(),
   );
   if (!result.success) {
     headers.set(
       "Retry-After",
-      Math.ceil((result.resetTime - Date.now()) / 1000).toString()
+      Math.ceil((result.resetTime - Date.now()) / 1000).toString(),
     );
   }
   return headers;
 }
 
 /**
- * Pre-configured rate limiters for different use cases
+ * Pre-configured rate limiters for different use cases.
  */
 export const rateLimiters = {
   /**
@@ -165,7 +156,7 @@ export const rateLimiters = {
 };
 
 /**
- * Get the client IP address from request headers
+ * Get the client IP address from request headers.
  */
 export function getClientIP(request: Request): string {
   // Check common proxy headers
@@ -185,11 +176,11 @@ export function getClientIP(request: Request): string {
 }
 
 /**
- * Create a rate-limited response with appropriate headers
+ * Create a rate-limited response with appropriate headers.
  */
 export function createRateLimitResponse(
   result: RateLimitResult,
-  message?: string
+  message?: string,
 ): Response {
   const headers = createRateLimitHeaders(result);
   return new Response(
@@ -203,41 +194,67 @@ export function createRateLimitResponse(
         "Content-Type": "application/json",
         ...Object.fromEntries(headers),
       },
-    }
+    },
   );
 }
 
 /**
- * Reset rate limit for a specific identifier
- * Useful for testing or after successful authentication
+ * Reset rate limit for a specific identifier.
+ * Useful for testing or after successful authentication.
  */
-export function resetRateLimit(identifier: string): void {
-  rateLimitStore.delete(identifier);
+export async function resetRateLimit(identifier: string): Promise<void> {
+  try {
+    await prisma.$executeRawUnsafe(
+      `DELETE FROM "rate_limits" WHERE "key" = $1`,
+      identifier,
+    );
+  } catch (error) {
+    logger.error("Failed to reset rate limit", { error, identifier });
+  }
 }
 
 /**
- * Get current rate limit status for an identifier
+ * Get current rate limit status for an identifier.
  */
-export function getRateLimitStatus(
+export async function getRateLimitStatus(
   identifier: string,
-  config: RateLimitConfig
-): RateLimitResult {
-  const now = Date.now();
-  const entry = rateLimitStore.get(identifier);
+  config: RateLimitConfig,
+): Promise<RateLimitResult> {
+  try {
+    const rows = await prisma.$queryRawUnsafe<
+      Array<{ count: number; reset_at: Date }>
+    >(
+      `SELECT "count", "reset_at" FROM "rate_limits"
+       WHERE "key" = $1 AND "reset_at" > NOW()`,
+      identifier,
+    );
 
-  if (!entry || entry.resetTime < now) {
+    if (rows.length === 0) {
+      return {
+        success: true,
+        remaining: config.maxRequests,
+        resetTime: Date.now() + config.windowMs,
+        total: config.maxRequests,
+      };
+    }
+
+    const row = rows[0];
+    const count = Number(row.count);
+    const resetTime = new Date(row.reset_at).getTime();
+
+    return {
+      success: count < config.maxRequests,
+      remaining: Math.max(0, config.maxRequests - count),
+      resetTime,
+      total: config.maxRequests,
+    };
+  } catch (error) {
+    logger.error("Failed to get rate limit status", { error, identifier });
     return {
       success: true,
       remaining: config.maxRequests,
-      resetTime: now + config.windowMs,
+      resetTime: Date.now() + config.windowMs,
       total: config.maxRequests,
     };
   }
-
-  return {
-    success: entry.count < config.maxRequests,
-    remaining: Math.max(0, config.maxRequests - entry.count),
-    resetTime: entry.resetTime,
-    total: config.maxRequests,
-  };
 }

@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   try {
     // Rate limit: 5 MFA attempts per 15 min per IP
     const ip = getClientIP(req);
-    const ipRl = checkRateLimit(`mfa:${ip}`, {
+    const ipRl = await checkRateLimit(`mfa:${ip}`, {
       maxRequests: 5,
       windowMs: 15 * 60 * 1000,
     });
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     }
 
     // Rate limit: 5 MFA attempts per 15 min per user
-    const userRl = checkRateLimit(`mfa:user:${pendingUserId}`, {
+    const userRl = await checkRateLimit(`mfa:user:${pendingUserId}`, {
       maxRequests: 5,
       windowMs: 15 * 60 * 1000,
     });

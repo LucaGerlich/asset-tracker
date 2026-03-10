@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       headersList.get("x-real-ip") ||
       "unknown";
 
-    const rateLimit = checkRateLimit(
+    const rateLimit = await checkRateLimit(
       `password-reset:${ip}`,
       rateLimiters.passwordReset,
     );
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     }
 
     // Per-email rate limit (prevents flooding a single account)
-    const emailRl = checkRateLimit(
+    const emailRl = await checkRateLimit(
       `password-reset-email:${email.toLowerCase().trim()}`,
       { maxRequests: 3, windowMs: 60 * 60 * 1000 },
     );

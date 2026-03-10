@@ -81,12 +81,20 @@ const authPrisma = (
       }) {
         if (args.where)
           translateIdToUserid(args.where as Record<string, unknown>);
-        if (args.data && typeof args.data === "object" && "id" in (args.data as Record<string, unknown>)) {
+        if (
+          args.data &&
+          typeof args.data === "object" &&
+          "id" in (args.data as Record<string, unknown>)
+        ) {
           const data = args.data as Record<string, unknown>;
           data.userid = data.id;
           delete data.id;
         }
-        if (args.select && typeof args.select === "object" && "id" in (args.select as Record<string, unknown>)) {
+        if (
+          args.select &&
+          typeof args.select === "object" &&
+          "id" in (args.select as Record<string, unknown>)
+        ) {
           const select = args.select as Record<string, unknown>;
           select.userid = select.id;
           delete select.id;
@@ -246,7 +254,8 @@ export const auth = betterAuth({
                     profile.family_name || profile.surname || "";
                   // Fallback: split displayName if individual parts are missing
                   const displayName = profile.name || profile.displayName || "";
-                  const firstName = givenName || displayName.split(" ")[0] || "";
+                  const firstName =
+                    givenName || displayName.split(" ")[0] || "";
                   const lastName =
                     familyName ||
                     displayName.split(" ").slice(1).join(" ") ||
@@ -328,7 +337,7 @@ export const auth = betterAuth({
         ctx.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
         ctx.headers?.get("x-real-ip") ||
         "127.0.0.1";
-      const rl = checkRateLimit(`login:${ip}`, {
+      const rl = await checkRateLimit(`login:${ip}`, {
         maxRequests: 10,
         windowMs: 15 * 60 * 1000,
       });

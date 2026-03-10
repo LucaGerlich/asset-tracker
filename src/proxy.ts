@@ -11,7 +11,7 @@ import {
 } from "@/lib/rate-limit";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const session = getSessionCookie(req);
   const isLoggedIn = !!session;
@@ -80,7 +80,7 @@ export function proxy(req: NextRequest) {
     }
 
     const identifier = `${clientIP}:${pathname}`;
-    const rateLimitResult = checkRateLimit(identifier, limiterConfig);
+    const rateLimitResult = await checkRateLimit(identifier, limiterConfig);
 
     if (!rateLimitResult.success) {
       const rateLimitResponse = createRateLimitResponse(

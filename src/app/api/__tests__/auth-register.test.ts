@@ -18,7 +18,7 @@ vi.mock("@/lib/api-auth", () => ({
 
 vi.mock("@/lib/rate-limit", () => ({
   getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
-  checkRateLimit: vi.fn().mockReturnValue({ success: true }),
+  checkRateLimit: vi.fn().mockResolvedValue({ success: true }),
   createRateLimitResponse: vi.fn(),
 }));
 
@@ -39,7 +39,7 @@ const mockCheckRateLimit = vi.mocked(checkRateLimit);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockCheckRateLimit.mockReturnValue({ success: true } as any);
+  mockCheckRateLimit.mockResolvedValue({ success: true } as any);
 });
 
 describe("POST /api/auth/register", () => {
@@ -116,7 +116,7 @@ describe("POST /api/auth/register", () => {
   });
 
   it("returns rate limit response when rate limited", async () => {
-    mockCheckRateLimit.mockReturnValue({
+    mockCheckRateLimit.mockResolvedValue({
       success: false,
       retryAfter: 3600,
     } as any);

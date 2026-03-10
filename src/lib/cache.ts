@@ -1,88 +1,114 @@
 /**
- * In-memory caching layer with TTL expiration.
+ * PostgreSQL-backed caching layer with TTL expiration.
+ *
+ * Uses an UNLOGGED table ("cache") for fast key-value storage with automatic
+ * expiry. This replaces the previous in-memory Map, which was ineffective in
+ * serverless environments (Vercel) where each invocation gets its own memory.
  *
  * Public API:
  *  - `cache.get(key)`                      — retrieve a cached value
  *  - `cache.set(key, value, ttlSeconds)`   — store a value with TTL
  *  - `cache.del(key)`                      — delete a single key
  *  - `cache.invalidatePattern(prefix)`     — delete all keys matching a prefix
+ *  - `cache.clear()`                       — remove all cached entries
  *  - `cached(key, fetcher, ttlMs)`         — fetch-through helper (backward compatible)
  *  - `invalidateCache(key)`                — delete a single key (alias)
  *  - `invalidateCacheByPrefix(prefix)`     — delete keys by prefix (alias)
  *  - `clearCache()`                        — remove all cached entries
  */
 
+import prisma from "@/lib/prisma";
+
 // ---------------------------------------------------------------------------
-// Cache backend
+// Internal helpers
 // ---------------------------------------------------------------------------
 
-interface MemoryEntry<T = unknown> {
-  data: T;
-  expiresAt: number;
+/** Row shape returned by SELECT on the cache table. */
+interface CacheRow {
+  value: unknown;
 }
-
-class MemoryCacheBackend {
-  private store = new Map<string, MemoryEntry>();
-
-  get<T>(key: string): T | null {
-    const entry = this.store.get(key) as MemoryEntry<T> | undefined;
-    if (!entry) return null;
-    if (entry.expiresAt <= Date.now()) {
-      this.store.delete(key);
-      return null;
-    }
-    return entry.data;
-  }
-
-  set<T>(key: string, value: T, ttlSeconds: number): void {
-    this.store.set(key, {
-      data: value,
-      expiresAt: Date.now() + ttlSeconds * 1000,
-    });
-  }
-
-  del(key: string): void {
-    this.store.delete(key);
-  }
-
-  invalidatePattern(prefix: string): void {
-    for (const key of this.store.keys()) {
-      if (key.startsWith(prefix)) {
-        this.store.delete(key);
-      }
-    }
-  }
-
-  clear(): void {
-    this.store.clear();
-  }
-}
-
-const backend = new MemoryCacheBackend();
 
 // ---------------------------------------------------------------------------
 // Public cache object
 // ---------------------------------------------------------------------------
 
 export const cache = {
+  /**
+   * Retrieve a cached value by key.
+   * Returns null on cache miss or if the entry has expired.
+   */
   async get<T>(key: string): Promise<T | null> {
-    return backend.get<T>(key);
+    try {
+      const rows = await prisma.$queryRawUnsafe<CacheRow[]>(
+        `SELECT "value" FROM "cache" WHERE "key" = $1 AND "expires_at" > NOW()`,
+        key,
+      );
+      if (rows.length === 0) return null;
+      return rows[0].value as T;
+    } catch (error) {
+      console.error("[cache] get failed:", error);
+      return null;
+    }
   },
 
+  /**
+   * Store a value with a TTL in seconds (default 300 = 5 minutes).
+   * Uses an upsert so existing keys are updated atomically.
+   */
   async set<T>(key: string, value: T, ttlSeconds: number = 300): Promise<void> {
-    backend.set(key, value, ttlSeconds);
+    try {
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO "cache" ("key", "value", "expires_at")
+         VALUES ($1, $2::jsonb, NOW() + make_interval(secs => $3))
+         ON CONFLICT ("key")
+         DO UPDATE SET "value" = $2::jsonb,
+                       "expires_at" = NOW() + make_interval(secs => $3)`,
+        key,
+        JSON.stringify(value),
+        ttlSeconds,
+      );
+    } catch (error) {
+      console.error("[cache] set failed:", error);
+    }
   },
 
+  /**
+   * Delete a single cache entry by exact key.
+   */
   async del(key: string): Promise<void> {
-    backend.del(key);
+    try {
+      await prisma.$executeRawUnsafe(
+        `DELETE FROM "cache" WHERE "key" = $1`,
+        key,
+      );
+    } catch (error) {
+      console.error("[cache] del failed:", error);
+    }
   },
 
+  /**
+   * Delete all cache entries whose key starts with the given prefix.
+   */
   async invalidatePattern(prefix: string): Promise<void> {
-    backend.invalidatePattern(prefix);
+    try {
+      await prisma.$executeRawUnsafe(
+        `DELETE FROM "cache" WHERE "key" LIKE $1`,
+        prefix + "%",
+      );
+    } catch (error) {
+      console.error("[cache] invalidatePattern failed:", error);
+    }
   },
 
+  /**
+   * Remove all entries from the cache table.
+   */
   async clear(): Promise<void> {
-    backend.clear();
+    try {
+      await prisma.$executeRawUnsafe(`DELETE FROM "cache"`);
+    } catch (error) {
+      console.error("[cache] clear failed:", error);
+    }
   },
 };
 
@@ -101,14 +127,18 @@ export async function cached<T>(
   fetcher: () => Promise<T>,
   ttlMs: number = 5 * 60 * 1000,
 ): Promise<T> {
-  const existing = backend.get<T>(key);
+  // Try the cache first; on PG failure we still fall through to fetcher.
+  const existing = await cache.get<T>(key);
   if (existing !== null) {
     return existing;
   }
 
   const data = await fetcher();
+
+  // Store in cache (fire-and-forget; errors are logged inside cache.set).
   const ttlSeconds = Math.max(1, Math.round(ttlMs / 1000));
-  backend.set(key, data, ttlSeconds);
+  await cache.set(key, data, ttlSeconds);
+
   return data;
 }
 
@@ -116,21 +146,21 @@ export async function cached<T>(
  * Invalidate a specific cache key.
  */
 export async function invalidateCache(key: string): Promise<void> {
-  backend.del(key);
+  await cache.del(key);
 }
 
 /**
  * Invalidate all cache keys matching a prefix.
  */
 export async function invalidateCacheByPrefix(prefix: string): Promise<void> {
-  backend.invalidatePattern(prefix);
+  await cache.invalidatePattern(prefix);
 }
 
 /**
  * Clear entire cache.
  */
 export async function clearCache(): Promise<void> {
-  backend.clear();
+  await cache.clear();
 }
 
 /**
