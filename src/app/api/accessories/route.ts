@@ -84,9 +84,27 @@ export async function GET(req) {
 
     const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
-    // Search filter (accessoriename)
+    // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      where.accessoriename = { contains: params.search, mode: "insensitive" };
+      const tsQuery = params.search.trim().split(/\s+/).join(" & ");
+      const matchingIds = await prisma
+        .$queryRawUnsafe<
+          Array<{ accessorieid: string }>
+        >(`SELECT "accessorieid" FROM "accessories" WHERE "search_vector" @@ to_tsquery('english', $1)`, tsQuery)
+        .catch(() => null);
+
+      if (matchingIds && matchingIds.length > 0) {
+        where.accessorieid = { in: matchingIds.map((r) => r.accessorieid) };
+      } else if (matchingIds) {
+        // tsvector returned no results — empty set
+        where.accessorieid = { in: [] };
+      } else {
+        // Fallback to ILIKE if tsvector query failed (e.g. migration not applied yet)
+        where.OR = [
+          { accessoriename: { contains: params.search, mode: "insensitive" } },
+          { accessorietag: { contains: params.search, mode: "insensitive" } },
+        ];
+      }
     }
 
     const [items, total] = await Promise.all([

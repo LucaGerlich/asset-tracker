@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import prisma from "@/lib/prisma";
 import { updateDepartmentSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
@@ -19,10 +17,7 @@ interface RouteParams {
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requirePermission("dept:view");
 
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
@@ -55,6 +50,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json(department);
   } catch (error) {
     logger.error("Error fetching department", { error });
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith("Forbidden")) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json(
       { error: "Failed to fetch department" },
       { status: 500 },
@@ -68,10 +69,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const authUser = await requirePermission("dept:manage");
 
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
@@ -124,7 +122,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: authUser.id!,
       action: AUDIT_ACTIONS.UPDATE,
       entity: "Department",
       entityId: department.id,
@@ -134,6 +132,12 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json(department);
   } catch (error) {
     logger.error("Error updating department", { error });
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith("Forbidden")) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }
@@ -150,10 +154,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const authUser = await requirePermission("dept:manage");
 
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
@@ -199,7 +200,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: authUser.id!,
       action: AUDIT_ACTIONS.DELETE,
       entity: "Department",
       entityId: id,
@@ -209,6 +210,12 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error("Error deleting department", { error });
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith("Forbidden")) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json(
       { error: "Failed to delete department" },
       { status: 500 },

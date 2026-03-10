@@ -48,9 +48,24 @@ export async function GET(req) {
 
     const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
-    // Search filter (consumablename)
+    // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      where.consumablename = { contains: params.search, mode: "insensitive" };
+      const tsQuery = params.search.trim().split(/\s+/).join(" & ");
+      const matchingIds = await prisma
+        .$queryRawUnsafe<
+          Array<{ consumableid: string }>
+        >(`SELECT "consumableid" FROM "consumable" WHERE "search_vector" @@ to_tsquery('english', $1)`, tsQuery)
+        .catch(() => null);
+
+      if (matchingIds && matchingIds.length > 0) {
+        where.consumableid = { in: matchingIds.map((r) => r.consumableid) };
+      } else if (matchingIds) {
+        // tsvector returned no results — empty set
+        where.consumableid = { in: [] };
+      } else {
+        // Fallback to ILIKE if tsvector query failed (e.g. migration not applied yet)
+        where.consumablename = { contains: params.search, mode: "insensitive" };
+      }
     }
 
     const [items, total] = await Promise.all([

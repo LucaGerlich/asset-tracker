@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import {
-  createAuditLog,
-  AUDIT_ACTIONS,
-  AUDIT_ENTITIES,
-} from "@/lib/audit-log";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import {
   validateBody,
   createComponentSchema,
@@ -59,9 +55,27 @@ export async function GET(req: Request) {
 
     const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
-    // Search filter (name)
+    // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      where.name = { contains: params.search, mode: "insensitive" };
+      const tsQuery = params.search.trim().split(/\s+/).join(" & ");
+      const matchingIds = await prisma
+        .$queryRawUnsafe<
+          Array<{ id: string }>
+        >(`SELECT "id" FROM "components" WHERE "search_vector" @@ to_tsquery('english', $1)`, tsQuery)
+        .catch(() => null);
+
+      if (matchingIds && matchingIds.length > 0) {
+        where.id = { in: matchingIds.map((r) => r.id) };
+      } else if (matchingIds) {
+        // tsvector returned no results — empty set
+        where.id = { in: [] };
+      } else {
+        // Fallback to ILIKE if tsvector query failed (e.g. migration not applied yet)
+        where.OR = [
+          { name: { contains: params.search, mode: "insensitive" } },
+          { serialNumber: { contains: params.search, mode: "insensitive" } },
+        ];
+      }
     }
 
     const [items, total] = await Promise.all([

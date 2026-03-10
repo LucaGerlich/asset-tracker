@@ -63,9 +63,27 @@ export async function GET(req) {
 
     const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
-    // Search filter (licencekey)
+    // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      where.licencekey = { contains: params.search, mode: "insensitive" };
+      const tsQuery = params.search.trim().split(/\s+/).join(" & ");
+      const matchingIds = await prisma
+        .$queryRawUnsafe<
+          Array<{ licenceid: string }>
+        >(`SELECT "licenceid" FROM "licence" WHERE "search_vector" @@ to_tsquery('english', $1)`, tsQuery)
+        .catch(() => null);
+
+      if (matchingIds && matchingIds.length > 0) {
+        where.licenceid = { in: matchingIds.map((r) => r.licenceid) };
+      } else if (matchingIds) {
+        // tsvector returned no results — empty set
+        where.licenceid = { in: [] };
+      } else {
+        // Fallback to ILIKE if tsvector query failed (e.g. migration not applied yet)
+        where.OR = [
+          { licencekey: { contains: params.search, mode: "insensitive" } },
+          { licensedtoemail: { contains: params.search, mode: "insensitive" } },
+        ];
+      }
     }
 
     const [items, total] = await Promise.all([

@@ -80,14 +80,29 @@ export async function GET(req) {
 
     const baseWhere: Record<string, unknown> = scopeToOrganization({}, orgId);
 
-    // Search filter (firstname, lastname, email, username)
+    // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      baseWhere.OR = [
-        { firstname: { contains: params.search, mode: "insensitive" } },
-        { lastname: { contains: params.search, mode: "insensitive" } },
-        { email: { contains: params.search, mode: "insensitive" } },
-        { username: { contains: params.search, mode: "insensitive" } },
-      ];
+      const tsQuery = params.search.trim().split(/\s+/).join(" & ");
+      const matchingIds = await prisma
+        .$queryRawUnsafe<
+          Array<{ userid: string }>
+        >(`SELECT "userid" FROM "user" WHERE "search_vector" @@ to_tsquery('english', $1)`, tsQuery)
+        .catch(() => null);
+
+      if (matchingIds && matchingIds.length > 0) {
+        baseWhere.userid = { in: matchingIds.map((r) => r.userid) };
+      } else if (matchingIds) {
+        // tsvector returned no results — empty set
+        baseWhere.userid = { in: [] };
+      } else {
+        // Fallback to ILIKE if tsvector query failed (e.g. migration not applied yet)
+        baseWhere.OR = [
+          { firstname: { contains: params.search, mode: "insensitive" } },
+          { lastname: { contains: params.search, mode: "insensitive" } },
+          { email: { contains: params.search, mode: "insensitive" } },
+          { username: { contains: params.search, mode: "insensitive" } },
+        ];
+      }
     }
 
     const where = await applyDepartmentScopeToUsers(baseWhere, authUser);
