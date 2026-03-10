@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUrlState } from "@/hooks/useUrlState";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { Badge } from "@/components/ui/badge";
@@ -121,9 +122,11 @@ export default function App({
 
   // Derived values from URL state
   const filterValue = urlState.search;
-  const page = Number(urlState.page) || 1;
-  const rowsPerPage =
-    Number(urlState.pageSize) || Number(selectOptions[0].value);
+  const showAll = urlState.pageSize === "all";
+  const page = showAll ? 1 : Number(urlState.page) || 1;
+  const rowsPerPage = showAll
+    ? Infinity
+    : Number(urlState.pageSize) || Number(selectOptions[0].value);
   const sortDescriptor = useMemo(
     () => ({ column: urlState.sortCol, direction: urlState.sortDir }),
     [urlState.sortCol, urlState.sortDir],
@@ -143,7 +146,7 @@ export default function App({
     [setUrlState],
   );
   const setRowsPerPage = useCallback(
-    (n: number) => setUrlState({ pageSize: String(n), page: "1" }),
+    (v: string) => setUrlState({ pageSize: v, page: "1" }),
     [setUrlState],
   );
   const setSortDescriptor = useCallback(
@@ -193,6 +196,10 @@ export default function App({
   const [selectedUser, setSelectedUser] = useState(null);
   const [deleteMode, setDeleteMode] = useState("single");
   const [confirmAssigned, setConfirmAssigned] = useState(false);
+
+  // Virtual scrolling setup for "All" mode
+  const virtualScrollRef = useRef<HTMLDivElement>(null);
+
   const handleStatusUpdate = useCallback(
     async (assetId, statusId) => {
       try {
@@ -620,6 +627,25 @@ export default function App({
     categories,
   ]);
 
+  const virtualizer = useVirtualizer({
+    count: showAll ? sortedItems.length : 0,
+    getScrollElement: () => virtualScrollRef.current,
+    estimateSize: () => 48,
+    overscan: 15,
+  });
+
+  const virtualMeasureRef = useCallback(
+    (node: HTMLTableRowElement | null) => {
+      if (node) {
+        const index = Number(node.dataset.index);
+        if (!isNaN(index)) {
+          virtualizer.measureElement(node);
+        }
+      }
+    },
+    [virtualizer],
+  );
+
   const renderCell = useCallback(
     (asset, columnKey) => {
       const cellValue = asset[columnKey];
@@ -856,7 +882,7 @@ export default function App({
 
   const onRowsPerPageChange = useCallback(
     (e) => {
-      setRowsPerPage(Number(e.target.value));
+      setRowsPerPage(e.target.value);
     },
     [setRowsPerPage],
   );
@@ -1121,9 +1147,9 @@ export default function App({
               Rows per page:
             </span>
             <Select
-              value={String(rowsPerPage)}
+              value={showAll ? "all" : String(rowsPerPage)}
               onValueChange={(value) => {
-                setRowsPerPage(Number(value));
+                setRowsPerPage(value);
               }}
             >
               <SelectTrigger className="w-20">
@@ -1168,30 +1194,44 @@ export default function App({
             ? "All items selected"
             : `${selectedKeys.size} of ${assetsData.length} selected`}
         </span>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(Math.max(1, page - 1))}
-            disabled={page === 1}
-          >
-            Previous
-          </Button>
-          <span className="text-sm">
-            Page {page} of {pages}
+        {!showAll && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page === 1}
+            >
+              Previous
+            </Button>
+            <span className="text-sm">
+              Page {page} of {pages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(Math.min(pages, page + 1))}
+              disabled={page === pages}
+            >
+              Next
+            </Button>
+          </div>
+        )}
+        {showAll && (
+          <span className="text-muted-foreground text-sm">
+            Showing all {filteredItems.length} entries (virtual scroll)
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage(Math.min(pages, page + 1))}
-            disabled={page === pages}
-          >
-            Next
-          </Button>
-        </div>
+        )}
       </div>
     );
-  }, [selectedKeys, page, pages, assetsData.length]);
+  }, [
+    selectedKeys,
+    page,
+    pages,
+    assetsData.length,
+    showAll,
+    filteredItems.length,
+  ]);
 
   return (
     <div className="w-full space-y-4">
@@ -1354,87 +1394,210 @@ export default function App({
       </div>
 
       {/* Desktop: Table view */}
-      <div className="hidden w-full overflow-x-auto rounded-md border lg:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={
-                    sortedItems.length > 0 &&
-                    sortedItems.every((i) => selectedKeys.has(i.assetid))
-                  }
-                  ref={(el) => {
-                    if (el) {
-                      const some = sortedItems.some((i) =>
-                        selectedKeys.has(i.assetid),
-                      );
-                      const all =
-                        sortedItems.length > 0 &&
-                        sortedItems.every((i) => selectedKeys.has(i.assetid));
-                      (el as unknown as HTMLInputElement).indeterminate =
-                        some && !all;
-                    }
-                  }}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSelectedKeys(
-                        new Set(sortedItems.map((i) => i.assetid)),
-                      );
-                    } else {
-                      setSelectedKeys(new Set());
-                    }
-                  }}
-                />
-              </TableHead>
-              {headerColumns.map((column) => (
-                <TableHead
-                  key={column.uid}
-                  className={column.uid === "actions" ? "text-center" : ""}
-                >
-                  {column.name}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedItems.length === 0 ? (
+      {showAll ? (
+        <div
+          ref={virtualScrollRef}
+          className="hidden w-full overflow-auto rounded-md border lg:block"
+          style={{ maxHeight: 600 }}
+        >
+          <Table>
+            <TableHeader className="bg-background sticky top-0 z-10">
               <TableRow>
-                <TableCell
-                  colSpan={headerColumns.length + 1}
-                  className="text-center"
-                >
-                  No assets found
-                </TableCell>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={
+                      sortedItems.length > 0 &&
+                      sortedItems.every((i) => selectedKeys.has(i.assetid))
+                    }
+                    ref={(el) => {
+                      if (el) {
+                        const some = sortedItems.some((i) =>
+                          selectedKeys.has(i.assetid),
+                        );
+                        const all =
+                          sortedItems.length > 0 &&
+                          sortedItems.every((i) => selectedKeys.has(i.assetid));
+                        (el as unknown as HTMLInputElement).indeterminate =
+                          some && !all;
+                      }
+                    }}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedKeys(
+                          new Set(sortedItems.map((i) => i.assetid)),
+                        );
+                      } else {
+                        setSelectedKeys(new Set());
+                      }
+                    }}
+                  />
+                </TableHead>
+                {headerColumns.map((column) => (
+                  <TableHead
+                    key={column.uid}
+                    className={column.uid === "actions" ? "text-center" : ""}
+                  >
+                    {column.name}
+                  </TableHead>
+                ))}
               </TableRow>
-            ) : (
-              sortedItems.map((item) => (
-                <TableRow key={item.assetid}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedKeys.has(item.assetid)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(selectedKeys);
-                        if (checked) {
-                          next.add(item.assetid);
-                        } else {
-                          next.delete(item.assetid);
-                        }
-                        setSelectedKeys(next);
-                      }}
-                    />
+            </TableHeader>
+            <TableBody>
+              {sortedItems.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={headerColumns.length + 1}
+                    className="text-center"
+                  >
+                    No assets found
                   </TableCell>
-                  {headerColumns.map((column) => (
-                    <TableCell key={column.uid}>
-                      {renderCell(item, column.uid)}
-                    </TableCell>
-                  ))}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                <>
+                  {virtualizer.getVirtualItems().length > 0 && (
+                    <tr>
+                      <td
+                        colSpan={headerColumns.length + 1}
+                        style={{
+                          height: virtualizer.getVirtualItems()[0].start,
+                          padding: 0,
+                        }}
+                      />
+                    </tr>
+                  )}
+                  {virtualizer.getVirtualItems().map((virtualRow) => {
+                    const item = sortedItems[virtualRow.index];
+                    return (
+                      <TableRow
+                        key={item.assetid}
+                        data-index={virtualRow.index}
+                        ref={virtualMeasureRef}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedKeys.has(item.assetid)}
+                            onCheckedChange={(checked) => {
+                              const next = new Set(selectedKeys);
+                              if (checked) {
+                                next.add(item.assetid);
+                              } else {
+                                next.delete(item.assetid);
+                              }
+                              setSelectedKeys(next);
+                            }}
+                          />
+                        </TableCell>
+                        {headerColumns.map((column) => (
+                          <TableCell key={column.uid}>
+                            {renderCell(item, column.uid)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    );
+                  })}
+                  {virtualizer.getVirtualItems().length > 0 && (
+                    <tr>
+                      <td
+                        colSpan={headerColumns.length + 1}
+                        style={{
+                          height:
+                            virtualizer.getTotalSize() -
+                            virtualizer.getVirtualItems()[
+                              virtualizer.getVirtualItems().length - 1
+                            ].end,
+                          padding: 0,
+                        }}
+                      />
+                    </tr>
+                  )}
+                </>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="hidden w-full overflow-x-auto rounded-md border lg:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={
+                      sortedItems.length > 0 &&
+                      sortedItems.every((i) => selectedKeys.has(i.assetid))
+                    }
+                    ref={(el) => {
+                      if (el) {
+                        const some = sortedItems.some((i) =>
+                          selectedKeys.has(i.assetid),
+                        );
+                        const all =
+                          sortedItems.length > 0 &&
+                          sortedItems.every((i) => selectedKeys.has(i.assetid));
+                        (el as unknown as HTMLInputElement).indeterminate =
+                          some && !all;
+                      }
+                    }}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedKeys(
+                          new Set(sortedItems.map((i) => i.assetid)),
+                        );
+                      } else {
+                        setSelectedKeys(new Set());
+                      }
+                    }}
+                  />
+                </TableHead>
+                {headerColumns.map((column) => (
+                  <TableHead
+                    key={column.uid}
+                    className={column.uid === "actions" ? "text-center" : ""}
+                  >
+                    {column.name}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedItems.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={headerColumns.length + 1}
+                    className="text-center"
+                  >
+                    No assets found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                sortedItems.map((item) => (
+                  <TableRow key={item.assetid}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedKeys.has(item.assetid)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedKeys);
+                          if (checked) {
+                            next.add(item.assetid);
+                          } else {
+                            next.delete(item.assetid);
+                          }
+                          setSelectedKeys(next);
+                        }}
+                      />
+                    </TableCell>
+                    {headerColumns.map((column) => (
+                      <TableCell key={column.uid}>
+                        {renderCell(item, column.uid)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
       {bottomContent}
       <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
         <DialogContent className="sm:max-w-lg">

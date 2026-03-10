@@ -17,8 +17,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ReactNode, useMemo } from "react";
+import { ReactNode, useCallback, useMemo, useRef } from "react";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Columns3, X } from "lucide-react";
 
 interface Column {
@@ -43,6 +44,14 @@ interface ResponsiveTableProps<T> {
   selectedKeys?: Set<string>;
   onSelectionChange?: (keys: Set<string>) => void;
   bulkActions?: ReactNode;
+  // Virtual scrolling
+  virtualized?: boolean;
+  /** Max height of the virtual scroll container in px (default: 600) */
+  virtualMaxHeight?: number;
+  /** Estimated row height in px for virtual scrolling (default: 48) */
+  estimatedRowHeight?: number;
+  /** Number of extra rows rendered beyond the visible area (default: 10) */
+  overscan?: number;
 }
 
 export function ResponsiveTable<T>({
@@ -60,6 +69,10 @@ export function ResponsiveTable<T>({
   selectedKeys,
   onSelectionChange,
   bulkActions,
+  virtualized = false,
+  virtualMaxHeight = 600,
+  estimatedRowHeight = 48,
+  overscan = 10,
 }: ResponsiveTableProps<T>) {
   const allColumnKeys = useMemo(() => columns.map((c) => c.key), [columns]);
   const [persistedColumns, setPersistedColumns] = usePersistentState<string[]>(
@@ -125,6 +138,27 @@ export function ResponsiveTable<T>({
     }
     onSelectionChange(next);
   };
+
+  // Virtual scrolling setup
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: virtualized ? data.length : 0,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => estimatedRowHeight,
+    overscan,
+  });
+
+  const measureRef = useCallback(
+    (node: HTMLTableRowElement | null) => {
+      if (node) {
+        const index = Number(node.dataset.index);
+        if (!isNaN(index)) {
+          virtualizer.measureElement(node);
+        }
+      }
+    },
+    [virtualizer],
+  );
 
   const columnToggleUI = storageKey ? (
     <DropdownMenu>
@@ -290,6 +324,93 @@ export function ResponsiveTable<T>({
   }
 
   // Scroll-only mode (no card view)
+  if (virtualized) {
+    const virtualItems = virtualizer.getVirtualItems();
+    const totalSize = virtualizer.getTotalSize();
+    const colSpan = visibleColumns.length + (selectable ? 1 : 0);
+
+    return (
+      <>
+        {toolbarContent}
+        <div
+          ref={scrollContainerRef}
+          className="w-full overflow-auto rounded-md border"
+          style={{ maxHeight: virtualMaxHeight }}
+        >
+          <Table style={{ minWidth }}>
+            <TableHeader className="bg-background sticky top-0 z-10">
+              <TableRow>
+                {selectable && (
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el)
+                          (el as unknown as HTMLInputElement).indeterminate =
+                            !!someSelected;
+                      }}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
+                {visibleColumns.map((col) => (
+                  <TableHead key={col.key}>{col.label}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {virtualItems.length > 0 && (
+                <tr>
+                  <td
+                    colSpan={colSpan}
+                    style={{ height: virtualItems[0].start, padding: 0 }}
+                  />
+                </tr>
+              )}
+              {virtualItems.map((virtualRow) => {
+                const item = data[virtualRow.index];
+                const itemKey = String(keyExtractor(item));
+                return (
+                  <TableRow
+                    key={itemKey}
+                    data-index={virtualRow.index}
+                    ref={measureRef}
+                  >
+                    {selectable && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedKeys?.has(itemKey) ?? false}
+                          onCheckedChange={() => handleSelectRow(itemKey)}
+                        />
+                      </TableCell>
+                    )}
+                    {visibleColumns.map((col) => (
+                      <TableCell key={col.key}>
+                        {renderCell(item, col.key)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })}
+              {virtualItems.length > 0 && (
+                <tr>
+                  <td
+                    colSpan={colSpan}
+                    style={{
+                      height:
+                        totalSize - virtualItems[virtualItems.length - 1].end,
+                      padding: 0,
+                    }}
+                  />
+                </tr>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       {toolbarContent}

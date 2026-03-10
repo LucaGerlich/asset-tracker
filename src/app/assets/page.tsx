@@ -44,13 +44,17 @@ export default async function Page() {
     { value: "50", label: "50" },
     { value: "75", label: "75" },
     { value: "100", label: "100" },
+    { value: "all", label: "All" },
   ];
 
   const databaseAssetsRaw = await getAssets();
   // Sanitize Prisma Decimals (purchaseprice) for client component props
   const databaseAssets = databaseAssetsRaw.map((a) => ({
     ...a,
-    purchaseprice: a.purchaseprice !== null && a.purchaseprice !== undefined ? Number(a.purchaseprice) : null,
+    purchaseprice:
+      a.purchaseprice !== null && a.purchaseprice !== undefined
+        ? Number(a.purchaseprice)
+        : null,
   }));
   const location = await getLocation();
   const user = await getUsers();
