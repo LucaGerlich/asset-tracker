@@ -107,14 +107,19 @@ const ACTION_COLORS: Record<string, string> = {
   CREATE: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   UPDATE: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   DELETE: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-  LOGIN: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  LOGIN:
+    "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
   LOGOUT: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
-  LOGIN_FAILED: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  PASSWORD_CHANGE: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  LOGIN_FAILED:
+    "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+  PASSWORD_CHANGE:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   ASSIGN: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
   UNASSIGN: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
-  REQUEST: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
-  APPROVE: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+  REQUEST:
+    "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+  APPROVE:
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
   REJECT: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200",
 };
 
@@ -151,7 +156,7 @@ function DetailPanel({ details }: { details: string | null }) {
 
   if (!parsed) {
     return (
-      <div className="px-6 py-4 text-sm text-muted-foreground">
+      <div className="text-muted-foreground px-6 py-4 text-sm">
         No additional details
       </div>
     );
@@ -164,10 +169,10 @@ function DetailPanel({ details }: { details: string | null }) {
   delete otherDetails.changes;
 
   return (
-    <div className="px-6 py-4 space-y-4">
+    <div className="space-y-4 px-6 py-4">
       {changes && Object.keys(changes).length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold mb-2">Changes</h4>
+          <h4 className="mb-2 text-sm font-semibold">Changes</h4>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -182,7 +187,7 @@ function DetailPanel({ details }: { details: string | null }) {
                   <TableRow key={field}>
                     <TableCell className="font-mono text-sm">{field}</TableCell>
                     <TableCell className="text-sm text-red-600 dark:text-red-400">
-                      <pre className="whitespace-pre-wrap break-all">
+                      <pre className="break-all whitespace-pre-wrap">
                         {change.from === null
                           ? "null"
                           : typeof change.from === "object"
@@ -191,7 +196,7 @@ function DetailPanel({ details }: { details: string | null }) {
                       </pre>
                     </TableCell>
                     <TableCell className="text-sm text-green-600 dark:text-green-400">
-                      <pre className="whitespace-pre-wrap break-all">
+                      <pre className="break-all whitespace-pre-wrap">
                         {change.to === null
                           ? "null"
                           : typeof change.to === "object"
@@ -209,8 +214,8 @@ function DetailPanel({ details }: { details: string | null }) {
 
       {Object.keys(otherDetails).length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold mb-2">Details</h4>
-          <pre className="text-sm bg-muted rounded-md p-3 overflow-x-auto whitespace-pre-wrap break-all">
+          <h4 className="mb-2 text-sm font-semibold">Details</h4>
+          <pre className="bg-muted overflow-x-auto rounded-md p-3 text-sm break-all whitespace-pre-wrap">
             {JSON.stringify(otherDetails, null, 2)}
           </pre>
         </div>
@@ -268,19 +273,30 @@ function exportToCsv(logs: AuditLogEntry[]) {
 }
 
 async function exportToExcel(logs: AuditLogEntry[]) {
-  const XLSX = await import("xlsx");
+  const ExcelJS = await import("exceljs");
   const { headers, rows } = buildAuditExportRows(logs);
-  const aoaData = [headers, ...rows];
 
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.aoa_to_sheet(aoaData);
-  worksheet["!cols"] = headers.map((h) => ({ wch: Math.max(h.length, 15) }));
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Audit Logs");
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Audit Logs");
 
-  XLSX.writeFile(
-    workbook,
-    `audit-logs-${new Date().toISOString().split("T")[0]}.xlsx`,
-  );
+  worksheet.columns = headers.map((h) => ({
+    header: h,
+    width: Math.max(h.length, 15),
+  }));
+  for (const row of rows) {
+    worksheet.addRow(row);
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `audit-logs-${new Date().toISOString().split("T")[0]}.xlsx`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 // ---------------------------------------------------------------------------
@@ -343,7 +359,9 @@ export default function AuditLogViewer() {
       setTotalPages(data.totalPages);
       setTotal(data.total);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to fetch audit logs");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to fetch audit logs",
+      );
     } finally {
       setLoading(false);
     }
@@ -383,7 +401,7 @@ export default function AuditLogViewer() {
               onClick={() => exportToCsv(logs)}
               disabled={logs.length === 0}
             >
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="mr-2 h-4 w-4" />
               Export CSV
             </Button>
             <Button
@@ -392,7 +410,7 @@ export default function AuditLogViewer() {
               onClick={() => exportToExcel(logs)}
               disabled={logs.length === 0}
             >
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
               Export Excel
             </Button>
           </div>
@@ -401,10 +419,10 @@ export default function AuditLogViewer() {
       <CardContent className="space-y-4">
         {/* Filters */}
         <form onSubmit={handleSearch} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
               <Input
                 placeholder="Search..."
                 value={search}
@@ -480,7 +498,7 @@ export default function AuditLogViewer() {
 
           <div className="flex items-center gap-2">
             <Button type="submit" size="sm">
-              <Search className="h-4 w-4 mr-2" />
+              <Search className="mr-2 h-4 w-4" />
               Search
             </Button>
             {hasActiveFilters && (
@@ -490,11 +508,11 @@ export default function AuditLogViewer() {
                 size="sm"
                 onClick={clearFilters}
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="mr-2 h-4 w-4" />
                 Clear Filters
               </Button>
             )}
-            <span className="text-sm text-muted-foreground ml-auto">
+            <span className="text-muted-foreground ml-auto text-sm">
               {total} {total === 1 ? "result" : "results"}
             </span>
           </div>
@@ -517,15 +535,15 @@ export default function AuditLogViewer() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                  <TableCell colSpan={7} className="py-8 text-center">
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                   </TableCell>
                 </TableRow>
               ) : logs.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={7}
-                    className="text-center py-8 text-muted-foreground"
+                    className="text-muted-foreground py-8 text-center"
                   >
                     No audit logs found
                   </TableCell>
@@ -534,7 +552,7 @@ export default function AuditLogViewer() {
                 logs.map((log) => (
                   <React.Fragment key={log.id}>
                     <TableRow
-                      className="cursor-pointer hover:bg-muted/50"
+                      className="hover:bg-muted/50 cursor-pointer"
                       onClick={() => toggleRow(log.id)}
                     >
                       <TableCell>
@@ -544,7 +562,7 @@ export default function AuditLogViewer() {
                           <ChevronRight className="h-4 w-4" />
                         )}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">
+                      <TableCell className="text-sm whitespace-nowrap">
                         {formatDate(log.createdAt)}
                       </TableCell>
                       <TableCell className="text-sm">
@@ -563,21 +581,21 @@ export default function AuditLogViewer() {
                       <TableCell className="text-sm">
                         {formatEntityLabel(log.entity)}
                       </TableCell>
-                      <TableCell className="text-sm font-mono">
+                      <TableCell className="font-mono text-sm">
                         {log.entityId
                           ? log.entityId.length > 12
                             ? `${log.entityId.slice(0, 12)}...`
                             : log.entityId
                           : "-"}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-muted-foreground text-sm">
                         {log.ipAddress || "-"}
                       </TableCell>
                     </TableRow>
 
                     {expandedRows.has(log.id) && (
                       <TableRow>
-                        <TableCell colSpan={7} className="p-0 bg-muted/30">
+                        <TableCell colSpan={7} className="bg-muted/30 p-0">
                           <DetailPanel details={log.details} />
                         </TableCell>
                       </TableRow>
@@ -593,7 +611,9 @@ export default function AuditLogViewer() {
         {totalPages > 0 && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Rows per page:</span>
+              <span className="text-muted-foreground text-sm">
+                Rows per page:
+              </span>
               <Select
                 value={String(pageSize)}
                 onValueChange={(val) => {
@@ -615,7 +635,7 @@ export default function AuditLogViewer() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-muted-foreground text-sm">
                 Page {page} of {totalPages}
               </span>
               <div className="flex items-center gap-1">
