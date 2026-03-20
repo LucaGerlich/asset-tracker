@@ -1,12 +1,35 @@
 -- Performance optimizations migration
 -- Based on analysis of query patterns and "You Just Need Postgres" principles
 
+-- Set search_path to match the application schema
+SET search_path TO "assettool";
+
+-- ============================================================
+-- 0. Ensure cache table exists (may have been lost if the
+--    previous migration was marked applied but tables were
+--    dropped, or UNLOGGED table was lost after a crash)
+-- ============================================================
+
+CREATE UNLOGGED TABLE IF NOT EXISTS "cache" (
+  "key" VARCHAR(255) PRIMARY KEY,
+  "value" JSONB NOT NULL,
+  "expires_at" TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cache_expires ON "cache" ("expires_at");
+
 -- ============================================================
 -- 1. Convert rate_limits to UNLOGGED table
 --    Rate limit data is ephemeral (resets every 1-15 min).
 --    WAL logging is unnecessary overhead for every API request.
 --    Same pattern already used by the "cache" table.
 -- ============================================================
+
+-- Ensure rate_limits exists before attempting conversion
+CREATE TABLE IF NOT EXISTS "rate_limits" (
+  "key" VARCHAR(255) PRIMARY KEY,
+  "count" INTEGER NOT NULL DEFAULT 1,
+  "reset_at" TIMESTAMPTZ NOT NULL
+);
 
 -- Recreate as UNLOGGED (no ALTER TABLE for this, must recreate)
 CREATE UNLOGGED TABLE IF NOT EXISTS "rate_limits_new" (
@@ -36,7 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_rate_limits_reset ON "rate_limits" ("reset_at");
 -- ============================================================
 
 CREATE INDEX IF NOT EXISTS idx_custom_field_defs_entity_active
-  ON "assettool"."custom_field_definitions" ("entityType", "isActive", "displayOrder");
+  ON "custom_field_definitions" ("entityType", "isActive", "displayOrder");
 
 -- ============================================================
 -- 3. Add index for maintenance_schedules by asset + due date
@@ -45,7 +68,7 @@ CREATE INDEX IF NOT EXISTS idx_custom_field_defs_entity_active
 -- ============================================================
 
 CREATE INDEX IF NOT EXISTS idx_maintenance_schedules_asset_due
-  ON "assettool"."maintenance_schedules" ("assetId", "nextDueDate");
+  ON "maintenance_schedules" ("assetId", "nextDueDate");
 
 -- ============================================================
 -- 4. Add index for audit_logs entity+entityId+createdAt
@@ -57,12 +80,12 @@ CREATE INDEX IF NOT EXISTS idx_maintenance_schedules_asset_due
 -- ============================================================
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_id_created
-  ON "assettool"."audit_logs" ("entity", "entityId", "createdAt" DESC);
+  ON "audit_logs" ("entity", "entityId", "createdAt" DESC);
 
 -- ============================================================
 -- 5. Add index for notification_queue status lookups
 -- ============================================================
 
 CREATE INDEX IF NOT EXISTS idx_notification_queue_status
-  ON "assettool"."notification_queue" ("status")
+  ON "notification_queue" ("status")
   WHERE "status" = 'pending';
