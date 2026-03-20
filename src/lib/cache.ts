@@ -29,6 +29,30 @@ interface CacheRow {
 }
 
 // ---------------------------------------------------------------------------
+// Self-healing: ensure cache table exists on first use
+// ---------------------------------------------------------------------------
+let tableChecked = false;
+
+async function ensureCacheTable(): Promise<void> {
+  if (tableChecked) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE UNLOGGED TABLE IF NOT EXISTS "cache" (
+        "key" VARCHAR(255) PRIMARY KEY,
+        "value" JSONB NOT NULL,
+        "expires_at" TIMESTAMPTZ NOT NULL
+      )
+    `);
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS idx_cache_expires ON "cache" ("expires_at")`,
+    );
+    tableChecked = true;
+  } catch (e) {
+    console.error("[cache] ensureCacheTable failed:", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Public cache object
 // ---------------------------------------------------------------------------
 
@@ -39,6 +63,7 @@ export const cache = {
    */
   async get<T>(key: string): Promise<T | null> {
     try {
+      await ensureCacheTable();
       const rows = await prisma.$queryRawUnsafe<CacheRow[]>(
         `SELECT "value" FROM "cache" WHERE "key" = $1 AND "expires_at" > NOW()`,
         key,
@@ -57,6 +82,7 @@ export const cache = {
    */
   async set<T>(key: string, value: T, ttlSeconds: number = 300): Promise<void> {
     try {
+      await ensureCacheTable();
       await prisma.$executeRawUnsafe(
         `INSERT INTO "cache" ("key", "value", "expires_at")
          VALUES ($1, $2::jsonb, NOW() + make_interval(secs => $3))

@@ -9,6 +9,28 @@
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
+// Self-healing: ensure rate_limits table exists
+let rlTableChecked = false;
+async function ensureRateLimitsTable(): Promise<void> {
+  if (rlTableChecked) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE UNLOGGED TABLE IF NOT EXISTS "rate_limits" (
+        "key" VARCHAR(255) PRIMARY KEY,
+        "count" INTEGER NOT NULL DEFAULT 1,
+        "reset_at" TIMESTAMPTZ NOT NULL
+      )
+    `);
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS idx_rate_limits_reset ON "rate_limits" ("reset_at")`,
+    );
+    rlTableChecked = true;
+  } catch (e) {
+    // Fail open — if we can't create the table, rate limiting is skipped
+    logger.error("[rate-limit] ensureRateLimitsTable failed", { error: e });
+  }
+}
+
 export interface RateLimitConfig {
   /** Maximum number of requests allowed in the window */
   maxRequests: number;
@@ -38,6 +60,7 @@ export async function checkRateLimit(
   const windowSeconds = config.windowMs / 1000;
 
   try {
+    await ensureRateLimitsTable();
     // Atomic upsert: if the row doesn't exist or has expired, (re-)create it
     // with count=1; otherwise increment count. Returns the resulting row.
     const rows = await prisma.$queryRawUnsafe<
