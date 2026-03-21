@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
 import {
@@ -8,7 +8,7 @@ import {
 import { logger } from "@/lib/logger";
 
 // GET /api/asset/validate?assettag=...&serialnumber=...
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     await requireApiAuth();
     const orgCtx = await getOrganizationContext();

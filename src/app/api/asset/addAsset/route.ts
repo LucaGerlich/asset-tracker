@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -34,7 +35,7 @@ const normalizeNumberInput = (value: unknown) => {
 };
 
 // Create asset via POST /api/asset/addAsset
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

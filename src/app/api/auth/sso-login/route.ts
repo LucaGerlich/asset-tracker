@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { getBaseUrl } from "@/lib/url";
 
 /**
  * GET /api/auth/sso-login?token=xxx
@@ -58,12 +59,7 @@ export async function GET(req: Request) {
     }
 
     // Redirect to login page with SSO parameters that the login form can auto-submit
-    const baseUrl =
-      process.env.BETTER_AUTH_URL ||
-      process.env.NEXTAUTH_URL ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      "http://localhost:3000";
-    const loginUrl = new URL("/login", baseUrl);
+    const loginUrl = new URL("/login", getBaseUrl());
     loginUrl.searchParams.set("sso_user", user.username);
     loginUrl.searchParams.set("sso_token", token);
 

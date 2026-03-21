@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
-import { requireApiAuth, requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireApiAdmin,
+  requireNotDemoMode,
+} from "@/lib/api-auth";
 import {
   createManufacturerSchema,
   updateManufacturerSchema,
@@ -18,7 +22,7 @@ import { logger } from "@/lib/logger";
 const MANUFACTURER_SORT_FIELDS = ["manufacturername", "creation_date"];
 
 // GET /api/manufacturer
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     // Require authentication to view manufacturers
     await requireApiAuth();
@@ -69,7 +73,7 @@ export async function GET(req) {
 }
 
 // POST /api/manufacturer
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -127,7 +131,7 @@ export async function POST(req) {
 }
 
 // PUT /api/manufacturer
-export async function PUT(req) {
+export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -201,7 +205,7 @@ export async function PUT(req) {
 }
 
 // DELETE /api/manufacturer
-export async function DELETE(req) {
+export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

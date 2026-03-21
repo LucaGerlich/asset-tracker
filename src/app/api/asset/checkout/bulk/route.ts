@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireNotDemoMode, requirePermission } from "@/lib/api-auth";
-import { validateBody, bulkCheckoutSchema } from "@/lib/validations";
+import { validateBody, bulkCheckoutSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";

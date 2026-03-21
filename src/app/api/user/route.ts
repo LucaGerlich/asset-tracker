@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
 import { hasPermission } from "@/lib/rbac";
@@ -29,7 +29,7 @@ const stripPassword = (user) => {
 // GET /api/user
 // Optional query: ?id=<userid>
 // Pagination: ?page=1&pageSize=25&sortBy=lastname&sortOrder=asc&search=keyword
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     const authUser = await requireApiAuth();
     const searchParams = req.nextUrl.searchParams;
@@ -130,7 +130,7 @@ export async function GET(req) {
 
 // PUT /api/user
 // Body must include userid; any provided fields will be updated
-export async function PUT(req) {
+export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

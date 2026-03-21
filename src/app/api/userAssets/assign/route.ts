@@ -1,9 +1,10 @@
+import type { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "../../../../lib/prisma";
 import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

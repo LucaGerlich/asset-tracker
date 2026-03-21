@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import {
-  createAuditLog,
-  AUDIT_ACTIONS,
-  AUDIT_ENTITIES,
-} from "@/lib/audit-log";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import {
   validateBody,
   createAuditCampaignSchema,
   updateAuditCampaignSchema,
-} from "@/lib/validations";
+} from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger } from "@/lib/logger";
@@ -41,7 +37,9 @@ export async function GET(req: Request) {
         where,
         orderBy: { createdAt: "desc" },
         include: {
-          creator: { select: { userid: true, firstname: true, lastname: true } },
+          creator: {
+            select: { userid: true, firstname: true, lastname: true },
+          },
           _count: { select: { entries: true, auditors: true } },
         },
       });
@@ -61,7 +59,9 @@ export async function GET(req: Request) {
         where,
         ...prismaArgs,
         include: {
-          creator: { select: { userid: true, firstname: true, lastname: true } },
+          creator: {
+            select: { userid: true, firstname: true, lastname: true },
+          },
           _count: { select: { entries: true, auditors: true } },
         },
       }),
@@ -97,7 +97,8 @@ export async function POST(req: Request) {
     const validated = validateBody(createAuditCampaignSchema, body);
     if (validated instanceof NextResponse) return validated;
 
-    const { name, description, dueDate, scopeType, scopeId, auditorIds } = validated;
+    const { name, description, dueDate, scopeType, scopeId, auditorIds } =
+      validated;
 
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;

@@ -12,6 +12,7 @@ import { checkUserLimit } from "@/lib/tenant-limits";
 import { sendSetPasswordLink } from "@/lib/magic-link";
 import crypto from "crypto";
 import { logger } from "@/lib/logger";
+import { getBaseUrl } from "@/lib/url";
 
 // POST /api/user/addUser
 export async function POST(request) {
@@ -154,11 +155,7 @@ export async function POST(request) {
         const { renderTemplate, emailTemplates } =
           await import("@/lib/email/templates");
         const { sendEmail } = await import("@/lib/email/service");
-        const baseUrl =
-          process.env.BETTER_AUTH_URL ||
-          process.env.NEXTAUTH_URL ||
-          process.env.NEXT_PUBLIC_APP_URL ||
-          "http://localhost:3000";
+        const baseUrl = getBaseUrl();
         const inviteUrl = `${baseUrl}/invite/${inviteToken}`;
 
         const subject = renderTemplate(emailTemplates.teamInvitation.subject, {

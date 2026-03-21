@@ -1,28 +1,54 @@
 import prisma from "./prisma";
 import { cached } from "./cache";
+import { getOrganizationContext } from "./organization-context";
+
+/**
+ * Build an org-scoped where clause for data queries.
+ * Includes records matching the user's org AND records with no org (null).
+ * This inclusive approach supports existing data that predates multi-tenancy.
+ *
+ * TODO: Once all records have organizationId set, remove the null fallback
+ * and use strict scoping: `{ organizationId: orgId }`.
+ */
+async function orgWhere(): Promise<Record<string, unknown>> {
+  try {
+    const ctx = await getOrganizationContext();
+    const orgId = ctx?.organization?.id;
+    if (!orgId) return {};
+    return { OR: [{ organizationId: orgId }, { organizationId: null }] };
+  } catch {
+    // Outside of a request context (e.g., scripts) — no scoping
+    return {};
+  }
+}
 
 export async function getAssetCount() {
-  return cached("asset_count", () => prisma.asset.count(), 2 * 60 * 1000);
+  const where = await orgWhere();
+  const key = `asset_count:${JSON.stringify(where)}`;
+  return cached(key, () => prisma.asset.count({ where }), 2 * 60 * 1000);
 }
 
 export async function getUserCount() {
-  return cached("user_count", () => prisma.user.count(), 2 * 60 * 1000);
+  const where = await orgWhere();
+  const key = `user_count:${JSON.stringify(where)}`;
+  return cached(key, () => prisma.user.count({ where }), 2 * 60 * 1000);
 }
 
 export async function getAccessoryCount() {
-  return cached(
-    "accessory_count",
-    () => prisma.accessories.count(),
-    2 * 60 * 1000,
-  );
+  const where = await orgWhere();
+  const key = `accessory_count:${JSON.stringify(where)}`;
+  return cached(key, () => prisma.accessories.count({ where }), 2 * 60 * 1000);
 }
 
 export async function getAssetStatusDistribution() {
+  const where = await orgWhere();
+  const key = `asset_status_distribution:${JSON.stringify(where)}`;
   return cached(
-    "asset_status_distribution",
+    key,
     async () => {
       const assets = await prisma.asset.groupBy({
         by: ["statustypeid"],
+        where,
         _count: { assetid: true },
       });
       return assets.map((a) => ({
@@ -58,7 +84,9 @@ export async function getUsers() {
 }
 
 export async function getAssets() {
-  return cached("assets_all", () => prisma.asset.findMany({}), 2 * 60 * 1000);
+  const where = await orgWhere();
+  const key = `assets_all:${JSON.stringify(where)}`;
+  return cached(key, () => prisma.asset.findMany({ where }), 2 * 60 * 1000);
 }
 
 export async function getAssetById(id: string) {
@@ -125,9 +153,11 @@ export async function getManufacturerById(id: string) {
 }
 
 export async function getAccessories() {
+  const where = await orgWhere();
+  const key = `accessories_all:${JSON.stringify(where)}`;
   return cached(
-    "accessories_all",
-    () => prisma.accessories.findMany({}),
+    key,
+    () => prisma.accessories.findMany({ where }),
     2 * 60 * 1000,
   );
 }
@@ -169,9 +199,11 @@ export async function getSupplierById(id: string) {
 }
 
 export async function getConsumables() {
+  const where = await orgWhere();
+  const key = `consumables_all:${JSON.stringify(where)}`;
   return cached(
-    "consumables_all",
-    () => prisma.consumable.findMany({}),
+    key,
+    () => prisma.consumable.findMany({ where }),
     2 * 60 * 1000,
   );
 }
@@ -203,11 +235,9 @@ export async function getAccessoryCategories() {
 }
 
 export async function getLicences() {
-  return cached(
-    "licences_all",
-    () => prisma.licence.findMany({}),
-    2 * 60 * 1000,
-  );
+  const where = await orgWhere();
+  const key = `licences_all:${JSON.stringify(where)}`;
+  return cached(key, () => prisma.licence.findMany({ where }), 2 * 60 * 1000);
 }
 
 export async function getLicenceById(id: string) {
@@ -305,11 +335,6 @@ export async function deleteUser(id: string) {
   await prisma.user.delete({
     where: { userid: id },
   });
-}
-
-export async function postData(): Promise<never> {
-  // Not used; kept for backward compatibility. Prefer API routes.
-  throw new Error("postData is deprecated. Use API routes instead.");
 }
 
 // Category Type data functions

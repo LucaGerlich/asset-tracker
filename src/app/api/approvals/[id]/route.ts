@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { hasPermission } from "@/lib/rbac";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
-import { validateBody, resolveApprovalSchema } from "@/lib/validations";
+import { validateBody, resolveApprovalSchema } from "@/lib/validation";
 import { logger } from "@/lib/logger";
 
 interface RouteParams {

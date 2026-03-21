@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
@@ -25,7 +25,7 @@ const LICENCE_SORT_FIELDS = ["licencekey", "creation_date"];
 
 // GET /api/licence
 // Pagination: ?page=1&pageSize=25&sortBy=licencekey&sortOrder=asc&search=keyword
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     // Require license:view permission to view licences
     await requirePermission("license:view");
@@ -132,7 +132,7 @@ export async function GET(req) {
 }
 
 // POST /api/licence
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -228,7 +228,7 @@ export async function POST(req) {
 }
 
 // PUT /api/licence
-export async function PUT(req) {
+export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -345,7 +345,7 @@ export async function PUT(req) {
 }
 
 // DELETE /api/licence
-export async function DELETE(req) {
+export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

@@ -11,6 +11,7 @@ import { checkRateLimit, rateLimiters } from "@/lib/rate-limit";
 import { headers } from "next/headers";
 import { requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
+import { getBaseUrl } from "@/lib/url";
 
 export async function POST(req: Request) {
   try {
@@ -84,12 +85,8 @@ export async function POST(req: Request) {
       });
 
       // Build reset URL
-      const baseUrl =
-        headersList.get("origin") ||
-        headersList.get("host") ||
-        "http://localhost:3000";
-      const protocol = baseUrl.startsWith("http") ? "" : "https://";
-      const resetUrl = `${protocol}${baseUrl}/reset-password?token=${token}&email=${encodeURIComponent(user.email!)}`;
+      const baseUrl = getBaseUrl();
+      const resetUrl = `${baseUrl}/reset-password?token=${token}&email=${encodeURIComponent(user.email!)}`;
 
       // Send email directly (with queue fallback)
       const html = renderTemplate(emailTemplates.passwordReset.html, {

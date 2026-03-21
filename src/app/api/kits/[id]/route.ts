@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import {
-  createAuditLog,
-  AUDIT_ACTIONS,
-  AUDIT_ENTITIES,
-} from "@/lib/audit-log";
-import { validateBody, updateKitSchema } from "@/lib/validations";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { validateBody, updateKitSchema } from "@/lib/validation";
 import { logger } from "@/lib/logger";
 
 interface RouteParams {
@@ -37,10 +33,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     if (e.message?.startsWith("Forbidden")) {
       return NextResponse.json({ error: e.message }, { status: 403 });
     }
-    return NextResponse.json(
-      { error: "Failed to fetch kit" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to fetch kit" }, { status: 500 });
   }
 }
 

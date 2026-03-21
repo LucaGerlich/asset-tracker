@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
@@ -24,7 +24,7 @@ const CONSUMABLE_SORT_FIELDS = ["consumablename", "quantity", "creation_date"];
 
 // GET /api/consumable
 // Pagination: ?page=1&pageSize=25&sortBy=consumablename&sortOrder=asc&search=keyword
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     // Require consumable:view permission to view consumables
     await requirePermission("consumable:view");
@@ -95,7 +95,7 @@ export async function GET(req) {
 }
 
 // POST /api/consumable
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -170,7 +170,7 @@ export async function POST(req) {
 }
 
 // PUT /api/consumable
-export async function PUT(req) {
+export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -268,7 +268,7 @@ export async function PUT(req) {
 }
 
 // DELETE /api/consumable
-export async function DELETE(req) {
+export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -345,7 +345,7 @@ export async function DELETE(req) {
 }
 
 // PATCH /api/consumable (restock)
-export async function PATCH(req) {
+export async function PATCH(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

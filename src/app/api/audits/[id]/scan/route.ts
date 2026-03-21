@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import { validateBody, auditScanSchema } from "@/lib/validations";
+import { validateBody, auditScanSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
 import { logger } from "@/lib/logger";
 

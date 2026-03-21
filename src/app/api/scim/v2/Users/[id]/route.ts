@@ -44,22 +44,21 @@ export async function GET(req: Request, { params }: RouteParams) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        scimError("User not found", 404),
-        { status: 404, headers: scimHeaders() },
-      );
+      return NextResponse.json(scimError("User not found", 404), {
+        status: 404,
+        headers: scimHeaders(),
+      });
     }
 
-    return NextResponse.json(
-      userToScim(user, baseUrl),
-      { headers: scimHeaders() },
-    );
+    return NextResponse.json(userToScim(user, baseUrl), {
+      headers: scimHeaders(),
+    });
   } catch (error) {
     logger.error("SCIM GET /Users/:id error", { error });
-    return NextResponse.json(
-      scimError("Internal server error", 500),
-      { status: 500, headers: scimHeaders() },
-    );
+    return NextResponse.json(scimError("Internal server error", 500), {
+      status: 500,
+      headers: scimHeaders(),
+    });
   }
 }
 
@@ -83,10 +82,10 @@ export async function PUT(req: Request, { params }: RouteParams) {
     });
 
     if (!existing) {
-      return NextResponse.json(
-        scimError("User not found", 404),
-        { status: 404, headers: scimHeaders() },
-      );
+      return NextResponse.json(scimError("User not found", 404), {
+        status: 404,
+        headers: scimHeaders(),
+      });
     }
 
     const user = await prisma.user.update({
@@ -112,16 +111,15 @@ export async function PUT(req: Request, { params }: RouteParams) {
       details: { method: "scim" },
     });
 
-    return NextResponse.json(
-      userToScim(user, baseUrl),
-      { headers: scimHeaders() },
-    );
+    return NextResponse.json(userToScim(user, baseUrl), {
+      headers: scimHeaders(),
+    });
   } catch (error) {
     logger.error("SCIM PUT /Users/:id error", { error });
-    return NextResponse.json(
-      scimError("Internal server error", 500),
-      { status: 500, headers: scimHeaders() },
-    );
+    return NextResponse.json(scimError("Internal server error", 500), {
+      status: 500,
+      headers: scimHeaders(),
+    });
   }
 }
 
@@ -146,10 +144,10 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     });
 
     if (!existing) {
-      return NextResponse.json(
-        scimError("User not found", 404),
-        { status: 404, headers: scimHeaders() },
-      );
+      return NextResponse.json(scimError("User not found", 404), {
+        status: 404,
+        headers: scimHeaders(),
+      });
     }
 
     const updateData: Record<string, unknown> = {
@@ -163,10 +161,16 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       const path = op.path?.toLowerCase();
       const value = op.value;
 
-      if (path === "active" || (!path && typeof value === "object" && "active" in value)) {
+      if (
+        path === "active" ||
+        (!path && typeof value === "object" && "active" in value)
+      ) {
         updateData.isActive = path ? value : value.active;
       }
-      if (path === "username" || (!path && typeof value === "object" && "userName" in value)) {
+      if (
+        path === "username" ||
+        (!path && typeof value === "object" && "userName" in value)
+      ) {
         updateData.username = path ? value : value.userName;
       }
       if (path === "name.givenname") {
@@ -175,7 +179,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       if (path === "name.familyname") {
         updateData.lastname = value;
       }
-      if (path === "emails[type eq \"work\"].value" || path === "emails") {
+      if (path === 'emails[type eq "work"].value' || path === "emails") {
         const email = typeof value === "string" ? value : value?.[0]?.value;
         if (email) updateData.email = email;
       }
@@ -193,9 +197,27 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       }
     }
 
+    // Whitelist allowed fields to prevent privilege escalation
+    const ALLOWED_SCIM_FIELDS = new Set([
+      "firstname",
+      "lastname",
+      "email",
+      "username",
+      "isActive",
+      "externalId",
+    ]);
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(updateData)) {
+      if (ALLOWED_SCIM_FIELDS.has(key)) sanitized[key] = value;
+    }
+
     const user = await prisma.user.update({
       where: { userid: id },
-      data: updateData,
+      data: {
+        ...sanitized,
+        scimLastSync: new Date(),
+        change_date: new Date(),
+      },
       select: USER_SELECT,
     });
 
@@ -207,16 +229,15 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       details: { method: "scim-patch", operations: operations.length },
     });
 
-    return NextResponse.json(
-      userToScim(user, baseUrl),
-      { headers: scimHeaders() },
-    );
+    return NextResponse.json(userToScim(user, baseUrl), {
+      headers: scimHeaders(),
+    });
   } catch (error) {
     logger.error("SCIM PATCH /Users/:id error", { error });
-    return NextResponse.json(
-      scimError("Internal server error", 500),
-      { status: 500, headers: scimHeaders() },
-    );
+    return NextResponse.json(scimError("Internal server error", 500), {
+      status: 500,
+      headers: scimHeaders(),
+    });
   }
 }
 
@@ -238,10 +259,10 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     });
 
     if (!existing) {
-      return NextResponse.json(
-        scimError("User not found", 404),
-        { status: 404, headers: scimHeaders() },
-      );
+      return NextResponse.json(scimError("User not found", 404), {
+        status: 404,
+        headers: scimHeaders(),
+      });
     }
 
     // Soft-delete: deactivate the user
@@ -265,10 +286,10 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     logger.error("SCIM DELETE /Users/:id error", { error });
-    return NextResponse.json(
-      scimError("Internal server error", 500),
-      { status: 500, headers: scimHeaders() },
-    );
+    return NextResponse.json(scimError("Internal server error", 500), {
+      status: 500,
+      headers: scimHeaders(),
+    });
   }
 }
 

@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
-import { requireApiAuth, requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireApiAdmin,
+  requireNotDemoMode,
+} from "@/lib/api-auth";
 import {
   createAssetCategoryTypeSchema,
   updateAssetCategoryTypeSchema,
@@ -18,7 +22,7 @@ import { logger } from "@/lib/logger";
 const ASSET_CATEGORY_SORT_FIELDS = ["assetcategorytypename"];
 
 // GET /api/assetCategory
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     // Require authentication to view asset categories
     await requireApiAuth();
@@ -74,7 +78,7 @@ export async function GET(req) {
 }
 
 // POST /api/assetCategory
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -131,7 +135,7 @@ export async function POST(req) {
 }
 
 // PUT /api/assetCategory
-export async function PUT(req) {
+export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

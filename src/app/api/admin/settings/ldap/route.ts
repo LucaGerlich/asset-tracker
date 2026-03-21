@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import { requireNotDemoMode, requireApiAdmin } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requireApiAdmin();
 
     const settings = await prisma.system_settings.findMany({
       where: {
@@ -43,10 +38,7 @@ export async function PUT(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requireApiAdmin();
 
     const body = await req.json();
     const { settings } = body;

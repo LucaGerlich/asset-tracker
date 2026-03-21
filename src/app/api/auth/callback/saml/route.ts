@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { logger } from "@/lib/logger";
+import { getBaseUrl } from "@/lib/url";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 
 /**
@@ -113,13 +114,8 @@ export async function POST(req: Request) {
     });
 
     // Redirect to login with SSO token
-    const baseUrl =
-      process.env.BETTER_AUTH_URL ||
-      process.env.NEXTAUTH_URL ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      "http://localhost:3000";
     return NextResponse.redirect(
-      new URL(`/api/auth/sso-login?token=${ssoToken}`, baseUrl),
+      new URL(`/api/auth/sso-login?token=${ssoToken}`, getBaseUrl()),
     );
   } catch (error: any) {
     logger.error("SAML callback error", { error: error.message });

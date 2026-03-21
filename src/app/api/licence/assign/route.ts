@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -9,7 +10,7 @@ import { logger } from "@/lib/logger";
 
 // POST /api/licence/assign
 // Body: { licenceId, userId }
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

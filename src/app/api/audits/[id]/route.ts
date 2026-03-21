@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import {
-  createAuditLog,
-  AUDIT_ACTIONS,
-  AUDIT_ENTITIES,
-} from "@/lib/audit-log";
-import { validateBody, updateAuditCampaignSchema } from "@/lib/validations";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { validateBody, updateAuditCampaignSchema } from "@/lib/validation";
 import { logger } from "@/lib/logger";
 
 interface RouteParams {
@@ -30,8 +26,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         },
         entries: {
           include: {
-            asset: { select: { assetid: true, assetname: true, assettag: true } },
-            auditor: { select: { userid: true, firstname: true, lastname: true } },
+            asset: {
+              select: { assetid: true, assetname: true, assettag: true },
+            },
+            auditor: {
+              select: { userid: true, firstname: true, lastname: true },
+            },
             location: { select: { locationid: true, locationname: true } },
           },
         },
@@ -51,7 +51,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       found: campaign.entries.filter((e) => e.status === "found").length,
       missing: campaign.entries.filter((e) => e.status === "missing").length,
       moved: campaign.entries.filter((e) => e.status === "moved").length,
-      unscanned: campaign.entries.filter((e) => e.status === "unscanned").length,
+      unscanned: campaign.entries.filter((e) => e.status === "unscanned")
+        .length,
     };
 
     return NextResponse.json({ ...campaign, summary }, { status: 200 });
@@ -84,11 +85,15 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     const updateData: Record<string, unknown> = {};
     if (validated.name !== undefined) updateData.name = validated.name;
-    if (validated.description !== undefined) updateData.description = validated.description;
+    if (validated.description !== undefined)
+      updateData.description = validated.description;
     if (validated.dueDate !== undefined) {
-      updateData.dueDate = validated.dueDate ? new Date(validated.dueDate) : null;
+      updateData.dueDate = validated.dueDate
+        ? new Date(validated.dueDate)
+        : null;
     }
-    if (validated.scopeType !== undefined) updateData.scopeType = validated.scopeType;
+    if (validated.scopeType !== undefined)
+      updateData.scopeType = validated.scopeType;
     if (validated.scopeId !== undefined) updateData.scopeId = validated.scopeId;
 
     const updated = await prisma.auditCampaign.update({

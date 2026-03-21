@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
 // GET /api/userAccessoires?userId=...
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     const authUser = await requireApiAuth();
     const orgContext = await getOrganizationContext();

@@ -1,9 +1,10 @@
+import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
 // GET /api/userAssets/findByAssetId?assetId=<id>
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     const user = await requireApiAuth();
     const assetId = req.nextUrl.searchParams.get("assetId");

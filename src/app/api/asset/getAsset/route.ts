@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { requirePermission } from "@/lib/api-auth";
 import {
@@ -7,7 +8,7 @@ import {
 import { logger } from "@/lib/logger";
 
 // GET /api/asset/getAsset?id=<assetid>
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     await requirePermission("asset:view");
     const orgContext = await getOrganizationContext();

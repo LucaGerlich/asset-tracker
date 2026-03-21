@@ -1,8 +1,9 @@
+import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
-export async function DELETE(req) {
+export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { logger } from "@/lib/logger";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
@@ -6,7 +7,7 @@ import {
   scopeToOrganization,
 } from "@/lib/organization-context";
 
-export async function DELETE(req) {
+export async function DELETE(req: NextRequest) {
   const startTime = Date.now();
 
   try {

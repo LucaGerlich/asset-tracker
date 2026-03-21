@@ -1,3 +1,4 @@
+import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { logger } from "@/lib/logger";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
@@ -10,7 +11,7 @@ import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 
 // PUT /api/asset/updateStatus
 // Body: { assetId: string, statusTypeId?: string, statusName?: string }
-export async function PUT(req) {
+export async function PUT(req: NextRequest) {
   const startTime = Date.now();
 
   try {

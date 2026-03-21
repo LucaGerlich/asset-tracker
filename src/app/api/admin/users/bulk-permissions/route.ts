@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
 // PATCH /api/admin/users/bulk-permissions
-export async function PATCH(req) {
+export async function PATCH(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

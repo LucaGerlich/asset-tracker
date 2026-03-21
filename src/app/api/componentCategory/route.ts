@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import {
-  createAuditLog,
-  AUDIT_ACTIONS,
-  AUDIT_ENTITIES,
-} from "@/lib/audit-log";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import {
   validateBody,
   createComponentCategorySchema,
   updateComponentCategorySchema,
-} from "@/lib/validations";
+} from "@/lib/validation";
 import { logger } from "@/lib/logger";
 
 // GET /api/componentCategory

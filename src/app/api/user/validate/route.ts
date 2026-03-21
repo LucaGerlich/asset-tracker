@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
 // GET /api/user/validate?username=...&email=...&excludeId=...
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     await requireApiAuth();
     const url = req.nextUrl;

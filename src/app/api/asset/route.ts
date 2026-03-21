@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import {
@@ -21,7 +21,7 @@ import {
   validateBody,
   createAssetSchema,
   updateAssetSchema,
-} from "@/lib/validations";
+} from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { checkAssetLimit } from "@/lib/tenant-limits";
@@ -39,7 +39,7 @@ const ASSET_SORT_FIELDS = [
 // GET /api/asset
 // Optional query: ?id=<assetid>
 // Pagination: ?page=1&pageSize=25&sortBy=assetname&sortOrder=asc&search=keyword&statusId=<id>
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     await requirePermission("asset:view");
     const orgCtx = await getOrganizationContext();
@@ -156,7 +156,7 @@ export async function GET(req) {
 }
 
 // POST /api/asset
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -229,7 +229,7 @@ export async function POST(req) {
 
 // PUT /api/asset
 // Body must include assetid; any provided fields will be updated
-export async function PUT(req) {
+export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

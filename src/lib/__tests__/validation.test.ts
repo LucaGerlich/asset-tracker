@@ -87,13 +87,21 @@ describe("createAssetSchema", () => {
 });
 
 describe("updateAssetSchema", () => {
-  it("accepts partial asset data", () => {
-    const result = updateAssetSchema.safeParse({ assetname: "Updated" });
+  it("accepts partial asset data with required assetid", () => {
+    const result = updateAssetSchema.safeParse({
+      assetid: uuid,
+      assetname: "Updated",
+    });
     expect(result.success).toBe(true);
   });
 
-  it("accepts empty object", () => {
-    const result = updateAssetSchema.safeParse({});
+  it("rejects missing assetid", () => {
+    const result = updateAssetSchema.safeParse({ assetname: "Updated" });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts only assetid", () => {
+    const result = updateAssetSchema.safeParse({ assetid: uuid });
     expect(result.success).toBe(true);
   });
 });

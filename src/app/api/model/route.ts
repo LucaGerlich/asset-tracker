@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
-import { requireApiAuth, requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireApiAdmin,
+  requireNotDemoMode,
+} from "@/lib/api-auth";
 import {
   createModelSchema,
   updateModelSchema,
@@ -18,7 +22,7 @@ import { logger } from "@/lib/logger";
 const MODEL_SORT_FIELDS = ["modelname", "modelnumber", "creation_date"];
 
 // GET /api/model
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     // Require authentication to view models
     await requireApiAuth();
@@ -70,7 +74,7 @@ export async function GET(req) {
 }
 
 // POST /api/model
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -129,7 +133,7 @@ export async function POST(req) {
 }
 
 // PUT /api/model
-export async function PUT(req) {
+export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

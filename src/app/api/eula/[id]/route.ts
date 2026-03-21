@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import {
-  createAuditLog,
-  AUDIT_ACTIONS,
-  AUDIT_ENTITIES,
-} from "@/lib/audit-log";
-import { validateBody, updateEulaTemplateSchema } from "@/lib/validations";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { validateBody, updateEulaTemplateSchema } from "@/lib/validation";
 import { logger } from "@/lib/logger";
 
 interface RouteParams {
@@ -63,7 +59,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     if (validated.name !== undefined) updateData.name = validated.name;
     if (validated.content !== undefined) updateData.content = validated.content;
     if (validated.version !== undefined) updateData.version = validated.version;
-    if (validated.isActive !== undefined) updateData.isActive = validated.isActive;
+    if (validated.isActive !== undefined)
+      updateData.isActive = validated.isActive;
 
     const updated = await prisma.eulaTemplate.update({
       where: { id },

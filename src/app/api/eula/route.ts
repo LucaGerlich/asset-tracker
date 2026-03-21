@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import {
-  createAuditLog,
-  AUDIT_ACTIONS,
-  AUDIT_ENTITIES,
-} from "@/lib/audit-log";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import {
   validateBody,
   createEulaTemplateSchema,
   updateEulaTemplateSchema,
-} from "@/lib/validations";
+} from "@/lib/validation";
 import { logger } from "@/lib/logger";
 
 // GET /api/eula
@@ -108,7 +104,8 @@ export async function PUT(req: Request) {
     if (validated.name !== undefined) updateData.name = validated.name;
     if (validated.content !== undefined) updateData.content = validated.content;
     if (validated.version !== undefined) updateData.version = validated.version;
-    if (validated.isActive !== undefined) updateData.isActive = validated.isActive;
+    if (validated.isActive !== undefined)
+      updateData.isActive = validated.isActive;
 
     const updated = await prisma.eulaTemplate.update({
       where: { id },

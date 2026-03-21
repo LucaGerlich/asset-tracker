@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { sendEmail } from "@/lib/email/service";
 import { emailTemplates, renderTemplate } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
+import { getBaseUrl } from "@/lib/url";
 
 export const dynamic = "force-dynamic";
 
@@ -70,10 +71,7 @@ export async function POST(request: NextRequest) {
 
     // Try to send invitation email
     try {
-      const baseUrl =
-        process.env.NEXTAUTH_URL ||
-        process.env.NEXT_PUBLIC_APP_URL ||
-        "http://localhost:3000";
+      const baseUrl = getBaseUrl();
       const inviteUrl = `${baseUrl}/invite/${token}`;
       const inviterName =
         `${invitation.inviter.firstname} ${invitation.inviter.lastname}`.trim();

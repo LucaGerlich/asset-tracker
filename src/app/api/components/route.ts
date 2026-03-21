@@ -7,7 +7,7 @@ import {
   validateBody,
   createComponentSchema,
   updateComponentSchema,
-} from "@/lib/validations";
+} from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger } from "@/lib/logger";

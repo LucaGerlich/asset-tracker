@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import {
-  createAuditLog,
-  AUDIT_ACTIONS,
-  AUDIT_ENTITIES,
-} from "@/lib/audit-log";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import {
   validateBody,
   createKitSchema,
   updateKitSchema,
-} from "@/lib/validations";
+} from "@/lib/validation";
 import { logger } from "@/lib/logger";
 import {
   getOrganizationContext,
@@ -113,14 +109,22 @@ export async function POST(req: Request) {
 
       if (items?.length) {
         await tx.kitItem.createMany({
-          data: items.map((item: { entityType: string; entityId: string; quantity?: number; isRequired?: boolean; notes?: string | null }) => ({
-            kitId: created.id,
-            entityType: item.entityType,
-            entityId: item.entityId,
-            quantity: item.quantity ?? 1,
-            isRequired: item.isRequired ?? true,
-            notes: item.notes ?? null,
-          })),
+          data: items.map(
+            (item: {
+              entityType: string;
+              entityId: string;
+              quantity?: number;
+              isRequired?: boolean;
+              notes?: string | null;
+            }) => ({
+              kitId: created.id,
+              entityType: item.entityType,
+              entityId: item.entityId,
+              quantity: item.quantity ?? 1,
+              isRequired: item.isRequired ?? true,
+              notes: item.notes ?? null,
+            }),
+          ),
         });
       }
 
@@ -196,14 +200,22 @@ export async function PUT(req: Request) {
 
         if (items?.length) {
           await tx.kitItem.createMany({
-            data: items.map((item: { entityType: string; entityId: string; quantity?: number; isRequired?: boolean; notes?: string | null }) => ({
-              kitId: updated.id,
-              entityType: item.entityType,
-              entityId: item.entityId,
-              quantity: item.quantity ?? 1,
-              isRequired: item.isRequired ?? true,
-              notes: item.notes ?? null,
-            })),
+            data: items.map(
+              (item: {
+                entityType: string;
+                entityId: string;
+                quantity?: number;
+                isRequired?: boolean;
+                notes?: string | null;
+              }) => ({
+                kitId: updated.id,
+                entityType: item.entityType,
+                entityId: item.entityId,
+                quantity: item.quantity ?? 1,
+                isRequired: item.isRequired ?? true,
+                notes: item.notes ?? null,
+              }),
+            ),
           });
         }
       }
@@ -234,10 +246,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: e.message }, { status: 403 });
     }
     if (e.code === "P2025") {
-      return NextResponse.json(
-        { error: "Kit not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Kit not found" }, { status: 404 });
     }
 
     return NextResponse.json(
@@ -271,10 +280,7 @@ export async function DELETE(req: Request) {
     });
 
     if (!kit) {
-      return NextResponse.json(
-        { error: "Kit not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Kit not found" }, { status: 404 });
     }
 
     await prisma.kit.delete({
@@ -304,10 +310,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: e.message }, { status: 403 });
     }
     if (e.code === "P2025") {
-      return NextResponse.json(
-        { error: "Kit not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Kit not found" }, { status: 404 });
     }
 
     return NextResponse.json(

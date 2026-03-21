@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
-import { validateBody, assignLicenceSeatSchema } from "@/lib/validations";
+import { validateBody, assignLicenceSeatSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger } from "@/lib/logger";
@@ -29,10 +29,7 @@ export async function GET(req: Request) {
     });
 
     if (!licence) {
-      return NextResponse.json(
-        { error: "Licence not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Licence not found" }, { status: 404 });
     }
 
     // Fetch active seat assignments
@@ -199,7 +196,8 @@ export async function POST(req: Request) {
       licenceId,
       userId,
       seatNumber: assignment.seatNumber,
-      userName: `${assignment.user.firstname ?? ""} ${assignment.user.lastname ?? ""}`.trim(),
+      userName:
+        `${assignment.user.firstname ?? ""} ${assignment.user.lastname ?? ""}`.trim(),
     }).catch(() => {});
 
     // Slack/Teams notifications
@@ -208,7 +206,8 @@ export async function POST(req: Request) {
       licenceId,
       userId,
       seatNumber: assignment.seatNumber,
-      userName: `${assignment.user.firstname ?? ""} ${assignment.user.lastname ?? ""}`.trim(),
+      userName:
+        `${assignment.user.firstname ?? ""} ${assignment.user.lastname ?? ""}`.trim(),
     }).catch(() => {});
 
     return NextResponse.json(assignment, { status: 201 });

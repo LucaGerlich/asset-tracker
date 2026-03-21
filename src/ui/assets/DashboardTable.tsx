@@ -61,7 +61,6 @@ import { capitalize } from "../../utils/utils";
 import QRCode from "react-qr-code";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { Toaster, toast } from "sonner";
-import { asset } from "@/components/testData";
 import SavedFilters from "@/components/SavedFilters";
 import PrintLabelDialog from "@/components/PrintLabelDialog";
 import { Card, CardContent } from "@/components/ui/card";

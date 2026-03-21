@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
 import QRCode from "qrcode";
+import { getBaseUrl } from "@/lib/url";
 import { logger } from "@/lib/logger";
 
 export async function GET(
@@ -13,7 +14,7 @@ export async function GET(
     const { id: assetId } = await params;
     const format = req.nextUrl.searchParams.get("format") || "png";
 
-    const baseUrl = process.env.NEXTAUTH_URL || "https://localhost:3000";
+    const baseUrl = getBaseUrl();
     const qrData = `${baseUrl}/assets/${assetId}`;
 
     if (format === "svg") {

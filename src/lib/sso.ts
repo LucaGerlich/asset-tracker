@@ -11,6 +11,7 @@ import { SAML } from "@node-saml/node-saml";
 import prisma from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 import { logger } from "@/lib/logger";
+import { getBaseUrl } from "@/lib/url";
 
 // ---------------------------------------------------------------------------
 // Settings reader
@@ -93,7 +94,7 @@ export interface SamlUserProfile {
  * Create SAML instance from stored settings.
  */
 function createSamlInstance(settings: SsoSettings): SAML {
-  const callbackUrl = `${process.env.BETTER_AUTH_URL || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/callback/saml`;
+  const callbackUrl = `${getBaseUrl()}/api/auth/callback/saml`;
 
   return new SAML({
     callbackUrl,
@@ -185,7 +186,7 @@ export async function getOidcAuthorizationUrl(state: string): Promise<string> {
     throw new Error("No authorization URL configured");
   }
 
-  const callbackUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/callback/oidc`;
+  const callbackUrl = `${getBaseUrl()}/api/auth/callback/oidc`;
 
   const params = new URLSearchParams({
     client_id: settings.clientId,
@@ -220,7 +221,7 @@ export async function exchangeOidcCode(code: string): Promise<OidcUserProfile> {
     throw new Error("No token URL configured");
   }
 
-  const callbackUrl = `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/callback/oidc`;
+  const callbackUrl = `${getBaseUrl()}/api/auth/callback/oidc`;
 
   // Exchange code for tokens
   const tokenRes = await fetch(tokenEndpoint, {

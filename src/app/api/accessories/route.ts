@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -46,7 +46,7 @@ const normalizeNumberInput = (value: unknown) => {
 
 // GET /api/accessories
 // Pagination: ?page=1&pageSize=25&sortBy=accessoriename&sortOrder=asc&search=keyword
-export async function GET(req) {
+export async function GET(req: NextRequest) {
   try {
     await requirePermission("accessory:view");
     const orgCtx = await getOrganizationContext();
@@ -132,7 +132,7 @@ export async function GET(req) {
 }
 
 // POST /api/accessories
-export async function POST(req) {
+export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -202,7 +202,7 @@ export async function POST(req) {
 }
 
 // PUT /api/accessories
-export async function PUT(req) {
+export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

@@ -5,6 +5,7 @@ import {
   getOidcAuthorizationUrl,
 } from "@/lib/sso";
 import { logger } from "@/lib/logger";
+import { getBaseUrl } from "@/lib/url";
 import crypto from "crypto";
 
 /**
@@ -33,12 +34,7 @@ export async function GET() {
   } catch (error: any) {
     logger.error("SSO init error", { error: error.message });
     return NextResponse.redirect(
-      new URL(
-        `/login?error=sso_init_failed`,
-        process.env.BETTER_AUTH_URL ||
-          process.env.NEXTAUTH_URL ||
-          "http://localhost:3000",
-      ),
+      new URL(`/login?error=sso_init_failed`, getBaseUrl()),
     );
   }
 }
