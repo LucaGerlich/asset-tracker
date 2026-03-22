@@ -24,6 +24,11 @@ import prisma from "@/lib/prisma";
 // the connection's search_path setting.
 // ---------------------------------------------------------------------------
 const S = process.env.DB_SCHEMA || "assettool";
+if (!/^[a-zA-Z0-9_]+$/.test(S)) {
+  throw new Error(
+    `Invalid DB_SCHEMA: "${S}". Only alphanumeric and underscores allowed.`,
+  );
+}
 const CACHE_TABLE = `"${S}"."cache"`;
 
 /** Row shape returned by SELECT on the cache table. */

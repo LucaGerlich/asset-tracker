@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireApiAdmin } from "@/lib/api-auth";
+import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
 import { getGDPRSettings } from "@/lib/gdpr-settings";
 import { logger } from "@/lib/logger";
 
@@ -13,9 +17,13 @@ import { logger } from "@/lib/logger";
 export async function GET() {
   try {
     const adminUser = await requireApiAdmin();
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+    const orgScope = scopeToOrganization({}, orgId);
 
-    // --- User Access List ---
+    // --- User Access List (scoped to organization) ---
     const users = await prisma.user.findMany({
+      where: orgScope,
       select: {
         userid: true,
         username: true,
@@ -58,13 +66,13 @@ export async function GET() {
       _count: { id: true },
     });
 
-    // --- Asset Counts ---
+    // --- Asset Counts (scoped to organization) ---
     const [totalAssets, totalAccessories, totalLicences, totalConsumables] =
       await Promise.all([
-        prisma.asset.count(),
-        prisma.accessories.count(),
-        prisma.licence.count(),
-        prisma.consumable.count(),
+        prisma.asset.count({ where: orgScope }),
+        prisma.accessories.count({ where: orgScope }),
+        prisma.licence.count({ where: orgScope }),
+        prisma.consumable.count({ where: orgScope }),
       ]);
 
     // --- Data Retention Settings ---

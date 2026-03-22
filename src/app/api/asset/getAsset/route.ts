@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
     const where = scopeToOrganization({}, orgId);
     const assets = await prisma.asset.findMany({
       where,
+      take: 1000,
       select: {
         assetid: true,
         assetname: true,

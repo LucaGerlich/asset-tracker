@@ -1,7 +1,10 @@
 import prisma from "../../../../lib/prisma";
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/api-auth";
-import { getOrganizationContext, scopeToOrganization } from "@/lib/organization-context";
+import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
 
 const stripPassword = (user) => {
   if (!user) return user;
@@ -12,11 +15,11 @@ const stripPassword = (user) => {
 
 export async function GET() {
   try {
-    await requirePermission('user:view');
+    await requirePermission("user:view");
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
     const where = scopeToOrganization({}, orgId);
-    const users = await prisma.user.findMany({ where });
+    const users = await prisma.user.findMany({ where, take: 1000 });
     return NextResponse.json(users.map(stripPassword));
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {

@@ -3,6 +3,11 @@ import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
 const S = process.env.DB_SCHEMA || "assettool";
+if (!/^[a-zA-Z0-9_]+$/.test(S)) {
+  throw new Error(
+    `Invalid DB_SCHEMA: "${S}". Only alphanumeric and underscores allowed.`,
+  );
+}
 
 /**
  * Cron endpoint for purging expired cache and rate-limit rows.
