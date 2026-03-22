@@ -252,6 +252,82 @@ export const emailTemplates = {
     </div>
   `,
   },
+  reservationRequest: {
+    subject: "New Asset Request: {{assetName}}",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">New Asset Reservation Request</h2>
+        <p>A user has requested to reserve an asset that requires your approval:</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <tr>
+            <td style="padding: 10px; border: 1px solid #ddd; background: #f5f5f5; width: 30%;"><strong>Requested By</strong></td>
+            <td style="padding: 10px; border: 1px solid #ddd;">{{requesterName}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Asset</strong></td>
+            <td style="padding: 10px; border: 1px solid #ddd;">{{assetName}} ({{assetTag}})</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Period</strong></td>
+            <td style="padding: 10px; border: 1px solid #ddd;">{{startDate}} — {{endDate}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Notes</strong></td>
+            <td style="padding: 10px; border: 1px solid #ddd;">{{notes}}</td>
+          </tr>
+        </table>
+        <p>Please log in to the Asset Tracker to approve or reject this request.</p>
+        <p>Best regards,<br>Asset Tracker System</p>
+      </div>
+    `,
+  },
+  reservationApproved: {
+    subject: "Request Approved: {{assetName}}",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #16a34a;">Reservation Approved</h2>
+        <p>Hello {{userName}},</p>
+        <p>Your reservation request has been <strong style="color: #16a34a;">approved</strong>:</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <tr>
+            <td style="padding: 10px; border: 1px solid #ddd; background: #f5f5f5; width: 30%;"><strong>Asset</strong></td>
+            <td style="padding: 10px; border: 1px solid #ddd;">{{assetName}} ({{assetTag}})</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Period</strong></td>
+            <td style="padding: 10px; border: 1px solid #ddd;">{{startDate}} — {{endDate}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Approved By</strong></td>
+            <td style="padding: 10px; border: 1px solid #ddd;">{{approverName}}</td>
+          </tr>
+        </table>
+        <p>Best regards,<br>Asset Tracker System</p>
+      </div>
+    `,
+  },
+  reservationRejected: {
+    subject: "Request Rejected: {{assetName}}",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #dc2626;">Reservation Rejected</h2>
+        <p>Hello {{userName}},</p>
+        <p>Your reservation request has been <strong style="color: #dc2626;">rejected</strong>:</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <tr>
+            <td style="padding: 10px; border: 1px solid #ddd; background: #f5f5f5; width: 30%;"><strong>Asset</strong></td>
+            <td style="padding: 10px; border: 1px solid #ddd;">{{assetName}} ({{assetTag}})</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #ddd; background: #f5f5f5;"><strong>Reason</strong></td>
+            <td style="padding: 10px; border: 1px solid #ddd;">{{notes}}</td>
+          </tr>
+        </table>
+        <p>If you have questions, please contact your administrator.</p>
+        <p>Best regards,<br>Asset Tracker System</p>
+      </div>
+    `,
+  },
 };
 
 export type TemplateType = keyof typeof emailTemplates;

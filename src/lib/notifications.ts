@@ -3,8 +3,8 @@
  * Handles sending notifications for various events
  */
 
-import prisma from './prisma';
-import { queueEmail, emailTemplates, renderTemplate } from './email';
+import prisma from "./prisma";
+import { queueEmail, emailTemplates, renderTemplate } from "./email";
 
 interface AssetNotificationData {
   assetId: string;
@@ -24,7 +24,7 @@ interface UserNotificationData {
  */
 export async function notifyAssetAssignment(
   asset: AssetNotificationData,
-  user: UserNotificationData
+  user: UserNotificationData,
 ): Promise<void> {
   const prefs = await getUserNotificationPrefs(user.userId);
   if (!prefs?.emailAssignments) return;
@@ -34,13 +34,15 @@ export async function notifyAssetAssignment(
     userName: user.userName,
     assetName: asset.assetName,
     assetTag: asset.assetTag,
-    serialNumber: asset.serialNumber || 'N/A',
+    serialNumber: asset.serialNumber || "N/A",
     assignedDate: new Date().toLocaleDateString(),
   });
 
-  const subject = renderTemplate(template.subject, { assetName: asset.assetName });
+  const subject = renderTemplate(template.subject, {
+    assetName: asset.assetName,
+  });
 
-  await queueEmail(user.userId, 'assignment', user.userEmail, subject, html);
+  await queueEmail(user.userId, "assignment", user.userEmail, subject, html);
 }
 
 /**
@@ -48,7 +50,7 @@ export async function notifyAssetAssignment(
  */
 export async function notifyAssetUnassignment(
   asset: AssetNotificationData,
-  user: UserNotificationData
+  user: UserNotificationData,
 ): Promise<void> {
   const prefs = await getUserNotificationPrefs(user.userId);
   if (!prefs?.emailUnassignments) return;
@@ -61,9 +63,93 @@ export async function notifyAssetUnassignment(
     unassignedDate: new Date().toLocaleDateString(),
   });
 
-  const subject = renderTemplate(template.subject, { assetName: asset.assetName });
+  const subject = renderTemplate(template.subject, {
+    assetName: asset.assetName,
+  });
 
-  await queueEmail(user.userId, 'unassignment', user.userEmail, subject, html);
+  await queueEmail(user.userId, "unassignment", user.userEmail, subject, html);
+}
+
+/**
+ * Notify all admins about a new reservation request
+ */
+export async function notifyReservationRequest(reservation: {
+  assetName: string;
+  assetTag: string;
+  requesterName: string;
+  startDate: string;
+  endDate: string;
+  notes: string | null;
+}): Promise<void> {
+  const admins = await prisma.user.findMany({
+    where: { isadmin: true },
+  });
+
+  const template = emailTemplates.reservationRequest;
+  const subject = renderTemplate(template.subject, {
+    assetName: reservation.assetName,
+  });
+  const html = renderTemplate(template.html, {
+    requesterName: reservation.requesterName,
+    assetName: reservation.assetName,
+    assetTag: reservation.assetTag,
+    startDate: reservation.startDate,
+    endDate: reservation.endDate,
+    notes: reservation.notes || "None",
+  });
+
+  for (const admin of admins) {
+    if (!admin.email) continue;
+    await queueEmail(
+      admin.userid,
+      "reservation_request",
+      admin.email,
+      subject,
+      html,
+    );
+  }
+}
+
+/**
+ * Notify the requester about their reservation approval or rejection
+ */
+export async function notifyReservationDecision(decision: {
+  assetName: string;
+  assetTag: string;
+  userName: string;
+  userEmail: string;
+  userId: string;
+  startDate: string;
+  endDate: string;
+  status: "approved" | "rejected";
+  approverName: string;
+  notes: string | null;
+}): Promise<void> {
+  const template =
+    decision.status === "approved"
+      ? emailTemplates.reservationApproved
+      : emailTemplates.reservationRejected;
+
+  const subject = renderTemplate(template.subject, {
+    assetName: decision.assetName,
+  });
+  const html = renderTemplate(template.html, {
+    userName: decision.userName,
+    assetName: decision.assetName,
+    assetTag: decision.assetTag,
+    startDate: decision.startDate,
+    endDate: decision.endDate,
+    approverName: decision.approverName,
+    notes: decision.notes || "No reason provided",
+  });
+
+  await queueEmail(
+    decision.userId,
+    `reservation_${decision.status}`,
+    decision.userEmail,
+    subject,
+    html,
+  );
 }
 
 /**
@@ -71,7 +157,7 @@ export async function notifyAssetUnassignment(
  */
 export async function checkExpiringLicenses(): Promise<number> {
   const defaultDays = 30;
-  
+
   // Get all licenses expiring within the notification window
   const now = new Date();
   const maxDate = new Date(now);
@@ -100,14 +186,15 @@ export async function checkExpiringLicenses(): Promise<number> {
     if (!prefs?.emailLicenseExpiry) continue;
 
     const daysRemaining = Math.ceil(
-      (new Date(license.expirationdate!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      (new Date(license.expirationdate!).getTime() - now.getTime()) /
+        (1000 * 60 * 60 * 24),
     );
 
     const template = emailTemplates.licenseExpiring;
     const html = renderTemplate(template.html, {
       userName: `${license.user.firstname} ${license.user.lastname}`,
       licenseName: license.licenceCategoryType.licencecategorytypename,
-      licenseKey: license.licencekey || 'N/A',
+      licenseKey: license.licencekey || "N/A",
       expirationDate: new Date(license.expirationdate!).toLocaleDateString(),
       daysRemaining: daysRemaining.toString(),
     });
@@ -116,7 +203,13 @@ export async function checkExpiringLicenses(): Promise<number> {
       licenseName: license.licenceCategoryType.licencecategorytypename,
     });
 
-    await queueEmail(license.user.userid, 'license_expiry', license.user.email, subject, html);
+    await queueEmail(
+      license.user.userid,
+      "license_expiry",
+      license.user.email,
+      subject,
+      html,
+    );
     notified++;
   }
 
@@ -128,7 +221,7 @@ export async function checkExpiringLicenses(): Promise<number> {
  */
 export async function checkMaintenanceDue(): Promise<number> {
   const defaultDays = 7;
-  
+
   const now = new Date();
   const maxDate = new Date(now);
   maxDate.setDate(maxDate.getDate() + defaultDays);
@@ -162,7 +255,7 @@ export async function checkMaintenanceDue(): Promise<number> {
       assetName: maintenance.asset.assetname,
       assetTag: maintenance.asset.assettag,
       maintenanceTitle: maintenance.title,
-      maintenanceDescription: maintenance.description || '',
+      maintenanceDescription: maintenance.description || "",
       dueDate: new Date(maintenance.nextDueDate).toLocaleDateString(),
     });
 
@@ -170,7 +263,7 @@ export async function checkMaintenanceDue(): Promise<number> {
       assetName: maintenance.asset.assetname,
     });
 
-    await queueEmail(user.userid, 'maintenance', user.email, subject, html);
+    await queueEmail(user.userid, "maintenance", user.email, subject, html);
     notified++;
   }
 
@@ -192,7 +285,9 @@ export async function checkLowStock(): Promise<number> {
   });
 
   // Filter in JavaScript to find items where quantity <= minQuantity
-  const lowStockItems = allConsumables.filter(item => item.quantity <= item.minQuantity);
+  const lowStockItems = allConsumables.filter(
+    (item) => item.quantity <= item.minQuantity,
+  );
 
   // Get admin users for notification
   const admins = await prisma.user.findMany({
@@ -219,7 +314,7 @@ export async function checkLowStock(): Promise<number> {
         consumableName: item.consumablename,
       });
 
-      await queueEmail(admin.userid, 'low_stock', admin.email, subject, html);
+      await queueEmail(admin.userid, "low_stock", admin.email, subject, html);
       notified++;
     }
   }
@@ -232,7 +327,7 @@ export async function checkLowStock(): Promise<number> {
  */
 export async function checkExpiringWarranties(): Promise<number> {
   const defaultDays = 30;
-  
+
   const now = new Date();
   const maxDate = new Date(now);
   maxDate.setDate(maxDate.getDate() + defaultDays);
@@ -254,7 +349,8 @@ export async function checkExpiringWarranties(): Promise<number> {
 
   for (const asset of expiringWarranties) {
     const daysRemaining = Math.ceil(
-      (new Date(asset.warrantyExpires!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      (new Date(asset.warrantyExpires!).getTime() - now.getTime()) /
+        (1000 * 60 * 60 * 24),
     );
 
     for (const admin of admins) {
@@ -273,7 +369,13 @@ export async function checkExpiringWarranties(): Promise<number> {
         assetName: asset.assetname,
       });
 
-      await queueEmail(admin.userid, 'warranty_expiry', admin.email, subject, html);
+      await queueEmail(
+        admin.userid,
+        "warranty_expiry",
+        admin.email,
+        subject,
+        html,
+      );
       notified++;
     }
   }

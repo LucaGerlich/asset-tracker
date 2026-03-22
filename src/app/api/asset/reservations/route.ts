@@ -4,6 +4,10 @@ import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
+import {
+  notifyReservationRequest,
+  notifyReservationDecision,
+} from "@/lib/notifications";
 
 // GET: List reservations, optionally filtered by assetId
 export async function GET(req: NextRequest) {
@@ -135,6 +139,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Notify admins about the new request (fire-and-forget)
+    notifyReservationRequest({
+      assetName: reservation.asset.assetname,
+      assetTag: reservation.asset.assettag,
+      requesterName: `${reservation.user.firstname} ${reservation.user.lastname}`,
+      startDate: start.toLocaleDateString(),
+      endDate: end.toLocaleDateString(),
+      notes: notes || null,
+    }).catch((e) =>
+      logger.error("Failed to send reservation notification", { error: e }),
+    );
+
     return NextResponse.json(reservation, { status: 201 });
   } catch (error) {
     logger.error("Error creating reservation", { error });
@@ -234,10 +250,36 @@ export async function PUT(req: NextRequest) {
           select: { assetid: true, assetname: true, assettag: true },
         },
         user: {
-          select: { userid: true, firstname: true, lastname: true },
+          select: {
+            userid: true,
+            firstname: true,
+            lastname: true,
+            email: true,
+          },
         },
       },
     });
+
+    // Notify the requester about approval/rejection (fire-and-forget)
+    if (status === "approved" || status === "rejected") {
+      const approverName = session.user.name || session.user.email || "Admin";
+      notifyReservationDecision({
+        assetName: reservation.asset.assetname,
+        assetTag: reservation.asset.assettag,
+        userName: `${reservation.user.firstname} ${reservation.user.lastname}`,
+        userEmail: reservation.user.email || "",
+        userId: reservation.user.userid,
+        startDate: new Date(existing.startDate).toLocaleDateString(),
+        endDate: new Date(existing.endDate).toLocaleDateString(),
+        status,
+        approverName,
+        notes: notes || null,
+      }).catch((e) =>
+        logger.error("Failed to send reservation decision notification", {
+          error: e,
+        }),
+      );
+    }
 
     return NextResponse.json(reservation);
   } catch (error) {
