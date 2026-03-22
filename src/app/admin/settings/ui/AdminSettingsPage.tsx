@@ -170,20 +170,41 @@ export default function AdminSettingsPage({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold">Admin Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-muted-foreground mt-1 text-sm">
           Configure system settings, manage users, and customize the application
         </p>
+
+        {/* Mobile dropdown */}
+        <div className="mt-4 md:hidden">
+          <select
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value)}
+            className="border-border bg-background w-full rounded-lg border px-3 py-2 text-sm font-medium"
+          >
+            {settingsNav.map((group) =>
+              group.items.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {group.title} — {item.label}
+                </option>
+              )),
+            )}
+          </select>
+        </div>
       </div>
 
       <div className="flex gap-8">
-        {/* Sidebar navigation */}
-        <nav className="hidden md:block w-56 shrink-0" aria-label="Settings navigation">
-          <div className="sticky top-24 space-y-6">
+        {/* Sidebar navigation — sticky within the main scroll container */}
+        <nav
+          className="hidden w-56 shrink-0 md:block"
+          aria-label="Settings navigation"
+        >
+          <div className="sticky top-0 max-h-[calc(100vh-8rem)] space-y-6 overflow-y-auto">
             {settingsNav.map((group) => (
               <div key={group.title}>
-                <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                <p className="text-muted-foreground/70 px-3 pb-1.5 text-[11px] font-semibold tracking-widest uppercase">
                   {group.title}
                 </p>
                 <div className="space-y-0.5">
@@ -212,30 +233,16 @@ export default function AdminSettingsPage({
           </div>
         </nav>
 
-        {/* Mobile dropdown */}
-        <div className="md:hidden w-full">
-          <select
-            value={activeTab}
-            onChange={(e) => setActiveTab(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
-          >
-            {settingsNav.map((group) =>
-              group.items.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {group.title} — {item.label}
-                </option>
-              )),
-            )}
-          </select>
-        </div>
-
         {/* Content area */}
         <div className="min-w-0 flex-1">
           {activeTab === "general" && (
             <GeneralSettingsTab settings={settings.general || []} />
           )}
           {activeTab === "email" && (
-            <EmailSettingsTab settings={settings.email || []} envEmailConfig={envEmailConfig} />
+            <EmailSettingsTab
+              settings={settings.email || []}
+              envEmailConfig={envEmailConfig}
+            />
           )}
           {activeTab === "freshdesk" && (
             <FreshdeskSettingsTab settings={settings.freshdesk || []} />
@@ -243,9 +250,7 @@ export default function AdminSettingsPage({
           {activeTab === "notifications" && (
             <NotificationSettingsTab settings={settings.notifications || []} />
           )}
-          {activeTab === "users" && (
-            <UsersSettingsTab users={users} />
-          )}
+          {activeTab === "users" && <UsersSettingsTab users={users} />}
           {activeTab === "labels" && (
             <LabelSettingsTab templates={labelTemplates} />
           )}
