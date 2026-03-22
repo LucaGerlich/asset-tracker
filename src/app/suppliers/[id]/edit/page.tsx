@@ -6,13 +6,25 @@ export const metadata = {
   title: "Asset Tracker - Edit Supplier",
 };
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const supplierRaw = await getSupplierById(id);
   const supplier = {
     ...supplierRaw,
-    creation_date: supplierRaw.creation_date ? supplierRaw.creation_date.toISOString() : null,
-    change_date: supplierRaw.change_date ? supplierRaw.change_date.toISOString() : null,
+    creation_date: supplierRaw.creation_date
+      ? typeof supplierRaw.creation_date === "string"
+        ? supplierRaw.creation_date
+        : supplierRaw.creation_date.toISOString()
+      : null,
+    change_date: supplierRaw.change_date
+      ? typeof supplierRaw.change_date === "string"
+        ? supplierRaw.change_date
+        : supplierRaw.change_date.toISOString()
+      : null,
   };
 
   return <SupplierCreateForm initialData={supplier} mode="edit" />;

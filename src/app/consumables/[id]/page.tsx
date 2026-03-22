@@ -26,13 +26,19 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         ? Number(consumableRaw.purchaseprice)
         : null,
     purchasedate: consumableRaw.purchasedate
-      ? consumableRaw.purchasedate.toISOString()
+      ? typeof consumableRaw.purchasedate === "string"
+        ? consumableRaw.purchasedate
+        : consumableRaw.purchasedate.toISOString()
       : null,
     creation_date: consumableRaw.creation_date
-      ? consumableRaw.creation_date.toISOString()
+      ? typeof consumableRaw.creation_date === "string"
+        ? consumableRaw.creation_date
+        : consumableRaw.creation_date.toISOString()
       : null,
     change_date: consumableRaw.change_date
-      ? consumableRaw.change_date.toISOString()
+      ? typeof consumableRaw.change_date === "string"
+        ? consumableRaw.change_date
+        : consumableRaw.change_date.toISOString()
       : null,
   };
 
@@ -44,7 +50,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   const categoryName =
     categories.find(
-      (c) => c.consumablecategorytypeid === consumable.consumablecategorytypeid
+      (c) => c.consumablecategorytypeid === consumable.consumablecategorytypeid,
     )?.consumablecategorytypename ?? "-";
   const manufacturerName =
     manufacturers.find((m) => m.manufacturerid === consumable.manufacturerid)
@@ -88,40 +94,45 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const breadcrumbOptions = [
     { label: "Home", href: "/" },
     { label: "Consumables", href: "/consumables" },
-    { label: consumable.consumablename, href: `/consumables/${consumable.consumableid}` },
+    {
+      label: consumable.consumablename,
+      href: `/consumables/${consumable.consumableid}`,
+    },
   ];
 
   return (
     <>
       <Breadcrumb options={breadcrumbOptions} />
 
-      <div className="flex flex-col w-full h-full overflow-hidden">
+      <div className="flex h-full w-full flex-col overflow-hidden">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">{consumable.consumablename}</h1>
-            <p className="text-sm text-foreground-500 mt-1">
+            <h1 className="text-2xl font-semibold">
+              {consumable.consumablename}
+            </h1>
+            <p className="text-foreground-500 mt-1 text-sm">
               {categoryName} &bull; {manufacturerName}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {stockStatus === "out_of_stock" && (
-              <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-1 text-xs font-medium">
+              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
                 Out of Stock
               </span>
             )}
             {stockStatus === "low_stock" && (
-              <span className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-700 px-2 py-1 text-xs font-medium">
+              <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-700">
                 Low Stock
               </span>
             )}
             {stockStatus === "in_stock" && (
-              <span className="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-1 text-xs font-medium">
+              <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
                 In Stock
               </span>
             )}
             <Link
               href={`/consumables/${consumable.consumableid}/edit`}
-              className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
+              className="bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90"
             >
               Edit
             </Link>
@@ -129,9 +140,11 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         </div>
         <Separator className="my-4" />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <section className="col-span-1 rounded-lg border border-default-200 p-4">
-            <h2 className="text-sm font-semibold text-foreground-600 mb-3">Details</h2>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <section className="border-default-200 col-span-1 rounded-lg border p-4">
+            <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
+              Details
+            </h2>
             <dl className="grid grid-cols-1 gap-2 text-sm">
               <div className="flex justify-between">
                 <dt className="text-foreground-500">Category</dt>
@@ -172,12 +185,16 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             </dl>
           </section>
 
-          <section className="col-span-1 rounded-lg border border-default-200 p-4">
-            <h2 className="text-sm font-semibold text-foreground-600 mb-3">Stock</h2>
+          <section className="border-default-200 col-span-1 rounded-lg border p-4">
+            <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
+              Stock
+            </h2>
             <dl className="grid grid-cols-1 gap-2 text-sm">
               <div className="flex justify-between">
                 <dt className="text-foreground-500">Current Quantity</dt>
-                <dd className="font-medium text-lg">{consumable.quantity ?? 0}</dd>
+                <dd className="text-lg font-medium">
+                  {consumable.quantity ?? 0}
+                </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-foreground-500">Minimum Threshold</dt>
@@ -191,12 +208,18 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
                     <dd className="font-medium">{stockAlert.minThreshold}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-foreground-500">Alert Critical Threshold</dt>
-                    <dd className="font-medium">{stockAlert.criticalThreshold}</dd>
+                    <dt className="text-foreground-500">
+                      Alert Critical Threshold
+                    </dt>
+                    <dd className="font-medium">
+                      {stockAlert.criticalThreshold}
+                    </dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-foreground-500">Email Notify</dt>
-                    <dd className="font-medium">{stockAlert.emailNotify ? "Yes" : "No"}</dd>
+                    <dd className="font-medium">
+                      {stockAlert.emailNotify ? "Yes" : "No"}
+                    </dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-foreground-500">Last Alert</dt>
@@ -230,17 +253,23 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
         <Separator className="my-6" />
 
-        <section className="rounded-lg border border-default-200 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-foreground-600">Checkout History</h2>
-            <span className="text-xs text-foreground-500">{checkouts.length} records</span>
+        <section className="border-default-200 rounded-lg border p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-foreground-600 text-sm font-semibold">
+              Checkout History
+            </h2>
+            <span className="text-foreground-500 text-xs">
+              {checkouts.length} records
+            </span>
           </div>
           {checkouts.length === 0 ? (
-            <p className="text-sm text-foreground-500">No checkouts recorded.</p>
+            <p className="text-foreground-500 text-sm">
+              No checkouts recorded.
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="text-left text-foreground-500">
+                <thead className="text-foreground-500 text-left">
                   <tr>
                     <th className="py-2 pr-4 font-normal">User</th>
                     <th className="py-2 pr-4 font-normal">Qty</th>
@@ -250,11 +279,11 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
                 </thead>
                 <tbody>
                   {checkouts.map((c) => (
-                    <tr key={c.id} className="border-t border-default-200">
+                    <tr key={c.id} className="border-default-200 border-t">
                       <td className="py-2 pr-4">
                         <Link
                           href={`/user/${c.user.userid}`}
-                          className="text-primary hover:underline font-medium"
+                          className="text-primary font-medium hover:underline"
                         >
                           {c.user.firstname} {c.user.lastname}
                         </Link>
@@ -263,7 +292,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
                       <td className="py-2 pr-4">
                         {new Date(c.checkedOutAt).toLocaleString()}
                       </td>
-                      <td className="py-2 pr-4 text-foreground-500">
+                      <td className="text-foreground-500 py-2 pr-4">
                         {c.notes || "-"}
                       </td>
                     </tr>

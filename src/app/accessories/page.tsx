@@ -45,13 +45,19 @@ export default async function Page() {
                 ? Number(item.purchaseprice)
                 : null,
             purchasedate: item.purchasedate
-              ? item.purchasedate.toISOString()
+              ? typeof item.purchasedate === "string"
+                ? item.purchasedate
+                : item.purchasedate.toISOString()
               : null,
             creation_date: item.creation_date
-              ? item.creation_date.toISOString()
+              ? typeof item.creation_date === "string"
+                ? item.creation_date
+                : item.creation_date.toISOString()
               : null,
             change_date: item.change_date
-              ? item.change_date.toISOString()
+              ? typeof item.change_date === "string"
+                ? item.change_date
+                : item.change_date.toISOString()
               : null,
           }))}
           manufacturers={manufacturers}

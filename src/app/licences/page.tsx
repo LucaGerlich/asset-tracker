@@ -23,12 +23,26 @@ export default async function Page() {
       item.purchaseprice !== null && item.purchaseprice !== undefined
         ? Number(item.purchaseprice)
         : null,
-    purchasedate: item.purchasedate ? item.purchasedate.toISOString() : null,
-    expirationdate: item.expirationdate
-      ? item.expirationdate.toISOString()
+    purchasedate: item.purchasedate
+      ? typeof item.purchasedate === "string"
+        ? item.purchasedate
+        : item.purchasedate.toISOString()
       : null,
-    creation_date: item.creation_date ? item.creation_date.toISOString() : null,
-    change_date: item.change_date ? item.change_date.toISOString() : null,
+    expirationdate: item.expirationdate
+      ? typeof item.expirationdate === "string"
+        ? item.expirationdate
+        : item.expirationdate.toISOString()
+      : null,
+    creation_date: item.creation_date
+      ? typeof item.creation_date === "string"
+        ? item.creation_date
+        : item.creation_date.toISOString()
+      : null,
+    change_date: item.change_date
+      ? typeof item.change_date === "string"
+        ? item.change_date
+        : item.change_date.toISOString()
+      : null,
   }));
 
   return (

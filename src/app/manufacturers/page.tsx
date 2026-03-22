@@ -11,8 +11,16 @@ export default async function Page() {
   const manufacturersRaw = await getManufacturers();
   const manufacturers = manufacturersRaw.map((item) => ({
     ...item,
-    creation_date: item.creation_date ? item.creation_date.toISOString() : null,
-    change_date: item.change_date ? item.change_date.toISOString() : null,
+    creation_date: item.creation_date
+      ? typeof item.creation_date === "string"
+        ? item.creation_date
+        : item.creation_date.toISOString()
+      : null,
+    change_date: item.change_date
+      ? typeof item.change_date === "string"
+        ? item.change_date
+        : item.change_date.toISOString()
+      : null,
   }));
   return (
     <div>
