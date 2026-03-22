@@ -201,4 +201,88 @@ export async function PUT(req: NextRequest) {
   }
 }
 
+// DELETE /api/model
+export async function DELETE(req: NextRequest) {
+  try {
+    const demoBlock = requireNotDemoMode();
+    if (demoBlock) return demoBlock;
+    // Only admins can delete models
+    const admin = await requireApiAdmin();
+
+    const body = await req.json();
+    const { modelid } = body;
+
+    // Validate model ID
+    const idValidation = uuidSchema.safeParse(modelid);
+    if (!idValidation.success) {
+      return NextResponse.json({ error: "Invalid model ID" }, { status: 400 });
+    }
+
+    // Get model details before deletion for audit log
+    const model = await prisma.model.findUnique({
+      where: { modelid },
+      select: { modelname: true },
+    });
+
+    if (!model) {
+      return NextResponse.json({ error: "Model not found" }, { status: 404 });
+    }
+
+    // Check for referencing records before deleting
+    const [assetRefs, accessoriesRefs] = await Promise.all([
+      prisma.asset.count({ where: { modelid } }),
+      prisma.accessories.count({ where: { modelid } }),
+    ]);
+    const totalRefs = assetRefs + accessoriesRefs;
+    if (totalRefs > 0) {
+      const details = [
+        assetRefs > 0 && `${assetRefs} asset(s)`,
+        accessoriesRefs > 0 && `${accessoriesRefs} accessory/ies`,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      return NextResponse.json(
+        { error: `Cannot delete: ${details} still reference this model` },
+        { status: 409 },
+      );
+    }
+
+    // Delete the model
+    await prisma.model.delete({
+      where: { modelid },
+    });
+
+    // Create audit log
+    await createAuditLog({
+      userId: admin.id,
+      action: AUDIT_ACTIONS.DELETE,
+      entity: AUDIT_ENTITIES.MODEL,
+      entityId: modelid,
+      details: { modelname: model.modelname },
+    });
+
+    return NextResponse.json(
+      { message: "Model deleted successfully" },
+      { status: 200 },
+    );
+  } catch (e) {
+    logger.error("DELETE /api/model error", { error: e });
+
+    if (e.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (e.message.startsWith("Forbidden")) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
+    if (e.code === "P2025") {
+      return NextResponse.json({ error: "Model not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(
+      { error: "Failed to delete model" },
+      { status: 500 },
+    );
+  }
+}
+
 export const dynamic = "force-dynamic";

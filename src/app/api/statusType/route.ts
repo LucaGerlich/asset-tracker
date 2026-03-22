@@ -213,4 +213,101 @@ export async function PUT(req: NextRequest) {
   }
 }
 
+// DELETE /api/statusType
+export async function DELETE(req: NextRequest) {
+  try {
+    const demoBlock = requireNotDemoMode();
+    if (demoBlock) return demoBlock;
+
+    // Only admins can delete status types
+    const admin = await requireApiAdmin();
+
+    const body = await req.json();
+    const { statustypeid } = body;
+
+    // Validate status type ID
+    const idValidation = uuidSchema.safeParse(statustypeid);
+    if (!idValidation.success) {
+      return NextResponse.json(
+        { error: "Invalid status type ID" },
+        { status: 400 },
+      );
+    }
+
+    // Get status type details before deletion for audit log
+    const statusType = await prisma.statusType.findUnique({
+      where: { statustypeid },
+      select: { statustypename: true },
+    });
+
+    if (!statusType) {
+      return NextResponse.json(
+        { error: "Status type not found" },
+        { status: 404 },
+      );
+    }
+
+    // Check for referencing records before deleting
+    const [assetRefs, accessoriesRefs] = await Promise.all([
+      prisma.asset.count({ where: { statustypeid } }),
+      prisma.accessories.count({ where: { statustypeid } }),
+    ]);
+    const totalRefs = assetRefs + accessoriesRefs;
+    if (totalRefs > 0) {
+      const details = [
+        assetRefs > 0 && `${assetRefs} asset(s)`,
+        accessoriesRefs > 0 && `${accessoriesRefs} accessory/ies`,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      return NextResponse.json(
+        { error: `Cannot delete: ${details} still reference this status type` },
+        { status: 409 },
+      );
+    }
+
+    // Delete the status type
+    await prisma.statusType.delete({
+      where: { statustypeid },
+    });
+
+    // Invalidate cached status types so subsequent reads reflect the deletion
+    await invalidateCache("status_types");
+
+    // Create audit log
+    await createAuditLog({
+      userId: admin.id,
+      action: AUDIT_ACTIONS.DELETE,
+      entity: AUDIT_ENTITIES.STATUS_TYPE,
+      entityId: statustypeid,
+      details: { statustypename: statusType.statustypename },
+    });
+
+    return NextResponse.json(
+      { message: "Status type deleted successfully" },
+      { status: 200 },
+    );
+  } catch (e) {
+    logger.error("DELETE /api/statusType error", { error: e });
+
+    if (e.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (e.message.startsWith("Forbidden")) {
+      return NextResponse.json({ error: e.message }, { status: 403 });
+    }
+    if (e.code === "P2025") {
+      return NextResponse.json(
+        { error: "Status type not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Failed to delete status type" },
+      { status: 500 },
+    );
+  }
+}
+
 export const dynamic = "force-dynamic";

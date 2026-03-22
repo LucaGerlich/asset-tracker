@@ -103,12 +103,15 @@ export const ENV_CONFIG: EnvVarConfig[] = [
     sensitive: true,
   },
 
-  // Cron (Optional)
+  // Cron (Required in production — all 7 cron jobs fail silently without it)
   {
     name: "CRON_SECRET",
-    required: false,
-    description: "Secret for authenticating cron job requests",
+    required: process.env.NODE_ENV === "production",
+    description:
+      "Secret for authenticating cron job requests (required in production)",
     sensitive: true,
+    validate: (v) => v.length >= 16,
+    validateMessage: "Must be at least 16 characters long",
   },
 
   // Email Provider (Optional)

@@ -237,6 +237,44 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
+    // Check for referencing records before deleting
+    const [
+      assetRefs,
+      accessoriesRefs,
+      consumableRefs,
+      licenceRefs,
+      componentRefs,
+    ] = await Promise.all([
+      prisma.asset.count({ where: { manufacturerid } }),
+      prisma.accessories.count({ where: { manufacturerid } }),
+      prisma.consumable.count({ where: { manufacturerid } }),
+      prisma.licence.count({ where: { manufacturerid } }),
+      prisma.component.count({ where: { manufacturerId: manufacturerid } }),
+    ]);
+    const totalRefs =
+      assetRefs +
+      accessoriesRefs +
+      consumableRefs +
+      licenceRefs +
+      componentRefs;
+    if (totalRefs > 0) {
+      const details = [
+        assetRefs > 0 && `${assetRefs} asset(s)`,
+        accessoriesRefs > 0 && `${accessoriesRefs} accessory/ies`,
+        consumableRefs > 0 && `${consumableRefs} consumable(s)`,
+        licenceRefs > 0 && `${licenceRefs} licence(s)`,
+        componentRefs > 0 && `${componentRefs} component(s)`,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      return NextResponse.json(
+        {
+          error: `Cannot delete: ${details} still reference this manufacturer`,
+        },
+        { status: 409 },
+      );
+    }
+
     // Delete the manufacturer
     await prisma.manufacturer.delete({
       where: { manufacturerid },

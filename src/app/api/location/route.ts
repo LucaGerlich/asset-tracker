@@ -247,6 +247,27 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
+    // Check for referencing records before deleting
+    const [assetRefs, accessoriesRefs, componentRefs] = await Promise.all([
+      prisma.asset.count({ where: { locationid } }),
+      prisma.accessories.count({ where: { locationid } }),
+      prisma.component.count({ where: { locationId: locationid } }),
+    ]);
+    const totalRefs = assetRefs + accessoriesRefs + componentRefs;
+    if (totalRefs > 0) {
+      const details = [
+        assetRefs > 0 && `${assetRefs} asset(s)`,
+        accessoriesRefs > 0 && `${accessoriesRefs} accessory/ies`,
+        componentRefs > 0 && `${componentRefs} component(s)`,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      return NextResponse.json(
+        { error: `Cannot delete: ${details} still reference this location` },
+        { status: 409 },
+      );
+    }
+
     // Delete the location
     await prisma.location.delete({
       where: { locationid },
