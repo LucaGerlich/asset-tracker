@@ -23,30 +23,34 @@ export default function AssetMap({
   useEffect(() => {
     if (!mapContainer.current || locations.length === 0) return;
 
-    // Use OpenStreetMap tiles (free, no API key)
+    // Use Carto Voyager tiles (free, no API key, designed for embedding)
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: {
         version: 8,
         sources: {
-          osm: {
+          carto: {
             type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tiles: [
+              "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+              "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+              "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+            ],
             tileSize: 256,
             attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
           },
         },
         layers: [
           {
-            id: "osm",
+            id: "carto",
             type: "raster",
-            source: "osm",
+            source: "carto",
           },
         ],
       },
       center: [locations[0].longitude, locations[0].latitude],
-      zoom: 12,
+      zoom: 14,
     });
 
     map.current.addControl(new maplibregl.NavigationControl(), "top-right");
