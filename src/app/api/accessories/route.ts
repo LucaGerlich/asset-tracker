@@ -137,6 +137,8 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     await requirePermission("accessory:create");
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
     const body = await req.json();
     const normalized = {
       ...body,
@@ -179,6 +181,7 @@ export async function POST(req: NextRequest) {
         purchaseprice: purchaseprice ?? null,
         purchasedate: purchasedate ? new Date(purchasedate) : null,
         requestable: typeof requestable === "boolean" ? requestable : null,
+        organizationId: orgId || null,
         creation_date: new Date(),
       } as Prisma.accessoriesUncheckedCreateInput,
     });
@@ -217,6 +220,18 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+    const existing = await prisma.accessories.findFirst({
+      where: scopeToOrganization({ accessorieid }, orgId),
+    });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Accessory not found" },
+        { status: 404 },
+      );
+    }
+
     const normalized = {
       ...data,
       purchaseprice: normalizeNumberInput(data?.purchaseprice),
@@ -240,7 +255,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const updated = await prisma.accessories.update({
-      where: { accessorieid },
+      where: { accessorieid: existing.accessorieid },
       data: {
         ...updateData,
         change_date: new Date(),

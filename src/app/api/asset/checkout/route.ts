@@ -26,6 +26,15 @@ export async function GET(req: Request) {
       );
     }
 
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+    const asset = await prisma.asset.findFirst({
+      where: scopeToOrganization({ assetid: assetId }, orgId),
+    });
+    if (!asset) {
+      return NextResponse.json({ error: "Asset not found" }, { status: 404 });
+    }
+
     const checkouts = await prisma.assetCheckout.findMany({
       where: { assetId },
       include: {

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
+import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +12,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     await requireApiAuth();
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+    const orgScope = scopeToOrganization({}, orgId);
 
     const now = new Date();
     const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
@@ -16,6 +23,7 @@ export async function GET() {
     const acquisitionsRaw = await prisma.asset.groupBy({
       by: ["creation_date"],
       where: {
+        ...orgScope,
         creation_date: { gte: twelveMonthsAgo },
       },
       _count: { assetid: true },
@@ -23,6 +31,7 @@ export async function GET() {
 
     const disposedRaw = await prisma.asset.findMany({
       where: {
+        ...orgScope,
         statusType: {
           statustypename: { in: ["Disposed", "Archived"] },
         },
@@ -74,22 +83,25 @@ export async function GET() {
     const assetCosts = await prisma.asset.groupBy({
       by: ["assetcategorytypeid"],
       _sum: { purchaseprice: true },
-      where: { assetcategorytypeid: { not: null } },
+      where: { ...orgScope, assetcategorytypeid: { not: null } },
     });
 
     const accessoryCosts = await prisma.accessories.groupBy({
       by: ["accessoriecategorytypeid"],
       _sum: { purchaseprice: true },
+      where: orgScope,
     });
 
     const consumableCosts = await prisma.consumable.groupBy({
       by: ["consumablecategorytypeid"],
       _sum: { purchaseprice: true },
+      where: orgScope,
     });
 
     const licenceCosts = await prisma.licence.groupBy({
       by: ["licencecategorytypeid"],
       _sum: { purchaseprice: true },
+      where: orgScope,
     });
 
     // Fetch category names (only ID and name needed for mapping)
@@ -194,7 +206,7 @@ export async function GET() {
     const locationCounts = await prisma.asset.groupBy({
       by: ["locationid"],
       _count: { assetid: true },
-      where: { locationid: { not: null } },
+      where: { ...orgScope, locationid: { not: null } },
     });
 
     const locations = await prisma.location.findMany({

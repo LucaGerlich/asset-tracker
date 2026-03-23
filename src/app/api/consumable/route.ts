@@ -101,6 +101,8 @@ export async function POST(req: NextRequest) {
     if (demoBlock) return demoBlock;
     // Require consumable:create permission to create consumables
     const admin = await requirePermission("consumable:create");
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
 
     const body = await req.json();
 
@@ -137,6 +139,7 @@ export async function POST(req: NextRequest) {
         purchasedate: purchasedate ? new Date(purchasedate) : null,
         minQuantity: minQuantity ?? 0,
         quantity: quantity ?? 0,
+        organizationId: orgId || null,
         creation_date: new Date(),
       } as Prisma.consumableUncheckedCreateInput,
     });
@@ -212,8 +215,20 @@ export async function PUT(req: NextRequest) {
       quantity,
     } = body;
 
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+    const existingConsumable = await prisma.consumable.findFirst({
+      where: scopeToOrganization({ consumableid }, orgId),
+    });
+    if (!existingConsumable) {
+      return NextResponse.json(
+        { error: "Consumable not found" },
+        { status: 404 },
+      );
+    }
+
     const updated = await prisma.consumable.update({
-      where: { consumableid },
+      where: { consumableid: existingConsumable.consumableid },
       data: {
         ...(consumablename !== undefined && { consumablename }),
         ...(consumablecategorytypeid !== undefined && {
@@ -360,8 +375,20 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+    const existingConsumable = await prisma.consumable.findFirst({
+      where: scopeToOrganization({ consumableid }, orgId),
+    });
+    if (!existingConsumable) {
+      return NextResponse.json(
+        { error: "Consumable not found" },
+        { status: 404 },
+      );
+    }
+
     const updated = await prisma.consumable.update({
-      where: { consumableid },
+      where: { consumableid: existingConsumable.consumableid },
       data: { quantity: { increment: addQuantity }, change_date: new Date() },
     });
 

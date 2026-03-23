@@ -161,6 +161,8 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     await requirePermission("asset:create");
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
 
     const limitCheck = await checkAssetLimit();
     if (!limitCheck.allowed) {
@@ -195,6 +197,7 @@ export async function POST(req: NextRequest) {
         manufacturerid: d.manufacturerid ?? null,
         warrantyMonths: d.warrantyMonths ?? null,
         warrantyExpires: d.warrantyExpires ? new Date(d.warrantyExpires) : null,
+        organizationId: orgId || null,
         creation_date: new Date(),
       } as Prisma.assetUncheckedCreateInput,
     });
@@ -240,6 +243,15 @@ export async function PUT(req: NextRequest) {
 
     const { assetid, ...data } = validated;
 
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+    const existing = await prisma.asset.findFirst({
+      where: scopeToOrganization({ assetid }, orgId),
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Asset not found" }, { status: 404 });
+    }
+
     // Normalize date types
     const updateData: Record<string, unknown> = { ...data };
     if (updateData.purchasedate) {
@@ -252,7 +264,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const updated = await prisma.asset.update({
-      where: { assetid },
+      where: { assetid: existing.assetid },
       data: {
         ...updateData,
         change_date: new Date(),

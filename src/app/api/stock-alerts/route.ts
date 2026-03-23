@@ -4,6 +4,10 @@ import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { requireNotDemoMode } from "@/lib/api-auth";
 import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
+import {
   stockAlertSchema,
   updateStockAlertSchema,
 } from "@/lib/validation-organization";
@@ -21,11 +25,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+
     const lowStockOnly =
       req.nextUrl.searchParams.get("lowStockOnly") === "true";
     const critical = req.nextUrl.searchParams.get("critical") === "true";
 
     const alerts = await prisma.stockAlert.findMany({
+      where: {
+        consumable: scopeToOrganization({}, orgId),
+      },
       include: {
         consumable: {
           select: {
