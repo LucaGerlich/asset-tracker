@@ -42,6 +42,13 @@ export default async function RootLayout({ children }) {
       suppressHydrationWarning
       className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
     >
+      <head>
+        <script
+          defer
+          src="https://analytics.711x.de/script.js"
+          data-website-id="733bdd9f-8777-407e-826b-3042eb417e4f"
+        />
+      </head>
       <body>
         <SkipToContent />
         <OfflineBanner />
