@@ -151,7 +151,7 @@ export default function SavedFilters({
             <Bookmark className="h-4 w-4" />
             Filters
             {savedFilters.length > 0 && (
-              <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs">
+              <span className="bg-primary/10 ml-1 rounded-full px-1.5 py-0.5 text-xs">
                 {savedFilters.length}
               </span>
             )}
@@ -159,50 +159,58 @@ export default function SavedFilters({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           {savedFilters.length === 0 ? (
-            <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+            <div className="text-muted-foreground px-2 py-3 text-center text-sm">
               No saved filters
             </div>
           ) : (
             savedFilters.map((filter) => (
               <DropdownMenuItem
                 key={filter.id}
-                className="flex items-center justify-between group"
+                className="group flex items-center justify-between"
                 onSelect={() => handleApply(filter)}
               >
                 <span className="flex items-center gap-2 truncate">
                   {filter.isDefault && (
-                    <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 flex-shrink-0" />
+                    <Star className="h-3 w-3 flex-shrink-0 fill-yellow-500 text-yellow-500" />
                   )}
                   <span className="truncate">{filter.name}</span>
                 </span>
                 <span className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-auto w-auto p-0.5 hover:text-yellow-500"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleToggleDefault(filter);
                     }}
-                    className="p-0.5 hover:text-yellow-500"
-                    title={filter.isDefault ? "Remove default" : "Set as default"}
+                    title={
+                      filter.isDefault ? "Remove default" : "Set as default"
+                    }
                   >
-                    <Star className={`h-3 w-3 ${filter.isDefault ? "fill-yellow-500 text-yellow-500" : ""}`} />
-                  </button>
-                  <button
+                    <Star
+                      className={`h-3 w-3 ${filter.isDefault ? "fill-yellow-500 text-yellow-500" : ""}`}
+                    />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="hover:text-destructive h-auto w-auto p-0.5"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(filter.id);
                     }}
-                    className="p-0.5 hover:text-destructive"
                     title="Delete filter"
                   >
                     <Trash2 className="h-3 w-3" />
-                  </button>
+                  </Button>
                 </span>
               </DropdownMenuItem>
             ))
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setIsDialogOpen(true)}>
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="mr-2 h-4 w-4" />
             Save current filters
           </DropdownMenuItem>
         </DropdownMenuContent>

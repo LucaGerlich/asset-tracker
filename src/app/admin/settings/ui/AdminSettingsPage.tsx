@@ -21,6 +21,14 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import EmailSettingsTab from "./EmailSettingsTab";
 import UsersSettingsTab from "./UsersSettingsTab";
 import LabelSettingsTab from "./LabelSettingsTab";
@@ -179,19 +187,20 @@ export default function AdminSettingsPage({
 
         {/* Mobile dropdown */}
         <div className="mt-4 md:hidden">
-          <select
-            value={activeTab}
-            onChange={(e) => setActiveTab(e.target.value)}
-            className="border-border bg-background w-full rounded-lg border px-3 py-2 text-sm font-medium"
-          >
-            {settingsNav.map((group) =>
-              group.items.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {group.title} — {item.label}
-                </option>
-              )),
-            )}
-          </select>
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full text-sm font-medium">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {settingsNav.map((group) =>
+                group.items.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {group.title} — {item.label}
+                  </SelectItem>
+                )),
+              )}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -212,11 +221,12 @@ export default function AdminSettingsPage({
                     const Icon = item.icon;
                     const active = activeTab === item.value;
                     return (
-                      <button
+                      <Button
                         key={item.value}
+                        variant="ghost"
                         onClick={() => setActiveTab(item.value)}
                         className={cn(
-                          "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                          "flex w-full items-center justify-start gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                           active
                             ? "bg-primary/8 text-foreground font-semibold"
                             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -224,7 +234,7 @@ export default function AdminSettingsPage({
                       >
                         <Icon className="h-4 w-4 shrink-0" />
                         <span className="truncate">{item.label}</span>
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>

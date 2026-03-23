@@ -21,12 +21,7 @@ const tiers = [
     price: "$0",
     period: "/mo",
     description: "Perfect for small teams getting started with asset tracking.",
-    features: [
-      "Up to 100 assets",
-      "3 users",
-      "Basic reports",
-      "Email support",
-    ],
+    features: ["Up to 100 assets", "3 users", "Basic reports", "Email support"],
     cta: "Get Started Free",
     ctaHref: "/register",
     highlighted: false,
@@ -97,33 +92,28 @@ const faqs = [
   },
 ];
 
-function FAQItem({
-  question,
-  answer,
-}: {
-  question: string;
-  answer: string;
-}) {
+function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border-b border-border/60">
-      <button
+    <div className="border-border/60 border-b">
+      <Button
         type="button"
-        className="flex w-full items-center justify-between py-5 text-left"
+        variant="ghost"
+        className="flex h-auto w-full items-center justify-between rounded-none px-0 py-5 text-left hover:bg-transparent"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
       >
-        <span className="text-sm font-medium text-foreground">{question}</span>
+        <span className="text-foreground text-sm font-medium">{question}</span>
         <ChevronDown
-          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
+          className={`text-muted-foreground h-4 w-4 shrink-0 transition-transform duration-200 ${
             open ? "rotate-180" : ""
           }`}
         />
-      </button>
+      </Button>
       {open && (
         <div className="pb-5">
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             {answer}
           </p>
         </div>
@@ -134,18 +124,18 @@ function FAQItem({
 
 export default function PricingPageClient() {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="bg-background flex min-h-screen flex-col">
       <MarketingNav />
 
       <main className="flex-1">
         {/* Header */}
-        <section className="pb-16 pt-24 sm:pb-20 sm:pt-32">
+        <section className="pt-24 pb-16 sm:pt-32 sm:pb-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
-              <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+              <h1 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
                 Simple, transparent pricing
               </h1>
-              <p className="mt-4 text-lg text-muted-foreground">
+              <p className="text-muted-foreground mt-4 text-lg">
                 Start free and scale as your team grows. No hidden fees, no
                 surprises.
               </p>
@@ -162,13 +152,13 @@ export default function PricingPageClient() {
                   key={tier.name}
                   className={`relative flex flex-col ${
                     tier.highlighted
-                      ? "border-primary shadow-lg ring-1 ring-primary"
+                      ? "border-primary ring-primary shadow-lg ring-1"
                       : ""
                   }`}
                 >
                   {tier.highlighted && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
+                      <span className="bg-primary text-primary-foreground rounded-full px-3 py-1 text-xs font-medium">
                         Recommended
                       </span>
                     </div>
@@ -178,10 +168,10 @@ export default function PricingPageClient() {
                     <CardTitle className="text-lg">{tier.name}</CardTitle>
                     <CardDescription>{tier.description}</CardDescription>
                     <div className="mt-4">
-                      <span className="text-4xl font-bold text-foreground">
+                      <span className="text-foreground text-4xl font-bold">
                         {tier.price}
                       </span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-muted-foreground text-sm">
                         {tier.period}
                       </span>
                     </div>
@@ -192,9 +182,9 @@ export default function PricingPageClient() {
                       {tier.features.map((feature) => (
                         <li
                           key={feature}
-                          className="flex items-start gap-2 text-sm text-muted-foreground"
+                          className="text-muted-foreground flex items-start gap-2 text-sm"
                         >
-                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                          <Check className="text-primary mt-0.5 h-4 w-4 shrink-0" />
                           <span>{feature}</span>
                         </li>
                       ))}
@@ -217,9 +207,9 @@ export default function PricingPageClient() {
         </section>
 
         {/* FAQ */}
-        <section className="border-t border-border/40 py-20 sm:py-28">
+        <section className="border-border/40 border-t py-20 sm:py-28">
           <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-            <h2 className="mb-10 text-center text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            <h2 className="text-foreground mb-10 text-center text-2xl font-bold tracking-tight sm:text-3xl">
               Frequently asked questions
             </h2>
             <div className="divide-y-0">

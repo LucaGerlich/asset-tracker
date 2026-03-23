@@ -16,6 +16,14 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 import {
   Plus,
@@ -81,7 +89,9 @@ const EVENT_CATEGORIES: Record<string, string> = {
   import: "Import",
 };
 
-function groupEventsByCategory(events: WebhookEvent[]): Record<string, WebhookEvent[]> {
+function groupEventsByCategory(
+  events: WebhookEvent[],
+): Record<string, WebhookEvent[]> {
   const groups: Record<string, WebhookEvent[]> = {};
 
   for (const evt of events) {
@@ -123,7 +133,9 @@ export default function WebhooksTab() {
 
   // ---- Create/Edit dialog state -------------------------------------------
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingWebhook, setEditingWebhook] = useState<WebhookItem | null>(null);
+  const [editingWebhook, setEditingWebhook] = useState<WebhookItem | null>(
+    null,
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   // ---- Form state ----------------------------------------------------------
@@ -136,12 +148,15 @@ export default function WebhooksTab() {
 
   // ---- Delete confirmation -------------------------------------------------
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletingWebhook, setDeletingWebhook] = useState<WebhookItem | null>(null);
+  const [deletingWebhook, setDeletingWebhook] = useState<WebhookItem | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   // ---- Delivery log dialog -------------------------------------------------
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
-  const [deliveryWebhook, setDeliveryWebhook] = useState<WebhookWithDeliveries | null>(null);
+  const [deliveryWebhook, setDeliveryWebhook] =
+    useState<WebhookWithDeliveries | null>(null);
   const [isLoadingDeliveries, setIsLoadingDeliveries] = useState(false);
 
   // ---- Toggling active status inline ---------------------------------------
@@ -229,7 +244,7 @@ export default function WebhooksTab() {
 
   function toggleEvent(event: string) {
     setFormEvents((prev) =>
-      prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event]
+      prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event],
     );
   }
 
@@ -269,13 +284,15 @@ export default function WebhooksTab() {
       if (!res.ok) {
         const err = await res.json();
         const message =
-          typeof err.error === "string" ? err.error : "Failed to update webhook";
+          typeof err.error === "string"
+            ? err.error
+            : "Failed to update webhook";
         toast.error(message);
         return;
       }
 
       toast.success(
-        webhook.isActive ? "Webhook deactivated" : "Webhook activated"
+        webhook.isActive ? "Webhook deactivated" : "Webhook activated",
       );
       await fetchWebhooks();
     } catch {
@@ -331,9 +348,7 @@ export default function WebhooksTab() {
       if (!res.ok) {
         const err = await res.json();
         const message =
-          typeof err.error === "string"
-            ? err.error
-            : "Failed to save webhook";
+          typeof err.error === "string" ? err.error : "Failed to save webhook";
         toast.error(message);
         return;
       }
@@ -341,7 +356,7 @@ export default function WebhooksTab() {
       toast.success(
         isEditing
           ? "Webhook updated successfully"
-          : "Webhook created successfully"
+          : "Webhook created successfully",
       );
       setDialogOpen(false);
       await fetchWebhooks();
@@ -393,8 +408,8 @@ export default function WebhooksTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">
+        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+        <span className="text-muted-foreground ml-2 text-sm">
           Loading webhooks...
         </span>
       </div>
@@ -406,16 +421,16 @@ export default function WebhooksTab() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
             <Webhook className="h-5 w-5" />
             Webhooks
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             Manage outgoing webhooks to notify external services of events
           </p>
         </div>
         <Button onClick={openCreateDialog}>
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           Create Webhook
         </Button>
       </div>
@@ -424,54 +439,56 @@ export default function WebhooksTab() {
 
       {/* Webhooks table */}
       {webhooks.length === 0 ? (
-        <div className="text-center py-12 text-sm text-muted-foreground">
+        <div className="text-muted-foreground py-12 text-center text-sm">
           No webhooks found. Create your first webhook to get started.
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="text-left font-medium px-4 py-3">Name</th>
-                <th className="text-left font-medium px-4 py-3 hidden md:table-cell">
+        <div className="overflow-hidden rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="px-4 py-3">Name</TableHead>
+                <TableHead className="hidden px-4 py-3 md:table-cell">
                   URL
-                </th>
-                <th className="text-center font-medium px-4 py-3">Events</th>
-                <th className="text-center font-medium px-4 py-3">Active</th>
-                <th className="text-center font-medium px-4 py-3 hidden sm:table-cell">
+                </TableHead>
+                <TableHead className="px-4 py-3 text-center">Events</TableHead>
+                <TableHead className="px-4 py-3 text-center">Active</TableHead>
+                <TableHead className="hidden px-4 py-3 text-center sm:table-cell">
                   Deliveries
-                </th>
-                <th className="text-right font-medium px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+                <TableHead className="px-4 py-3 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {webhooks.map((webhook) => (
-                <tr
+                <TableRow
                   key={webhook.id}
-                  className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
+                  className="hover:bg-muted/30 transition-colors"
                 >
-                  <td className="px-4 py-3 font-medium">{webhook.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+                  <TableCell className="px-4 py-3 font-medium">
+                    {webhook.name}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground hidden px-4 py-3 md:table-cell">
                     <span className="font-mono text-xs">
                       {truncate(webhook.url, 40)}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-center tabular-nums">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-center tabular-nums">
                     <Badge variant="secondary" className="text-xs">
                       {webhook.events.length}
                     </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-center">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-center">
                     <Switch
                       checked={webhook.isActive}
                       onCheckedChange={() => handleToggleActive(webhook)}
                       disabled={togglingId === webhook.id}
                     />
-                  </td>
-                  <td className="px-4 py-3 text-center tabular-nums hidden sm:table-cell">
+                  </TableCell>
+                  <TableCell className="hidden px-4 py-3 text-center tabular-nums sm:table-cell">
                     {webhook._count.deliveries}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
@@ -499,17 +516,17 @@ export default function WebhooksTab() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingWebhook ? "Edit Webhook" : "Create Webhook"}
@@ -546,8 +563,9 @@ export default function WebhooksTab() {
                 onChange={(e) => setFormUrl(e.target.value)}
                 placeholder="https://example.com/webhook"
               />
-              <p className="text-xs text-muted-foreground">
-                The endpoint that will receive POST requests for subscribed events
+              <p className="text-muted-foreground text-xs">
+                The endpoint that will receive POST requests for subscribed
+                events
               </p>
             </div>
 
@@ -581,7 +599,7 @@ export default function WebhooksTab() {
                   <RefreshCw className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Used to sign payloads with HMAC-SHA256. Keep this value secure.
               </p>
             </div>
@@ -590,7 +608,7 @@ export default function WebhooksTab() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="font-medium">Active</Label>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Only active webhooks will receive event deliveries
                 </p>
               </div>
@@ -614,7 +632,7 @@ export default function WebhooksTab() {
                 }
                 className="w-32"
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Number of times to retry a failed delivery (0-10)
               </p>
             </div>
@@ -627,7 +645,7 @@ export default function WebhooksTab() {
                 <Label className="text-base">
                   Events <span className="text-destructive">*</span>
                 </Label>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {formEvents.length} of {availableEvents.length} selected
                 </span>
               </div>
@@ -635,7 +653,7 @@ export default function WebhooksTab() {
               {Object.entries(eventGroups).map(([category, events]) => {
                 const categoryEventNames = events.map((e) => e.event);
                 const allInCategorySelected = categoryEventNames.every((e) =>
-                  formEvents.includes(e)
+                  formEvents.includes(e),
                 );
                 const someInCategorySelected =
                   !allInCategorySelected &&
@@ -644,7 +662,7 @@ export default function WebhooksTab() {
                 return (
                   <div
                     key={category}
-                    className="border rounded-lg p-4 space-y-3"
+                    className="space-y-3 rounded-lg border p-4"
                   >
                     {/* Category header with select-all */}
                     <div className="flex items-center gap-2">
@@ -663,14 +681,14 @@ export default function WebhooksTab() {
                       />
                       <Label
                         htmlFor={`cat-${category}`}
-                        className="text-sm font-semibold cursor-pointer"
+                        className="cursor-pointer text-sm font-semibold"
                       >
                         {category}
                       </Label>
-                      <span className="text-xs text-muted-foreground ml-auto">
+                      <span className="text-muted-foreground ml-auto text-xs">
                         {
                           categoryEventNames.filter((e) =>
-                            formEvents.includes(e)
+                            formEvents.includes(e),
                           ).length
                         }
                         /{categoryEventNames.length}
@@ -678,7 +696,7 @@ export default function WebhooksTab() {
                     </div>
 
                     {/* Individual events */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6">
+                    <div className="grid grid-cols-1 gap-2 pl-6 sm:grid-cols-2">
                       {events.map((evt) => (
                         <div
                           key={evt.event}
@@ -691,7 +709,7 @@ export default function WebhooksTab() {
                           />
                           <Label
                             htmlFor={`evt-${evt.event}`}
-                            className="text-sm font-normal cursor-pointer"
+                            className="cursor-pointer text-sm font-normal"
                           >
                             {evt.description}
                           </Label>
@@ -721,7 +739,7 @@ export default function WebhooksTab() {
                 formEvents.length === 0
               }
             >
-              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingWebhook ? "Save Changes" : "Create Webhook"}
             </Button>
           </DialogFooter>
@@ -756,9 +774,7 @@ export default function WebhooksTab() {
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Delete Webhook
             </Button>
           </DialogFooter>
@@ -767,7 +783,7 @@ export default function WebhooksTab() {
 
       {/* Delivery Log Dialog */}
       <Dialog open={deliveryDialogOpen} onOpenChange={setDeliveryDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Delivery Log
@@ -785,82 +801,82 @@ export default function WebhooksTab() {
 
           {isLoadingDeliveries ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="ml-2 text-sm text-muted-foreground">
+              <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+              <span className="text-muted-foreground ml-2 text-sm">
                 Loading deliveries...
               </span>
             </div>
           ) : deliveryWebhook?.deliveries.length === 0 ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">
+            <div className="text-muted-foreground py-12 text-center text-sm">
               No deliveries recorded for this webhook yet.
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left font-medium px-4 py-3">Event</th>
-                    <th className="text-center font-medium px-4 py-3">
+            <div className="overflow-hidden rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="px-4 py-3">Event</TableHead>
+                    <TableHead className="px-4 py-3 text-center">
                       Status
-                    </th>
-                    <th className="text-center font-medium px-4 py-3">
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-center">
                       Attempt
-                    </th>
-                    <th className="text-left font-medium px-4 py-3 hidden md:table-cell">
+                    </TableHead>
+                    <TableHead className="hidden px-4 py-3 md:table-cell">
                       Delivered At
-                    </th>
-                    <th className="text-left font-medium px-4 py-3 hidden lg:table-cell">
+                    </TableHead>
+                    <TableHead className="hidden px-4 py-3 lg:table-cell">
                       Response
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {deliveryWebhook?.deliveries.map((delivery) => (
-                    <tr
+                    <TableRow
                       key={delivery.id}
-                      className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
+                      className="hover:bg-muted/30 transition-colors"
                     >
-                      <td className="px-4 py-3">
+                      <TableCell className="px-4 py-3">
                         <span className="font-mono text-xs">
                           {delivery.event}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-center">
                         {delivery.success ? (
                           <Badge
                             variant="outline"
-                            className="bg-green-50 text-green-700 border-green-200 text-xs"
+                            className="border-green-200 bg-green-50 text-xs text-green-700"
                           >
                             {delivery.statusCode ?? "OK"}
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="bg-red-50 text-red-700 border-red-200 text-xs"
+                            className="border-red-200 bg-red-50 text-xs text-red-700"
                           >
                             {delivery.statusCode ?? "Error"}
                           </Badge>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-center tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-center tabular-nums">
                         {delivery.attempt}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+                      </TableCell>
+                      <TableCell className="text-muted-foreground hidden px-4 py-3 md:table-cell">
                         {new Date(delivery.deliveredAt).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <span className="font-mono text-xs text-muted-foreground">
+                      </TableCell>
+                      <TableCell className="hidden px-4 py-3 lg:table-cell">
+                        <span className="text-muted-foreground font-mono text-xs">
                           {delivery.error
                             ? truncate(delivery.error, 50)
                             : delivery.response
                               ? truncate(delivery.response, 50)
                               : "--"}
                         </span>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </DialogContent>

@@ -20,6 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 
 interface Invitation {
@@ -189,82 +197,82 @@ export default function TeamInvitationsClient() {
             Invite and manage team members
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="w-fit">Invite User</Button>
+        <Button onClick={() => setDialogOpen(true)} className="w-fit">
+          Invite User
+        </Button>
       </div>
 
       <div className="rounded-md border">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px] text-sm">
-            <thead>
-              <tr className="bg-muted/50 border-b">
-                <th className="px-4 py-3 text-left font-medium">Email</th>
-                <th className="px-4 py-3 text-left font-medium">Role</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-left font-medium">Invited By</th>
-                <th className="px-4 py-3 text-left font-medium">Sent</th>
-                <th className="px-4 py-3 text-left font-medium">Expires</th>
-                <th className="px-4 py-3 text-left font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invitations.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="text-muted-foreground px-4 py-8 text-center"
-                  >
-                    No invitations yet. Click &quot;Invite User&quot; to get
-                    started.
-                  </td>
-                </tr>
-              ) : (
-                invitations.map((invitation) => {
-                  const isPending =
-                    invitation.status === "pending" &&
-                    new Date() <= new Date(invitation.expiresAt);
+        <Table className="min-w-[700px]">
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Invited By</TableHead>
+              <TableHead>Sent</TableHead>
+              <TableHead>Expires</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {invitations.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="text-muted-foreground py-8 text-center"
+                >
+                  No invitations yet. Click &quot;Invite User&quot; to get
+                  started.
+                </TableCell>
+              </TableRow>
+            ) : (
+              invitations.map((invitation) => {
+                const isPending =
+                  invitation.status === "pending" &&
+                  new Date() <= new Date(invitation.expiresAt);
 
-                  return (
-                    <tr key={invitation.id} className="border-b">
-                      <td className="px-4 py-3">{invitation.email}</td>
-                      <td className="px-4 py-3">
-                        {invitation.role?.name || (
-                          <span className="text-muted-foreground">--</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge
-                          status={invitation.status}
-                          expiresAt={invitation.expiresAt}
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        {invitation.inviter.firstname}{" "}
-                        {invitation.inviter.lastname}
-                      </td>
-                      <td className="px-4 py-3">
-                        {new Date(invitation.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        {new Date(invitation.expiresAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        {isPending && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleRevoke(invitation.id)}
-                          >
-                            Revoke
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                return (
+                  <TableRow key={invitation.id}>
+                    <TableCell>{invitation.email}</TableCell>
+                    <TableCell>
+                      {invitation.role?.name || (
+                        <span className="text-muted-foreground">--</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge
+                        status={invitation.status}
+                        expiresAt={invitation.expiresAt}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {invitation.inviter.firstname}{" "}
+                      {invitation.inviter.lastname}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(invitation.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(invitation.expiresAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {isPending && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleRevoke(invitation.id)}
+                        >
+                          Revoke
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

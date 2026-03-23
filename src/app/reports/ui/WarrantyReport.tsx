@@ -2,12 +2,7 @@
 
 import React, { useMemo } from "react";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   BarChart,
@@ -19,6 +14,14 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ShieldCheck, ShieldAlert, ShieldX, Clock } from "lucide-react";
 
 interface WarrantyAsset {
@@ -35,7 +38,9 @@ interface WarrantyReportProps {
   warrantyAssets: WarrantyAsset[];
 }
 
-function getWarrantyStatus(expiresStr: string): "expired" | "expiring-soon" | "active" {
+function getWarrantyStatus(
+  expiresStr: string,
+): "expired" | "expiring-soon" | "active" {
   const now = new Date();
   const expires = new Date(expiresStr);
   if (expires < now) return "expired";
@@ -51,15 +56,17 @@ function getDaysDiff(expiresStr: string): number {
   return (expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
 }
 
-export default function WarrantyReport({ warrantyAssets }: WarrantyReportProps) {
+export default function WarrantyReport({
+  warrantyAssets,
+}: WarrantyReportProps) {
   const sortedAssets = useMemo(
     () =>
       [...warrantyAssets].sort(
         (a, b) =>
           new Date(a.warrantyExpires).getTime() -
-          new Date(b.warrantyExpires).getTime()
+          new Date(b.warrantyExpires).getTime(),
       ),
-    [warrantyAssets]
+    [warrantyAssets],
   );
 
   const counts = useMemo(() => {
@@ -86,12 +93,20 @@ export default function WarrantyReport({ warrantyAssets }: WarrantyReportProps) 
 
   const chartData = useMemo(() => {
     const now = new Date();
-    const months: { label: string; count: number; year: number; month: number }[] = [];
+    const months: {
+      label: string;
+      count: number;
+      year: number;
+      month: number;
+    }[] = [];
 
     for (let i = 0; i < 12; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
       months.push({
-        label: d.toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+        label: d.toLocaleDateString("en-US", {
+          month: "short",
+          year: "2-digit",
+        }),
         count: 0,
         year: d.getFullYear(),
         month: d.getMonth(),
@@ -102,7 +117,10 @@ export default function WarrantyReport({ warrantyAssets }: WarrantyReportProps) 
       const expires = new Date(asset.warrantyExpires);
       if (expires < now) continue;
       for (const m of months) {
-        if (expires.getFullYear() === m.year && expires.getMonth() === m.month) {
+        if (
+          expires.getFullYear() === m.year &&
+          expires.getMonth() === m.month
+        ) {
           m.count++;
           break;
         }
@@ -112,7 +130,10 @@ export default function WarrantyReport({ warrantyAssets }: WarrantyReportProps) 
     return months.map(({ label, count }) => ({ month: label, count }));
   }, [warrantyAssets]);
 
-  const getBarColor = (entry: { month: string; count: number }, index: number) => {
+  const getBarColor = (
+    entry: { month: string; count: number },
+    index: number,
+  ) => {
     if (index < 1) return "#ef4444";
     if (index < 3) return "#f59e0b";
     return "#22c55e";
@@ -121,10 +142,10 @@ export default function WarrantyReport({ warrantyAssets }: WarrantyReportProps) 
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
               <ShieldCheck className="h-4 w-4" />
               Total Warranties
             </CardTitle>
@@ -136,49 +157,57 @@ export default function WarrantyReport({ warrantyAssets }: WarrantyReportProps) 
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
               <ShieldX className="h-4 w-4 text-red-500" />
               Expired
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{counts.expired}</div>
+            <div className="text-2xl font-bold text-red-600">
+              {counts.expired}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
               <Clock className="h-4 w-4 text-yellow-500" />
               Expiring &lt; 30d
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{counts.expiring30}</div>
+            <div className="text-2xl font-bold text-yellow-600">
+              {counts.expiring30}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
               <ShieldAlert className="h-4 w-4 text-orange-500" />
               Expiring &lt; 90d
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{counts.expiring90}</div>
+            <div className="text-2xl font-bold text-orange-600">
+              {counts.expiring90}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
               <ShieldCheck className="h-4 w-4 text-green-500" />
               Active
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{counts.active}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {counts.active}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -197,7 +226,10 @@ export default function WarrantyReport({ warrantyAssets }: WarrantyReportProps) 
               <Tooltip />
               <Bar dataKey="count" name="Expiring">
                 {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={getBarColor(entry, index)} />
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={getBarColor(entry, index)}
+                  />
                 ))}
               </Bar>
             </BarChart>
@@ -216,81 +248,73 @@ export default function WarrantyReport({ warrantyAssets }: WarrantyReportProps) 
               No assets with warranty information found.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-2 font-medium">Asset Name</th>
-                    <th className="text-left py-3 px-2 font-medium">Tag</th>
-                    <th className="text-left py-3 px-2 font-medium">Category</th>
-                    <th className="text-left py-3 px-2 font-medium">Duration</th>
-                    <th className="text-left py-3 px-2 font-medium">Expires</th>
-                    <th className="text-left py-3 px-2 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedAssets.map((asset) => {
-                    const warrantyStatus = getWarrantyStatus(asset.warrantyExpires);
-                    return (
-                      <tr key={asset.id} className="border-b hover:bg-muted/50">
-                        <td className="py-3 px-2">
-                          <Link
-                            href={`/assets/${asset.id}`}
-                            className="text-primary hover:underline font-medium"
-                          >
-                            {asset.name}
-                          </Link>
-                        </td>
-                        <td className="py-3 px-2 text-muted-foreground">
-                          {asset.tag}
-                        </td>
-                        <td className="py-3 px-2 text-muted-foreground">
-                          {asset.category}
-                        </td>
-                        <td className="py-3 px-2 text-muted-foreground">
-                          {asset.warrantyMonths != null
-                            ? `${asset.warrantyMonths} months`
-                            : "--"}
-                        </td>
-                        <td className="py-3 px-2 text-muted-foreground">
-                          {new Date(asset.warrantyExpires).toLocaleDateString(
-                            "en-US",
-                            {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            }
-                          )}
-                        </td>
-                        <td className="py-3 px-2">
-                          {warrantyStatus === "expired" && (
-                            <Badge
-                              variant="destructive"
-                            >
-                              Expired
-                            </Badge>
-                          )}
-                          {warrantyStatus === "expiring-soon" && (
-                            <Badge
-                              className="bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100"
-                            >
-                              Expiring Soon
-                            </Badge>
-                          )}
-                          {warrantyStatus === "active" && (
-                            <Badge
-                              className="bg-green-100 text-green-800 border-green-300 hover:bg-green-100"
-                            >
-                              Active
-                            </Badge>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Asset Name</TableHead>
+                  <TableHead>Tag</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedAssets.map((asset) => {
+                  const warrantyStatus = getWarrantyStatus(
+                    asset.warrantyExpires,
+                  );
+                  return (
+                    <TableRow key={asset.id}>
+                      <TableCell>
+                        <Link
+                          href={`/assets/${asset.id}`}
+                          className="text-primary font-medium hover:underline"
+                        >
+                          {asset.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {asset.tag}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {asset.category}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {asset.warrantyMonths != null
+                          ? `${asset.warrantyMonths} months`
+                          : "--"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(asset.warrantyExpires).toLocaleDateString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          },
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {warrantyStatus === "expired" && (
+                          <Badge variant="destructive">Expired</Badge>
+                        )}
+                        {warrantyStatus === "expiring-soon" && (
+                          <Badge className="border-yellow-300 bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+                            Expiring Soon
+                          </Badge>
+                        )}
+                        {warrantyStatus === "active" && (
+                          <Badge className="border-green-300 bg-green-100 text-green-800 hover:bg-green-100">
+                            Active
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

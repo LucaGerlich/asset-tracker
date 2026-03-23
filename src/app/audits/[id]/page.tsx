@@ -2,13 +2,24 @@ import { notFound } from "next/navigation";
 import { getAuditCampaignById } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import AuditCampaignActions from "./ui/AuditCampaignActions";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+const statusVariant: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
   draft: "secondary",
   active: "default",
   completed: "outline",
@@ -31,7 +42,8 @@ export default async function AuditCampaignDetailPage({ params }: PageProps) {
   const missing = entries.filter((e: any) => e.status === "missing").length;
   const moved = entries.filter((e: any) => e.status === "moved").length;
   const unscanned = entries.filter((e: any) => e.status === "unscanned").length;
-  const scannedPercent = total > 0 ? Math.round(((total - unscanned) / total) * 100) : 0;
+  const scannedPercent =
+    total > 0 ? Math.round(((total - unscanned) / total) * 100) : 0;
 
   return (
     <div className="space-y-6 p-6">
@@ -41,7 +53,7 @@ export default async function AuditCampaignDetailPage({ params }: PageProps) {
           {campaign.description && (
             <p className="text-muted-foreground mt-1">{campaign.description}</p>
           )}
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             Created by {campaign.creator.firstname} {campaign.creator.lastname}
           </p>
         </div>
@@ -62,13 +74,13 @@ export default async function AuditCampaignDetailPage({ params }: PageProps) {
             <span>Audit Progress</span>
             <span>{scannedPercent}% scanned</span>
           </div>
-          <div className="h-3 rounded-full bg-muted overflow-hidden">
+          <div className="bg-muted h-3 overflow-hidden rounded-full">
             <div
-              className="h-full bg-primary rounded-full transition-all"
+              className="bg-primary h-full rounded-full transition-all"
               style={{ width: `${scannedPercent}%` }}
             />
           </div>
-          <div className="flex gap-6 text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex gap-6 text-sm">
             <span className="text-green-600">Found: {found}</span>
             <span className="text-red-600">Missing: {missing}</span>
             <span className="text-yellow-600">Moved: {moved}</span>
@@ -82,7 +94,7 @@ export default async function AuditCampaignDetailPage({ params }: PageProps) {
 
       {/* Entries table */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">Audit Entries ({total})</h2>
+        <h2 className="mb-3 text-lg font-semibold">Audit Entries ({total})</h2>
         {total === 0 ? (
           <p className="text-muted-foreground">
             {campaign.status === "draft"
@@ -90,26 +102,26 @@ export default async function AuditCampaignDetailPage({ params }: PageProps) {
               : "No entries found."}
           </p>
         ) : (
-          <div className="rounded-md border max-h-[600px] overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-background">
-                <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium">Asset</th>
-                  <th className="px-4 py-3 text-left font-medium">Tag</th>
-                  <th className="px-4 py-3 text-left font-medium">Status</th>
-                  <th className="px-4 py-3 text-left font-medium">Audited By</th>
-                  <th className="px-4 py-3 text-left font-medium">Date</th>
-                  <th className="px-4 py-3 text-left font-medium">Notes</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="max-h-[600px] overflow-y-auto rounded-md border">
+            <Table>
+              <TableHeader className="bg-background sticky top-0">
+                <TableRow className="bg-muted/50">
+                  <TableHead>Asset</TableHead>
+                  <TableHead>Tag</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Audited By</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {entries.map((entry: any) => (
-                  <tr key={entry.id} className="border-b">
-                    <td className="px-4 py-3">{entry.asset?.assetname || "—"}</td>
-                    <td className="px-4 py-3 font-mono text-xs">
+                  <TableRow key={entry.id}>
+                    <TableCell>{entry.asset?.assetname || "—"}</TableCell>
+                    <TableCell className="font-mono text-xs">
                       {entry.asset?.assettag || "—"}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <Badge
                         variant={
                           entry.status === "found"
@@ -121,24 +133,24 @@ export default async function AuditCampaignDetailPage({ params }: PageProps) {
                       >
                         {entry.status}
                       </Badge>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       {entry.auditor
                         ? `${entry.auditor.firstname} ${entry.auditor.lastname}`
                         : "—"}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       {entry.auditedAt
                         ? new Date(entry.auditedAt).toLocaleString()
                         : "—"}
-                    </td>
-                    <td className="px-4 py-3 max-w-xs truncate">
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">
                       {entry.notes || "—"}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>

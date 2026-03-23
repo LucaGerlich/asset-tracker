@@ -16,6 +16,14 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Plus, Edit, Trash2, Shield, Lock, Loader2 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -126,7 +134,9 @@ export default function RolesTab() {
       const res = await fetch("/api/roles", { method: "OPTIONS" });
       if (!res.ok) throw new Error("Failed to fetch permissions");
       const data = await res.json();
-      const perms = (data.permissions ?? []).filter((p: unknown): p is string => typeof p === "string");
+      const perms = (data.permissions ?? []).filter(
+        (p: unknown): p is string => typeof p === "string",
+      );
       setAllPermissions(perms);
     } catch {
       toast.error("Failed to load permissions");
@@ -169,16 +179,14 @@ export default function RolesTab() {
 
   function togglePermission(perm: string) {
     setFormPermissions((prev) =>
-      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
+      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm],
     );
   }
 
   function toggleGroupPermissions(groupPerms: string[]) {
     const allSelected = groupPerms.every((p) => formPermissions.includes(p));
     if (allSelected) {
-      setFormPermissions((prev) =>
-        prev.filter((p) => !groupPerms.includes(p))
-      );
+      setFormPermissions((prev) => prev.filter((p) => !groupPerms.includes(p)));
     } else {
       setFormPermissions((prev) => {
         const next = new Set(prev);
@@ -215,15 +223,13 @@ export default function RolesTab() {
       if (!res.ok) {
         const err = await res.json();
         const message =
-          typeof err.error === "string"
-            ? err.error
-            : "Failed to save role";
+          typeof err.error === "string" ? err.error : "Failed to save role";
         toast.error(message);
         return;
       }
 
       toast.success(
-        isEditing ? "Role updated successfully" : "Role created successfully"
+        isEditing ? "Role updated successfully" : "Role created successfully",
       );
       setDialogOpen(false);
       await fetchRoles();
@@ -248,9 +254,7 @@ export default function RolesTab() {
       if (!res.ok) {
         const err = await res.json();
         const message =
-          typeof err.error === "string"
-            ? err.error
-            : "Failed to delete role";
+          typeof err.error === "string" ? err.error : "Failed to delete role";
         toast.error(message);
         return;
       }
@@ -275,8 +279,8 @@ export default function RolesTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">
+        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+        <span className="text-muted-foreground ml-2 text-sm">
           Loading roles...
         </span>
       </div>
@@ -288,16 +292,16 @@ export default function RolesTab() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
             <Shield className="h-5 w-5" />
             Roles &amp; Permissions
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             Manage roles and their associated permissions
           </p>
         </div>
         <Button onClick={openCreateDialog}>
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           Create Role
         </Button>
       </div>
@@ -306,49 +310,41 @@ export default function RolesTab() {
 
       {/* Roles table */}
       {roles.length === 0 ? (
-        <div className="text-center py-12 text-sm text-muted-foreground">
+        <div className="text-muted-foreground py-12 text-center text-sm">
           No roles found. Create your first role to get started.
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="text-left font-medium px-4 py-3">Name</th>
-                <th className="text-left font-medium px-4 py-3 hidden md:table-cell">
+        <div className="overflow-hidden rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>Name</TableHead>
+                <TableHead className="hidden md:table-cell">
                   Description
-                </th>
-                <th className="text-center font-medium px-4 py-3">Type</th>
-                <th className="text-center font-medium px-4 py-3">
-                  Permissions
-                </th>
-                <th className="text-center font-medium px-4 py-3">Users</th>
-                <th className="text-right font-medium px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+                <TableHead className="text-center">Type</TableHead>
+                <TableHead className="text-center">Permissions</TableHead>
+                <TableHead className="text-center">Users</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {roles.map((role) => (
-                <tr
-                  key={role.id}
-                  className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
-                >
-                  <td className="px-4 py-3 font-medium">
+                <TableRow key={role.id}>
+                  <TableCell className="font-medium">
                     <span className="flex items-center gap-2">
                       {role.isSystem && (
-                        <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <Lock className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
                       )}
                       {role.name}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground hidden md:table-cell">
                     {role.description || "--"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
+                  </TableCell>
+                  <TableCell className="text-center">
                     {role.isSystem ? (
-                      <Badge
-                        variant="secondary"
-                        className="text-xs"
-                      >
+                      <Badge variant="secondary" className="text-xs">
                         System
                       </Badge>
                     ) : (
@@ -356,14 +352,14 @@ export default function RolesTab() {
                         Custom
                       </Badge>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-center tabular-nums">
+                  </TableCell>
+                  <TableCell className="text-center tabular-nums">
                     {role.permissions.length}
-                  </td>
-                  <td className="px-4 py-3 text-center tabular-nums">
+                  </TableCell>
+                  <TableCell className="text-center tabular-nums">
                     {role._count.userRoles}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  </TableCell>
+                  <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
@@ -397,17 +393,17 @@ export default function RolesTab() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingRole ? "Edit Role" : "Create Role"}
@@ -450,14 +446,14 @@ export default function RolesTab() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-base">Permissions</Label>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {formPermissions.length} of {allPermissions.length} selected
                 </span>
               </div>
 
               {permissionGroups.map((group) => {
                 const allInGroupSelected = group.permissions.every((p) =>
-                  formPermissions.includes(p)
+                  formPermissions.includes(p),
                 );
                 const someInGroupSelected =
                   !allInGroupSelected &&
@@ -466,7 +462,7 @@ export default function RolesTab() {
                 return (
                   <div
                     key={group.label}
-                    className="border rounded-lg p-4 space-y-3"
+                    className="space-y-3 rounded-lg border p-4"
                   >
                     {/* Group header with select-all */}
                     <div className="flex items-center gap-2">
@@ -485,14 +481,14 @@ export default function RolesTab() {
                       />
                       <Label
                         htmlFor={`group-${group.label}`}
-                        className="text-sm font-semibold cursor-pointer"
+                        className="cursor-pointer text-sm font-semibold"
                       >
                         {group.label}
                       </Label>
-                      <span className="text-xs text-muted-foreground ml-auto">
+                      <span className="text-muted-foreground ml-auto text-xs">
                         {
                           group.permissions.filter((p) =>
-                            formPermissions.includes(p)
+                            formPermissions.includes(p),
                           ).length
                         }
                         /{group.permissions.length}
@@ -500,12 +496,9 @@ export default function RolesTab() {
                     </div>
 
                     {/* Individual permissions */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pl-6">
+                    <div className="grid grid-cols-2 gap-2 pl-6 sm:grid-cols-3">
                       {group.permissions.map((perm) => (
-                        <div
-                          key={perm}
-                          className="flex items-center gap-2"
-                        >
+                        <div key={perm} className="flex items-center gap-2">
                           <Checkbox
                             id={`perm-${perm}`}
                             checked={formPermissions.includes(perm)}
@@ -513,7 +506,7 @@ export default function RolesTab() {
                           />
                           <Label
                             htmlFor={`perm-${perm}`}
-                            className="text-sm font-normal cursor-pointer"
+                            className="cursor-pointer text-sm font-normal"
                           >
                             {permissionAction(perm)}
                           </Label>
@@ -534,8 +527,11 @@ export default function RolesTab() {
             >
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={isSaving || !formName.trim()}>
-              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || !formName.trim()}
+            >
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingRole ? "Save Changes" : "Create Role"}
             </Button>
           </DialogFooter>
@@ -555,10 +551,10 @@ export default function RolesTab() {
           </DialogHeader>
 
           {deletingRole && deletingRole._count.userRoles > 0 && (
-            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border p-3 text-sm">
               This role has {deletingRole._count.userRoles} user
-              {deletingRole._count.userRoles === 1 ? "" : "s"} assigned.
-              You must reassign them before deleting.
+              {deletingRole._count.userRoles === 1 ? "" : "s"} assigned. You
+              must reassign them before deleting.
             </div>
           )}
 
@@ -578,9 +574,7 @@ export default function RolesTab() {
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Delete Role
             </Button>
           </DialogFooter>

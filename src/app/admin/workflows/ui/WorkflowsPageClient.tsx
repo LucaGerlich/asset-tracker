@@ -25,6 +25,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Plus, Edit, Trash2, Loader2, Zap } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -223,13 +231,9 @@ export default function WorkflowsPageClient() {
     }
   }
 
-  function updateActionConfig(
-    actionType: string,
-    key: string,
-    value: string
-  ) {
+  function updateActionConfig(actionType: string, key: string, value: string) {
     setFormActions((prev) =>
-      prev.map((a) => (a.type === actionType ? { ...a, [key]: value } : a))
+      prev.map((a) => (a.type === actionType ? { ...a, [key]: value } : a)),
     );
   }
 
@@ -247,16 +251,12 @@ export default function WorkflowsPageClient() {
       if (!res.ok) {
         const err = await res.json();
         toast.error(
-          typeof err.error === "string"
-            ? err.error
-            : "Failed to update rule"
+          typeof err.error === "string" ? err.error : "Failed to update rule",
         );
         return;
       }
 
-      toast.success(
-        rule.isActive ? "Rule deactivated" : "Rule activated"
-      );
+      toast.success(rule.isActive ? "Rule deactivated" : "Rule activated");
       await fetchRules();
     } catch {
       toast.error("Failed to update rule");
@@ -304,9 +304,7 @@ export default function WorkflowsPageClient() {
       if (!res.ok) {
         const err = await res.json();
         toast.error(
-          typeof err.error === "string"
-            ? err.error
-            : "Failed to save rule"
+          typeof err.error === "string" ? err.error : "Failed to save rule",
         );
         return;
       }
@@ -314,7 +312,7 @@ export default function WorkflowsPageClient() {
       toast.success(
         isEditing
           ? "Automation rule updated successfully"
-          : "Automation rule created successfully"
+          : "Automation rule created successfully",
       );
       setDialogOpen(false);
       await fetchRules();
@@ -339,9 +337,7 @@ export default function WorkflowsPageClient() {
       if (!res.ok) {
         const err = await res.json();
         toast.error(
-          typeof err.error === "string"
-            ? err.error
-            : "Failed to delete rule"
+          typeof err.error === "string" ? err.error : "Failed to delete rule",
         );
         return;
       }
@@ -477,7 +473,7 @@ export default function WorkflowsPageClient() {
 
       default:
         return (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Select a trigger to configure conditions.
           </p>
         );
@@ -493,7 +489,7 @@ export default function WorkflowsPageClient() {
     switch (actionType) {
       case "send_email":
         return (
-          <div className="ml-6 mt-2 space-y-2">
+          <div className="mt-2 ml-6 space-y-2">
             <Label htmlFor={`action-${actionType}-recipients`}>
               Recipients (comma-separated emails)
             </Label>
@@ -510,7 +506,7 @@ export default function WorkflowsPageClient() {
 
       case "send_notification":
         return (
-          <div className="ml-6 mt-2 space-y-2">
+          <div className="mt-2 ml-6 space-y-2">
             <Label htmlFor={`action-${actionType}-message`}>
               Message template
             </Label>
@@ -521,7 +517,7 @@ export default function WorkflowsPageClient() {
                 updateActionConfig(
                   actionType,
                   "messageTemplate",
-                  e.target.value
+                  e.target.value,
                 )
               }
               placeholder="Asset {{asset_name}} requires attention..."
@@ -532,7 +528,7 @@ export default function WorkflowsPageClient() {
 
       case "webhook":
         return (
-          <div className="ml-6 mt-2 space-y-2">
+          <div className="mt-2 ml-6 space-y-2">
             <Label htmlFor={`action-${actionType}-url`}>Webhook URL</Label>
             <Input
               id={`action-${actionType}-url`}
@@ -555,8 +551,8 @@ export default function WorkflowsPageClient() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">
+        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+        <span className="text-muted-foreground ml-2 text-sm">
           Loading automation rules...
         </span>
       </div>
@@ -568,16 +564,16 @@ export default function WorkflowsPageClient() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-3xl font-bold">
             <Zap className="h-7 w-7" />
             Automation Rules
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             Configure automated workflows triggered by asset events
           </p>
         </div>
         <Button onClick={openCreateDialog}>
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           Create Rule
         </Button>
       </div>
@@ -586,69 +582,64 @@ export default function WorkflowsPageClient() {
 
       {/* Rules table */}
       {rules.length === 0 ? (
-        <div className="text-center py-12 text-sm text-muted-foreground">
+        <div className="text-muted-foreground py-12 text-center text-sm">
           No automation rules found. Create your first rule to get started.
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="text-left font-medium px-4 py-3">Name</th>
-                <th className="text-left font-medium px-4 py-3">Trigger</th>
-                <th className="text-center font-medium px-4 py-3">Active</th>
-                <th className="text-left font-medium px-4 py-3 hidden md:table-cell">
-                  Last Run
-                </th>
-                <th className="text-center font-medium px-4 py-3 hidden sm:table-cell">
+        <div className="overflow-hidden rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>Name</TableHead>
+                <TableHead>Trigger</TableHead>
+                <TableHead className="text-center">Active</TableHead>
+                <TableHead className="hidden md:table-cell">Last Run</TableHead>
+                <TableHead className="hidden text-center sm:table-cell">
                   Run Count
-                </th>
-                <th className="text-right font-medium px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rules.map((rule) => (
-                <tr
-                  key={rule.id}
-                  className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
-                >
-                  <td className="px-4 py-3">
+                <TableRow key={rule.id}>
+                  <TableCell>
                     <div>
                       <span className="font-medium">{rule.name}</span>
                       {rule.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <p className="text-muted-foreground mt-0.5 text-xs">
                           {rule.description}
                         </p>
                       )}
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell>
                     <Badge
                       variant="outline"
                       className={
                         TRIGGER_BADGE_COLORS[rule.trigger] ??
-                        "bg-gray-100 text-gray-800 border-gray-200"
+                        "border-gray-200 bg-gray-100 text-gray-800"
                       }
                     >
                       {getTriggerLabel(rule.trigger)}
                     </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-center">
+                  </TableCell>
+                  <TableCell className="text-center">
                     <Switch
                       checked={rule.isActive}
                       onCheckedChange={() => handleToggleActive(rule)}
                       disabled={togglingId === rule.id}
                     />
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground hidden md:table-cell">
                     {rule.lastRunAt
                       ? new Date(rule.lastRunAt).toLocaleString()
                       : "Never"}
-                  </td>
-                  <td className="px-4 py-3 text-center tabular-nums hidden sm:table-cell">
+                  </TableCell>
+                  <TableCell className="hidden text-center tabular-nums sm:table-cell">
                     {rule.runCount}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  </TableCell>
+                  <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
@@ -668,17 +659,17 @@ export default function WorkflowsPageClient() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingRule ? "Edit Automation Rule" : "Create Automation Rule"}
@@ -751,7 +742,7 @@ export default function WorkflowsPageClient() {
             {/* Actions */}
             <div className="space-y-4">
               <Label className="text-base">Actions</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Select one or more actions to execute when this rule triggers.
               </p>
 
@@ -765,7 +756,7 @@ export default function WorkflowsPageClient() {
                     />
                     <Label
                       htmlFor={`action-${actionType.value}`}
-                      className="text-sm font-normal cursor-pointer"
+                      className="cursor-pointer text-sm font-normal"
                     >
                       {actionType.label}
                     </Label>
@@ -781,7 +772,7 @@ export default function WorkflowsPageClient() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="font-medium">Active</Label>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Only active rules will be evaluated and executed
                 </p>
               </div>
@@ -804,7 +795,7 @@ export default function WorkflowsPageClient() {
               onClick={handleSave}
               disabled={isSaving || !formName.trim() || !formTrigger}
             >
-              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingRule ? "Save Changes" : "Create Rule"}
             </Button>
           </DialogFooter>
@@ -839,9 +830,7 @@ export default function WorkflowsPageClient() {
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Delete Rule
             </Button>
           </DialogFooter>

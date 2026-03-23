@@ -4,6 +4,14 @@ import UserResources from "./ui/UserResources";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import HistoryTimeline from "@/components/HistoryTimeline";
 import prisma from "@/lib/prisma";
 import {
@@ -213,57 +221,52 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             {myAssets.length === 0 ? (
               <p className="text-foreground-500 text-sm">No assets assigned.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="text-foreground-500 text-left">
-                    <tr>
-                      <th className="py-2 pr-4 font-normal">Name</th>
-                      <th className="py-2 pr-4 font-normal">Tag</th>
-                      <th className="py-2 pr-4 font-normal">Serial</th>
-                      <th className="py-2 pr-4 font-normal">Status</th>
-                      <th className="py-2 pr-4 font-normal">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {myAssets.map((a) => (
-                      <tr
-                        key={a.assetid}
-                        className="border-default-200 border-t"
-                      >
-                        <td className="py-2 pr-4">
-                          <Link
-                            href={`/assets/${a.assetid}`}
-                            className="text-primary font-medium hover:underline"
+              <Table>
+                <TableHeader>
+                  <TableRow className="text-foreground-500">
+                    <TableHead className="font-normal">Name</TableHead>
+                    <TableHead className="font-normal">Tag</TableHead>
+                    <TableHead className="font-normal">Serial</TableHead>
+                    <TableHead className="font-normal">Status</TableHead>
+                    <TableHead className="font-normal">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {myAssets.map((a) => (
+                    <TableRow key={a.assetid}>
+                      <TableCell>
+                        <Link
+                          href={`/assets/${a.assetid}`}
+                          className="text-primary font-medium hover:underline"
+                        >
+                          {a.assetname}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{a.assettag}</TableCell>
+                      <TableCell>{a.serialnumber}</TableCell>
+                      <TableCell>
+                        {a.statustypeid ? (
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(statusById.get(a.statustypeid))}`}
                           >
-                            {a.assetname}
-                          </Link>
-                        </td>
-                        <td className="py-2 pr-4">{a.assettag}</td>
-                        <td className="py-2 pr-4">{a.serialnumber}</td>
-                        <td className="py-2 pr-4">
-                          {a.statustypeid ? (
-                            <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusColor(statusById.get(a.statustypeid))}`}
-                            >
-                              {statusById.get(a.statustypeid)}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td className="py-2 pr-4">
-                          <Link
-                            href={`/assets/${a.assetid}`}
-                            className="text-foreground-600 hover:underline"
-                          >
-                            View
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                            {statusById.get(a.statustypeid)}
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/assets/${a.assetid}`}
+                          className="text-foreground-600 hover:underline"
+                        >
+                          View
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </section>
         </div>
@@ -280,70 +283,68 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           {checkoutHistory.length === 0 ? (
             <p className="text-foreground-500 text-sm">No checkout history.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-foreground-500 text-left">
-                  <tr>
-                    <th className="py-2 pr-4 font-normal">Asset</th>
-                    <th className="py-2 pr-4 font-normal">Status</th>
-                    <th className="py-2 pr-4 font-normal">Checkout Date</th>
-                    <th className="py-2 pr-4 font-normal">Return Date</th>
-                    <th className="py-2 pr-4 font-normal">Checked Out By</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {checkoutHistory.map((c) => (
-                    <tr key={c.id} className="border-default-200 border-t">
-                      <td className="py-2 pr-4">
-                        <Link
-                          href={`/assets/${c.asset.assetid}`}
-                          className="text-primary font-medium hover:underline"
-                        >
-                          {c.asset.assetname}
-                        </Link>
-                        {c.asset.assettag ? (
-                          <span className="text-foreground-500 ml-1 text-xs">
-                            ({c.asset.assettag})
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="py-2 pr-4">
-                        {c.status === "returned" ? (
-                          <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                            Returned
-                          </Badge>
-                        ) : c.status === "overdue" ||
-                          (c.status === "checked_out" &&
-                            c.expectedReturn &&
-                            new Date(c.expectedReturn) < new Date()) ? (
-                          <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
-                            Overdue
-                          </Badge>
-                        ) : c.status === "checked_out" ? (
-                          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                            Checked Out
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">{c.status}</Badge>
-                        )}
-                      </td>
-                      <td className="py-2 pr-4 whitespace-nowrap">
-                        {new Date(c.checkoutDate).toLocaleDateString()}
-                      </td>
-                      <td className="py-2 pr-4 whitespace-nowrap">
-                        {c.returnDate
-                          ? new Date(c.returnDate).toLocaleDateString()
-                          : "\u2014"}
-                      </td>
-                      <td className="py-2 pr-4">
-                        {c.checkedOutByUser.firstname}{" "}
-                        {c.checkedOutByUser.lastname}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="text-foreground-500">
+                  <TableHead className="font-normal">Asset</TableHead>
+                  <TableHead className="font-normal">Status</TableHead>
+                  <TableHead className="font-normal">Checkout Date</TableHead>
+                  <TableHead className="font-normal">Return Date</TableHead>
+                  <TableHead className="font-normal">Checked Out By</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {checkoutHistory.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell>
+                      <Link
+                        href={`/assets/${c.asset.assetid}`}
+                        className="text-primary font-medium hover:underline"
+                      >
+                        {c.asset.assetname}
+                      </Link>
+                      {c.asset.assettag ? (
+                        <span className="text-foreground-500 ml-1 text-xs">
+                          ({c.asset.assettag})
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>
+                      {c.status === "returned" ? (
+                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                          Returned
+                        </Badge>
+                      ) : c.status === "overdue" ||
+                        (c.status === "checked_out" &&
+                          c.expectedReturn &&
+                          new Date(c.expectedReturn) < new Date()) ? (
+                        <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                          Overdue
+                        </Badge>
+                      ) : c.status === "checked_out" ? (
+                        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                          Checked Out
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">{c.status}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {new Date(c.checkoutDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {c.returnDate
+                        ? new Date(c.returnDate).toLocaleDateString()
+                        : "\u2014"}
+                    </TableCell>
+                    <TableCell>
+                      {c.checkedOutByUser.firstname}{" "}
+                      {c.checkedOutByUser.lastname}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </section>
 

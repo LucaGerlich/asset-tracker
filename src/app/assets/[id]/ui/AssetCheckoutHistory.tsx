@@ -23,6 +23,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 import { ClipboardCheck, LogOut, LogIn, Loader2 } from "lucide-react";
 
@@ -338,42 +346,42 @@ export default function AssetCheckoutHistory({
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="pr-4 pb-2 font-medium">User</th>
-                <th className="pr-4 pb-2 font-medium">Checkout Date</th>
-                <th className="pr-4 pb-2 font-medium">Expected Return</th>
-                <th className="pr-4 pb-2 font-medium">Actual Return</th>
-                <th className="pr-4 pb-2 font-medium">Status</th>
-                <th className="pr-4 pb-2 font-medium">Notes</th>
-                <th className="pb-2 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Checkout Date</TableHead>
+                <TableHead>Expected Return</TableHead>
+                <TableHead>Actual Return</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {checkouts.map((c) => (
-                <tr key={c.id} className="border-b last:border-0">
-                  <td className="py-3 pr-4">
+                <TableRow key={c.id}>
+                  <TableCell>
                     {c.checkedOutToUser
                       ? `${c.checkedOutToUser.firstname} ${c.checkedOutToUser.lastname}`
                       : c.checkedOutTo}
-                  </td>
-                  <td className="py-3 pr-4 whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {formatDate(c.checkoutDate)}
-                  </td>
-                  <td className="py-3 pr-4 whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {formatDate(c.expectedReturn)}
-                  </td>
-                  <td className="py-3 pr-4 whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {formatDate(c.returnDate)}
-                  </td>
-                  <td className="py-3 pr-4">
+                  </TableCell>
+                  <TableCell>
                     {getStatusBadge(c.status, c.expectedReturn)}
-                  </td>
-                  <td className="text-muted-foreground max-w-[150px] truncate py-3 pr-4">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground max-w-[150px] truncate">
                     {c.notes || "-"}
-                  </td>
-                  <td className="py-3">
+                  </TableCell>
+                  <TableCell>
                     {c.status === "checked_out" && (
                       <Button
                         size="sm"
@@ -391,11 +399,11 @@ export default function AssetCheckoutHistory({
                         )}
                       </Button>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

@@ -5,6 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 
 interface KitItem {
@@ -57,19 +65,19 @@ export default function KitsTable({ kits }: { kits: Kit[] }) {
 
   return (
     <div className="rounded-md border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-muted/50 border-b">
-            <th className="px-4 py-3 text-left font-medium">Name</th>
-            <th className="px-4 py-3 text-left font-medium">Items</th>
-            <th className="px-4 py-3 text-left font-medium">Status</th>
-            <th className="px-4 py-3 text-right font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead>Name</TableHead>
+            <TableHead>Items</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {kits.map((kit) => (
-            <tr key={kit.id} className="hover:bg-muted/30 border-b">
-              <td className="px-4 py-3">
+            <TableRow key={kit.id}>
+              <TableCell>
                 <Link
                   href={`/kits/${kit.id}`}
                   className="font-medium hover:underline"
@@ -81,14 +89,14 @@ export default function KitsTable({ kits }: { kits: Kit[] }) {
                     {kit.description}
                   </p>
                 )}
-              </td>
-              <td className="px-4 py-3">{kit.items.length} items</td>
-              <td className="px-4 py-3">
+              </TableCell>
+              <TableCell>{kit.items.length} items</TableCell>
+              <TableCell>
                 <Badge variant={kit.isActive ? "default" : "secondary"}>
                   {kit.isActive ? "Active" : "Inactive"}
                 </Badge>
-              </td>
-              <td className="space-x-2 px-4 py-3 text-right">
+              </TableCell>
+              <TableCell className="space-x-2 text-right">
                 <Button variant="ghost" size="sm" asChild>
                   <Link href={`/kits/${kit.id}`}>View</Link>
                 </Button>
@@ -100,11 +108,11 @@ export default function KitsTable({ kits }: { kits: Kit[] }) {
                 >
                   {deleting === kit.id ? "..." : "Delete"}
                 </Button>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -15,6 +15,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 import { Calendar, Plus, Loader2, Check, X } from "lucide-react";
 
@@ -253,37 +261,30 @@ export default function AssetReservations({
           No reservations found for this asset.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted/50 border-b">
-                <th className="px-4 py-3 text-left font-medium">User</th>
-                <th className="px-4 py-3 text-left font-medium">Start Date</th>
-                <th className="px-4 py-3 text-left font-medium">End Date</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-left font-medium">Notes</th>
-                <th className="px-4 py-3 text-left font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead>User</TableHead>
+                <TableHead>Start Date</TableHead>
+                <TableHead>End Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {reservations.map((reservation) => {
                 const isOwner = reservation.userId === session?.user?.id;
 
                 return (
-                  <tr
-                    key={reservation.id}
-                    className="hover:bg-muted/30 border-b last:border-b-0"
-                  >
-                    <td className="px-4 py-3">
+                  <TableRow key={reservation.id}>
+                    <TableCell>
                       {reservation.user.firstname} {reservation.user.lastname}
-                    </td>
-                    <td className="px-4 py-3">
-                      {formatDate(reservation.startDate)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {formatDate(reservation.endDate)}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>{formatDate(reservation.startDate)}</TableCell>
+                    <TableCell>{formatDate(reservation.endDate)}</TableCell>
+                    <TableCell>
                       <Badge
                         variant="outline"
                         className={statusBadgeClass(reservation.status)}
@@ -291,11 +292,11 @@ export default function AssetReservations({
                         {reservation.status.charAt(0).toUpperCase() +
                           reservation.status.slice(1)}
                       </Badge>
-                    </td>
-                    <td className="max-w-[200px] truncate px-4 py-3">
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate">
                       {reservation.notes || "-"}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-1">
                         {/* Admin: approve/reject pending reservations */}
                         {isAdmin && reservation.status === "pending" && (
@@ -341,12 +342,12 @@ export default function AssetReservations({
                             </Button>
                           )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 

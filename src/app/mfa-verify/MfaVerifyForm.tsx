@@ -97,8 +97,9 @@ export default function MfaVerifyForm() {
             </Button>
 
             <div className="text-center">
-              <button
+              <Button
                 type="button"
+                variant="link"
                 className="text-muted-foreground hover:text-foreground text-sm underline"
                 onClick={() => {
                   setUseBackupCode(!useBackupCode);
@@ -109,7 +110,7 @@ export default function MfaVerifyForm() {
                 {useBackupCode
                   ? "Use authenticator app instead"
                   : "Use a backup code instead"}
-              </button>
+              </Button>
             </div>
           </form>
         </CardContent>

@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 interface KitItemInput {
@@ -31,16 +39,22 @@ export default function KitCreateForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(initialData?.name || "");
-  const [description, setDescription] = useState(initialData?.description || "");
-  const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
-  const [items, setItems] = useState<KitItemInput[]>(
-    initialData?.items || [],
+  const [description, setDescription] = useState(
+    initialData?.description || "",
   );
+  const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
+  const [items, setItems] = useState<KitItemInput[]>(initialData?.items || []);
 
   function addItem() {
     setItems([
       ...items,
-      { entityType: "asset_category", entityId: "", quantity: 1, isRequired: true, notes: "" },
+      {
+        entityType: "asset_category",
+        entityId: "",
+        quantity: 1,
+        isRequired: true,
+        notes: "",
+      },
     ]);
   }
 
@@ -60,7 +74,8 @@ export default function KitCreateForm({
 
     try {
       const body: any = { name, description, isActive, items };
-      const url = mode === "edit" ? `/api/kits/${initialData!.id}` : "/api/kits";
+      const url =
+        mode === "edit" ? `/api/kits/${initialData!.id}` : "/api/kits";
       const method = mode === "edit" ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -106,11 +121,10 @@ export default function KitCreateForm({
       </div>
 
       <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
+        <Checkbox
           id="isActive"
           checked={isActive}
-          onChange={(e) => setIsActive(e.target.checked)}
+          onCheckedChange={(checked) => setIsActive(checked === true)}
         />
         <Label htmlFor="isActive">Active</Label>
       </div>
@@ -124,19 +138,23 @@ export default function KitCreateForm({
         </div>
 
         {items.map((item, i) => (
-          <div key={i} className="flex gap-2 items-end border rounded-md p-3">
+          <div key={i} className="flex items-end gap-2 rounded-md border p-3">
             <div className="flex-1 space-y-1">
               <Label className="text-xs">Type</Label>
-              <select
-                className="w-full rounded-md border px-3 py-2 text-sm"
+              <Select
                 value={item.entityType}
-                onChange={(e) => updateItem(i, "entityType", e.target.value)}
+                onValueChange={(value) => updateItem(i, "entityType", value)}
               >
-                <option value="asset_category">Asset Category</option>
-                <option value="accessory">Accessory</option>
-                <option value="licence">Licence</option>
-                <option value="component">Component</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asset_category">Asset Category</SelectItem>
+                  <SelectItem value="accessory">Accessory</SelectItem>
+                  <SelectItem value="licence">Licence</SelectItem>
+                  <SelectItem value="component">Component</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex-1 space-y-1">
               <Label className="text-xs">Entity ID</Label>
@@ -152,7 +170,9 @@ export default function KitCreateForm({
                 type="number"
                 min={1}
                 value={item.quantity}
-                onChange={(e) => updateItem(i, "quantity", Number(e.target.value))}
+                onChange={(e) =>
+                  updateItem(i, "quantity", Number(e.target.value))
+                }
               />
             </div>
             <Button
@@ -169,7 +189,11 @@ export default function KitCreateForm({
 
       <div className="flex gap-3">
         <Button type="submit" disabled={loading}>
-          {loading ? "Saving..." : mode === "edit" ? "Update Kit" : "Create Kit"}
+          {loading
+            ? "Saving..."
+            : mode === "edit"
+              ? "Update Kit"
+              : "Create Kit"}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.back()}>
           Cancel

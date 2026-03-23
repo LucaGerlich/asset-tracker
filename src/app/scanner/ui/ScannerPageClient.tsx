@@ -471,17 +471,18 @@ export default function ScannerPageClient() {
                 {searchResults.length > 0 && (
                   <div className="mt-4 max-h-[400px] space-y-2 overflow-y-auto">
                     {searchResults.map((result) => (
-                      <button
+                      <Button
                         key={result.id}
                         type="button"
+                        variant="outline"
                         onClick={() => setSelectedAsset(result)}
-                        className={`hover:bg-accent w-full rounded-lg border p-3 text-left transition-colors ${
+                        className={`hover:bg-accent h-auto w-full justify-start rounded-lg border p-3 text-left transition-colors ${
                           selectedAsset?.id === result.id
                             ? "border-primary bg-primary/5"
                             : "border-border"
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex w-full items-center justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-medium">
                               {result.title}
@@ -494,7 +495,7 @@ export default function ScannerPageClient() {
                             {result.type}
                           </Badge>
                         </div>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}

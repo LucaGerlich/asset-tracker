@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { PackageMinus, PackagePlus, Bell } from "lucide-react";
 
@@ -197,8 +198,10 @@ export default function ConsumableDetailClient({
   };
 
   return (
-    <div className="rounded-lg border border-default-200 p-4">
-      <h2 className="text-sm font-semibold text-foreground-600 mb-3">Actions</h2>
+    <div className="border-default-200 rounded-lg border p-4">
+      <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
+        Actions
+      </h2>
       <div className="flex flex-col gap-2">
         <Button
           variant="outline"
@@ -206,7 +209,7 @@ export default function ConsumableDetailClient({
           onClick={() => setCheckoutOpen(true)}
           disabled={qty <= 0}
         >
-          <PackageMinus className="h-4 w-4 mr-2" />
+          <PackageMinus className="mr-2 h-4 w-4" />
           Check Out to User
         </Button>
 
@@ -215,7 +218,7 @@ export default function ConsumableDetailClient({
           className="w-full justify-start"
           onClick={() => setRestockOpen(true)}
         >
-          <PackagePlus className="h-4 w-4 mr-2" />
+          <PackagePlus className="mr-2 h-4 w-4" />
           Restock
         </Button>
 
@@ -225,13 +228,15 @@ export default function ConsumableDetailClient({
             className="w-full justify-start"
             onClick={() => setAlertOpen(true)}
           >
-            <Bell className="h-4 w-4 mr-2" />
+            <Bell className="mr-2 h-4 w-4" />
             Set Up Stock Alert
           </Button>
         )}
 
-        <div className="mt-3 p-3 rounded-md bg-muted/50">
-          <div className="text-xs text-foreground-500 mb-1">Available Stock</div>
+        <div className="bg-muted/50 mt-3 rounded-md p-3">
+          <div className="text-foreground-500 mb-1 text-xs">
+            Available Stock
+          </div>
           <div className="text-2xl font-bold">{qty}</div>
         </div>
       </div>
@@ -271,7 +276,7 @@ export default function ConsumableDetailClient({
                 value={checkoutQty}
                 onChange={(e) => setCheckoutQty(e.target.value)}
               />
-              <p className="text-xs text-foreground-500 mt-1">
+              <p className="text-foreground-500 mt-1 text-xs">
                 {qty} available
               </p>
             </div>
@@ -347,7 +352,7 @@ export default function ConsumableDetailClient({
                 value={alertMin}
                 onChange={(e) => setAlertMin(e.target.value)}
               />
-              <p className="text-xs text-foreground-500 mt-1">
+              <p className="text-foreground-500 mt-1 text-xs">
                 Alert when stock drops to this level
               </p>
             </div>
@@ -360,17 +365,15 @@ export default function ConsumableDetailClient({
                 value={alertCritical}
                 onChange={(e) => setAlertCritical(e.target.value)}
               />
-              <p className="text-xs text-foreground-500 mt-1">
+              <p className="text-foreground-500 mt-1 text-xs">
                 Urgent alert when stock drops to this level
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="alert-email"
                 checked={alertEmail}
-                onChange={(e) => setAlertEmail(e.target.checked)}
-                className="rounded border-default-300"
+                onCheckedChange={(checked) => setAlertEmail(checked === true)}
               />
               <Label htmlFor="alert-email" className="text-sm font-normal">
                 Send email notifications

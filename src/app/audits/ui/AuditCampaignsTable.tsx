@@ -5,6 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 
 interface Campaign {
@@ -65,43 +73,43 @@ export default function AuditCampaignsTable({
 
   return (
     <div className="rounded-md border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-muted/50 border-b">
-            <th className="px-4 py-3 text-left font-medium">Name</th>
-            <th className="px-4 py-3 text-left font-medium">Status</th>
-            <th className="px-4 py-3 text-left font-medium">Scope</th>
-            <th className="px-4 py-3 text-left font-medium">Assets</th>
-            <th className="px-4 py-3 text-left font-medium">Due Date</th>
-            <th className="px-4 py-3 text-left font-medium">Created By</th>
-            <th className="px-4 py-3 text-right font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50">
+            <TableHead>Name</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Scope</TableHead>
+            <TableHead>Assets</TableHead>
+            <TableHead>Due Date</TableHead>
+            <TableHead>Created By</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {campaigns.map((c) => (
-            <tr key={c.id} className="hover:bg-muted/30 border-b">
-              <td className="px-4 py-3">
+            <TableRow key={c.id}>
+              <TableCell>
                 <Link
                   href={`/audits/${c.id}`}
                   className="font-medium hover:underline"
                 >
                   {c.name}
                 </Link>
-              </td>
-              <td className="px-4 py-3">
+              </TableCell>
+              <TableCell>
                 <Badge variant={statusVariant[c.status] || "secondary"}>
                   {c.status}
                 </Badge>
-              </td>
-              <td className="px-4 py-3 capitalize">{c.scopeType}</td>
-              <td className="px-4 py-3">{c._count.entries}</td>
-              <td className="px-4 py-3">
+              </TableCell>
+              <TableCell className="capitalize">{c.scopeType}</TableCell>
+              <TableCell>{c._count.entries}</TableCell>
+              <TableCell>
                 {c.dueDate ? new Date(c.dueDate).toLocaleDateString() : "—"}
-              </td>
-              <td className="px-4 py-3">
+              </TableCell>
+              <TableCell>
                 {c.creator.firstname} {c.creator.lastname}
-              </td>
-              <td className="space-x-2 px-4 py-3 text-right">
+              </TableCell>
+              <TableCell className="space-x-2 text-right">
                 <Button variant="ghost" size="sm" asChild>
                   <Link href={`/audits/${c.id}`}>View</Link>
                 </Button>
@@ -113,11 +121,11 @@ export default function AuditCampaignsTable({
                 >
                   {deleting === c.id ? "..." : "Delete"}
                 </Button>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

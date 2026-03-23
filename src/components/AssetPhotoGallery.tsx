@@ -63,10 +63,11 @@ export default function AssetPhotoGallery({
     <>
       <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {images.map((img, index) => (
-          <button
+          <Button
             key={img.id}
             type="button"
-            className="border-default-200 hover:border-primary group bg-muted relative aspect-square cursor-pointer overflow-hidden rounded-lg border transition-colors"
+            variant="ghost"
+            className="border-default-200 hover:border-primary group bg-muted relative aspect-square h-auto cursor-pointer overflow-hidden rounded-lg border p-0 transition-colors"
             onClick={() => openLightbox(index)}
           >
             <img
@@ -96,7 +97,7 @@ export default function AssetPhotoGallery({
                 </Button>
               </div>
             )}
-          </button>
+          </Button>
         ))}
       </div>
 

@@ -21,6 +21,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { toast } from "sonner";
 import { ArrowRight, Repeat } from "lucide-react";
 
@@ -243,7 +251,9 @@ export default function AssetTransfers({
 
   const getFromLabel = (t: Transfer): string => {
     if (t.transferType === "user") {
-      return t.fromUserId ? userMap[t.fromUserId] || t.fromUserId : "Unassigned";
+      return t.fromUserId
+        ? userMap[t.fromUserId] || t.fromUserId
+        : "Unassigned";
     }
     if (t.transferType === "location") {
       return t.fromLocationId
@@ -251,7 +261,9 @@ export default function AssetTransfers({
         : "No Location";
     }
     if (t.transferType === "organization") {
-      return t.fromOrgId ? orgMap[t.fromOrgId] || t.fromOrgId : "No Organization";
+      return t.fromOrgId
+        ? orgMap[t.fromOrgId] || t.fromOrgId
+        : "No Organization";
     }
     return "-";
   };
@@ -276,7 +288,7 @@ export default function AssetTransfers({
 
     if (loadingOptions) {
       return (
-        <p className="text-sm text-muted-foreground">Loading options...</p>
+        <p className="text-muted-foreground text-sm">Loading options...</p>
       );
     }
 
@@ -353,14 +365,14 @@ export default function AssetTransfers({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
+        <h3 className="flex items-center gap-2 text-lg font-semibold">
           <Repeat className="h-5 w-5" />
           Transfer History
         </h3>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
-              <Repeat className="h-4 w-4 mr-2" />
+              <Repeat className="mr-2 h-4 w-4" />
               Transfer Asset
             </Button>
           </DialogTrigger>
@@ -419,29 +431,29 @@ export default function AssetTransfers({
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading transfers...</p>
+        <p className="text-muted-foreground text-sm">Loading transfers...</p>
       ) : transfers.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           No transfers recorded for this asset.
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="pb-2 pr-4 font-medium">Type</th>
-                <th className="pb-2 pr-4 font-medium">From</th>
-                <th className="pb-2 pr-4 font-medium"></th>
-                <th className="pb-2 pr-4 font-medium">To</th>
-                <th className="pb-2 pr-4 font-medium">Reason</th>
-                <th className="pb-2 pr-4 font-medium">Date</th>
-                <th className="pb-2 font-medium">Transferred By</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>From</TableHead>
+                <TableHead></TableHead>
+                <TableHead>To</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Transferred By</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {transfers.map((t) => (
-                <tr key={t.id} className="border-b last:border-0">
-                  <td className="py-3 pr-4">
+                <TableRow key={t.id}>
+                  <TableCell>
                     <Badge
                       variant={
                         TRANSFER_TYPE_VARIANTS[t.transferType] || "default"
@@ -449,27 +461,27 @@ export default function AssetTransfers({
                     >
                       {TRANSFER_TYPE_LABELS[t.transferType] || t.transferType}
                     </Badge>
-                  </td>
-                  <td className="py-3 pr-4 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {getFromLabel(t)}
-                  </td>
-                  <td className="py-3 pr-4">
-                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                  </td>
-                  <td className="py-3 pr-4">{getToLabel(t)}</td>
-                  <td className="py-3 pr-4 text-muted-foreground">
+                  </TableCell>
+                  <TableCell>
+                    <ArrowRight className="text-muted-foreground h-4 w-4" />
+                  </TableCell>
+                  <TableCell>{getToLabel(t)}</TableCell>
+                  <TableCell className="text-muted-foreground">
                     {t.reason || "-"}
-                  </td>
-                  <td className="py-3 pr-4 whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {new Date(t.transferredAt).toLocaleDateString()}
-                  </td>
-                  <td className="py-3">
+                  </TableCell>
+                  <TableCell>
                     {userMap[t.transferredBy] || t.transferredBy}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

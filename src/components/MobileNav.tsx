@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -34,7 +35,7 @@ export default function MobileNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden pb-safe"
+      className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 pb-safe fixed right-0 bottom-0 left-0 z-50 border-t backdrop-blur md:hidden"
       aria-label="Mobile navigation"
     >
       <div className="flex items-center justify-around px-1">
@@ -46,7 +47,7 @@ export default function MobileNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 px-2 py-2 text-[10px] font-medium transition-colors touch-target",
+                "touch-target flex flex-col items-center justify-center gap-0.5 px-2 py-2 text-[10px] font-medium transition-colors",
                 active
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground",
@@ -60,13 +61,14 @@ export default function MobileNav() {
 
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
-            <button
-              className="flex flex-col items-center justify-center gap-0.5 px-2 py-2 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors touch-target"
+            <Button
+              variant="ghost"
+              className="text-muted-foreground hover:text-foreground touch-target flex h-auto flex-col items-center justify-center gap-0.5 rounded-none px-2 py-2 text-[10px] font-medium transition-colors hover:bg-transparent"
               aria-label="Open full navigation menu"
             >
               <Menu className="h-5 w-5" />
               <span>More</span>
-            </button>
+            </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[280px] overflow-y-auto p-0">
             <SheetHeader className="px-4 pt-4 pb-2">
@@ -75,7 +77,7 @@ export default function MobileNav() {
             <div className="px-2 py-2">
               {filteredSections.map((section) => (
                 <div key={section.title} className="mb-4">
-                  <p className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="text-muted-foreground px-3 pb-1.5 text-xs font-semibold tracking-wide uppercase">
                     {section.title}
                   </p>
                   <div className="space-y-0.5">
@@ -92,7 +94,7 @@ export default function MobileNav() {
                           href={item.href}
                           onClick={() => setSheetOpen(false)}
                           className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors touch-target",
+                            "touch-target flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                             active
                               ? "bg-primary/10 text-primary"
                               : "text-muted-foreground hover:bg-accent hover:text-foreground",

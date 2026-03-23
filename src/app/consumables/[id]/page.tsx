@@ -3,6 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import prisma from "@/lib/prisma";
 import {
   getConsumableById,
@@ -274,37 +282,37 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-foreground-500 text-left">
-                  <tr>
-                    <th className="py-2 pr-4 font-normal">User</th>
-                    <th className="py-2 pr-4 font-normal">Qty</th>
-                    <th className="py-2 pr-4 font-normal">Date</th>
-                    <th className="py-2 pr-4 font-normal">Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-normal">User</TableHead>
+                    <TableHead className="font-normal">Qty</TableHead>
+                    <TableHead className="font-normal">Date</TableHead>
+                    <TableHead className="font-normal">Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {checkouts.map((c) => (
-                    <tr key={c.id} className="border-default-200 border-t">
-                      <td className="py-2 pr-4">
+                    <TableRow key={c.id}>
+                      <TableCell>
                         <Link
                           href={`/user/${c.user.userid}`}
                           className="text-primary font-medium hover:underline"
                         >
                           {c.user.firstname} {c.user.lastname}
                         </Link>
-                      </td>
-                      <td className="py-2 pr-4">{c.quantity}</td>
-                      <td className="py-2 pr-4">
+                      </TableCell>
+                      <TableCell>{c.quantity}</TableCell>
+                      <TableCell>
                         {new Date(c.checkedOutAt).toLocaleString()}
-                      </td>
-                      <td className="text-foreground-500 py-2 pr-4">
+                      </TableCell>
+                      <TableCell className="text-foreground-500">
                         {c.notes || "-"}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </section>

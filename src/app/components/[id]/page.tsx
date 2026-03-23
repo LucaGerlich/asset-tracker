@@ -2,6 +2,14 @@ import React from "react";
 import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import prisma from "@/lib/prisma";
 import { getComponentById } from "@/lib/data";
 import ComponentDetailClient from "./ui/ComponentDetailClient";
@@ -38,34 +46,36 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     <>
       <Breadcrumb options={breadcrumbOptions} />
 
-      <div className="flex flex-col w-full h-full overflow-hidden">
+      <div className="flex h-full w-full flex-col overflow-hidden">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold">{component.name}</h1>
-            <p className="text-sm text-foreground-500 mt-1">
+            <p className="text-foreground-500 mt-1 text-sm">
               {component.category?.name ?? "No Category"}{" "}
-              {component.manufacturer && <>&#8226; {component.manufacturer.manufacturername}</>}
+              {component.manufacturer && (
+                <>&#8226; {component.manufacturer.manufacturername}</>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {stockStatus === "out_of_stock" && (
-              <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-1 text-xs font-medium">
+              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
                 Out of Stock
               </span>
             )}
             {stockStatus === "low_stock" && (
-              <span className="inline-flex items-center rounded-full bg-yellow-100 text-yellow-700 px-2 py-1 text-xs font-medium">
+              <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-700">
                 Low Stock
               </span>
             )}
             {stockStatus === "in_stock" && (
-              <span className="inline-flex items-center rounded-full bg-green-100 text-green-700 px-2 py-1 text-xs font-medium">
+              <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
                 In Stock
               </span>
             )}
             <Link
               href={`/components/${component.id}/edit`}
-              className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium hover:opacity-90"
+              className="bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-sm font-medium hover:opacity-90"
             >
               Edit
             </Link>
@@ -73,13 +83,17 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         </div>
         <Separator className="my-4" />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <section className="col-span-1 rounded-lg border border-default-200 p-4">
-            <h2 className="text-sm font-semibold text-foreground-600 mb-3">Details</h2>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <section className="border-default-200 col-span-1 rounded-lg border p-4">
+            <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
+              Details
+            </h2>
             <dl className="grid grid-cols-1 gap-2 text-sm">
               <div className="flex justify-between">
                 <dt className="text-foreground-500">Category</dt>
-                <dd className="font-medium">{component.category?.name ?? "-"}</dd>
+                <dd className="font-medium">
+                  {component.category?.name ?? "-"}
+                </dd>
               </div>
               {component.serialNumber && (
                 <div className="flex justify-between">
@@ -124,12 +138,16 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             </dl>
           </section>
 
-          <section className="col-span-1 rounded-lg border border-default-200 p-4">
-            <h2 className="text-sm font-semibold text-foreground-600 mb-3">Stock</h2>
+          <section className="border-default-200 col-span-1 rounded-lg border p-4">
+            <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
+              Stock
+            </h2>
             <dl className="grid grid-cols-1 gap-2 text-sm">
               <div className="flex justify-between">
                 <dt className="text-foreground-500">Remaining Quantity</dt>
-                <dd className="font-medium text-lg">{component.remainingQuantity}</dd>
+                <dd className="text-lg font-medium">
+                  {component.remainingQuantity}
+                </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-foreground-500">Total Quantity</dt>
@@ -169,58 +187,63 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
         <Separator className="my-6" />
 
-        <section className="rounded-lg border border-default-200 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-foreground-600">Checkout History</h2>
-            <span className="text-xs text-foreground-500">
+        <section className="border-default-200 rounded-lg border p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-foreground-600 text-sm font-semibold">
+              Checkout History
+            </h2>
+            <span className="text-foreground-500 text-xs">
               {component.checkouts.length} records
             </span>
           </div>
           {component.checkouts.length === 0 ? (
-            <p className="text-sm text-foreground-500">No checkouts recorded.</p>
+            <p className="text-foreground-500 text-sm">
+              No checkouts recorded.
+            </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-left text-foreground-500">
-                  <tr>
-                    <th className="py-2 pr-4 font-normal">Asset</th>
-                    <th className="py-2 pr-4 font-normal">Qty</th>
-                    <th className="py-2 pr-4 font-normal">Checked Out</th>
-                    <th className="py-2 pr-4 font-normal">Returned</th>
-                    <th className="py-2 pr-4 font-normal">By</th>
-                    <th className="py-2 pr-4 font-normal">Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-normal">Asset</TableHead>
+                    <TableHead className="font-normal">Qty</TableHead>
+                    <TableHead className="font-normal">Checked Out</TableHead>
+                    <TableHead className="font-normal">Returned</TableHead>
+                    <TableHead className="font-normal">By</TableHead>
+                    <TableHead className="font-normal">Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {component.checkouts.map((c) => (
-                    <tr key={c.id} className="border-t border-default-200">
-                      <td className="py-2 pr-4">
+                    <TableRow key={c.id}>
+                      <TableCell>
                         <Link
                           href={`/assets/${c.asset.assetid}`}
-                          className="text-primary hover:underline font-medium"
+                          className="text-primary font-medium hover:underline"
                         >
                           {c.asset.assetname} ({c.asset.assettag})
                         </Link>
-                      </td>
-                      <td className="py-2 pr-4">{c.quantity}</td>
-                      <td className="py-2 pr-4">
+                      </TableCell>
+                      <TableCell>{c.quantity}</TableCell>
+                      <TableCell>
                         {new Date(c.checkedOutAt).toLocaleString()}
-                      </td>
-                      <td className="py-2 pr-4">
+                      </TableCell>
+                      <TableCell>
                         {c.returnedAt
                           ? new Date(c.returnedAt).toLocaleString()
                           : "-"}
-                      </td>
-                      <td className="py-2 pr-4">
-                        {c.checkedOutByUser.firstname} {c.checkedOutByUser.lastname}
-                      </td>
-                      <td className="py-2 pr-4 text-foreground-500">
+                      </TableCell>
+                      <TableCell>
+                        {c.checkedOutByUser.firstname}{" "}
+                        {c.checkedOutByUser.lastname}
+                      </TableCell>
+                      <TableCell className="text-foreground-500">
                         {c.notes || "-"}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </section>

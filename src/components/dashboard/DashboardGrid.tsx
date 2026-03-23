@@ -517,13 +517,15 @@ function SortableWidget({
             >
               <GripVertical className="text-muted-foreground h-4 w-4" />
             </button>
-            <button
-              className="hover:bg-destructive/10 rounded p-1"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-destructive/10 h-auto w-auto rounded p-1"
               onClick={() => onRemove(widget.id)}
               aria-label="Remove widget"
             >
               <X className="text-muted-foreground h-4 w-4" />
-            </button>
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -678,16 +680,17 @@ export default function DashboardGrid({
                 </p>
               ) : (
                 availableWidgets.map((def) => (
-                  <button
+                  <Button
                     key={def.type}
-                    className="hover:bg-muted flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors"
+                    variant="outline"
+                    className="hover:bg-muted flex h-auto flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors"
                     onClick={() => handleAdd(def.type)}
                   >
                     <span className="text-sm font-medium">{def.title}</span>
                     <span className="text-muted-foreground text-xs">
                       {def.description}
                     </span>
-                  </button>
+                  </Button>
                 ))
               )}
             </div>
