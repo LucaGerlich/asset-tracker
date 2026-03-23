@@ -38,7 +38,7 @@ const nextConfig = {
           "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data: blob: https:",
           "font-src 'self' data:",
-          "connect-src 'self' https://*.sentry.io https://*.stripe.com",
+          "connect-src 'self' https://*.sentry.io https://*.stripe.com https://*.basemaps.cartocdn.com https://nominatim.openstreetmap.org https://analytics.711x.de",
           "frame-src 'self' https://*.stripe.com",
           "object-src 'none'",
           "base-uri 'self'",
