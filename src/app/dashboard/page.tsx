@@ -12,6 +12,9 @@ import DismissibleHelpTip from "@/components/DismissibleHelpTip";
 import DashboardGrid from "@/components/dashboard/DashboardGrid";
 import UserDashboard from "@/components/dashboard/UserDashboard";
 import { getOrganizationContext } from "@/lib/organization-context";
+import prisma from "@/lib/prisma";
+import AssetMap from "@/components/maps/AssetMap";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata = {
   title: "Asset Tracker - Dashboard",
@@ -25,14 +28,38 @@ export default async function DashboardPage() {
     return <UserDashboard userId={ctx?.userId} />;
   }
 
-  const [userCount, assetCount, accessoryCount, statusDistribution, statuses] =
-    await Promise.all([
-      getUserCount(),
-      getAssetCount(),
-      getAccessoryCount(),
-      getAssetStatusDistribution(),
-      getStatus(),
-    ]);
+  const [
+    userCount,
+    assetCount,
+    accessoryCount,
+    statusDistribution,
+    statuses,
+    locationsWithCoords,
+  ] = await Promise.all([
+    getUserCount(),
+    getAssetCount(),
+    getAccessoryCount(),
+    getAssetStatusDistribution(),
+    getStatus(),
+    prisma.location.findMany({
+      where: { latitude: { not: null }, longitude: { not: null } },
+      select: {
+        locationid: true,
+        locationname: true,
+        latitude: true,
+        longitude: true,
+        _count: { select: { asset: true } },
+      },
+    }),
+  ]);
+
+  const mapLocations = locationsWithCoords.map((loc) => ({
+    id: loc.locationid,
+    name: loc.locationname,
+    latitude: loc.latitude!,
+    longitude: loc.longitude!,
+    assetCount: loc._count.asset,
+  }));
 
   const statusCounts = new Map<string, number>();
   let totalCounted = 0;
@@ -98,6 +125,16 @@ export default async function DashboardPage() {
       </div>
       <div className="mt-6 sm:mt-8 md:mt-10">
         <AssetStatusChart data={chartData} />
+      </div>
+      <div className="mt-6 sm:mt-8 md:mt-10">
+        <Card>
+          <CardHeader>
+            <CardTitle>Asset Locations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AssetMap locations={mapLocations} />
+          </CardContent>
+        </Card>
       </div>
       <div className="mt-6 sm:mt-8 md:mt-10">
         <DashboardGrid

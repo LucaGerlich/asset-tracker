@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import {
   DndContext,
   closestCenter,
@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { GripVertical, X, Plus } from "lucide-react";
 import { WIDGET_DEFINITIONS } from "./WidgetRegistry";
+
+const AssetMap = lazy(() => import("@/components/maps/AssetMap"));
 
 interface DashboardWidgetData {
   id: string;
@@ -441,6 +443,70 @@ function LastEditedWidget() {
   );
 }
 
+function AssetMapWidget() {
+  const [locations, setLocations] = useState<
+    Array<{
+      id: string;
+      name: string;
+      latitude: number;
+      longitude: number;
+      assetCount: number;
+    }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchLocations() {
+      try {
+        const res = await fetch("/api/location");
+        const data = await res.json();
+        if (!Array.isArray(data)) {
+          setLocations([]);
+          return;
+        }
+        const withCoords = data
+          .filter(
+            (loc: { latitude?: number | null; longitude?: number | null }) =>
+              loc.latitude != null && loc.longitude != null,
+          )
+          .map(
+            (loc: {
+              locationid: string;
+              locationname: string;
+              latitude: number;
+              longitude: number;
+              asset?: unknown[];
+            }) => ({
+              id: loc.locationid,
+              name: loc.locationname,
+              latitude: loc.latitude,
+              longitude: loc.longitude,
+              assetCount: Array.isArray(loc.asset) ? loc.asset.length : 0,
+            }),
+          );
+        setLocations(withCoords);
+      } catch {
+        setLocations([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchLocations();
+  }, []);
+
+  if (loading) {
+    return <p className="text-muted-foreground text-sm">Loading map...</p>;
+  }
+
+  return (
+    <Suspense
+      fallback={<p className="text-muted-foreground text-sm">Loading map...</p>}
+    >
+      <AssetMap locations={locations} />
+    </Suspense>
+  );
+}
+
 function WidgetContent({
   widgetType,
   serverStats,
@@ -463,6 +529,8 @@ function WidgetContent({
       return <CostOverviewWidget />;
     case "lastEdited":
       return <LastEditedWidget />;
+    case "assetMap":
+      return <AssetMapWidget />;
     default:
       return (
         <p className="text-muted-foreground text-sm">Unknown widget type</p>

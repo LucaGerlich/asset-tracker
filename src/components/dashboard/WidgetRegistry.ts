@@ -43,6 +43,11 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     description: "Assets updated in the last 24 hours",
     icon: "Clock",
   },
+  {
+    type: "assetMap",
+    title: "Asset Map",
+    description: "Map showing asset locations",
+  },
 ];
 
 export const DEFAULT_WIDGETS = [

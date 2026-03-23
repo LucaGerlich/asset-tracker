@@ -19,6 +19,7 @@ import {
   buildPaginatedResponse,
 } from "@/lib/pagination";
 import { logger } from "@/lib/logger";
+import { geocodeAddress } from "@/lib/geocode";
 
 const LOCATION_SORT_FIELDS = ["locationname", "creation_date"];
 
@@ -130,6 +131,24 @@ export async function POST(req: NextRequest) {
     });
 
     invalidateCache("locations").catch(() => {});
+
+    // After create, geocode in the background (fire-and-forget)
+    geocodeAddress({
+      street: created.street,
+      housenumber: created.housenumber,
+      city: created.city,
+      country: created.country,
+    })
+      .then(async (coords) => {
+        if (coords) {
+          await prisma.location.update({
+            where: { locationid: created.locationid },
+            data: { latitude: coords.latitude, longitude: coords.longitude },
+          });
+        }
+      })
+      .catch(() => {});
+
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
     logger.error("POST /api/location error", { error: e });
@@ -212,6 +231,24 @@ export async function PUT(req: NextRequest) {
     });
 
     invalidateCache("locations").catch(() => {});
+
+    // After update, geocode in the background (fire-and-forget)
+    geocodeAddress({
+      street: updated.street,
+      housenumber: updated.housenumber,
+      city: updated.city,
+      country: updated.country,
+    })
+      .then(async (coords) => {
+        if (coords) {
+          await prisma.location.update({
+            where: { locationid: updated.locationid },
+            data: { latitude: coords.latitude, longitude: coords.longitude },
+          });
+        }
+      })
+      .catch(() => {});
+
     return NextResponse.json(updated, { status: 200 });
   } catch (e) {
     logger.error("PUT /api/location error", { error: e });

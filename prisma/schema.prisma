@@ -597,6 +597,8 @@ model location {
   housenumber   String?       @db.VarChar
   city          String?       @db.VarChar
   country       String?       @db.VarChar
+  latitude      Float?
+  longitude     Float?
   creation_date DateTime      @db.Timestamp(6)
   change_date   DateTime?     @db.Timestamp(6)
   parentId      String?       @db.Uuid
