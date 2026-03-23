@@ -325,6 +325,12 @@ export default function LicencesTable({
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Licences</h1>
+          <Button asChild>
+            <Link href="/licences/create">
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Create
+            </Link>
+          </Button>
         </div>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="relative w-full lg:max-w-md">
@@ -423,12 +429,6 @@ export default function LicencesTable({
                 </SelectContent>
               </Select>
             </div>
-            <Button asChild>
-              <Link href="/licences/create">
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Create
-              </Link>
-            </Button>
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">

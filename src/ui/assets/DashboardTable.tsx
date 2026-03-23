@@ -24,6 +24,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -794,75 +795,61 @@ export default function App({
           );
         case "actions":
           return (
-            <div className="relative flex items-center gap-0">
-              <Button
-                className="text-muted-foreground h-6 w-6 cursor-pointer text-lg hover:opacity-80"
-                asChild
-                size="icon"
-                variant="ghost"
-              >
-                <Link href={`assets/${asset.assetid}/`}>
-                  <EyeIcon />
-                </Link>
-              </Button>
-              <Button
-                className="text-muted-foreground h-6 w-6 cursor-pointer text-lg hover:opacity-80"
-                asChild
-                size="icon"
-                variant="ghost"
-              >
-                <Link href={`assets/${asset.assetid}/edit`}>
-                  <EditIcon />
-                </Link>
-              </Button>
-              <Button
-                className="text-muted-foreground h-6 w-6 cursor-pointer text-lg hover:opacity-80"
-                size="icon"
-                variant="ghost"
-                onClick={() => handleOpenModal(asset, "assign")}
-                disabled={!asset.requestable}
-              >
-                <AssignIcon />
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    className="text-muted-foreground h-6 w-6 cursor-pointer text-lg hover:opacity-80"
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <MoreVertical />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
-                    onClick={() => handleOpenModal(asset, "delete")}
-                  >
-                    <DeleteIcon className="mr-2 h-4 w-4" />
-                    Delete Item
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleOpenModal(asset, "status")}
-                  >
-                    <Status className="mr-2 h-4 w-4" />
-                    Change Status
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleOpenModal(asset, "qrcode")}
-                  >
-                    <QrCode className="mr-2 h-4 w-4" />
-                    Generate QR-Code
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleOpenModal(asset, "label")}
-                  >
-                    <Label className="mr-2 h-4 w-4" />
-                    Generate Label
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href={`/assets/${asset.assetid}`}>
+                    <EyeIcon className="mr-2 h-4 w-4" />
+                    View Details
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={`/assets/${asset.assetid}/edit`}>
+                    <EditIcon className="mr-2 h-4 w-4" />
+                    Edit
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleOpenModal(asset, "assign")}
+                  disabled={!asset.requestable}
+                >
+                  <AssignIcon className="mr-2 h-4 w-4" />
+                  Assign User
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleOpenModal(asset, "status")}
+                >
+                  <Status className="mr-2 h-4 w-4" />
+                  Change Status
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleOpenModal(asset, "qrcode")}
+                >
+                  <QrCode className="mr-2 h-4 w-4" />
+                  QR Code
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleOpenModal(asset, "label")}
+                >
+                  <Label className="mr-2 h-4 w-4" />
+                  Print Label
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => handleOpenModal(asset, "delete")}
+                >
+                  <DeleteIcon className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           );
         default:
           return cellValue;
@@ -1338,67 +1325,59 @@ export default function App({
                       </div>
                     )}
                   </div>
-                  <div className="mt-3 flex items-center gap-1 border-t pt-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      asChild
-                      className="h-8 px-2"
-                    >
-                      <Link href={`assets/${item.assetid}/`}>
-                        <EyeIcon className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      asChild
-                      className="h-8 px-2"
-                    >
-                      <Link href={`assets/${item.assetid}/edit`}>
-                        <EditIcon className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 px-2"
-                      onClick={() => handleOpenModal(item, "assign")}
-                      disabled={!item.requestable}
-                    >
-                      <AssignIcon className="h-4 w-4" />
-                    </Button>
+                  <div className="mt-3 flex items-center justify-end border-t pt-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="ml-auto h-8 px-2"
-                        >
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleOpenModal(item, "delete")}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <DeleteIcon className="mr-2 h-4 w-4" /> Delete
+                        <DropdownMenuItem asChild>
+                          <Link href={`/assets/${item.assetid}`}>
+                            <EyeIcon className="mr-2 h-4 w-4" />
+                            View Details
+                          </Link>
                         </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/assets/${item.assetid}/edit`}>
+                            <EditIcon className="mr-2 h-4 w-4" />
+                            Edit
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleOpenModal(item, "assign")}
+                          disabled={!item.requestable}
+                        >
+                          <AssignIcon className="mr-2 h-4 w-4" />
+                          Assign User
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleOpenModal(item, "status")}
                         >
-                          <Status className="mr-2 h-4 w-4" /> Change Status
+                          <Status className="mr-2 h-4 w-4" />
+                          Change Status
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleOpenModal(item, "qrcode")}
                         >
-                          <QrCode className="mr-2 h-4 w-4" /> QR Code
+                          <QrCode className="mr-2 h-4 w-4" />
+                          QR Code
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleOpenModal(item, "label")}
                         >
-                          <Label className="mr-2 h-4 w-4" /> Label
+                          <Label className="mr-2 h-4 w-4" />
+                          Print Label
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleOpenModal(item, "delete")}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <DeleteIcon className="mr-2 h-4 w-4" />
+                          Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

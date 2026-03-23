@@ -6,6 +6,14 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -35,9 +43,10 @@ interface Kit {
 export default function KitsTable({ kits }: { kits: Kit[] }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedKit, setSelectedKit] = useState<Kit | null>(null);
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete kit "${name}"?`)) return;
+  async function handleDelete(id: string) {
     setDeleting(id);
     try {
       const res = await fetch("/api/kits", {
@@ -47,6 +56,8 @@ export default function KitsTable({ kits }: { kits: Kit[] }) {
       });
       if (!res.ok) throw new Error("Failed to delete");
       toast.success("Kit deleted");
+      setIsDeleteModalOpen(false);
+      setSelectedKit(null);
       router.refresh();
     } catch {
       toast.error("Failed to delete kit");
@@ -103,7 +114,10 @@ export default function KitsTable({ kits }: { kits: Kit[] }) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(kit.id, kit.name)}
+                  onClick={() => {
+                    setSelectedKit(kit);
+                    setIsDeleteModalOpen(true);
+                  }}
                   disabled={deleting === kit.id}
                 >
                   {deleting === kit.id ? "..." : "Delete"}
@@ -113,6 +127,30 @@ export default function KitsTable({ kits }: { kits: Kit[] }) {
           ))}
         </TableBody>
       </Table>
+
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Kit</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete kit &quot;{selectedKit?.name}
+              &quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => selectedKit && handleDelete(selectedKit.id)}
+              disabled={deleting === selectedKit?.id}
+            >
+              {deleting === selectedKit?.id ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

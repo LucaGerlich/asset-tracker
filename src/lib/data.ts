@@ -105,13 +105,16 @@ export async function getAssetById(id: string) {
 }
 
 export async function getLocation() {
-  return cached("locations", () =>
-    prisma.location.findMany({
-      include: {
-        parent: { select: { locationid: true, locationname: true } },
-        children: { select: { locationid: true, locationname: true } },
-      },
-    }),
+  return cached(
+    "locations",
+    () =>
+      prisma.location.findMany({
+        include: {
+          parent: { select: { locationid: true, locationname: true } },
+          children: { select: { locationid: true, locationname: true } },
+        },
+      }),
+    2 * 60 * 1000,
   );
 }
 
@@ -130,17 +133,25 @@ export async function getLocationById(id: string) {
     },
   });
   if (!location) {
-    throw new Error(`Asset with ID ${id} not found`);
+    throw new Error(`Location with ID ${id} not found`);
   }
   return location;
 }
 
 export async function getStatus() {
-  return cached("status_types", () => prisma.statusType.findMany({}));
+  return cached(
+    "status_types",
+    () => prisma.statusType.findMany({}),
+    2 * 60 * 1000,
+  );
 }
 
 export async function getManufacturers() {
-  return cached("manufacturers", () => prisma.manufacturer.findMany({}));
+  return cached(
+    "manufacturers",
+    () => prisma.manufacturer.findMany({}),
+    2 * 60 * 1000,
+  );
 }
 
 export async function getManufacturerById(id: string) {
@@ -186,7 +197,7 @@ export async function getAccessoryById(id: string) {
 }
 
 export async function getSuppliers() {
-  return cached("suppliers", () => prisma.supplier.findMany({}));
+  return cached("suppliers", () => prisma.supplier.findMany({}), 2 * 60 * 1000);
 }
 
 export async function getSupplierById(id: string) {
@@ -278,11 +289,15 @@ export async function getLicenceCategories() {
 }
 
 export async function getModel() {
-  return cached("models", () => prisma.model.findMany({}));
+  return cached("models", () => prisma.model.findMany({}), 2 * 60 * 1000);
 }
 
 export async function getCategories() {
-  return cached("categories", () => prisma.assetCategoryType.findMany({}));
+  return cached(
+    "categories",
+    () => prisma.assetCategoryType.findMany({}),
+    2 * 60 * 1000,
+  );
 }
 
 export async function getUserAssets() {
@@ -436,16 +451,23 @@ export async function getModelById(id: string) {
 
 // Component data functions
 export async function getComponents() {
-  const components = await prisma.component.findMany({
-    include: {
-      category: true,
-      manufacturer: true,
-      supplier: true,
-      location: true,
-    },
-    orderBy: { name: "asc" },
-  });
-  return components;
+  const where = await orgWhere();
+  const key = `components_all:${JSON.stringify(where)}`;
+  return cached(
+    key,
+    () =>
+      prisma.component.findMany({
+        where,
+        include: {
+          category: true,
+          manufacturer: true,
+          supplier: true,
+          location: true,
+        },
+        orderBy: { name: "asc" },
+      }),
+    2 * 60 * 1000,
+  );
 }
 
 export async function getComponentById(id: string) {
@@ -473,14 +495,23 @@ export async function getComponentById(id: string) {
 }
 
 export async function getComponentCategories() {
-  return prisma.componentCategory.findMany({ orderBy: { name: "asc" } });
+  return cached(
+    "component_categories",
+    () => prisma.componentCategory.findMany({ orderBy: { name: "asc" } }),
+    2 * 60 * 1000,
+  );
 }
 
 // EULA Templates
 export async function getEulaTemplates() {
-  return prisma.eulaTemplate.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  return cached(
+    "eula_templates",
+    () =>
+      prisma.eulaTemplate.findMany({
+        orderBy: { createdAt: "desc" },
+      }),
+    2 * 60 * 1000,
+  );
 }
 
 export async function getEulaTemplateById(id: string) {
@@ -492,10 +523,18 @@ export async function getEulaTemplateById(id: string) {
 
 // Kits
 export async function getKits() {
-  return prisma.kit.findMany({
-    include: { items: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const where = await orgWhere();
+  const key = `kits_all:${JSON.stringify(where)}`;
+  return cached(
+    key,
+    () =>
+      prisma.kit.findMany({
+        where,
+        include: { items: true },
+        orderBy: { createdAt: "desc" },
+      }),
+    2 * 60 * 1000,
+  );
 }
 
 export async function getKitById(id: string) {
@@ -510,13 +549,23 @@ export async function getKitById(id: string) {
 
 // Audit Campaigns
 export async function getAuditCampaigns() {
-  return prisma.auditCampaign.findMany({
-    include: {
-      creator: { select: { userid: true, firstname: true, lastname: true } },
-      _count: { select: { entries: true, auditors: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const where = await orgWhere();
+  const key = `audit_campaigns_all:${JSON.stringify(where)}`;
+  return cached(
+    key,
+    () =>
+      prisma.auditCampaign.findMany({
+        where,
+        include: {
+          creator: {
+            select: { userid: true, firstname: true, lastname: true },
+          },
+          _count: { select: { entries: true, auditors: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    2 * 60 * 1000,
+  );
 }
 
 export async function getAuditCampaignById(id: string) {

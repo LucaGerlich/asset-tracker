@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     logger.error("GET /api/supplier error", { error: e });
 
-    if (e.message === "Unauthorized") {
+    if (e instanceof Error && e.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -136,10 +136,10 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     logger.error("POST /api/supplier error", { error: e });
 
-    if (e.message === "Unauthorized") {
+    if (e instanceof Error && e.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (e.message.startsWith("Forbidden")) {
+    if (e instanceof Error && e.message.startsWith("Forbidden")) {
       return NextResponse.json({ error: e.message }, { status: 403 });
     }
 
@@ -221,10 +221,10 @@ export async function PUT(req: NextRequest) {
   } catch (e) {
     logger.error("PUT /api/supplier error", { error: e });
 
-    if (e.message === "Unauthorized") {
+    if (e instanceof Error && e.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (e.message.startsWith("Forbidden")) {
+    if (e instanceof Error && e.message.startsWith("Forbidden")) {
       return NextResponse.json({ error: e.message }, { status: 403 });
     }
     if (e.code === "P2025") {
@@ -333,10 +333,10 @@ export async function DELETE(req: NextRequest) {
   } catch (e) {
     logger.error("DELETE /api/supplier error", { error: e });
 
-    if (e.message === "Unauthorized") {
+    if (e instanceof Error && e.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (e.message.startsWith("Forbidden")) {
+    if (e instanceof Error && e.message.startsWith("Forbidden")) {
       return NextResponse.json({ error: e.message }, { status: 403 });
     }
     if (e.code === "P2025") {

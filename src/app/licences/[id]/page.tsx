@@ -165,7 +165,10 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
                 <dt className="text-foreground-500">Purchase Price</dt>
                 <dd className="font-medium">
                   {licence.purchaseprice != null
-                    ? `$${licence.purchaseprice.toFixed(2)}`
+                    ? new Intl.NumberFormat(undefined, {
+                        style: "currency",
+                        currency: "USD",
+                      }).format(licence.purchaseprice)
                     : "-"}
                 </dd>
               </div>
