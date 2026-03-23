@@ -543,9 +543,10 @@ export default function App({
   const pages = Math.ceil(filteredItems.length / rowsPerPage);
 
   const items = useMemo(() => {
+    if (showAll) return filteredItems;
     const start = (page - 1) * rowsPerPage;
     return filteredItems.slice(start, start + rowsPerPage);
-  }, [page, filteredItems, rowsPerPage]);
+  }, [page, filteredItems, rowsPerPage, showAll]);
 
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => {
