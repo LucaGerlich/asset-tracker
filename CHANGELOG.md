@@ -2,120 +2,62 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [1.0.0] - 2026-02-18
+## [Unreleased]
 
 ### Added
 
-#### Phase 0 -- Baseline
-- Core asset CRUD with QR codes, validation, and bulk operations
-- User management with roles, permissions, and profile pages
-- Accessories, licenses, and consumables management
-- Supporting entities (manufacturers, suppliers, locations, models, status types, categories)
-- Dashboard with summary statistics and charts
-- Reporting and analytics with CSV/PDF export
-- Global search across all entities
-- Email notification system (Brevo, SendGrid, Mailgun, Postmark, SES)
-- Admin settings panel (general, email, notifications, labels, depreciation, custom fields)
-- Audit logging infrastructure and asset history timeline
-- Authentication with NextAuth, feature flags, and rate limiting
-- Docker and Podman deployment support
-- Database schema for multi-tenancy, RBAC, webhooks, reservations, maintenance, and more
-
-#### Phase 1 -- In-Progress Features
-- User history timeline on user detail page
-- Asset label printing workflow from assets table
-- Saved search filters with database persistence
-- Maintenance scheduling UI (list, create, update, close)
-- Warranty tracking UI on asset detail pages
-- Depreciation UI surfaced in asset views and reports
-- Custom fields support on asset create, edit, and detail pages
-- Consumable quantity and minimums UI with validation
-
-#### Phase 2 -- Pending Functionalities
-- Asset photos and attachments UI with API integration
-- Consumables stock level management workflows
-- Automatic reorder alerts for low-stock consumables
-- Consumable check-out system and usage tracking
-- Per-user settings and preferences persistence
-- Freshdesk integration settings UI
-- Freshdesk API integration for IT tickets (Hardware Request, Problem types)
-- IT Tickets page with Freshdesk ticket listing, filtering, and search
-- Local ticket system with comments (API and UI)
-
-#### Phase 3 -- Multi-Tenancy and RBAC
-- Organization management UI (admin settings tab)
-- Role management UI and user-role assignment
-- Organization scoping enforced on all queries and API endpoints
-
-#### Phase 4 -- Integrations and API Surface
-- Webhooks UI and delivery log viewer
-- SSO/SAML configuration UI
-- LDAP/AD integration settings (sync and auth mapping)
-- Slack and Teams integrations for notifications
-- Freshdesk ticketing integration with settings and ticket management
-
-#### Phase 5 -- Advanced Asset Workflows
-- Asset reservation and booking UI with approval flow
-- Asset lifecycle management workflow (procure, deploy, retire)
-- Asset transfers between users, locations, and organizations
-- Approval workflows for asset requests
-- Barcode scanning and QR code generation support
-- Location tracking integration scaffolding (GPS/RFID)
-- Automated workflows engine with configurable rules and triggers
-
-#### Phase 6 -- Performance and Scalability
-- Server-side pagination and filtering across 5 API routes
-- In-memory caching strategy with TTL-based expiration
-- 11 database indexes on key lookup columns
-- Zod validation for critical API endpoints
-- Database transactions for multi-step operations
-
-#### Phase 7 -- Compliance and Security
-- AES-256-GCM encryption utility for sensitive data at rest
-- Secrets management utility
-- Enhanced audit logging with full entity diffs
-- Audit log viewer (admin page with filters, pagination, CSV export)
-- GDPR data export, anonymization, and retention tools
-- Compliance reporting dashboard (SOX/HIPAA scaffolding)
-- Input sanitization utility
-
-#### Phase 8 -- UX, Accessibility, and i18n
-- Skeleton loaders for all major pages
-- Shareable URLs with filter and pagination state in query params
-- Search typeahead and autocomplete in sidebar
-- Keyboard shortcuts (Ctrl+K search, g+a/u/d/c navigation, ? help dialog)
-- Skip-to-content link and ARIA labels for screen readers
-- i18n framework with English locale (120+ translatable strings)
-- Regional formatting for dates, numbers, currency, and relative time
-- FormattedDate component for consistent date rendering
-- ActionTooltip, StatusBadge, ConfirmDialog, and EmptyState components
-- CSS hover-lift and transition utilities
-
-#### Phase 9 -- Mobile and PWA
-- PWA manifest, service worker, and offline fallback page
-- Install prompt with 7-day dismissal cooldown
-- Mobile bottom navigation bar with sheet drawer
-- ResponsiveTable component (card view on mobile)
-- Touch-friendly tap targets and safe area handling
-- Offline detection banner with online/offline transitions
-- Client-side API response caching (localStorage, 5MB limit, TTL)
+- **Role-based dashboard** — non-admin users see "My Dashboard" with their assigned assets, pending requests, and open tickets
+- **Reservation notifications** — admins receive email when users request assets; requesters receive email on approval/rejection
+- **Ticket notifications** — email notifications on ticket assignment, comments, and status changes
+- **Dashboard widgets** — Expiring Licences (color-coded by urgency) and Cost Overview (total value, average) widgets now functional
+- **Checkout history on user profile** — shows last 20 checkout/checkin events with status badges
+- **Bulk CSV import** for accessories, consumables, licences, and users (previously only assets and locations)
+- **QR scanner action panel** — scanning shows asset details card with View Details, Check Out, and Scan Another buttons
+- **Report charts** — Cost by Category and Asset Age Distribution added to the Breakdown tab
+- **Maintenance completion notification** — emails assigned user with next due date after task completion
+- **Accessory and licence detail pages** — `/accessories/[id]` and `/licences/[id]` with breadcrumbs and status badges
+- **Not-found pages** for accessory, licence, and consumable detail/edit routes
+- **Typed error classes** — `AppError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `ValidationError`, `RateLimitError`
+- **`getBaseUrl()` helper** — centralized URL resolution that throws in production if no URL env var is set
+- **Database migration** — new indexes for audit_logs, maintenance_schedules, custom_field_definitions, notification_queue
 
 ### Changed
-- Rate limiting verified and enforced across all API routes
-- Security headers hardened (CSP, X-Content-Type-Options, X-Frame-Options, XSS protection)
+
+- **Performance** — parallelized data fetching with `Promise.all()` on assets, asset detail, and user settings pages
+- **Performance** — added 2-minute PostgreSQL cache to 10+ data functions (assets, accessories, consumables, licences, users, categories)
+- **Performance** — reduced Sentry trace sampling from 100% to 10% in production
+- **Performance** — optimized `pg.Pool` for serverless (max=3 connections, 10s idle timeout, 5s connection timeout, 30s statement timeout)
+- **Performance** — deduplicated `orgWhere()` and `ensureCacheTable()` calls on cold starts
+- **Performance** — dashboard `StatsWidget` now uses server-fetched counts instead of 3 full API calls
+- **Database** — converted `rate_limits` table to UNLOGGED for reduced write overhead
+- **Database** — schema-qualified all raw SQL table references (`"assettool"."cache"`, `"assettool"."rate_limits"`)
+- **Database** — self-healing table creation if cache/rate_limits tables are missing
+- **Accessories filter UI** — compact single-row layout replacing the multi-row filter design
+- **Admin settings** — sidebar is now sticky with independent scroll
+- **Compliance dashboard** — stub items show "Not Yet Available" instead of misleading "Needs Review"
+- **CRON_SECRET** — now required in production (was optional)
+- **Validation schemas** — consolidated `validation.ts` and `validations.ts` into single file with stricter schemas
+- **API handler types** — added `NextRequest` type annotations to 64 handler functions across 31 files
 
 ### Fixed
-- Two unprotected admin API routes patched (privilege escalation vulnerability)
+
+- **Search injection** — replaced `to_tsquery` with `websearch_to_tsquery` in all 6 search routes
+- **QR codes** — replaced hardcoded `192.168.0.81` with `NEXT_PUBLIC_APP_URL`
+- **Date serialization** — cached dates (strings from JSONB) no longer crash `.toISOString()` calls
+- **Referential integrity** — deleting a manufacturer/location/supplier/status/model referenced by assets returns 409 with count
+- **Admin session staleness** — 3 admin settings routes now use `requireApiAdmin()` instead of cached cookie check
+- **SCIM privilege escalation** — PATCH handler whitelist prevents setting `isadmin` via SCIM Operations
+- **Import security** — CSV user import now generates random bcrypt password hash (was null)
+- **Localhost fallbacks** — removed all `|| "http://localhost:3000"` patterns from SSO, invite, and magic link URLs
+- **Dead code** — removed `/sentry-example-page`, unused `postData()` export, and `testData` import
 
 ### Security
-- AES-256-GCM encryption for sensitive data at rest
-- Security headers (CSP, XSS protection, X-Frame-Options, X-Content-Type-Options)
-- Input sanitization on all user-facing inputs
-- Privilege escalation fix on 2 admin API routes
-- GDPR-compliant data export, anonymization, and retention policies
-- Rate limiting enforced on all endpoints
 
-[1.0.0]: https://github.com/your-org/assettTracker/releases/tag/v1.0.0
+- **Organization scoping** — added `scopeToOrganization` to all write endpoints (POST/PUT/PATCH) for assets, accessories, consumables
+- **Ownership verification** — update/delete operations verify the record belongs to the caller's organization
+- **Cross-tenant data leaks** — fixed advanced reports, stock alerts, checkout history, kits, components, licence seats, and organizations endpoints
+- **Query limits** — added `take: 1000` to unbounded `findMany` in `getAsset` and `getUser` routes
+- **DB_SCHEMA validation** — environment variable validated against `[a-zA-Z0-9_]` to prevent SQL injection
+- **Webhook OPTIONS** — added authentication to previously unauthenticated endpoint

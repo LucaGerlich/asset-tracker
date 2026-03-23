@@ -782,7 +782,7 @@ pm2 startup   # follow printed command to enable on boot</code></pre>
         <thead><tr><th>Variable</th><th>Description</th><th>Default</th></tr></thead>
         <tbody>
           <tr><td><code>SELF_HOSTED</code></td><td>Disables landing page, pricing, registration</td><td><code>false</code></td></tr>
-          <tr><td><code>CRON_SECRET</code></td><td>Protects cron endpoints</td><td>&mdash;</td></tr>
+          <tr><td><code>CRON_SECRET</code></td><td><strong>Required in production.</strong> Protects all 7 cron endpoints. Min 16 chars.</td><td>&mdash;</td></tr>
           <tr><td><code>NODE_ENV</code></td><td>Runtime environment</td><td><code>production</code></td></tr>
         </tbody>
       </table>
@@ -939,7 +939,7 @@ STORAGE_AZURE_CONTAINER=attachments</code></pre>
 
       <!-- Cron -->
       <h2 id="cron">Cron Jobs</h2>
-      <p>Six automated jobs handle maintenance tasks. On <strong>Vercel</strong>, they run automatically via <code>vercel.json</code>. On <strong>VPS/bare-metal</strong>, set up system cron:</p>
+      <p>Seven automated jobs handle maintenance tasks. On <strong>Vercel</strong>, they run automatically via <code>vercel.json</code>. On <strong>VPS/bare-metal</strong>, set up system cron:</p>
 
 <pre><code>crontab -e</code></pre>
 <pre><code># Session cleanup — daily at 1 AM
@@ -955,7 +955,10 @@ STORAGE_AZURE_CONTAINER=attachments</code></pre>
 0 4 * * * curl -sf -H "Authorization: Bearer $CRON_SECRET" https://assets.yourdomain.com/api/cron/gdpr-retention
 
 # LDAP sync — daily at 5 AM
-0 5 * * * curl -sf -H "Authorization: Bearer $CRON_SECRET" https://assets.yourdomain.com/api/cron/ldap-sync</code></pre>
+0 5 * * * curl -sf -H "Authorization: Bearer $CRON_SECRET" https://assets.yourdomain.com/api/cron/ldap-sync
+
+# Cache & rate limit cleanup — daily at 6 AM
+0 6 * * * curl -sf -H "Authorization: Bearer $CRON_SECRET" https://assets.yourdomain.com/api/cron/cleanup</code></pre>
 
       <hr />
 
