@@ -1,6 +1,7 @@
 import React from "react";
 import SupplierCreateForm from "../../create/ui/SupplierCreateForm";
 import { getSupplierById } from "@/lib/data";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export const metadata = {
   title: "Asset Tracker - Edit Supplier",
@@ -27,5 +28,16 @@ export default async function Page({
       : null,
   };
 
-  return <SupplierCreateForm initialData={supplier} mode="edit" />;
+  return (
+    <>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Suppliers", href: "/suppliers" },
+          { label: "Edit" },
+        ]}
+      />
+      <SupplierCreateForm initialData={supplier} mode="edit" />
+    </>
+  );
 }

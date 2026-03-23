@@ -1,6 +1,7 @@
 import React from "react";
 import LocationCreateForm from "./ui/LocationCreateForm";
 import { getLocation } from "@/lib/data";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export const metadata = {
   title: "Asset Tracker - Create Location",
@@ -16,5 +17,16 @@ export default async function Page() {
     locationname: loc.locationname,
   }));
 
-  return <LocationCreateForm locations={locationOptions} />;
+  return (
+    <>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Locations", href: "/locations" },
+          { label: "Create Location" },
+        ]}
+      />
+      <LocationCreateForm locations={locationOptions} />
+    </>
+  );
 }

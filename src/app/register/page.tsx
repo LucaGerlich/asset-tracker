@@ -4,7 +4,7 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import RegisterForm from "./RegisterForm";
 
 export const metadata: Metadata = {
-  title: "Register | Asset Tracker",
+  title: "Asset Tracker - Register",
 };
 
 export default function RegisterPage() {

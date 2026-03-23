@@ -9,6 +9,11 @@ import {
   getSuppliers,
 } from "@/lib/data";
 import AssetEditForm from "./ui/AssetEditForm";
+import Breadcrumb from "@/components/Breadcrumb";
+
+export const metadata = {
+  title: "Asset Tracker - Edit Asset",
+};
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -16,28 +21,39 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const initial = {
     ...initialRaw,
     purchaseprice:
-      initialRaw.purchaseprice !== null && initialRaw.purchaseprice !== undefined
+      initialRaw.purchaseprice !== null &&
+      initialRaw.purchaseprice !== undefined
         ? Number(initialRaw.purchaseprice)
         : null,
   };
-  const [categories, locations, manufacturers, models, statuses, suppliers] = await Promise.all([
-    getCategories(),
-    getLocation(),
-    getManufacturers(),
-    getModel(),
-    getStatus(),
-    getSuppliers(),
-  ]);
+  const [categories, locations, manufacturers, models, statuses, suppliers] =
+    await Promise.all([
+      getCategories(),
+      getLocation(),
+      getManufacturers(),
+      getModel(),
+      getStatus(),
+      getSuppliers(),
+    ]);
 
   return (
-    <AssetEditForm
-      initial={initial}
-      categories={categories}
-      locations={locations}
-      manufacturers={manufacturers}
-      models={models}
-      statuses={statuses}
-      suppliers={suppliers}
-    />
+    <>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Assets", href: "/assets" },
+          { label: "Edit" },
+        ]}
+      />
+      <AssetEditForm
+        initial={initial}
+        categories={categories}
+        locations={locations}
+        manufacturers={manufacturers}
+        models={models}
+        statuses={statuses}
+        suppliers={suppliers}
+      />
+    </>
   );
 }

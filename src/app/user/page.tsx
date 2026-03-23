@@ -1,11 +1,12 @@
 import React from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 import { getUsers } from "@/lib/data";
 import UsersTableClient from "./ui/UsersTableClient";
 
-// export const metadata = {
-//   title: "Asset Tracker - User",
-//   description: "Asset management tool",
-// };
+export const metadata = {
+  title: "Asset Tracker - Users",
+  description: "Asset management tool",
+};
 
 export default async function Page() {
   const columnName = [
@@ -22,6 +23,12 @@ export default async function Page() {
 
   return (
     <div>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Users", href: "/user" },
+        ]}
+      />
       <UsersTableClient data={databaseUsers} columns={columnName} />
     </div>
   );

@@ -5,6 +5,7 @@ import {
   getAssetStatusDistribution,
   getStatus,
 } from "@/lib/data";
+import Breadcrumb from "@/components/Breadcrumb";
 import StatCard from "../../components/StatCard";
 import AssetStatusChart from "@/components/charts/AssetStatusChart";
 import DismissibleHelpTip from "@/components/DismissibleHelpTip";
@@ -13,7 +14,7 @@ import UserDashboard from "@/components/dashboard/UserDashboard";
 import { getOrganizationContext } from "@/lib/organization-context";
 
 export const metadata = {
-  title: "Dashboard | Asset Tracker",
+  title: "Asset Tracker - Dashboard",
 };
 
 export default async function DashboardPage() {
@@ -56,6 +57,12 @@ export default async function DashboardPage() {
 
   return (
     <main>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
+        ]}
+      />
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
         Dashboard
       </h1>

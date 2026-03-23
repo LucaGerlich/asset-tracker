@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Copy, Check, RefreshCw, Mail, KeyRound, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from "sonner";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export default function Page() {
   const router = useRouter();
@@ -145,6 +146,13 @@ export default function Page() {
 
   return (
     <div className="max-w-4xl">
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Users", href: "/user" },
+          { label: "Create User" },
+        ]}
+      />
       <Toaster position="bottom-right" />
       <form onSubmit={onSubmit} className="flex flex-col gap-4 sm:gap-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

@@ -1,4 +1,5 @@
 import React from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 import ManufacturersTable from "../../ui/manufacturers/ManufacturersTable";
 import { getManufacturers } from "@/lib/data";
 
@@ -24,6 +25,12 @@ export default async function Page() {
   }));
   return (
     <div>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Manufacturers", href: "/manufacturers" },
+        ]}
+      />
       <ManufacturersTable items={manufacturers} />
     </div>
   );

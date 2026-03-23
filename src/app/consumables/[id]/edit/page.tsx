@@ -6,6 +6,7 @@ import {
   getManufacturers,
   getSuppliers,
 } from "@/lib/data";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export const metadata = {
   title: "Asset Tracker - Edit Consumable",
@@ -51,12 +52,21 @@ export default async function Page({
   };
 
   return (
-    <ConsumableCreateForm
-      categories={categories}
-      manufacturers={manufacturers}
-      suppliers={suppliers}
-      initialData={consumable}
-      mode="edit"
-    />
+    <>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Consumables", href: "/consumables" },
+          { label: "Edit" },
+        ]}
+      />
+      <ConsumableCreateForm
+        categories={categories}
+        manufacturers={manufacturers}
+        suppliers={suppliers}
+        initialData={consumable}
+        mode="edit"
+      />
+    </>
   );
 }

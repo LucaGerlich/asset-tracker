@@ -1,4 +1,5 @@
 import React from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 import StatusTypesTable from "../../ui/statusTypes/StatusTypesTable";
 import { getStatus } from "@/lib/data";
 
@@ -14,6 +15,12 @@ export default async function Page() {
   }));
   return (
     <div>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Status Types", href: "/statusTypes" },
+        ]}
+      />
       <StatusTypesTable items={statusTypes} />
     </div>
   );

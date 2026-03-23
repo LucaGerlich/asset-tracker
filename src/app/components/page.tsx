@@ -1,6 +1,12 @@
 import React, { Suspense } from "react";
 import Link from "next/link";
-import { getComponents, getComponentCategories, getManufacturers, getSuppliers } from "@/lib/data";
+import Breadcrumb from "@/components/Breadcrumb";
+import {
+  getComponents,
+  getComponentCategories,
+  getManufacturers,
+  getSuppliers,
+} from "@/lib/data";
 import ComponentsTable from "./ui/ComponentsTable";
 
 export const metadata = {
@@ -9,12 +15,13 @@ export const metadata = {
 };
 
 export default async function Page() {
-  const [componentsRaw, categories, manufacturers, suppliers] = await Promise.all([
-    getComponents(),
-    getComponentCategories(),
-    getManufacturers(),
-    getSuppliers(),
-  ]);
+  const [componentsRaw, categories, manufacturers, suppliers] =
+    await Promise.all([
+      getComponents(),
+      getComponentCategories(),
+      getManufacturers(),
+      getSuppliers(),
+    ]);
 
   const items = componentsRaw.map((item) => ({
     ...item,
@@ -29,6 +36,12 @@ export default async function Page() {
 
   return (
     <div>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Components", href: "/components" },
+        ]}
+      />
       <Suspense fallback={null}>
         <ComponentsTable
           items={items}

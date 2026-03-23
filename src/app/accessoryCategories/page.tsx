@@ -1,4 +1,5 @@
 import React from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 import AccessoryCategoriesTable from "../../ui/accessoryCategories/AccessoryCategoriesTable";
 import { getAccessoryCategories } from "@/lib/data";
 
@@ -14,6 +15,12 @@ export default async function Page() {
   }));
   return (
     <div>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Accessory Categories", href: "/accessoryCategories" },
+        ]}
+      />
       <AccessoryCategoriesTable items={categories} />
     </div>
   );

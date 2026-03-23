@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 import ConsumablesTable from "../../ui/consumables/ConsumablesTable";
 import {
   getConsumables,
@@ -45,6 +46,12 @@ export default async function Page() {
 
   return (
     <div>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Consumables", href: "/consumables" },
+        ]}
+      />
       <Suspense fallback={null}>
         <ConsumablesTable
           items={items}

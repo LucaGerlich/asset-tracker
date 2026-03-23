@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 import LicencesTable from "../../ui/licences/LicencesTable";
 import {
   getLicences,
@@ -47,6 +48,12 @@ export default async function Page() {
 
   return (
     <div>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Licences", href: "/licences" },
+        ]}
+      />
       <Suspense fallback={null}>
         <LicencesTable
           items={licences}

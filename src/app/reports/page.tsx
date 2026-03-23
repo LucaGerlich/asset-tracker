@@ -7,7 +7,7 @@ import prisma from "@/lib/prisma";
 import { calculateDepreciation, DepreciationMethod } from "@/lib/depreciation";
 
 export const metadata = {
-  title: "Reports - Asset Tracker",
+  title: "Asset Tracker - Reports",
   description: "View analytics and generate reports",
 };
 

@@ -5,7 +5,7 @@ import Breadcrumb from "@/components/Breadcrumb";
 import TicketsPageClient from "./ui/TicketsPageClient";
 
 export const metadata = {
-  title: "IT Tickets - Asset Tracker",
+  title: "Asset Tracker - IT Tickets",
   description: "View IT support tickets from Freshdesk",
 };
 

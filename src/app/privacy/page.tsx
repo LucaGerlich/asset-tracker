@@ -5,7 +5,7 @@ import MarketingNav from "@/components/marketing/MarketingNav";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy - Asset Tracker",
+  title: "Asset Tracker - Privacy Policy",
   description:
     "Learn how Asset Tracker collects, uses, and protects your personal information.",
 };
@@ -15,25 +15,25 @@ export default function PrivacyPage() {
     redirect("/login");
   }
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="bg-background flex min-h-screen flex-col">
       <MarketingNav />
 
       <main className="flex-1">
-        <div className="mx-auto max-w-3xl px-4 pb-20 pt-24 sm:px-6 sm:pt-32 lg:px-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        <div className="mx-auto max-w-3xl px-4 pt-24 pb-20 sm:px-6 sm:pt-32 lg:px-8">
+          <h1 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
             Privacy Policy
           </h1>
-          <p className="mt-4 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-4 text-sm">
             Last updated: February 1, 2026
           </p>
 
           <div className="mt-12 space-y-10">
             {/* Information We Collect */}
             <section>
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-foreground text-xl font-semibold">
                 1. Information We Collect
               </h2>
-              <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
+              <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
                 <p>
                   We collect information you provide directly to us when you
                   create an account, use the Service, or communicate with us.
@@ -41,7 +41,9 @@ export default function PrivacyPage() {
                 </p>
                 <ul className="list-disc space-y-2 pl-5">
                   <li>
-                    <strong className="text-foreground">Account Information:</strong>{" "}
+                    <strong className="text-foreground">
+                      Account Information:
+                    </strong>{" "}
                     Name, email address, password, organization name, and role.
                   </li>
                   <li>
@@ -55,12 +57,16 @@ export default function PrivacyPage() {
                     visited, features used, and actions taken.
                   </li>
                   <li>
-                    <strong className="text-foreground">Device Information:</strong>{" "}
+                    <strong className="text-foreground">
+                      Device Information:
+                    </strong>{" "}
                     Browser type, operating system, device identifiers, and IP
                     address.
                   </li>
                   <li>
-                    <strong className="text-foreground">Cookies and Tracking:</strong>{" "}
+                    <strong className="text-foreground">
+                      Cookies and Tracking:
+                    </strong>{" "}
                     We use cookies and similar technologies to maintain your
                     session, remember preferences, and analyze usage patterns.
                   </li>
@@ -70,10 +76,10 @@ export default function PrivacyPage() {
 
             {/* How We Use Information */}
             <section>
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-foreground text-xl font-semibold">
                 2. How We Use Information
               </h2>
-              <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
+              <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
                 <p>We use the information we collect to:</p>
                 <ul className="list-disc space-y-2 pl-5">
                   <li>Provide, maintain, and improve the Service.</li>
@@ -104,10 +110,10 @@ export default function PrivacyPage() {
 
             {/* Data Storage and Security */}
             <section>
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-foreground text-xl font-semibold">
                 3. Data Storage and Security
               </h2>
-              <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
+              <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
                 <p>
                   We take reasonable measures to help protect your personal
                   information from loss, theft, misuse, unauthorized access,
@@ -115,8 +121,13 @@ export default function PrivacyPage() {
                   include:
                 </p>
                 <ul className="list-disc space-y-2 pl-5">
-                  <li>Encryption of data in transit (TLS 1.3) and at rest (AES-256).</li>
-                  <li>Regular security audits and vulnerability assessments.</li>
+                  <li>
+                    Encryption of data in transit (TLS 1.3) and at rest
+                    (AES-256).
+                  </li>
+                  <li>
+                    Regular security audits and vulnerability assessments.
+                  </li>
                   <li>Access controls and authentication mechanisms.</li>
                   <li>Regular backups and disaster recovery procedures.</li>
                 </ul>
@@ -131,19 +142,27 @@ export default function PrivacyPage() {
 
             {/* Third-Party Services */}
             <section>
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-foreground text-xl font-semibold">
                 4. Third-Party Services
               </h2>
-              <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
+              <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
                 <p>
                   We may share information with third-party service providers
                   that perform services on our behalf, such as:
                 </p>
                 <ul className="list-disc space-y-2 pl-5">
                   <li>Cloud hosting and infrastructure providers.</li>
-                  <li>Payment processors for billing and subscription management.</li>
-                  <li>Analytics services to understand Service usage and improve performance.</li>
-                  <li>Email delivery services for transactional and notification emails.</li>
+                  <li>
+                    Payment processors for billing and subscription management.
+                  </li>
+                  <li>
+                    Analytics services to understand Service usage and improve
+                    performance.
+                  </li>
+                  <li>
+                    Email delivery services for transactional and notification
+                    emails.
+                  </li>
                   <li>Customer support tools for managing support requests.</li>
                 </ul>
                 <p>
@@ -157,10 +176,10 @@ export default function PrivacyPage() {
 
             {/* Your Rights (GDPR) */}
             <section>
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-foreground text-xl font-semibold">
                 5. Your Rights (GDPR)
               </h2>
-              <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
+              <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
                 <p>
                   If you are located in the European Economic Area (EEA), you
                   have certain data protection rights under the General Data
@@ -168,16 +187,18 @@ export default function PrivacyPage() {
                 </p>
                 <ul className="list-disc space-y-2 pl-5">
                   <li>
-                    <strong className="text-foreground">Access:</strong> Request a
-                    copy of the personal data we hold about you.
+                    <strong className="text-foreground">Access:</strong> Request
+                    a copy of the personal data we hold about you.
                   </li>
                   <li>
                     <strong className="text-foreground">Rectification:</strong>{" "}
-                    Request correction of inaccurate or incomplete personal data.
+                    Request correction of inaccurate or incomplete personal
+                    data.
                   </li>
                   <li>
-                    <strong className="text-foreground">Erasure:</strong> Request
-                    deletion of your personal data under certain circumstances.
+                    <strong className="text-foreground">Erasure:</strong>{" "}
+                    Request deletion of your personal data under certain
+                    circumstances.
                   </li>
                   <li>
                     <strong className="text-foreground">Restriction:</strong>{" "}
@@ -188,8 +209,8 @@ export default function PrivacyPage() {
                     Request transfer of your personal data to another service.
                   </li>
                   <li>
-                    <strong className="text-foreground">Objection:</strong> Object
-                    to the processing of your personal data for certain
+                    <strong className="text-foreground">Objection:</strong>{" "}
+                    Object to the processing of your personal data for certain
                     purposes.
                   </li>
                 </ul>
@@ -203,10 +224,10 @@ export default function PrivacyPage() {
 
             {/* Data Retention */}
             <section>
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-foreground text-xl font-semibold">
                 6. Data Retention
               </h2>
-              <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
+              <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
                 <p>
                   We retain your personal information for as long as your
                   account is active or as needed to provide you with the
@@ -230,17 +251,19 @@ export default function PrivacyPage() {
 
             {/* Contact */}
             <section>
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-foreground text-xl font-semibold">
                 7. Contact
               </h2>
-              <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
+              <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
                 <p>
                   If you have any questions or concerns about this Privacy
                   Policy or our data practices, please contact us at:
                 </p>
-                <div className="mt-3 rounded-lg border border-border bg-muted/30 p-4">
+                <div className="border-border bg-muted/30 mt-3 rounded-lg border p-4">
                   <p>
-                    <strong className="text-foreground">Asset Tracker, Inc.</strong>
+                    <strong className="text-foreground">
+                      Asset Tracker, Inc.
+                    </strong>
                   </p>
                   <p>Email: privacy@assettracker.io</p>
                   <p>

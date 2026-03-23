@@ -1,6 +1,7 @@
 import React from "react";
 import ManufacturerCreateForm from "../../create/ui/ManufacturerCreateForm";
 import { getManufacturerById } from "@/lib/data";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export const metadata = {
   title: "Asset Tracker - Edit Manufacturer",
@@ -27,5 +28,16 @@ export default async function Page({
       : null,
   };
 
-  return <ManufacturerCreateForm initialData={manufacturer} mode="edit" />;
+  return (
+    <>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Manufacturers", href: "/manufacturers" },
+          { label: "Edit" },
+        ]}
+      />
+      <ManufacturerCreateForm initialData={manufacturer} mode="edit" />
+    </>
+  );
 }

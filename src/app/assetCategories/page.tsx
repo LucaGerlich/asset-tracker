@@ -1,4 +1,5 @@
 import React from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 import AssetCategoriesTable from "../../ui/assetCategories/AssetCategoriesTable";
 import { getCategories } from "@/lib/data";
 
@@ -14,6 +15,12 @@ export default async function Page() {
   }));
   return (
     <div>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Asset Categories", href: "/assetCategories" },
+        ]}
+      />
       <AssetCategoriesTable items={categories} />
     </div>
   );

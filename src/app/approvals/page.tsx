@@ -5,7 +5,7 @@ import Breadcrumb from "@/components/Breadcrumb";
 import ApprovalsPageClient from "./ui/ApprovalsPageClient";
 
 export const metadata = {
-  title: "Approval Workflows - Asset Tracker",
+  title: "Asset Tracker - Approvals",
   description: "Manage and review approval requests",
 };
 

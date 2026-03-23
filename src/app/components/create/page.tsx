@@ -6,6 +6,7 @@ import {
   getSuppliers,
 } from "@/lib/data";
 import prisma from "@/lib/prisma";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export const metadata = {
   title: "Asset Tracker - Create Component",
@@ -20,11 +21,20 @@ export default async function Page() {
   ]);
 
   return (
-    <ComponentCreateForm
-      categories={categories}
-      manufacturers={manufacturers}
-      suppliers={suppliers}
-      locations={locations}
-    />
+    <>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Components", href: "/components" },
+          { label: "Create Component" },
+        ]}
+      />
+      <ComponentCreateForm
+        categories={categories}
+        manufacturers={manufacturers}
+        suppliers={suppliers}
+        locations={locations}
+      />
+    </>
   );
 }

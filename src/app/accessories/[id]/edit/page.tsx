@@ -9,6 +9,7 @@ import {
   getStatus,
   getSuppliers,
 } from "@/lib/data";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export const metadata = {
   title: "Asset Tracker - Edit Accessory",
@@ -64,15 +65,24 @@ export default async function Page({
   };
 
   return (
-    <AccessoryCreateForm
-      categories={categories}
-      locations={locations}
-      manufacturers={manufacturers}
-      models={models}
-      statuses={statuses}
-      suppliers={suppliers}
-      initialData={accessory}
-      mode="edit"
-    />
+    <>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Accessories", href: "/accessories" },
+          { label: "Edit" },
+        ]}
+      />
+      <AccessoryCreateForm
+        categories={categories}
+        locations={locations}
+        manufacturers={manufacturers}
+        models={models}
+        statuses={statuses}
+        suppliers={suppliers}
+        initialData={accessory}
+        mode="edit"
+      />
+    </>
   );
 }

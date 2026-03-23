@@ -5,6 +5,7 @@ import {
   getManufacturers,
   getSuppliers,
 } from "@/lib/data";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export const metadata = {
   title: "Asset Tracker - Create Consumable",
@@ -18,11 +19,19 @@ export default async function Page() {
   ]);
 
   return (
-    <ConsumableCreateForm
-      categories={categories}
-      manufacturers={manufacturers}
-      suppliers={suppliers}
-    />
+    <>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Consumables", href: "/consumables" },
+          { label: "Create Consumable" },
+        ]}
+      />
+      <ConsumableCreateForm
+        categories={categories}
+        manufacturers={manufacturers}
+        suppliers={suppliers}
+      />
+    </>
   );
 }
-

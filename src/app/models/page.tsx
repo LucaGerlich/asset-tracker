@@ -1,4 +1,5 @@
 import React from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 import ModelsTable from "../../ui/models/ModelsTable";
 import { getModel } from "@/lib/data";
 
@@ -14,6 +15,12 @@ export default async function Page() {
   }));
   return (
     <div>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Models", href: "/models" },
+        ]}
+      />
       <ModelsTable items={models} />
     </div>
   );

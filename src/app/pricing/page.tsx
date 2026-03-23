@@ -4,7 +4,7 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import PricingPageClient from "./PricingPageClient";
 
 export const metadata: Metadata = {
-  title: "Pricing - Asset Tracker",
+  title: "Asset Tracker - Pricing",
   description:
     "Simple, transparent pricing for teams of all sizes. Start free and scale as you grow.",
 };

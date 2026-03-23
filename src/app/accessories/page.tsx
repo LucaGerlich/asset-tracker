@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 import AccessoriesTable from "../../ui/accessories/AccessoriesTable";
 import {
   getAccessories,
@@ -36,6 +37,12 @@ export default async function Page() {
 
   return (
     <div>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Accessories", href: "/accessories" },
+        ]}
+      />
       <Suspense fallback={null}>
         <AccessoriesTable
           items={accessoriesRaw.map((item) => ({

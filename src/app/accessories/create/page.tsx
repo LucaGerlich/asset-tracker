@@ -8,30 +8,40 @@ import {
   getStatus,
   getSuppliers,
 } from "@/lib/data";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export const metadata = {
   title: "Asset Tracker - Create Accessory",
 };
 
 export default async function Page() {
-  const [categories, locations, manufacturers, models, statuses, suppliers] = await Promise.all([
-    getAccessoryCategories(),
-    getLocation(),
-    getManufacturers(),
-    getModel(),
-    getStatus(),
-    getSuppliers(),
-  ]);
+  const [categories, locations, manufacturers, models, statuses, suppliers] =
+    await Promise.all([
+      getAccessoryCategories(),
+      getLocation(),
+      getManufacturers(),
+      getModel(),
+      getStatus(),
+      getSuppliers(),
+    ]);
 
   return (
-    <AccessoryCreateForm
-      categories={categories}
-      locations={locations}
-      manufacturers={manufacturers}
-      models={models}
-      statuses={statuses}
-      suppliers={suppliers}
-    />
+    <>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Accessories", href: "/accessories" },
+          { label: "Create Accessory" },
+        ]}
+      />
+      <AccessoryCreateForm
+        categories={categories}
+        locations={locations}
+        manufacturers={manufacturers}
+        models={models}
+        statuses={statuses}
+        suppliers={suppliers}
+      />
+    </>
   );
 }
-

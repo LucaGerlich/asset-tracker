@@ -1,4 +1,5 @@
 import React from "react";
+import Breadcrumb from "@/components/Breadcrumb";
 import AssetsTableClient from "./ui/AssetsTableClient";
 import {
   getAssets,
@@ -76,6 +77,12 @@ export default async function Page() {
 
   return (
     <div>
+      <Breadcrumb
+        options={[
+          { label: "Home", href: "/" },
+          { label: "Assets", href: "/assets" },
+        ]}
+      />
       <AssetsTableClient
         data={databaseAssets}
         locations={location}
