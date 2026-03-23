@@ -28,20 +28,25 @@ export default async function DashboardPage() {
     return <UserDashboard userId={ctx?.userId} />;
   }
 
-  const [
-    userCount,
-    assetCount,
-    accessoryCount,
-    statusDistribution,
-    statuses,
-    locationsWithCoords,
-  ] = await Promise.all([
-    getUserCount(),
-    getAssetCount(),
-    getAccessoryCount(),
-    getAssetStatusDistribution(),
-    getStatus(),
-    prisma.location.findMany({
+  const [userCount, assetCount, accessoryCount, statusDistribution, statuses] =
+    await Promise.all([
+      getUserCount(),
+      getAssetCount(),
+      getAccessoryCount(),
+      getAssetStatusDistribution(),
+      getStatus(),
+    ]);
+
+  // Map query is separate — gracefully handles missing columns
+  let mapLocations: Array<{
+    id: string;
+    name: string | null;
+    latitude: number;
+    longitude: number;
+    assetCount: number;
+  }> = [];
+  try {
+    const locationsWithCoords = await prisma.location.findMany({
       where: { latitude: { not: null }, longitude: { not: null } },
       select: {
         locationid: true,
@@ -50,16 +55,17 @@ export default async function DashboardPage() {
         longitude: true,
         _count: { select: { asset: true } },
       },
-    }),
-  ]);
-
-  const mapLocations = locationsWithCoords.map((loc) => ({
-    id: loc.locationid,
-    name: loc.locationname,
-    latitude: loc.latitude!,
-    longitude: loc.longitude!,
-    assetCount: loc._count.asset,
-  }));
+    });
+    mapLocations = locationsWithCoords.map((loc) => ({
+      id: loc.locationid,
+      name: loc.locationname,
+      latitude: loc.latitude!,
+      longitude: loc.longitude!,
+      assetCount: loc._count.asset,
+    }));
+  } catch {
+    // latitude/longitude columns may not exist yet
+  }
 
   const statusCounts = new Map<string, number>();
   let totalCounted = 0;
