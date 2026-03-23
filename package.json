@@ -65,7 +65,7 @@
     "geist": "^1.5.1",
     "jsqr": "^1.4.0",
     "ldapjs": "^3.0.7",
-    "lucide-react": "^0.563.0",
+    "lucide-react": "^1.0.1",
     "maplibre-gl": "^5.21.0",
     "next": "^16.1.5",
     "next-auth": "^5.0.0-beta.30",
