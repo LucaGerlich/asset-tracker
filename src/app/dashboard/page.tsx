@@ -13,7 +13,8 @@ import DashboardGrid from "@/components/dashboard/DashboardGrid";
 import UserDashboard from "@/components/dashboard/UserDashboard";
 import { getOrganizationContext } from "@/lib/organization-context";
 import prisma from "@/lib/prisma";
-// import AssetMapClient from "@/components/maps/AssetMapClient";
+import { Suspense } from "react";
+import AssetMapClient from "@/components/maps/AssetMapClient";
 
 export const metadata = {
   title: "Asset Tracker - Dashboard",
@@ -133,8 +134,21 @@ export default async function DashboardPage() {
           />
         </div>
       </div>
-      <div className="mt-6 sm:mt-8 md:mt-10">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <AssetStatusChart data={chartData} />
+        <Suspense
+          fallback={
+            <div className="text-muted-foreground flex h-[300px] items-center justify-center rounded-lg border text-sm">
+              Loading map...
+            </div>
+          }
+        >
+          <AssetMapClient
+            locations={mapLocations}
+            totalAssets={assetCount}
+            totalLocations={mapLocations.length}
+          />
+        </Suspense>
       </div>
       <div className="mt-6 sm:mt-8 md:mt-10">
         <DashboardGrid

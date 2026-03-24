@@ -11,8 +11,18 @@ const AssetMap = dynamic(() => import("./AssetMap"), {
   ),
 });
 
-export default function AssetMapClient(
-  props: React.ComponentProps<typeof AssetMap>,
-) {
+interface AssetMapClientProps {
+  locations: Array<{
+    id: string;
+    name: string | null;
+    latitude: number;
+    longitude: number;
+    assetCount: number;
+  }>;
+  totalAssets?: number;
+  totalLocations?: number;
+}
+
+export default function AssetMapClient(props: AssetMapClientProps) {
   return <AssetMap {...props} />;
 }
