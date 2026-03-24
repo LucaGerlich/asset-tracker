@@ -13,7 +13,16 @@ import DashboardGrid from "@/components/dashboard/DashboardGrid";
 import UserDashboard from "@/components/dashboard/UserDashboard";
 import { getOrganizationContext } from "@/lib/organization-context";
 import prisma from "@/lib/prisma";
-import AssetMap from "@/components/maps/AssetMap";
+import dynamic from "next/dynamic";
+
+const AssetMap = dynamic(() => import("@/components/maps/AssetMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="text-muted-foreground flex h-[300px] items-center justify-center rounded-lg border text-sm">
+      Loading map...
+    </div>
+  ),
+});
 
 export const metadata = {
   title: "Asset Tracker - Dashboard",
