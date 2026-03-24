@@ -53,10 +53,19 @@ const markerSizes = {
 };
 
 export default function AssetMap({
-  locations,
+  locations: rawLocations,
   totalAssets,
   totalLocations,
 }: AssetMapProps) {
+  // Filter out locations with invalid coordinates to prevent MapLibre NaN crash
+  const locations = rawLocations.filter(
+    (l) =>
+      typeof l.latitude === "number" &&
+      typeof l.longitude === "number" &&
+      !isNaN(l.latitude) &&
+      !isNaN(l.longitude),
+  );
+
   if (locations.length === 0) {
     return (
       <div className="text-muted-foreground flex h-64 items-center justify-center rounded-lg border border-dashed text-sm">
