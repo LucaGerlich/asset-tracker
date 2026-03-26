@@ -106,9 +106,8 @@ export const ENV_CONFIG: EnvVarConfig[] = [
   // Cron (Required in production — all 7 cron jobs fail silently without it)
   {
     name: "CRON_SECRET",
-    required: process.env.NODE_ENV === "production",
-    description:
-      "Secret for authenticating cron job requests (required in production)",
+    required: true,
+    description: "Secret for authenticating cron job requests",
     sensitive: true,
     validate: (v) => v.length >= 16,
     validateMessage: "Must be at least 16 characters long",
@@ -118,10 +117,9 @@ export const ENV_CONFIG: EnvVarConfig[] = [
   {
     name: "EMAIL_PROVIDER",
     required: false,
-    description: "Email provider (brevo, sendgrid, mailgun, postmark, ses)",
-    validate: (v) =>
-      ["brevo", "sendgrid", "mailgun", "postmark", "ses"].includes(v),
-    validateMessage: "Must be one of: brevo, sendgrid, mailgun, postmark, ses",
+    description: "Email provider (brevo, sendgrid, mailgun, postmark)",
+    validate: (v) => ["brevo", "sendgrid", "mailgun", "postmark"].includes(v),
+    validateMessage: "Must be one of: brevo, sendgrid, mailgun, postmark",
   },
   {
     name: "EMAIL_FROM",

@@ -44,8 +44,8 @@ export default function RegisterForm() {
       return;
     }
 
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (formData.password.length < 12) {
+      setError("Password must be at least 12 characters.");
       return;
     }
 
@@ -82,7 +82,7 @@ export default function RegisterForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="bg-background flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">
@@ -167,12 +167,12 @@ export default function RegisterForm() {
                 id="password"
                 name="password"
                 type="password"
-                placeholder="Min. 8 characters"
+                placeholder="Min. 12 characters"
                 value={formData.password}
                 onChange={handleChange}
                 disabled={isLoading}
                 required
-                minLength={8}
+                minLength={12}
               />
             </div>
             <div className="space-y-2">
@@ -186,18 +186,18 @@ export default function RegisterForm() {
                 onChange={handleChange}
                 disabled={isLoading}
                 required
-                minLength={8}
+                minLength={12}
               />
             </div>
             {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
                 {error}
               </div>
             )}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Creating account..." : "Create Account"}
             </Button>
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-center text-xs">
               By registering, you agree to our{" "}
               <Link href="/terms" className="text-primary hover:underline">
                 Terms
@@ -208,7 +208,7 @@ export default function RegisterForm() {
               </Link>
               .
             </p>
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-center text-sm">
               Already have an account?{" "}
               <Link href="/login" className="text-primary hover:underline">
                 Sign in

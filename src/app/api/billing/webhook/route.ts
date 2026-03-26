@@ -49,7 +49,22 @@ export async function POST(req: Request) {
         where: { stripeSubscriptionId: sub.id },
       });
       if (org && sub.status === "active") {
-        // Subscription is still active, no changes needed
+        // Determine the new plan from the subscription's price
+        const priceId = sub.items?.data?.[0]?.price?.id;
+        const newPlan = (
+          Object.entries(PLANS) as [PlanKey, (typeof PLANS)[PlanKey]][]
+        ).find(([, cfg]) => cfg.priceId === priceId);
+        if (newPlan) {
+          const [planKey, planCfg] = newPlan;
+          await prisma.organization.update({
+            where: { id: org.id },
+            data: {
+              plan: planKey,
+              maxAssets: planCfg.maxAssets === -1 ? 999999 : planCfg.maxAssets,
+              maxUsers: planCfg.maxUsers === -1 ? 999999 : planCfg.maxUsers,
+            },
+          });
+        }
       }
       break;
     }

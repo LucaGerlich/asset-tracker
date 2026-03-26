@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import HistoryTimeline from "@/components/HistoryTimeline";
@@ -56,7 +57,12 @@ function booleanPill(val) {
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   // First: fetch the asset (needed by subsequent queries)
-  const assetRaw = await getAssetById(params.id);
+  let assetRaw;
+  try {
+    assetRaw = await getAssetById(params.id);
+  } catch {
+    notFound();
+  }
   const asset = {
     ...assetRaw,
     purchaseprice:
