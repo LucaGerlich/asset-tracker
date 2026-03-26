@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireApiAdmin } from "@/lib/api-auth";
 import { createAuditLog } from "@/lib/audit-log";
+import { getOrganizationContext } from "@/lib/organization-context";
 
 /**
  * Map from the `entity` string stored in audit logs to the corresponding
@@ -61,6 +62,8 @@ const EXCLUDED_FIELDS = new Set([
   "sessions",
   "userHistory",
   "tickets",
+  // Prevent reverts from changing org ownership
+  "organizationId",
 ]);
 
 /**
@@ -99,9 +102,16 @@ export async function POST(
     const admin = await requireApiAdmin();
     const { id } = await params;
 
-    // 1. Fetch the audit log entry
-    const auditLog = await prisma.audit_logs.findUnique({
-      where: { id },
+    // 1. Fetch the audit log entry, scoped to the caller's organization
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+
+    const auditLog = await prisma.audit_logs.findFirst({
+      where: {
+        id,
+        // Scope through the user relation — audit_logs doesn't have organizationId directly
+        ...(orgId ? { user: { organizationId: orgId } } : {}),
+      },
     });
 
     if (!auditLog) {

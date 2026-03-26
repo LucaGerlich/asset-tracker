@@ -7,6 +7,7 @@ import {
   buildPaginatedResponse,
 } from "@/lib/pagination";
 import { logger } from "@/lib/logger";
+import { getOrganizationContext } from "@/lib/organization-context";
 
 const AUDIT_LOG_SORT_FIELDS = [
   "createdAt",
@@ -34,6 +35,13 @@ export async function GET(req: Request) {
 
     // Build where clause from filters
     const where: Record<string, unknown> = {};
+
+    // Scope audit logs to the caller's organization through the user relation
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+    if (orgId) {
+      where.user = { organizationId: orgId };
+    }
 
     const userId = searchParams.get("userId");
     if (userId) {

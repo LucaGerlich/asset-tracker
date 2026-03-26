@@ -108,8 +108,8 @@ export async function POST(req: Request) {
     let targetLabel = "";
 
     if (checkedOutToType === "user") {
-      const targetUser = await prisma.user.findUnique({
-        where: { userid: checkedOutTo! },
+      const targetUser = await prisma.user.findFirst({
+        where: { userid: checkedOutTo!, organizationId: orgId ?? undefined },
       });
       if (!targetUser) {
         return NextResponse.json(

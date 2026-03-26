@@ -23,6 +23,11 @@ export async function PATCH(
     const body = await request.json();
     const { status } = body;
 
+    const VALID_STATUSES = ["sent", "pending", "read"];
+    if (status && !VALID_STATUSES.includes(status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+
     // Verify the notification belongs to the user
     const notification = await prisma.notification_queue.findFirst({
       where: {

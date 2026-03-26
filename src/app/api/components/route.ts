@@ -209,6 +209,20 @@ export async function PUT(req: Request) {
       );
     }
 
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+
+    // Verify component belongs to caller's org before updating
+    const existing = await prisma.component.findFirst({
+      where: scopeToOrganization({ id }, orgId),
+    });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Component not found" },
+        { status: 404 },
+      );
+    }
+
     const validated = validateBody(updateComponentSchema, rest);
     if (validated instanceof NextResponse) return validated;
 
@@ -302,9 +316,12 @@ export async function DELETE(req: Request) {
       );
     }
 
-    // Get component details before deletion for audit log
-    const component = await prisma.component.findUnique({
-      where: { id },
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+
+    // Get component details before deletion, scoped to caller's org
+    const component = await prisma.component.findFirst({
+      where: scopeToOrganization({ id }, orgId),
       select: { name: true },
     });
 
