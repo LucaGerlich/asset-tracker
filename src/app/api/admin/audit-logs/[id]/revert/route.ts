@@ -185,7 +185,9 @@ export async function POST(
     }
 
     // 6. Fetch the current state so we can log the revert diff
-    const prismaModel = (prisma as Record<string, unknown>)[mapping.model] as {
+    const prismaModel = (prisma as unknown as Record<string, unknown>)[
+      mapping.model
+    ] as {
       findUnique: (args: {
         where: Record<string, unknown>;
       }) => Promise<Record<string, unknown> | null>;
