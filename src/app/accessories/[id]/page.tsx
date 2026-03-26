@@ -12,7 +12,9 @@ import {
   getModel,
   getStatus,
   getSuppliers,
+  getEntityHistory,
 } from "@/lib/data";
+import HistoryTimeline from "@/components/HistoryTimeline";
 
 export const metadata = {
   title: "Asset Tracker - Accessory Details",
@@ -51,15 +53,23 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       : null,
   };
 
-  const [categories, statuses, locations, manufacturers, models, suppliers] =
-    await Promise.all([
-      getAccessoryCategories(),
-      getStatus(),
-      getLocation(),
-      getManufacturers(),
-      getModel(),
-      getSuppliers(),
-    ]);
+  const [
+    categories,
+    statuses,
+    locations,
+    manufacturers,
+    models,
+    suppliers,
+    historyEntries,
+  ] = await Promise.all([
+    getAccessoryCategories(),
+    getStatus(),
+    getLocation(),
+    getManufacturers(),
+    getModel(),
+    getSuppliers(),
+    getEntityHistory("accessory", params.id),
+  ]);
 
   const categoryName =
     categories.find(
@@ -210,6 +220,14 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
               </div>
             </dl>
           </section>
+        </div>
+
+        <Separator className="my-6" />
+
+        <div>
+          <h2 className="text-lg font-semibold">Accessory History</h2>
+          <Separator className="my-3" />
+          <HistoryTimeline entries={historyEntries} entityType="accessory" />
         </div>
       </div>
     </>

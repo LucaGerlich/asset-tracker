@@ -17,7 +17,9 @@ import {
   getConsumableCategories,
   getManufacturers,
   getSuppliers,
+  getEntityHistory,
 } from "@/lib/data";
+import HistoryTimeline from "@/components/HistoryTimeline";
 import ConsumableDetailClient from "./ui/ConsumableDetailClient";
 
 export const metadata = {
@@ -56,11 +58,13 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       : null,
   };
 
-  const [categories, manufacturers, suppliers] = await Promise.all([
-    getConsumableCategories(),
-    getManufacturers(),
-    getSuppliers(),
-  ]);
+  const [categories, manufacturers, suppliers, historyEntries] =
+    await Promise.all([
+      getConsumableCategories(),
+      getManufacturers(),
+      getSuppliers(),
+      getEntityHistory("consumable", params.id),
+    ]);
 
   const categoryName =
     categories.find(
@@ -316,6 +320,14 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             </div>
           )}
         </section>
+
+        <Separator className="my-6" />
+
+        <div>
+          <h2 className="text-lg font-semibold">Consumable History</h2>
+          <Separator className="my-3" />
+          <HistoryTimeline entries={historyEntries} entityType="consumable" />
+        </div>
       </div>
     </>
   );

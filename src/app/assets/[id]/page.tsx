@@ -14,6 +14,7 @@ import {
   getCategories,
   getUserAssets,
   getSuppliers,
+  getEntityHistory,
 } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import {
@@ -95,21 +96,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     getCategories(),
     getSuppliers(),
     getUserAssets(),
-    prisma.audit_logs.findMany({
-      where: { entity: "asset", entityId: params.id },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      include: {
-        user: {
-          select: {
-            userid: true,
-            username: true,
-            firstname: true,
-            lastname: true,
-          },
-        },
-      },
-    }),
+    getEntityHistory("asset", params.id),
     asset.assetcategorytypeid
       ? prisma.depreciation_settings.findUnique({
           where: { categoryId: asset.assetcategorytypeid },

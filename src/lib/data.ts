@@ -629,3 +629,25 @@ export async function getStatusById(id: string) {
 
   return status;
 }
+
+/**
+ * Fetch audit history for any entity type. Returns the most recent 50 entries
+ * with user info, sorted newest-first.
+ */
+export async function getEntityHistory(entity: string, entityId: string) {
+  return prisma.audit_logs.findMany({
+    where: { entity, entityId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    include: {
+      user: {
+        select: {
+          userid: true,
+          username: true,
+          firstname: true,
+          lastname: true,
+        },
+      },
+    },
+  });
+}

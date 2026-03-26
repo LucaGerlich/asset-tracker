@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getKitById } from "@/lib/data";
+import { getKitById, getEntityHistory } from "@/lib/data";
+import HistoryTimeline from "@/components/HistoryTimeline";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,8 @@ export default async function KitDetailPage({ params }: PageProps) {
   } catch {
     notFound();
   }
+
+  const historyEntries = await getEntityHistory("kit", id);
 
   const entityTypeLabels: Record<string, string> = {
     asset_category: "Asset Category",
@@ -102,6 +105,14 @@ export default async function KitDetailPage({ params }: PageProps) {
               </Table>
             </div>
           )}
+        </div>
+
+        <Separator className="mt-6" />
+
+        <div>
+          <h2 className="text-lg font-semibold">Kit History</h2>
+          <Separator className="my-3" />
+          <HistoryTimeline entries={historyEntries} entityType="kit" />
         </div>
       </div>
     </>

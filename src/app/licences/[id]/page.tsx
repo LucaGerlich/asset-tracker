@@ -9,7 +9,9 @@ import {
   getLicenceCategories,
   getManufacturers,
   getSuppliers,
+  getEntityHistory,
 } from "@/lib/data";
+import HistoryTimeline from "@/components/HistoryTimeline";
 
 export const metadata = {
   title: "Asset Tracker - Licence Details",
@@ -75,11 +77,13 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       : null,
   };
 
-  const [categories, manufacturers, suppliers] = await Promise.all([
-    getLicenceCategories(),
-    getManufacturers(),
-    getSuppliers(),
-  ]);
+  const [categories, manufacturers, suppliers, historyEntries] =
+    await Promise.all([
+      getLicenceCategories(),
+      getManufacturers(),
+      getSuppliers(),
+      getEntityHistory("licence", params.id),
+    ]);
 
   const categoryName =
     categories.find(
@@ -256,6 +260,14 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             </section>
           </>
         )}
+
+        <Separator className="my-6" />
+
+        <div>
+          <h2 className="text-lg font-semibold">Licence History</h2>
+          <Separator className="my-3" />
+          <HistoryTimeline entries={historyEntries} entityType="licence" />
+        </div>
       </div>
     </>
   );

@@ -11,7 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import prisma from "@/lib/prisma";
-import { getComponentById } from "@/lib/data";
+import { getComponentById, getEntityHistory } from "@/lib/data";
+import HistoryTimeline from "@/components/HistoryTimeline";
 import ComponentDetailClient from "./ui/ComponentDetailClient";
 
 export const metadata = {
@@ -20,7 +21,10 @@ export const metadata = {
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const component = await getComponentById(params.id);
+  const [component, historyEntries] = await Promise.all([
+    getComponentById(params.id),
+    getEntityHistory("component", params.id),
+  ]);
 
   const assets = await prisma.asset.findMany({
     select: { assetid: true, assetname: true, assettag: true },
@@ -247,6 +251,14 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             </div>
           )}
         </section>
+
+        <Separator className="my-6" />
+
+        <div>
+          <h2 className="text-lg font-semibold">Component History</h2>
+          <Separator className="my-3" />
+          <HistoryTimeline entries={historyEntries} entityType="component" />
+        </div>
       </div>
     </>
   );
