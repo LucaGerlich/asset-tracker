@@ -84,7 +84,7 @@ function AssetStatusChart({
         >
           <PieChart>
             <ChartTooltip
-              content={<ChartTooltipContent nameKey="value" hideLabel />}
+              content={<ChartTooltipContent nameKey="name" hideLabel />}
             />
             <Pie
               data={chartData}
@@ -100,12 +100,13 @@ function AssetStatusChart({
                     textAnchor={props.textAnchor}
                     dominantBaseline={props.dominantBaseline}
                     fill="hsla(var(--foreground))"
+                    fontSize={12}
                   >
-                    {payload.value}
+                    {payload.name} ({payload.value})
                   </text>
                 );
               }}
-              nameKey="value"
+              nameKey="name"
             >
               {chartData.map((sum, index) => (
                 <Cell
