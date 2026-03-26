@@ -15,8 +15,6 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
 } from "@/components/ui/chart";
 
 /** CSS variable chart palette — matches shadcn defaults (--chart-1 … --chart-5) plus extras */
@@ -113,7 +111,7 @@ function AssetStatusChart({
               dataKey="value"
               nameKey="status"
               innerRadius={60}
-              strokeWidth={5}
+              strokeWidth={2}
             >
               <Label
                 content={({ viewBox }) => {
@@ -145,13 +143,19 @@ function AssetStatusChart({
                 }}
               />
             </Pie>
-            <ChartLegend
-              content={<ChartLegendContent nameKey="status" />}
-              className="-translate-y-2 flex-wrap gap-2 [&>*]:basis-1/4 [&>*]:justify-center"
-            />
           </PieChart>
         </ChartContainer>
       </CardContent>
+      <CardFooter className="flex-col gap-2 text-sm">
+        <div className="text-muted-foreground leading-none">
+          {activeData.map((d, i) => (
+            <span key={d.name}>
+              {i > 0 && " · "}
+              {d.name}: {d.value}
+            </span>
+          ))}
+        </div>
+      </CardFooter>
     </Card>
   );
 }
