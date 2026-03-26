@@ -30,6 +30,7 @@ import {
   Cpu,
   Package,
   SearchCheck,
+  Filter,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -51,7 +52,12 @@ export const navSections: NavSection[] = [
   {
     title: "Overview",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, exact: true },
+      {
+        label: "Dashboard",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+        exact: true,
+      },
       { label: "Users", href: "/user", icon: Users },
       { label: "Assets", href: "/assets", icon: Boxes },
       { label: "Accessories", href: "/accessories", icon: Puzzle },
@@ -73,9 +79,21 @@ export const navSections: NavSection[] = [
     collapsible: true,
     items: [
       { label: "Asset Categories", href: "/assetCategories", icon: Layers },
-      { label: "Accessory Categories", href: "/accessoryCategories", icon: FolderOpen },
-      { label: "Consumable Categories", href: "/consumableCategories", icon: FolderCog },
-      { label: "Licence Categories", href: "/licenceCategories", icon: FolderKey },
+      {
+        label: "Accessory Categories",
+        href: "/accessoryCategories",
+        icon: FolderOpen,
+      },
+      {
+        label: "Consumable Categories",
+        href: "/consumableCategories",
+        icon: FolderCog,
+      },
+      {
+        label: "Licence Categories",
+        href: "/licenceCategories",
+        icon: FolderKey,
+      },
       { label: "Models", href: "/models", icon: Tags },
       { label: "Status Types", href: "/statusTypes", icon: CircleDot },
     ],
@@ -83,6 +101,7 @@ export const navSections: NavSection[] = [
   {
     title: "Tools",
     items: [
+      { label: "Advanced Search", href: "/search", icon: Filter },
       { label: "IT Tickets", href: "/tickets", icon: Ticket },
       { label: "Maintenance", href: "/maintenance", icon: Wrench },
       { label: "Kits", href: "/kits", icon: Package },
@@ -97,19 +116,44 @@ export const navSections: NavSection[] = [
     collapsible: true,
     items: [
       { label: "Reports", href: "/reports", icon: BarChart3 },
-      { label: "Workflows", href: "/admin/workflows", icon: Zap, adminOnly: true },
+      {
+        label: "Workflows",
+        href: "/admin/workflows",
+        icon: Zap,
+        adminOnly: true,
+      },
       { label: "API Docs", href: "/api-docs", icon: FileJson },
-      { label: "Audit Logs", href: "/admin/audit-logs", icon: FileSearch, adminOnly: true },
+      {
+        label: "Audit Logs",
+        href: "/admin/audit-logs",
+        icon: FileSearch,
+        adminOnly: true,
+      },
       { label: "GDPR", href: "/admin/gdpr", icon: Shield, adminOnly: true },
-      { label: "Compliance", href: "/admin/compliance", icon: ShieldCheck, adminOnly: true },
+      {
+        label: "Compliance",
+        href: "/admin/compliance",
+        icon: ShieldCheck,
+        adminOnly: true,
+      },
       { label: "Team", href: "/admin/team", icon: UsersRound, adminOnly: true },
-      { label: "Admin Settings", href: "/admin/settings", icon: Settings, adminOnly: true },
+      {
+        label: "Admin Settings",
+        href: "/admin/settings",
+        icon: Settings,
+        adminOnly: true,
+      },
     ],
   },
 ];
 
 export const primaryNavItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, exact: true },
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    exact: true,
+  },
   { label: "Assets", href: "/assets", icon: Boxes },
   { label: "Users", href: "/user", icon: Users },
   { label: "Consumables", href: "/consumables", icon: Package },
@@ -122,7 +166,10 @@ export function isActivePath(pathname: string, href: string, exact = false) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function filterSectionsForUser(sections: NavSection[], isAdmin: boolean): NavSection[] {
+export function filterSectionsForUser(
+  sections: NavSection[],
+  isAdmin: boolean,
+): NavSection[] {
   if (isAdmin) return sections;
   return sections.reduce<NavSection[]>((acc, section) => {
     if (!section.items.some((item) => item.adminOnly)) {

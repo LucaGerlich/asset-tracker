@@ -393,6 +393,29 @@ model asset {
   @@schema("assettool")
 }
 
+model AssetTemplate {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                  String    @db.VarChar(200)
+  description           String?
+  assetcategorytypeid   String?   @db.Uuid
+  manufacturerid        String?   @db.Uuid
+  modelid               String?   @db.Uuid
+  statustypeid          String?   @db.Uuid
+  locationid            String?   @db.Uuid
+  supplierid            String?   @db.Uuid
+  defaultSpecs          String?
+  defaultNotes          String?
+  isActive              Boolean   @default(true)
+  organizationId        String?   @db.Uuid
+  createdBy             String?   @db.Uuid
+  createdAt             DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime  @updatedAt @db.Timestamp(6)
+
+  @@index([organizationId])
+  @@map("asset_templates")
+  @@schema("assettool")
+}
+
 model assetCategoryType {
   assetcategorytypeid   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   assetcategorytypename String                 @db.VarChar

@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Camera } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AuditCampaignActions({
@@ -63,9 +65,17 @@ export default function AuditCampaignActions({
         </Button>
       )}
       {status === "active" && (
-        <Button onClick={handleComplete} disabled={loading} variant="outline">
-          {loading ? "..." : "Complete"}
-        </Button>
+        <>
+          <Button asChild>
+            <Link href={`/audits/${campaignId}/scan`}>
+              <Camera className="mr-2 h-4 w-4" />
+              Start Scan
+            </Link>
+          </Button>
+          <Button onClick={handleComplete} disabled={loading} variant="outline">
+            {loading ? "..." : "Complete"}
+          </Button>
+        </>
       )}
     </div>
   );

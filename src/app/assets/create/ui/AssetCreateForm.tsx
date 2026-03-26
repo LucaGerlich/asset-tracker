@@ -21,7 +21,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster, toast } from "sonner";
-import { Wand2 } from "lucide-react";
+import { Wand2, FileText } from "lucide-react";
 import CustomFieldsSection from "@/components/CustomFieldsSection";
 import SelectWithQuickCreate, {
   type QuickCreateOption,
@@ -111,6 +111,54 @@ export default function AssetCreateForm({
   const isDirty =
     form.assetname !== "" || form.assettag !== "" || form.serialnumber !== "";
   useUnsavedChanges(isDirty);
+
+  // Asset templates
+  const [templates, setTemplates] = useState<
+    Array<{
+      id: string;
+      name: string;
+      description?: string | null;
+      assetcategorytypeid?: string | null;
+      manufacturerid?: string | null;
+      modelid?: string | null;
+      statustypeid?: string | null;
+      locationid?: string | null;
+      supplierid?: string | null;
+      defaultSpecs?: string | null;
+      defaultNotes?: string | null;
+    }>
+  >([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  useEffect(() => {
+    fetch("/api/asset-templates")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) setTemplates(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const applyTemplate = useCallback(
+    (templateId: string) => {
+      setSelectedTemplateId(templateId);
+      if (!templateId || templateId === "__none__") return;
+      const tpl = templates.find((t) => t.id === templateId);
+      if (!tpl) return;
+      setForm((f) => ({
+        ...f,
+        assetcategorytypeid: tpl.assetcategorytypeid || f.assetcategorytypeid,
+        manufacturerid: tpl.manufacturerid || f.manufacturerid,
+        modelid: tpl.modelid || f.modelid,
+        statustypeid: tpl.statustypeid || f.statustypeid,
+        locationid: tpl.locationid || f.locationid,
+        supplierid: tpl.supplierid || f.supplierid,
+        specs: tpl.defaultSpecs || f.specs,
+        notes: tpl.defaultNotes || f.notes,
+      }));
+    },
+    [templates],
+  );
 
   // Preselect default status "Available" if present
   useEffect(() => {
@@ -257,6 +305,28 @@ export default function AssetCreateForm({
             </Button>
           </div>
         </div>
+
+        {templates.length > 0 && (
+          <div className="border-default-200 bg-muted/30 flex items-center gap-3 rounded-lg border p-3">
+            <FileText className="text-muted-foreground h-4 w-4 shrink-0" />
+            <Label htmlFor="template" className="shrink-0 text-sm font-medium">
+              From Template
+            </Label>
+            <Select value={selectedTemplateId} onValueChange={applyTemplate}>
+              <SelectTrigger id="template" className="max-w-xs">
+                <SelectValue placeholder="No template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No template</SelectItem>
+                {templates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
           <section className="border-default-200 col-span-1 rounded-lg border p-4">
