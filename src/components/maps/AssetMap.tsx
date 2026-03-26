@@ -122,7 +122,7 @@ export default function AssetMap({
 
   if (locations.length === 0) {
     return (
-      <div className="text-muted-foreground flex h-[300px] items-center justify-center rounded-lg border border-dashed text-sm">
+      <div className="text-muted-foreground flex h-[420px] items-center justify-center rounded-lg border border-dashed text-sm">
         <div className="text-center">
           <MapPin className="text-muted-foreground/40 mx-auto mb-2 h-8 w-8" />
           <p>No locations with coordinates.</p>
@@ -133,7 +133,7 @@ export default function AssetMap({
   }
 
   return (
-    <div className="relative h-[300px] w-full overflow-hidden rounded-lg border">
+    <div className="relative h-[420px] w-full overflow-hidden rounded-lg border">
       <div ref={mapContainer} className="h-full w-full" />
 
       {/* Stats overlay */}

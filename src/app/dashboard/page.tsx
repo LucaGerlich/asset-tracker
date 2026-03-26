@@ -176,7 +176,7 @@ export default async function DashboardPage() {
       <div className="mt-4 sm:mt-6">
         <Suspense
           fallback={
-            <div className="text-muted-foreground flex h-[300px] items-center justify-center rounded-lg border text-sm">
+            <div className="text-muted-foreground flex h-[420px] items-center justify-center rounded-lg border text-sm">
               Loading map...
             </div>
           }
