@@ -57,6 +57,7 @@ import StatusWorkflowTab from "./StatusWorkflowTab";
 import ApiKeysTab from "./ApiKeysTab";
 import EulaTab from "./EulaTab";
 import AssetTemplatesTab from "./AssetTemplatesTab";
+import { PlanGate } from "@/components/PlanGate";
 
 interface NavItem {
   value: string;
@@ -193,6 +194,8 @@ interface AdminSettingsPageProps {
     statustypename: string;
   }>;
   isSuperAdmin?: boolean;
+  orgPlan?: "starter" | "professional" | "enterprise";
+  isSelfHostedMode?: boolean;
 }
 
 export default function AdminSettingsPage({
@@ -205,6 +208,8 @@ export default function AdminSettingsPage({
   envEmailConfig,
   statuses = [],
   isSuperAdmin = false,
+  orgPlan = "starter",
+  isSelfHostedMode = false,
 }: AdminSettingsPageProps) {
   const [activeTab, setActiveTab] = useState("general");
 
@@ -320,8 +325,24 @@ export default function AdminSettingsPage({
           {activeTab === "departments" && <DepartmentsTab />}
           {activeTab === "roles" && <RolesTab />}
           {activeTab === "webhooks" && <WebhooksTab />}
-          {activeTab === "sso" && <SSOSettingsTab />}
-          {activeTab === "ldap" && <LDAPSettingsTab />}
+          {activeTab === "sso" && (
+            <PlanGate
+              feature="sso"
+              plan={orgPlan}
+              isSelfHosted={isSelfHostedMode}
+            >
+              <SSOSettingsTab />
+            </PlanGate>
+          )}
+          {activeTab === "ldap" && (
+            <PlanGate
+              feature="ldap"
+              plan={orgPlan}
+              isSelfHosted={isSelfHostedMode}
+            >
+              <LDAPSettingsTab />
+            </PlanGate>
+          )}
           {activeTab === "intune" && <IntuneSettingsTab />}
           {activeTab === "integrations" && <IntegrationsTab />}
           {activeTab === "locationTracking" && <LocationTrackingTab />}
@@ -329,7 +350,15 @@ export default function AdminSettingsPage({
           {activeTab === "status-workflow" && (
             <StatusWorkflowTab statuses={statuses} />
           )}
-          {activeTab === "api-keys" && <ApiKeysTab />}
+          {activeTab === "api-keys" && (
+            <PlanGate
+              feature="api_keys"
+              plan={orgPlan}
+              isSelfHosted={isSelfHostedMode}
+            >
+              <ApiKeysTab />
+            </PlanGate>
+          )}
           {activeTab === "eula" && <EulaTab />}
           {activeTab === "asset-templates" && <AssetTemplatesTab />}
         </div>

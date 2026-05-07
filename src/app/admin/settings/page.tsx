@@ -96,11 +96,20 @@ export default async function Page() {
     redirect("/dashboard");
   }
 
-  // Get admin's org for scoping user list
+  // Get admin's org for scoping user list and plan info
   const adminUser = await prisma.user.findUnique({
     where: { userid: session.user.id },
     select: { organizationId: true },
   });
+
+  const orgPlan = adminUser?.organizationId
+    ? ((
+        await prisma.organization.findUnique({
+          where: { id: adminUser.organizationId },
+          select: { plan: true },
+        })
+      )?.plan ?? "starter")
+    : "starter";
 
   const [
     settings,
@@ -163,6 +172,8 @@ export default async function Page() {
         envEmailConfig={envEmailConfig}
         statuses={statuses}
         isSuperAdmin={isSuperAdmin}
+        orgPlan={orgPlan as "starter" | "professional" | "enterprise"}
+        isSelfHostedMode={process.env.SELF_HOSTED === "true"}
       />
     </>
   );

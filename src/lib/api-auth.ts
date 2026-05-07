@@ -9,6 +9,11 @@ import {
   requireActiveOrg,
   requireWriteAccess,
 } from "./org-suspension";
+import {
+  isPlanFeatureEnabled,
+  getRequiredPlan,
+  type PlanFeature,
+} from "./plan-features";
 
 /**
  * Block mutating operations in demo mode.
@@ -168,6 +173,23 @@ export async function requireWritableOrg(user: AuthUser): Promise<void> {
   const blocked = requireWriteAccess(orgStatus);
   if (blocked) {
     throw new Error("Forbidden: Organization is in read-only mode");
+  }
+}
+
+/**
+ * Require that the user's org has a plan that includes a specific feature.
+ * Self-hosted mode: always passes. Call after requireApiAuth/requireApiAdmin.
+ */
+export async function requirePlanFeature(
+  user: AuthUser,
+  feature: PlanFeature,
+): Promise<void> {
+  const enabled = await isPlanFeatureEnabled(user.organizationId, feature);
+  if (!enabled) {
+    const required = getRequiredPlan(feature);
+    throw new Error(
+      `Forbidden: This feature requires the ${required} plan. Please upgrade.`,
+    );
   }
 }
 
