@@ -163,8 +163,15 @@
 }
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
   * {
     @apply border-border;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
   }
   body {
     @apply bg-background text-foreground;
