@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Settings,
   Mail,
@@ -217,7 +218,10 @@ export default function AdminSettingsPage({
   orgPlan = "starter",
   isSelfHostedMode = false,
 }: AdminSettingsPageProps) {
-  const [activeTab, setActiveTab] = useState("general");
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(
+    searchParams.get("tab") || "general",
+  );
 
   const filteredNav = useMemo(
     () =>
