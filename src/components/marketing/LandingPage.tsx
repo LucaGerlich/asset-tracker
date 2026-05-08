@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   Cloud,
   Server,
-  Terminal,
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -134,37 +133,79 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Terminal block */}
-            <div className="mx-auto mt-16 max-w-2xl">
+            {/* Dashboard preview panel */}
+            <div className="mx-auto mt-16 max-w-3xl">
               <div className="border-border/40 dark:border-border/20 overflow-hidden rounded-xl border bg-[#0a0a0a] shadow-2xl">
+                {/* Window chrome */}
                 <div className="flex items-center gap-1.5 border-b border-white/[0.06] px-4 py-3">
                   <div className="h-2.5 w-2.5 rounded-full bg-white/10" />
                   <div className="h-2.5 w-2.5 rounded-full bg-white/10" />
                   <div className="h-2.5 w-2.5 rounded-full bg-white/10" />
-                  <span className="ml-3 text-xs text-white/30">Terminal</span>
+                  <span className="ml-3 text-xs text-white/30">
+                    Trackly &mdash; Dashboard
+                  </span>
                 </div>
-                <div className="p-6 font-mono text-sm leading-relaxed">
-                  <p className="text-white/40">
-                    <span className="text-white/60">$</span> trackly init --org
-                    &quot;Acme Corp&quot;
-                  </p>
-                  <p className="mt-1 text-emerald-400/80">
-                    Organization created successfully.
-                  </p>
-                  <p className="mt-3 text-white/40">
-                    <span className="text-white/60">$</span> trackly import
-                    assets.csv
-                  </p>
-                  <p className="mt-1 text-emerald-400/80">
-                    Imported 847 assets across 12 categories.
-                  </p>
-                  <p className="mt-3 text-white/40">
-                    <span className="text-white/60">$</span> trackly status
-                  </p>
-                  <p className="mt-1 text-white/50">
-                    847 assets &middot; 23 licences &middot; 4 expiring soon
-                    &middot; 2 maintenance due
-                  </p>
+                {/* Metrics row */}
+                <div className="grid grid-cols-4 gap-px bg-white/[0.04]">
+                  {[
+                    { label: "Total Assets", value: "847" },
+                    { label: "Active Licences", value: "23" },
+                    { label: "Expiring Soon", value: "4" },
+                    { label: "Maintenance Due", value: "2" },
+                  ].map((metric) => (
+                    <div
+                      key={metric.label}
+                      className="bg-[#0a0a0a] px-5 py-6 text-center"
+                    >
+                      <p className="text-2xl font-bold text-white/90">
+                        {metric.value}
+                      </p>
+                      <p className="mt-1 text-xs text-white/30">
+                        {metric.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {/* Abstract table rows */}
+                <div className="space-y-px bg-white/[0.04]">
+                  {[
+                    {
+                      tag: "LAP-0421",
+                      name: 'MacBook Pro 16"',
+                      status: "Deployed",
+                      statusColor: "bg-emerald-400/80",
+                    },
+                    {
+                      tag: "MON-0892",
+                      name: "Dell U2723QE",
+                      status: "Available",
+                      statusColor: "bg-blue-400/80",
+                    },
+                    {
+                      tag: "PHN-0156",
+                      name: "iPhone 15 Pro",
+                      status: "Pending",
+                      statusColor: "bg-amber-400/80",
+                    },
+                  ].map((row) => (
+                    <div
+                      key={row.tag}
+                      className="flex items-center gap-6 bg-[#0a0a0a] px-6 py-3.5"
+                    >
+                      <span className="w-20 font-mono text-xs text-white/25">
+                        {row.tag}
+                      </span>
+                      <span className="flex-1 text-sm text-white/50">
+                        {row.name}
+                      </span>
+                      <span className="flex items-center gap-1.5 text-xs text-white/35">
+                        <span
+                          className={`inline-block h-1.5 w-1.5 rounded-full ${row.statusColor}`}
+                        />
+                        {row.status}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
               <p className="text-muted-foreground/50 mt-4 text-center text-sm">
