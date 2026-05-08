@@ -172,7 +172,9 @@ export default function BillingTab() {
                 </span>
                 <span className="text-muted-foreground">
                   {data.assets.current}
-                  {data.assets.max === -1 ? "" : ` / ${data.assets.max}`}
+                  {data.assets.max === -1
+                    ? " / Unlimited"
+                    : ` / ${data.assets.max}`}
                 </span>
               </div>
               <Progress
@@ -194,7 +196,9 @@ export default function BillingTab() {
                 </span>
                 <span className="text-muted-foreground">
                   {data.users.current}
-                  {data.users.max === -1 ? "" : ` / ${data.users.max}`}
+                  {data.users.max === -1
+                    ? " / Unlimited"
+                    : ` / ${data.users.max}`}
                 </span>
               </div>
               <Progress
