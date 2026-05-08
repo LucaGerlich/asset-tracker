@@ -25,13 +25,13 @@ import {
 export default function MobileNav() {
   const pathname = usePathname();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const { data: session } = useSession();
+  const { data: session, isPending } = useSession();
   const user = session?.user as SessionUser | undefined;
   const isAdmin = !!user?.isadmin;
 
   const filteredSections = useMemo(
-    () => filterSectionsForUser(navSections, isAdmin),
-    [isAdmin],
+    () => (isPending ? [] : filterSectionsForUser(navSections, isAdmin)),
+    [isAdmin, isPending],
   );
 
   return (
