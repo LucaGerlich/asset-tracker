@@ -42,10 +42,26 @@ export async function GET() {
       prisma.user.count({ where: { organizationId: user.organizationId } }),
     ]);
 
-    const maxAssets =
+    // Use plan-defined limits as the source of truth.
+    // Fall back to stored values only if they're higher (custom override).
+    const planConfig = PLANS[plan] ?? PLANS.starter;
+    const planMaxAssets =
+      planConfig.maxAssets === -1 ? -1 : planConfig.maxAssets;
+    const planMaxUsers = planConfig.maxUsers === -1 ? -1 : planConfig.maxUsers;
+    const storedMaxAssets =
       org.maxAssets === -1 || org.maxAssets >= 999999 ? -1 : org.maxAssets;
-    const maxUsers =
+    const storedMaxUsers =
       org.maxUsers === -1 || org.maxUsers >= 999999 ? -1 : org.maxUsers;
+
+    // Use whichever is more generous (plan def or stored value)
+    const maxAssets =
+      planMaxAssets === -1 || storedMaxAssets === -1
+        ? -1
+        : Math.max(planMaxAssets, storedMaxAssets);
+    const maxUsers =
+      planMaxUsers === -1 || storedMaxUsers === -1
+        ? -1
+        : Math.max(planMaxUsers, storedMaxUsers);
 
     return NextResponse.json({
       plan,
