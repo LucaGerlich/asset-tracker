@@ -34,6 +34,7 @@ import {
   CalendarDays,
   HelpCircle,
   Copy,
+  ShoppingCart,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -153,6 +154,12 @@ export const navSections: NavSection[] = [
         label: "Approvals",
         href: "/approvals",
         icon: ClipboardCheck,
+        adminOnly: true,
+      },
+      {
+        label: "Procurement",
+        href: "/procurement",
+        icon: ShoppingCart,
         adminOnly: true,
       },
       { label: "QR Scanner", href: "/scanner", icon: QrCode },
