@@ -5,9 +5,9 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import LandingPage from "@/components/marketing/LandingPage";
 
 export const metadata = {
-  title: "Asset Tracker - Modern Asset Management for Teams",
+  title: "Trackly - IT Asset Management, Without the Complexity",
   description:
-    "Track, manage, and optimize your organization's assets, licenses, and consumables with Asset Tracker.",
+    "Track hardware, software licenses, and consumables across your organization. Built for IT teams that need clarity, not chaos.",
 };
 
 export default async function Home() {
