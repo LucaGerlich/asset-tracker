@@ -5,10 +5,10 @@
  *   - prisma/migrations/     (CREATE SCHEMA, SET search_path, table_schema refs)
  *
  * Usage:
- *   DB_SCHEMA=public node prisma/set-schema.mjs
+ *   DB_SCHEMA=assettool node prisma/set-schema.mjs
  *
- * When DB_SCHEMA matches the value already in the files (default "assettool"),
- * nothing changes and migration checksums stay intact.
+ * Detects the current schema name from the Prisma schema file and replaces
+ * it with the target. Works bidirectionally (public↔assettool or any other name).
  */
 
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "fs";
@@ -28,7 +28,10 @@ if (!process.env.DB_SCHEMA) {
       if (eqIdx === -1) continue;
       const key = trimmed.slice(0, eqIdx).trim();
       let val = trimmed.slice(eqIdx + 1).trim();
-      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
         val = val.slice(1, -1);
       }
       if (!process.env[key]) process.env[key] = val;
@@ -37,26 +40,31 @@ if (!process.env.DB_SCHEMA) {
 }
 
 const TARGET = process.env.DB_SCHEMA || "assettool";
-const SOURCE = "assettool"; // the schema name currently hardcoded in all files
+
+// --- Detect current schema from prisma/schema.prisma ---
+const schemaPath = join(__dirname, "schema.prisma");
+let schema = readFileSync(schemaPath, "utf-8");
+
+// Extract the current schema name from: schemas = ["<name>"]
+const schemasMatch = schema.match(/schemas\s*=\s*\["([^"]+)"\]/);
+const SOURCE = schemasMatch ? schemasMatch[1] : "assettool";
 
 if (TARGET === SOURCE) {
-  console.log(`[set-schema] DB_SCHEMA="${TARGET}" (unchanged, skipping)`);
+  console.log(`[set-schema] DB_SCHEMA="${TARGET}" (already set, skipping)`);
   process.exit(0);
 }
 
 console.log(`[set-schema] Replacing schema "${SOURCE}" → "${TARGET}"`);
 
 // --- 1. Patch prisma/schema.prisma ---
-const schemaPath = join(__dirname, "schema.prisma");
-let schema = readFileSync(schemaPath, "utf-8");
 
-// schemas = ["assettool"]  →  schemas = ["public"]
+// schemas = ["<source>"]  →  schemas = ["<target>"]
 schema = schema.replace(
   new RegExp(`schemas\\s*=\\s*\\["${SOURCE}"\\]`, "g"),
   `schemas  = ["${TARGET}"]`,
 );
 
-// @@schema("assettool")  →  @@schema("public")
+// @@schema("<source>")  →  @@schema("<target>")
 schema = schema.replace(
   new RegExp(`@@schema\\("${SOURCE}"\\)`, "g"),
   `@@schema("${TARGET}")`,
@@ -79,28 +87,28 @@ if (existsSync(migrationsDir)) {
     const original = readFileSync(sqlPath, "utf-8");
     let sql = original;
 
-    // CREATE SCHEMA IF NOT EXISTS "assettool"  →  "public"
+    // CREATE SCHEMA IF NOT EXISTS "<source>"  →  "<target>"
     sql = sql.replace(
       new RegExp(`CREATE SCHEMA IF NOT EXISTS "${SOURCE}"`, "g"),
       `CREATE SCHEMA IF NOT EXISTS "${TARGET}"`,
     );
 
-    // SET search_path TO "assettool"  →  "public"
+    // SET search_path TO "<source>"  →  "<target>"
     sql = sql.replace(
       new RegExp(`SET search_path TO "${SOURCE}"`, "g"),
       `SET search_path TO "${TARGET}"`,
     );
 
-    // table_schema = 'assettool'  →  'public'
+    // table_schema = '<source>'  →  '<target>'
     sql = sql.replace(
       new RegExp(`table_schema = '${SOURCE}'`, "g"),
       `table_schema = '${TARGET}'`,
     );
 
-    // "assettool"."table_name"  →  "public"."table_name" (schema-qualified references)
+    // "<source>"."table_name"  →  "<target>"."table_name"
     sql = sql.replace(
       new RegExp(`"${SOURCE}"\\."`, "g"),
-      `"${TARGET}"."`
+      `"${TARGET}"."`,
     );
 
     if (sql !== original) {
