@@ -1,13 +1,17 @@
-import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { createPageMetadata } from "@/lib/seo";
+import { JsonLd } from "@/components/marketing/JsonLd";
+import { getBreadcrumbSchema } from "@/lib/structured-data";
 import MarketingNav from "@/components/marketing/MarketingNav";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 
-export const metadata: Metadata = {
-  title: "Asset Tracker - Terms of Service",
-  description: "Terms of service for using the Asset Tracker platform.",
-};
+export const metadata = createPageMetadata({
+  title: "Terms of Service",
+  description:
+    "Terms of service for using the Asset Tracker platform. Read our usage policies, data ownership, and acceptable use guidelines.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   if (isFeatureEnabled("selfHosted")) {
@@ -15,6 +19,12 @@ export default function TermsPage() {
   }
   return (
     <div className="bg-background flex min-h-screen flex-col">
+      <JsonLd
+        data={getBreadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Terms of Service", path: "/terms" },
+        ])}
+      />
       <MarketingNav />
 
       <main className="flex-1">

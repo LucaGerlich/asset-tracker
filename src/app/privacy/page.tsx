@@ -1,14 +1,17 @@
-import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { createPageMetadata } from "@/lib/seo";
+import { JsonLd } from "@/components/marketing/JsonLd";
+import { getBreadcrumbSchema } from "@/lib/structured-data";
 import MarketingNav from "@/components/marketing/MarketingNav";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 
-export const metadata: Metadata = {
-  title: "Asset Tracker - Privacy Policy",
+export const metadata = createPageMetadata({
+  title: "Privacy Policy",
   description:
-    "Learn how Asset Tracker collects, uses, and protects your personal information.",
-};
+    "Learn how Asset Tracker collects, uses, and protects your personal information. GDPR-compliant data handling.",
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   if (isFeatureEnabled("selfHosted")) {
@@ -16,6 +19,12 @@ export default function PrivacyPage() {
   }
   return (
     <div className="bg-background flex min-h-screen flex-col">
+      <JsonLd
+        data={getBreadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Privacy Policy", path: "/privacy" },
+        ])}
+      />
       <MarketingNav />
 
       <main className="flex-1">

@@ -1,4 +1,5 @@
 import "./globals.css";
+import type { Metadata, Viewport } from "next";
 import { Providers } from "../lib/providers";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
@@ -11,24 +12,37 @@ import AppShell from "../components/AppShell";
 import { Toaster } from "sonner";
 import { UserPreferencesProvider } from "../contexts/UserPreferencesContext";
 import { cookies, headers } from "next/headers";
+import { getBaseUrl } from "@/lib/url";
+import { SITE_CONFIG } from "@/lib/seo";
 
-export const metadata = {
-  title: "Asset Tracker",
-  description:
-    "Track and manage your organization's assets, licenses, and consumables",
+export const metadata: Metadata = {
+  metadataBase: new URL(getBaseUrl()),
+  title: {
+    default: SITE_CONFIG.defaultTitle,
+    template: SITE_CONFIG.titleTemplate,
+  },
+  description: SITE_CONFIG.description,
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Asset Tracker",
+    title: SITE_CONFIG.siteName,
   },
   icons: {
     icon: "/icons/icon.svg",
     apple: "/icons/icon.svg",
   },
+  openGraph: {
+    siteName: SITE_CONFIG.siteName,
+    locale: SITE_CONFIG.locale,
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   themeColor: "#0f172a",
 };
 
