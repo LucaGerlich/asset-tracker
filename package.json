@@ -120,7 +120,13 @@
     "typescript": "^6.0.3",
     "vite": "^8.0.10",
     "vitest": "^4.1.5",
+    "dotenv": "^16.6.0",
     "vitest-mock-extended": "^4.0.0"
+  },
+  "optionalDependencies": {
+    "@aws-sdk/client-s3": "^3.800.0",
+    "@aws-sdk/s3-request-presigner": "^3.800.0",
+    "@azure/storage-blob": "^12.27.0"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -141,6 +147,8 @@
     "minimatch": ">=3.1.3",
     "picomatch": ">=2.3.2",
     "rollup": ">=4.59.0",
+    "tmp": ">=0.2.6",
+    "ws": ">=8.17.1",
     "@types/react": "19.2.14"
   }
 }
