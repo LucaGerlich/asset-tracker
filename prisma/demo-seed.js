@@ -329,7 +329,7 @@ async function createLocations() {
   return created;
 }
 
-async function createModels(manufacturers) {
+async function createModels(_manufacturers) {
   console.log("Creating models...");
   const modelData = [
     "MacBook Pro 14",
@@ -826,7 +826,7 @@ async function createDepartments(organization) {
 }
 
 // Create default roles for RBAC
-async function createDefaultRoles(organization) {
+async function createDefaultRoles(_organization) {
   console.log("Creating default roles...");
 
   const roles = [];

@@ -17,7 +17,6 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Load .env if DB_SCHEMA isn't already set
 if (!process.env.DB_SCHEMA) {
   const envPath = resolve(__dirname, "..", ".env");
   if (existsSync(envPath)) {
@@ -41,7 +40,6 @@ if (!process.env.DB_SCHEMA) {
 
 const TARGET = process.env.DB_SCHEMA || "assettool";
 
-// --- Detect current schema from prisma/schema.prisma ---
 const schemaPath = join(__dirname, "schema.prisma");
 let schema = readFileSync(schemaPath, "utf-8");
 
@@ -50,13 +48,8 @@ const schemasMatch = schema.match(/schemas\s*=\s*\["([^"]+)"\]/);
 const SOURCE = schemasMatch ? schemasMatch[1] : "assettool";
 
 if (TARGET === SOURCE) {
-  console.log(`[set-schema] DB_SCHEMA="${TARGET}" (already set, skipping)`);
   process.exit(0);
 }
-
-console.log(`[set-schema] Replacing schema "${SOURCE}" → "${TARGET}"`);
-
-// --- 1. Patch prisma/schema.prisma ---
 
 // schemas = ["<source>"]  →  schemas = ["<target>"]
 schema = schema.replace(
@@ -71,9 +64,7 @@ schema = schema.replace(
 );
 
 writeFileSync(schemaPath, schema);
-console.log(`  ✓ schema.prisma`);
 
-// --- 2. Patch migration SQL files ---
 const migrationsDir = join(__dirname, "migrations");
 if (existsSync(migrationsDir)) {
   const migrations = readdirSync(migrationsDir, { withFileTypes: true })
@@ -113,9 +104,6 @@ if (existsSync(migrationsDir)) {
 
     if (sql !== original) {
       writeFileSync(sqlPath, sql);
-      console.log(`  ✓ migrations/${migration}`);
     }
   }
 }
-
-console.log(`[set-schema] Done.`);

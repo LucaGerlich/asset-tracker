@@ -16,7 +16,6 @@ const pool = new pg.Pool({
   ssl: isCloudDatabase ? { rejectUnauthorized: false } : false,
 });
 
-// --- Status Types ---
 const STATUS_TYPES = [
   "Active",
   "Available",
@@ -30,7 +29,6 @@ const STATUS_TYPES = [
   "Disposed",
 ];
 
-// --- Asset Categories ---
 const ASSET_CATEGORIES = [
   "Laptop",
   "Desktop",
@@ -48,7 +46,6 @@ const ASSET_CATEGORIES = [
   "Other",
 ];
 
-// --- Accessory Categories ---
 const ACCESSORY_CATEGORIES = [
   "Keyboard",
   "Mouse",
@@ -64,7 +61,6 @@ const ACCESSORY_CATEGORIES = [
   "Other",
 ];
 
-// --- Consumable Categories ---
 const CONSUMABLE_CATEGORIES = [
   "Ink Cartridge",
   "Toner",
@@ -77,7 +73,6 @@ const CONSUMABLE_CATEGORIES = [
   "Other",
 ];
 
-// --- Licence Categories ---
 const LICENCE_CATEGORIES = [
   "Operating System",
   "Productivity Software",
@@ -117,54 +112,40 @@ async function main() {
     // Set search_path to the correct schema
     await client.query(`SET search_path TO "${dbSchema}", public`);
 
-    console.log(`Using schema: ${dbSchema}`);
-
-    console.log("Seeding status types...");
     const st = await seedTable(
       client,
       "statusType",
       "statustypename",
       STATUS_TYPES,
     );
-    console.log(`  ✓ ${st.created} created, ${st.skipped} already existed`);
 
-    console.log("Seeding asset categories...");
     const ac = await seedTable(
       client,
       "assetCategoryType",
       "assetcategorytypename",
       ASSET_CATEGORIES,
     );
-    console.log(`  ✓ ${ac.created} created, ${ac.skipped} already existed`);
 
-    console.log("Seeding accessory categories...");
     const acc = await seedTable(
       client,
       "accessorieCategoryType",
       "accessoriecategorytypename",
       ACCESSORY_CATEGORIES,
     );
-    console.log(`  ✓ ${acc.created} created, ${acc.skipped} already existed`);
 
-    console.log("Seeding consumable categories...");
     const cc = await seedTable(
       client,
       "consumableCategoryType",
       "consumablecategorytypename",
       CONSUMABLE_CATEGORIES,
     );
-    console.log(`  ✓ ${cc.created} created, ${cc.skipped} already existed`);
 
-    console.log("Seeding licence categories...");
     const lc = await seedTable(
       client,
       "licenceCategoryType",
       "licencecategorytypename",
       LICENCE_CATEGORIES,
     );
-    console.log(`  ✓ ${lc.created} created, ${lc.skipped} already existed`);
-
-    console.log("Seed complete!");
   } finally {
     client.release();
     await pool.end();

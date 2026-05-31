@@ -15,7 +15,6 @@ function loadEnv() {
     if (eqIdx === -1) continue;
     const key = trimmed.slice(0, eqIdx).trim();
     let val = trimmed.slice(eqIdx + 1).trim();
-    // Strip surrounding quotes
     if (
       (val.startsWith('"') && val.endsWith('"')) ||
       (val.startsWith("'") && val.endsWith("'"))

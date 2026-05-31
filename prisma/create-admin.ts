@@ -37,8 +37,6 @@ function ask(question: string): Promise<string> {
 }
 
 async function main() {
-  console.log("\n=== Create Admin User ===\n");
-
   const email = await ask("Email: ");
   const firstname = await ask("First name: ");
   const lastname = await ask("Last name: ");
@@ -53,7 +51,6 @@ async function main() {
 
   const client = await pool.connect();
   try {
-    // Check if user already exists
     const existing = await client.query(
       `SELECT userid FROM "user" WHERE email = $1 OR username = $2 LIMIT 1`,
       [email.toLowerCase(), username],
@@ -77,19 +74,24 @@ async function main() {
 
     await client.query("BEGIN");
 
-    // Create organization
     const orgResult = await client.query(
       `INSERT INTO "organizations" (name, slug, "updatedAt") VALUES ($1, $2, NOW()) RETURNING id`,
       [orgName, slug],
     );
     const orgId = orgResult.rows[0].id;
 
-    // Create user
     const userResult = await client.query(
       `INSERT INTO "user" (firstname, lastname, email, username, password, isadmin, canrequest, "organizationId", creation_date)
        VALUES ($1, $2, $3, $4, $5, true, true, $6, NOW())
        RETURNING userid, email, username`,
-      [firstname, lastname, email.toLowerCase(), username, hashedPassword, orgId],
+      [
+        firstname,
+        lastname,
+        email.toLowerCase(),
+        username,
+        hashedPassword,
+        orgId,
+      ],
     );
     const user = userResult.rows[0];
 
@@ -101,12 +103,6 @@ async function main() {
     );
 
     await client.query("COMMIT");
-
-    console.log(`\nAdmin user created successfully!`);
-    console.log(`  ID: ${user.userid}`);
-    console.log(`  Email: ${user.email}`);
-    console.log(`  Username: ${user.username}`);
-    console.log(`\nYou can now log in at /login\n`);
   } catch (e) {
     await client.query("ROLLBACK");
     throw e;
