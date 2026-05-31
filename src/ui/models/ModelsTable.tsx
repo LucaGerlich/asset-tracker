@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -15,7 +15,7 @@ const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 export default function ModelsTable({ items }) {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState("");
-  const [rowsPerPage, setRowsPerPage] = useState(
+  const [rowsPerPage, _setRowsPerPage] = useState(
     Number(ROWS_PER_PAGE_OPTIONS[0]),
   );
   const [page, setPage] = useState(1);
@@ -50,7 +50,8 @@ export default function ModelsTable({ items }) {
       if (!res.ok) throw new Error("Delete failed");
       toast.success("Deleted successfully");
       router.refresh();
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete model", err);
       toast.error("Failed to delete");
     }
   };

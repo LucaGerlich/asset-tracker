@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import {
   Table,
   TableHeader,
@@ -30,13 +29,13 @@ export default function ResponsiveTable({
 }: ResponsiveTableProps) {
   const primaryColumn = columns.find((col) => col.primary) || columns[0];
   const secondaryColumns = columns.filter(
-    (col) => col.key !== primaryColumn?.key
+    (col) => col.key !== primaryColumn?.key,
   );
 
   if (!data || data.length === 0) {
     return (
       <div className="w-full rounded-md border p-8 text-center">
-        <p className="text-sm text-muted-foreground">No data available</p>
+        <p className="text-muted-foreground text-sm">No data available</p>
       </div>
     );
   }
@@ -44,16 +43,20 @@ export default function ResponsiveTable({
   return (
     <>
       {/* Mobile: Stacked card view */}
-      <div className="block md:hidden space-y-3">
+      <div className="block space-y-3 md:hidden">
         {data.map((row, index) => (
           <Card
             key={(row.id as string | number) ?? index}
-            className={onRowClick ? "cursor-pointer hover-lift active:scale-[0.98] transition-transform" : ""}
+            className={
+              onRowClick
+                ? "hover-lift cursor-pointer transition-transform active:scale-[0.98]"
+                : ""
+            }
             onClick={onRowClick ? () => onRowClick(row) : undefined}
           >
             <CardContent className="px-4 py-3">
               {primaryColumn && (
-                <p className="font-semibold text-sm mb-2 text-foreground">
+                <p className="text-foreground mb-2 text-sm font-semibold">
                   {String(row[primaryColumn.key] ?? "")}
                 </p>
               )}
@@ -66,7 +69,7 @@ export default function ResponsiveTable({
                     <span className="text-muted-foreground shrink-0">
                       {col.label}
                     </span>
-                    <span className="text-right truncate">
+                    <span className="truncate text-right">
                       {String(row[col.key] ?? "-")}
                     </span>
                   </div>
@@ -78,7 +81,7 @@ export default function ResponsiveTable({
       </div>
 
       {/* Desktop: Standard table view */}
-      <div className="hidden md:block overflow-x-auto rounded-md border">
+      <div className="hidden overflow-x-auto rounded-md border md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -93,7 +96,7 @@ export default function ResponsiveTable({
                 key={(row.id as string | number) ?? index}
                 className={
                   onRowClick
-                    ? "cursor-pointer hover:bg-accent transition-colors"
+                    ? "hover:bg-accent cursor-pointer transition-colors"
                     : ""
                 }
                 onClick={onRowClick ? () => onRowClick(row) : undefined}

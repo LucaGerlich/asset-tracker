@@ -117,8 +117,9 @@ export function VirtualTable<T>({
         <TableBody>
           {/* Top spacer to position visible rows correctly */}
           {virtualItems.length > 0 && (
-            <tr>
+            <tr aria-hidden="true">
               <td
+                aria-hidden="true"
                 colSpan={columns.length + (headerPrefix !== undefined ? 1 : 0)}
                 style={{ height: virtualItems[0].start, padding: 0 }}
               />
@@ -144,8 +145,9 @@ export function VirtualTable<T>({
           })}
           {/* Bottom spacer */}
           {virtualItems.length > 0 && (
-            <tr>
+            <tr aria-hidden="true">
               <td
+                aria-hidden="true"
                 colSpan={columns.length + (headerPrefix !== undefined ? 1 : 0)}
                 style={{
                   height: totalSize - virtualItems[virtualItems.length - 1].end,

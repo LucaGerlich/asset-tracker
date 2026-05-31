@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -26,7 +26,7 @@ export default function ComponentCategoriesTable({
 }: ComponentCategoriesTableProps) {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState("");
-  const [rowsPerPage, setRowsPerPage] = useState(
+  const [rowsPerPage, _setRowsPerPage] = useState(
     Number(ROWS_PER_PAGE_OPTIONS[0]),
   );
   const [page, setPage] = useState(1);
@@ -60,7 +60,8 @@ export default function ComponentCategoriesTable({
       if (!res.ok) throw new Error("Delete failed");
       toast.success("Deleted successfully");
       router.refresh();
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete component category", err);
       toast.error("Failed to delete");
     }
   };

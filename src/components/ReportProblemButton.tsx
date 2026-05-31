@@ -65,7 +65,8 @@ export default function ReportProblemButton({
       setTitle(`Issue with ${entityName}`);
       setDescription("");
       setPriority("medium");
-    } catch {
+    } catch (err) {
+      console.error("Failed to report problem", err);
       toast.error("Failed to report problem");
     } finally {
       setSubmitting(false);

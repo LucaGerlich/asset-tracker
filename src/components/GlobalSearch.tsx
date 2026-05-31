@@ -10,7 +10,17 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Loader2, Box, User, Puzzle, Key, Package, MapPin, Factory } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  Box,
+  User,
+  Puzzle,
+  Key,
+  Package,
+  MapPin,
+  Factory,
+} from "lucide-react";
 
 interface SearchResult {
   id: string;
@@ -58,13 +68,19 @@ function getTypeBadge(type: string) {
   };
 
   return (
-    <Badge variant="outline" className={colors[type] || "bg-gray-100 text-gray-700"}>
+    <Badge
+      variant="outline"
+      className={colors[type] || "bg-gray-100 text-gray-700"}
+    >
       {type}
     </Badge>
   );
 }
 
-export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
+export default function GlobalSearch({
+  open,
+  onOpenChange,
+}: GlobalSearchProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -79,7 +95,9 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(
+        `/api/search?q=${encodeURIComponent(searchQuery)}`,
+      );
       const data = await response.json();
       setResults(data.results || []);
       setSelectedIndex(0);
@@ -143,27 +161,30 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
         </DialogHeader>
 
         <div className="flex items-center border-b px-4">
-          <Search className="h-5 w-5 text-muted-foreground mr-3" />
+          <Search className="text-muted-foreground mr-3 h-5 w-5" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search assets, users, accessories..."
-            className="border-0 focus-visible:ring-0 h-14 text-lg"
+            className="h-14 border-0 text-lg focus-visible:ring-0"
+             
             autoFocus
           />
-          {isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+          {isLoading && (
+            <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+          )}
         </div>
 
         <div className="max-h-[400px] overflow-y-auto p-2">
           {query.length > 0 && query.length < 2 && (
-            <p className="text-center text-muted-foreground py-8">
+            <p className="text-muted-foreground py-8 text-center">
               Type at least 2 characters to search
             </p>
           )}
 
           {query.length >= 2 && !isLoading && results.length === 0 && (
-            <p className="text-center text-muted-foreground py-8">
+            <p className="text-muted-foreground py-8 text-center">
               No results found for &quot;{query}&quot;
             </p>
           )}
@@ -171,39 +192,46 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
           {results.length > 0 && (
             <div className="space-y-4">
               {Object.entries(
-                results.reduce((acc, result) => {
-                  if (!acc[result.type]) acc[result.type] = [];
-                  acc[result.type].push(result);
-                  return acc;
-                }, {} as Record<string, typeof results>)
+                results.reduce(
+                  (acc, result) => {
+                    if (!acc[result.type]) acc[result.type] = [];
+                    acc[result.type].push(result);
+                    return acc;
+                  },
+                  {} as Record<string, typeof results>,
+                ),
               ).map(([type, items]) => (
                 <div key={type} className="space-y-1">
-                  <div className="text-lg font-semibold text-muted-foreground first-letter:uppercase">
+                  <div className="text-muted-foreground text-lg font-semibold first-letter:uppercase">
                     {type}
                   </div>
                   {items.map((result) => (
-                    <div
+                    <button
+                      type="button"
                       key={`${result.type}-${result.id}`}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedIndex === results.indexOf(result)
-                        ? "bg-neutral-100"
-                        : "hover:bg-neutral-100"
-                        }`}
+                      className={`flex w-full cursor-pointer items-center gap-3 rounded-lg p-3 text-left transition-colors ${
+                        selectedIndex === results.indexOf(result)
+                          ? "bg-neutral-100"
+                          : "hover:bg-neutral-100"
+                      }`}
                       onClick={() => handleResultClick(result)}
-                      onMouseEnter={() => setSelectedIndex(results.indexOf(result))}
+                      onMouseEnter={() =>
+                        setSelectedIndex(results.indexOf(result))
+                      }
                     >
-                      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted">
+                      <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-lg">
                         {getTypeIcon(result.type)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{result.label}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{result.label}</p>
                         {result.sublabel && (
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className="text-muted-foreground truncate text-sm">
                             {result.sublabel}
                           </p>
                         )}
                       </div>
                       {getTypeBadge(result.type)}
-                    </div>
+                    </button>
                   ))}
                 </div>
               ))}
@@ -211,27 +239,33 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
           )}
         </div>
 
-        <div className="border-t px-4 py-3 text-xs text-muted-foreground flex items-center justify-between">
+        <div className="text-muted-foreground flex items-center justify-between border-t px-4 py-3 text-xs">
           <div className="flex items-center gap-4">
             <span>
-              <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">↑</kbd>
-              <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-1">↓</kbd>
+              <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">↑</kbd>
+              <kbd className="bg-muted ml-1 rounded px-1.5 py-0.5 text-xs">
+                ↓
+              </kbd>
               <span className="ml-2">Navigate</span>
             </span>
             <span>
-              <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Enter</kbd>
+              <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">
+                Enter
+              </kbd>
               <span className="ml-2">Select</span>
             </span>
             <span>
-              <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Esc</kbd>
+              <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">Esc</kbd>
               <span className="ml-2">Close</span>
             </span>
           </div>
           <span>
-            Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> to open
+            Press{" "}
+            <kbd className="bg-muted rounded px-1.5 py-0.5 text-xs">⌘K</kbd> to
+            open
           </span>
         </div>
       </DialogContent>
-    </Dialog >
+    </Dialog>
   );
 }

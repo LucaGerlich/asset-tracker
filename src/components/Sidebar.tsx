@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/collapsible";
 import {
   PanelLeftClose,
-  PanelRightOpen,
   ChevronDown,
   ChevronsUpDown,
   LogOut,
@@ -104,8 +103,7 @@ const Sidebar = ({ initialCollapsed = false }) => {
 
   return (
     <TooltipProvider>
-      <aside
-        role="navigation"
+      <nav
         aria-label="Main navigation"
         className={cn(
           "border-border bg-card/80 hidden border-r backdrop-blur-sm transition-[width] duration-300 ease-in-out lg:flex lg:flex-col",
@@ -391,7 +389,7 @@ const Sidebar = ({ initialCollapsed = false }) => {
             v{packageJson.version}
           </p>
         )}
-      </aside>
+      </nav>
     </TooltipProvider>
   );
 };

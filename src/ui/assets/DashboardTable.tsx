@@ -1,11 +1,5 @@
 "use client";
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useUrlState } from "@/hooks/useUrlState";
 import { usePersistentState } from "@/hooks/usePersistentState";
@@ -60,8 +54,7 @@ import {
   CalendarPlusIcon,
 } from "../Icons";
 import { capitalize } from "../../utils/utils";
-import QRCode from "react-qr-code";
-import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
+import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import SavedFilters from "@/components/SavedFilters";
 import PrintLabelDialog from "@/components/PrintLabelDialog";
@@ -382,8 +375,6 @@ export default function App({
           throw new Error(errorData.error || "Error unassigning asset");
         }
 
-        const result = await response.json();
-        // Remove mapping locally
         setUserAssetsData((prev) =>
           prev.filter((ua) => ua.assetid !== assetId),
         );
@@ -480,7 +471,10 @@ export default function App({
       setSelectedUser(null);
     } else if (value instanceof Set) {
       // If it's a Set, get the first value
-      setSelectedUser(value.values().next().value || (value as any).anchorKey);
+      setSelectedUser(
+        value.values().next().value ||
+          (value as Set<string> & { anchorKey?: string }).anchorKey,
+      );
     } else {
       // Otherwise use the value directly (string from Select)
       setSelectedUser(value);
@@ -980,23 +974,12 @@ export default function App({
     ],
   );
 
-  const onRowsPerPageChange = useCallback(
-    (e) => {
-      setRowsPerPage(e.target.value);
-    },
-    [setRowsPerPage],
-  );
-
   const onSearchChange = useCallback(
     (value) => {
       setFilterValue(value);
     },
     [setFilterValue],
   );
-
-  const onClear = useCallback(() => {
-    setFilterValue("");
-  }, [setFilterValue]);
 
   const refreshData = useCallback(
     async (auto = false) => {
@@ -1057,19 +1040,18 @@ export default function App({
 
   // Auto refresh when returning to tab or when page becomes visible
   useEffect(() => {
-    const onFocus = () => refreshData(true);
     const onVisibility = () => {
       if (document.visibilityState === "visible") refreshData(true);
     };
-    window.addEventListener("focus", onFocus);
+    const handleFocus = refreshData.bind(null, true);
+    window.addEventListener("focus", handleFocus);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [refreshData]);
 
-  // Initialize lastUpdated and mount flag on client
   useEffect(() => {
     setLastUpdated(new Date());
     setMounted(true);
@@ -1296,7 +1278,8 @@ export default function App({
                         a.click();
                         URL.revokeObjectURL(url);
                         toast.success("QR sheet downloaded");
-                      } catch {
+                      } catch (err) {
+                        console.error("Failed to download QR sheet", err);
                         toast.error("Failed to download QR sheet");
                       }
                     }}
@@ -1390,6 +1373,8 @@ export default function App({
     setVisibleColumns,
     showAll,
     isAdmin,
+    sortDescriptor,
+    setSortDescriptor,
   ]);
 
   const bottomContent = useMemo(() => {
@@ -1674,8 +1659,7 @@ export default function App({
                         const all =
                           sortedItems.length > 0 &&
                           sortedItems.every((i) => selectedKeys.has(i.assetid));
-                        (el as unknown as HTMLInputElement).indeterminate =
-                          some && !all;
+                        Object.assign(el, { indeterminate: some && !all });
                       }
                     }}
                     onCheckedChange={(checked) => {
@@ -1712,8 +1696,9 @@ export default function App({
               ) : (
                 <>
                   {virtualizer.getVirtualItems().length > 0 && (
-                    <tr>
+                    <tr aria-hidden="true">
                       <td
+                        aria-hidden="true"
                         colSpan={headerColumns.length + 1}
                         style={{
                           height: virtualizer.getVirtualItems()[0].start,
@@ -1753,8 +1738,9 @@ export default function App({
                     );
                   })}
                   {virtualizer.getVirtualItems().length > 0 && (
-                    <tr>
+                    <tr aria-hidden="true">
                       <td
+                        aria-hidden="true"
                         colSpan={headerColumns.length + 1}
                         style={{
                           height:
@@ -1791,8 +1777,7 @@ export default function App({
                         const all =
                           sortedItems.length > 0 &&
                           sortedItems.every((i) => selectedKeys.has(i.assetid));
-                        (el as unknown as HTMLInputElement).indeterminate =
-                          some && !all;
+                        Object.assign(el, { indeterminate: some && !all });
                       }
                     }}
                     onCheckedChange={(checked) => {
@@ -2001,8 +1986,12 @@ export default function App({
                         {assignedCount} selected item(s) are currently assigned
                         to users.
                       </p>
-                      <label className="flex items-center gap-2 text-sm">
+                      <label
+                        htmlFor="confirm-assigned-delete"
+                        className="flex items-center gap-2 text-sm"
+                      >
                         <Checkbox
+                          id="confirm-assigned-delete"
                           checked={confirmAssigned}
                           onCheckedChange={(checked) =>
                             setConfirmAssigned(checked === true)
@@ -2096,7 +2085,6 @@ export default function App({
               (ua) => ua.assetid === selectedAsset?.assetid,
             );
 
-            // Build the list of statuses allowed for this transition
             const currentStatusId = selectedAsset?.statustypeid;
             let allowedStatuses = status;
 

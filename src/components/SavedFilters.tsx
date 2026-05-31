@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -71,7 +71,7 @@ export default function SavedFilters({
         const parsed = JSON.parse(defaultFilter.filters);
         onApplyFilter(parsed);
       } catch {
-        // Invalid filter data
+        /* malformed saved filter JSON is silently skipped */
       }
     }
     // Only on initial load of savedFilters
@@ -103,7 +103,8 @@ export default function SavedFilters({
       setFilterName("");
       setIsDefault(false);
       fetchFilters();
-    } catch {
+    } catch (err) {
+      console.error("Failed to save filter", err);
       toast.error("Failed to save filter");
     }
   };
@@ -113,7 +114,8 @@ export default function SavedFilters({
       const parsed = JSON.parse(filter.filters);
       onApplyFilter(parsed);
       toast.success(`Applied filter: ${filter.name}`);
-    } catch {
+    } catch (err) {
+      console.error("Invalid filter data", err);
       toast.error("Invalid filter data");
     }
   };
@@ -124,7 +126,8 @@ export default function SavedFilters({
       if (!res.ok) throw new Error("Failed to delete");
       toast.success("Filter deleted");
       fetchFilters();
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete filter", err);
       toast.error("Failed to delete filter");
     }
   };
@@ -138,7 +141,8 @@ export default function SavedFilters({
       });
       if (!res.ok) throw new Error("Failed to update");
       fetchFilters();
-    } catch {
+    } catch (err) {
+      console.error("Failed to update filter", err);
       toast.error("Failed to update filter");
     }
   };

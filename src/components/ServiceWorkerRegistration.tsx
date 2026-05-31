@@ -10,7 +10,6 @@ export default function ServiceWorkerRegistration() {
     navigator.serviceWorker
       .register("/sw.js")
       .then((registration) => {
-        // Check for updates on page load
         registration.update();
 
         registration.addEventListener("updatefound", () => {
@@ -23,9 +22,6 @@ export default function ServiceWorkerRegistration() {
               navigator.serviceWorker.controller
             ) {
               // New service worker available — you could show an update prompt here
-              console.log(
-                "New version of Asset Tracker available. Refresh to update."
-              );
             }
           });
         });

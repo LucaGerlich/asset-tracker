@@ -122,7 +122,7 @@ export default function PrintLabelDialog({
         }
       }
     } catch {
-      // Labels are optional
+      /* template fetch failure is non-critical; dialog still usable */
     }
   }, []);
 
@@ -179,7 +179,6 @@ export default function PrintLabelDialog({
     }
   };
 
-  /** Build the full data record for an asset, used by the template renderer */
   const buildAssetData = (asset: AssetData): Record<string, string> => {
     const qrCodeUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/assets/${asset.assetid}`;
     return {
@@ -321,7 +320,8 @@ export default function PrintLabelDialog({
       a.click();
       URL.revokeObjectURL(url);
       toast.success("PDF downloaded");
-    } catch {
+    } catch (err) {
+      console.error("Failed to download PDF", err);
       toast.error("Failed to download PDF");
     } finally {
       setIsDownloadingPdf(false);
@@ -445,14 +445,17 @@ export default function PrintLabelDialog({
           ) : (
             <>
               <div>
-                <label className="mb-1.5 block text-sm font-medium">
+                <label
+                  htmlFor="label-template-select"
+                  className="mb-1.5 block text-sm font-medium"
+                >
                   Template
                 </label>
                 <Select
                   value={selectedTemplateId}
                   onValueChange={setSelectedTemplateId}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="label-template-select">
                     <SelectValue placeholder="Select a template" />
                   </SelectTrigger>
                   <SelectContent>
@@ -510,14 +513,17 @@ export default function PrintLabelDialog({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">
+                  <label
+                    htmlFor="dymo-printer-select"
+                    className="mb-1.5 block text-sm font-medium"
+                  >
                     Printer
                   </label>
                   <Select
                     value={selectedPrinter}
                     onValueChange={setSelectedPrinter}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="dymo-printer-select">
                       <SelectValue placeholder="Select printer" />
                     </SelectTrigger>
                     <SelectContent>
@@ -531,14 +537,17 @@ export default function PrintLabelDialog({
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">
+                  <label
+                    htmlFor="dymo-label-size-select"
+                    className="mb-1.5 block text-sm font-medium"
+                  >
                     Label size
                   </label>
                   <Select
                     value={selectedDymoSize}
                     onValueChange={setSelectedDymoSize}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="dymo-label-size-select">
                       <SelectValue placeholder="Select label size" />
                     </SelectTrigger>
                     <SelectContent>
@@ -556,10 +565,14 @@ export default function PrintLabelDialog({
               {selectedDymoSize === "custom" && (
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
-                    <label className="text-muted-foreground mb-1 block text-xs">
+                    <label
+                      htmlFor="custom-label-width"
+                      className="text-muted-foreground mb-1 block text-xs"
+                    >
                       Width (in)
                     </label>
                     <Input
+                      id="custom-label-width"
                       type="number"
                       min="0.5"
                       max="8"
@@ -571,10 +584,14 @@ export default function PrintLabelDialog({
                   </div>
                   <span className="text-muted-foreground mt-5">×</span>
                   <div className="flex-1">
-                    <label className="text-muted-foreground mb-1 block text-xs">
+                    <label
+                      htmlFor="custom-label-height"
+                      className="text-muted-foreground mb-1 block text-xs"
+                    >
                       Height (in)
                     </label>
                     <Input
+                      id="custom-label-height"
                       type="number"
                       min="0.5"
                       max="8"

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ComponentType, SVGProps } from "react";
+import { ComponentType } from "react";
 import {
   Activity as LucideActivity,
   BadgeCheck as LucideBadgeCheck,

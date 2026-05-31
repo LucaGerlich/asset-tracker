@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -9,7 +9,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EditIcon, DeleteIcon, EyeIcon } from "../Icons";
 
@@ -33,7 +38,9 @@ function DashboardTable({ data, columns }) {
             </Avatar>
             <div className="flex flex-col">
               <span className="font-medium">{cellValue}</span>
-              <span className="text-sm text-muted-foreground">{user.email}</span>
+              <span className="text-muted-foreground text-sm">
+                {user.email}
+              </span>
             </div>
           </div>
         );
@@ -41,7 +48,7 @@ function DashboardTable({ data, columns }) {
         return (
           <div className="flex flex-col">
             <p className="text-bold text-sm capitalize">{cellValue}</p>
-            <p className="text-bold text-sm capitalize text-default-400">
+            <p className="text-bold text-default-400 text-sm capitalize">
               {user.team}
             </p>
           </div>
@@ -58,7 +65,7 @@ function DashboardTable({ data, columns }) {
             <div className="relative flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-lg text-muted-foreground cursor-pointer hover:opacity-80">
+                  <span className="text-muted-foreground cursor-pointer text-lg hover:opacity-80">
                     <EyeIcon />
                   </span>
                 </TooltipTrigger>
@@ -66,7 +73,7 @@ function DashboardTable({ data, columns }) {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-lg text-muted-foreground cursor-pointer hover:opacity-80">
+                  <span className="text-muted-foreground cursor-pointer text-lg hover:opacity-80">
                     <EditIcon />
                   </span>
                 </TooltipTrigger>
@@ -74,7 +81,7 @@ function DashboardTable({ data, columns }) {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-lg text-destructive cursor-pointer hover:opacity-80">
+                  <span className="text-destructive cursor-pointer text-lg hover:opacity-80">
                     <DeleteIcon />
                   </span>
                 </TooltipTrigger>
@@ -107,7 +114,9 @@ function DashboardTable({ data, columns }) {
           {data.map((item) => (
             <TableRow key={item.id}>
               {columns.map((column) => (
-                <TableCell key={column.uid}>{renderCell(item, column.uid)}</TableCell>
+                <TableCell key={column.uid}>
+                  {renderCell(item, column.uid)}
+                </TableCell>
               ))}
             </TableRow>
           ))}

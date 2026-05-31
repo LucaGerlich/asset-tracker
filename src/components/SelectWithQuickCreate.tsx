@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Popover,
   PopoverContent,
@@ -64,7 +64,7 @@ export default function SelectWithQuickCreate({
   options,
   onItemCreated,
   placeholder = "Select...",
-  label,
+  label: _label,
   id,
   apiEndpoint,
   nameField,
@@ -118,11 +118,13 @@ export default function SelectWithQuickCreate({
       <div className="flex gap-1.5">
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
+            { }
             <Button
               id={id}
               variant="outline"
               role="combobox"
               aria-expanded={open}
+              aria-controls={`${id}-listbox`}
               className="h-9 flex-1 justify-between font-normal"
             >
               <span
@@ -144,7 +146,7 @@ export default function SelectWithQuickCreate({
               <CommandInput
                 placeholder={`Search ${entityLabel.toLowerCase()}...`}
               />
-              <CommandList>
+              <CommandList id={`${id}-listbox`}>
                 <CommandEmpty>
                   No {entityLabel.toLowerCase()} found.
                 </CommandEmpty>
@@ -202,6 +204,7 @@ export default function SelectWithQuickCreate({
                   handleCreate();
                 }
               }}
+               
               autoFocus
             />
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Paperclip, Trash2, Star, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -47,7 +47,7 @@ export default function AssetAttachments({
         setAttachments(data);
       }
     } catch {
-      // Attachments are optional
+      /* attachment fetch failure is non-critical */
     }
   }, [assetId]);
 
@@ -103,7 +103,8 @@ export default function AssetAttachments({
       if (!res.ok) throw new Error("Delete failed");
       toast.success("Attachment deleted");
       setAttachments((prev) => prev.filter((a) => a.id !== id));
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete attachment", err);
       toast.error("Failed to delete attachment");
     }
   };
@@ -117,7 +118,8 @@ export default function AssetAttachments({
       });
       if (!res.ok) throw new Error("Failed to set primary");
       fetchAttachments();
-    } catch {
+    } catch (err) {
+      console.error("Failed to set as primary", err);
       toast.error("Failed to set as primary");
     }
   };

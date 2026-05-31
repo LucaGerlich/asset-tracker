@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -37,7 +37,9 @@ function DashboardTable({ data, columns }) {
             </Avatar>
             <div className="flex flex-col">
               <span className="text-sm font-medium">{cellValue}</span>
-              <span className="text-sm text-muted-foreground">{user.email}</span>
+              <span className="text-muted-foreground text-sm">
+                {user.email}
+              </span>
             </div>
           </div>
         );
@@ -45,7 +47,7 @@ function DashboardTable({ data, columns }) {
         return (
           <div className="flex flex-col">
             <p className="text-sm font-medium capitalize">{cellValue}</p>
-            <p className="text-sm text-muted-foreground capitalize">
+            <p className="text-muted-foreground text-sm capitalize">
               {user.team}
             </p>
           </div>
@@ -61,7 +63,7 @@ function DashboardTable({ data, columns }) {
           <div className="relative flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-lg text-muted-foreground cursor-pointer hover:text-foreground">
+                <span className="text-muted-foreground hover:text-foreground cursor-pointer text-lg">
                   <EyeIcon />
                 </span>
               </TooltipTrigger>
@@ -69,7 +71,7 @@ function DashboardTable({ data, columns }) {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-lg text-muted-foreground cursor-pointer hover:text-foreground">
+                <span className="text-muted-foreground hover:text-foreground cursor-pointer text-lg">
                   <EditIcon />
                 </span>
               </TooltipTrigger>
@@ -77,7 +79,7 @@ function DashboardTable({ data, columns }) {
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-lg text-destructive cursor-pointer hover:text-destructive/80">
+                <span className="text-destructive hover:text-destructive/80 cursor-pointer text-lg">
                   <DeleteIcon />
                 </span>
               </TooltipTrigger>

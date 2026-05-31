@@ -25,7 +25,7 @@ interface ReturnItemButtonProps {
 }
 
 export default function ReturnItemButton({
-  requestId,
+  requestId: _requestId,
   entityId,
   entityName,
   entityType,
@@ -37,7 +37,6 @@ export default function ReturnItemButton({
   const handleReturn = async () => {
     setSubmitting(true);
     try {
-      // Create a return_pending request — admin confirms collection
       const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

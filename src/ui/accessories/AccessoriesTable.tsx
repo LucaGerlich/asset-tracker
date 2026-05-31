@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useUrlState } from "@/hooks/useUrlState";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -58,8 +58,8 @@ export default function AccessoriesTable({
   locations,
   suppliers,
   isAdmin = true,
-  currentUserId = null,
-  userAccessoires = [],
+  currentUserId: _currentUserId = null,
+  userAccessoires: _userAccessoires = [],
 }) {
   // -- URL-synced state for shareable filter / pagination URLs --
   const [urlState, setUrlState] = useUrlState({
@@ -259,7 +259,8 @@ export default function AccessoriesTable({
       toast.success(`Deleted ${ids.length} accessory(ies)`);
       setSelectedKeys(new Set());
       setShowBulkDelete(false);
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to delete some accessories", err);
       toast.error("Failed to delete some accessories");
     } finally {
       setBulkDeleting(false);

@@ -48,14 +48,13 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      // Default error UI
       return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4">
-          <div className="max-w-md w-full bg-card border border-border rounded-lg p-6 shadow-lg">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+        <div className="bg-background flex min-h-screen items-center justify-center p-4">
+          <div className="bg-card border-border w-full max-w-md rounded-lg border p-6 shadow-lg">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="bg-destructive/10 flex h-12 w-12 items-center justify-center rounded-full">
                 <svg
-                  className="w-6 h-6 text-destructive"
+                  className="text-destructive h-6 w-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -68,21 +67,22 @@ export class ErrorBoundary extends Component<Props, State> {
                   />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-foreground text-xl font-semibold">
                 Something went wrong
               </h2>
             </div>
-            
+
             <p className="text-muted-foreground mb-4">
-              An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.
+              An unexpected error occurred. Please try refreshing the page or
+              contact support if the problem persists.
             </p>
 
             {process.env.NODE_ENV === "development" && this.state.error && (
               <details className="mb-4">
-                <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+                <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm font-medium">
                   Error Details (Development Only)
                 </summary>
-                <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-auto">
+                <pre className="bg-muted mt-2 overflow-auto rounded p-3 text-xs">
                   {this.state.error.toString()}
                   {this.state.error.stack && `\n\n${this.state.error.stack}`}
                 </pre>
@@ -92,13 +92,13 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="flex gap-3">
               <button
                 onClick={this.handleReset}
-                className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 flex-1 rounded px-4 py-2 transition-colors"
               >
                 Try Again
               </button>
               <button
-                onClick={() => window.location.href = "/"}
-                className="flex-1 px-4 py-2 bg-secondary text-secondary-foreground rounded hover:bg-secondary/80 transition-colors"
+                onClick={() => (window.location.href = "/")}
+                className="bg-secondary text-secondary-foreground hover:bg-secondary/80 flex-1 rounded px-4 py-2 transition-colors"
               >
                 Go Home
               </button>

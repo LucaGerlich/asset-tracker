@@ -78,7 +78,6 @@ export default function OnboardingWizard() {
       setOpen(true);
       setStep(0);
       setLoaded(true);
-      // Clean up the URL param
       const url = new URL(window.location.href);
       url.searchParams.delete("onboarding");
       router.replace(url.pathname + url.search, { scroll: false });

@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Label, Pie, PieChart } from "recharts";
 import {
   Card,
@@ -71,7 +70,6 @@ function AssetStatusChart({
 
   const total = activeData.reduce((sum, item) => sum + item.value, 0);
 
-  // Build the chartConfig dynamically from the data
   const chartConfig: ChartConfig = {
     value: { label: "Count" },
   };
@@ -84,7 +82,7 @@ function AssetStatusChart({
   });
 
   // Transform data so each item has `fill: "var(--color-key)"` for ChartContainer
-  const chartData = activeData.map((item, i) => ({
+  const chartData = activeData.map((item, _i) => ({
     status: toKey(item.name),
     value: item.value,
     fill: `var(--color-${toKey(item.name)})`,

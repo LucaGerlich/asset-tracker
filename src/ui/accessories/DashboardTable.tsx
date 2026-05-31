@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -81,7 +81,7 @@ export default function App({
   userAssets,
 }) {
   const [filterValue, setFilterValue] = useState("");
-  const [selectedKeys, setSelectedKeys] = useState(new Set([]));
+  const [selectedKeys, _setSelectedKeys] = useState(new Set([]));
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
     new Set(INITIAL_VISIBLE_COLUMNS),
   );
@@ -89,7 +89,7 @@ export default function App({
     new Set(statusOptions.map((s) => s.uid)),
   );
   const [rowsPerPage, setRowsPerPage] = useState(20);
-  const [sortDescriptor, setSortDescriptor] = useState({
+  const [sortDescriptor, _setSortDescriptor] = useState({
     column: "assettag",
     direction: "ascending",
   });

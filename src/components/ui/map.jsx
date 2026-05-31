@@ -31,7 +31,6 @@ function getDocumentTheme() {
   return null;
 }
 
-// Get system preference
 function getSystemTheme() {
   if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -156,7 +155,6 @@ const Map = forwardRef(function Map(
     }
   }, []);
 
-  // Initialize the map
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -187,7 +185,7 @@ const Map = forwardRef(function Map(
         }
       }, 100);
     };
-    const loadHandler = () => setIsLoaded(true);
+    const handleLoad = setIsLoaded.bind(null, true);
 
     // Viewport change handler - skip if triggered by internal update
     const handleMove = () => {
@@ -195,14 +193,14 @@ const Map = forwardRef(function Map(
       onViewportChangeRef.current?.(getViewport(map));
     };
 
-    map.on("load", loadHandler);
+    map.on("load", handleLoad);
     map.on("styledata", styleDataHandler);
     map.on("move", handleMove);
     setMapInstance(map);
 
     return () => {
       clearStyleTimeout();
-      map.off("load", loadHandler);
+      map.off("load", handleLoad);
       map.off("styledata", styleDataHandler);
       map.off("move", handleMove);
       map.remove();
@@ -241,7 +239,6 @@ const Map = forwardRef(function Map(
     internalUpdateRef.current = false;
   }, [mapInstance, isControlled, viewport]);
 
-  // Handle style change
   useEffect(() => {
     if (!mapInstance || !resolvedTheme) return;
 
@@ -941,7 +938,6 @@ function MapRoute({
     }
   }, [isLoaded, map, layerId, color, width, opacity, dashArray]);
 
-  // Handle click and hover events
   useEffect(() => {
     if (!isLoaded || !map || !interactive) return;
 
@@ -1101,7 +1097,6 @@ function MapClusterLayer({
     }
   }, [isLoaded, map, data, sourceId]);
 
-  // Update layer styles when props change
   useEffect(() => {
     if (!isLoaded || !map) return;
 
@@ -1110,7 +1105,6 @@ function MapClusterLayer({
       prev.clusterColors !== clusterColors ||
       prev.clusterThresholds !== clusterThresholds;
 
-    // Update cluster layer colors and sizes
     if (map.getLayer(clusterLayerId) && colorsChanged) {
       map.setPaintProperty(clusterLayerId, "circle-color", [
         "step",
@@ -1132,7 +1126,6 @@ function MapClusterLayer({
       ]);
     }
 
-    // Update unclustered point layer color
     if (map.getLayer(unclusteredLayerId) && prev.pointColor !== pointColor) {
       map.setPaintProperty(unclusteredLayerId, "circle-color", pointColor);
     }
@@ -1148,7 +1141,6 @@ function MapClusterLayer({
     pointColor,
   ]);
 
-  // Handle click events
   useEffect(() => {
     if (!isLoaded || !map) return;
 
@@ -1184,7 +1176,6 @@ function MapClusterLayer({
       const feature = e.features[0];
       const coordinates = feature.geometry.coordinates.slice();
 
-      // Handle world copies
       while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
         coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
       }

@@ -22,11 +22,10 @@ export default function OfflineBanner() {
   }
 
   return (
-    <div
-      role="status"
+    <output
       aria-live="polite"
       className={[
-        "fixed inset-x-0 top-0 z-[9999] px-4 py-2 text-sm font-medium",
+        "fixed inset-x-0 top-0 z-[9999] block px-4 py-2 text-sm font-medium",
         "transition-all duration-300 ease-in-out",
         showOffline
           ? "bg-amber-500 text-amber-950 dark:bg-amber-600 dark:text-amber-50"
@@ -65,6 +64,6 @@ export default function OfflineBanner() {
           }
         }
       `}</style>
-    </div>
+    </output>
   );
 }

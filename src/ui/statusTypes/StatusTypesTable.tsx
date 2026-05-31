@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 
 export default function StatusTypesTable({ items }) {
   const [searchValue, setSearchValue] = useState("");
-  const [rowsPerPage, setRowsPerPage] = useState(
+  const [rowsPerPage, _setRowsPerPage] = useState(
     Number(ROWS_PER_PAGE_OPTIONS[0]),
   );
   const [page, setPage] = useState(1);

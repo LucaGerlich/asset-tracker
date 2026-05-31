@@ -39,10 +39,6 @@ interface DashboardWidgetData {
   config: Record<string, unknown> | null;
 }
 
-// ---------------------------------------------------------------------------
-// Widget content components
-// ---------------------------------------------------------------------------
-
 function StatsWidget({
   serverStats,
 }: {
@@ -1051,10 +1047,6 @@ function WidgetContent({
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sortable widget card
-// ---------------------------------------------------------------------------
-
 function SortableWidget({
   widget,
   onRemove,
@@ -1119,10 +1111,6 @@ function SortableWidget({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Main DashboardGrid
-// ---------------------------------------------------------------------------
 
 export default function DashboardGrid({
   serverStats,

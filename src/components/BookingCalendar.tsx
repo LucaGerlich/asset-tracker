@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -150,9 +150,9 @@ export default function BookingCalendar({
           const dayReservations = reservationsByDay.get(key) || [];
 
           return (
-            <div
+            <button
               key={idx}
-              role="button"
+              type="button"
               tabIndex={0}
               onClick={() => onDateClick?.(cell)}
               onKeyDown={(e) => {
@@ -162,7 +162,7 @@ export default function BookingCalendar({
                 }
               }}
               className={cn(
-                "hover:bg-accent/50 relative min-h-[5rem] cursor-pointer border-r border-b p-1 transition-colors",
+                "hover:bg-accent/50 relative min-h-[5rem] cursor-pointer border-r border-b p-1 text-left transition-colors",
                 !isCurrentMonth && "bg-muted/30 text-muted-foreground",
               )}
             >
@@ -196,7 +196,7 @@ export default function BookingCalendar({
                   </span>
                 )}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

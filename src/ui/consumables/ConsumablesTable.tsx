@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useUrlState } from "@/hooks/useUrlState";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -258,7 +258,8 @@ export default function ConsumablesTable({
       toast.success(`Deleted ${ids.length} consumable(s)`);
       setSelectedKeys(new Set());
       setShowBulkDelete(false);
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to delete some consumables", err);
       toast.error("Failed to delete some consumables");
     } finally {
       setBulkDeleting(false);

@@ -1,16 +1,23 @@
-import React, { forwardRef, useEffect, useRef, MutableRefObject, ComponentProps } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useRef,
+  MutableRefObject,
+  ComponentProps,
+} from "react";
 import { QRCodeCanvas } from "qrcode.react";
 
 type QRProps = ComponentProps<typeof QRCodeCanvas>;
 
 const QRCodeWithRef = forwardRef<HTMLDivElement, QRProps>((props, ref) => {
   const internalRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
-    if (typeof ref === 'function') {
+    if (typeof ref === "function") {
       ref(internalRef.current);
     } else if (ref) {
-      (ref as MutableRefObject<HTMLDivElement | null>).current = internalRef.current;
+      (ref as MutableRefObject<HTMLDivElement | null>).current =
+        internalRef.current;
     }
   }, [ref]);
 

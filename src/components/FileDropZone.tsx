@@ -56,7 +56,7 @@ export function FileDropZone({
 
       return true;
     },
-    [maxSizeMb, acceptedTypes, accept]
+    [maxSizeMb, acceptedTypes, accept],
   );
 
   const handleFiles = useCallback(
@@ -68,7 +68,7 @@ export function FileDropZone({
         onFilesSelected(multiple ? valid : [valid[0]]);
       }
     },
-    [validateFile, onFilesSelected, multiple]
+    [validateFile, onFilesSelected, multiple],
   );
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -98,7 +98,7 @@ export function FileDropZone({
       setDragging(false);
       handleFiles(e.dataTransfer.files);
     },
-    [handleFiles]
+    [handleFiles],
   );
 
   const handleInputChange = useCallback(
@@ -106,12 +106,12 @@ export function FileDropZone({
       handleFiles(e.target.files);
       if (inputRef.current) inputRef.current.value = "";
     },
-    [handleFiles]
+    [handleFiles],
   );
 
   return (
-    <div
-      role="button"
+    <button
+      type="button"
       tabIndex={0}
       onClick={() => !uploading && inputRef.current?.click()}
       onKeyDown={(e) => {
@@ -124,12 +124,7 @@ export function FileDropZone({
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className={`
-        relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6
-        cursor-pointer transition-colors
-        ${dragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/50"}
-        ${uploading ? "pointer-events-none opacity-60" : ""}
-      `}
+      className={`relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 transition-colors ${dragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/50"} ${uploading ? "pointer-events-none opacity-60" : ""} `}
     >
       <input
         ref={inputRef}
@@ -138,14 +133,17 @@ export function FileDropZone({
         accept={accept}
         multiple={multiple}
         onChange={handleInputChange}
+        aria-label={label}
       />
-      <UploadCloud className={`h-8 w-8 ${dragging ? "text-primary" : "text-muted-foreground"}`} />
-      <p className="text-sm text-muted-foreground text-center">{label}</p>
+      <UploadCloud
+        className={`h-8 w-8 ${dragging ? "text-primary" : "text-muted-foreground"}`}
+      />
+      <p className="text-muted-foreground text-center text-sm">{label}</p>
       {uploading && (
-        <div className="absolute bottom-0 left-0 right-0 h-1 overflow-hidden rounded-b-lg">
-          <div className="h-full w-full bg-primary/30 animate-pulse" />
+        <div className="absolute right-0 bottom-0 left-0 h-1 overflow-hidden rounded-b-lg">
+          <div className="bg-primary/30 h-full w-full animate-pulse" />
         </div>
       )}
-    </div>
+    </button>
   );
 }

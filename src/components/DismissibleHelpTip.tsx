@@ -17,7 +17,6 @@ export default function DismissibleHelpTip({
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    // Check local preferences for dismissed state
     fetch("/api/user/preferences")
       .then((res) => res.json())
       .then((prefs) => {

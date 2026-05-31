@@ -281,8 +281,7 @@ export function ResponsiveTable<T>({
                       checked={allSelected}
                       ref={(el) => {
                         if (el)
-                          (el as unknown as HTMLInputElement).indeterminate =
-                            !!someSelected;
+                          Object.assign(el, { indeterminate: !!someSelected });
                       }}
                       onCheckedChange={handleSelectAll}
                     />
@@ -347,8 +346,7 @@ export function ResponsiveTable<T>({
                       checked={allSelected}
                       ref={(el) => {
                         if (el)
-                          (el as unknown as HTMLInputElement).indeterminate =
-                            !!someSelected;
+                          Object.assign(el, { indeterminate: !!someSelected });
                       }}
                       onCheckedChange={handleSelectAll}
                     />
@@ -361,8 +359,9 @@ export function ResponsiveTable<T>({
             </TableHeader>
             <TableBody>
               {virtualItems.length > 0 && (
-                <tr>
+                <tr aria-hidden="true">
                   <td
+                    aria-hidden="true"
                     colSpan={colSpan}
                     style={{ height: virtualItems[0].start, padding: 0 }}
                   />
@@ -394,8 +393,9 @@ export function ResponsiveTable<T>({
                 );
               })}
               {virtualItems.length > 0 && (
-                <tr>
+                <tr aria-hidden="true">
                   <td
+                    aria-hidden="true"
                     colSpan={colSpan}
                     style={{
                       height:
@@ -425,8 +425,7 @@ export function ResponsiveTable<T>({
                     checked={allSelected}
                     ref={(el) => {
                       if (el)
-                        (el as unknown as HTMLInputElement).indeterminate =
-                          !!someSelected;
+                        Object.assign(el, { indeterminate: !!someSelected });
                     }}
                     onCheckedChange={handleSelectAll}
                   />

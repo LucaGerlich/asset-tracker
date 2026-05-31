@@ -1,6 +1,6 @@
 "use client";
 
-import React, {
+import {
   useEffect,
   useState,
   useCallback,
@@ -18,11 +18,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 // NotificationIcon replaced with lucide Bell
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -56,7 +54,7 @@ function formatTimeAgo(dateString: string): string {
 function Navigation() {
   const [searchOpen, setSearchOpen] = useState(false);
   const { data: session } = useSession();
-  const user = session?.user as SessionUser | undefined;
+  const _user = session?.user as SessionUser | undefined;
 
   // Notification state — single source of truth so list and badge stay atomic
   type NotifState = {
@@ -222,7 +220,6 @@ function Navigation() {
     });
   };
 
-  // Delete single notification — optimistic
   const deleteNotification = (id: string) => {
     startTransition(async () => {
       applyOptimistic({ type: "delete", id });
@@ -249,7 +246,6 @@ function Navigation() {
     });
   };
 
-  // Delete all notifications — optimistic
   const deleteAllNotifications = () => {
     startTransition(async () => {
       applyOptimistic({ type: "deleteAll" });
@@ -267,7 +263,6 @@ function Navigation() {
     });
   };
 
-  // Fetch notifications on mount and poll every 30s for new ones
   useEffect(() => {
     fetchNotifications();
 

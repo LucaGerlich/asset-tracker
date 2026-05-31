@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { formatDate, formatRelativeTime } from "@/lib/formatting";
 
 interface FormattedDateProps {

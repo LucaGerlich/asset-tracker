@@ -81,7 +81,6 @@ export default function LocationsTable({ items }) {
     return Array.from(unique).sort((a, b) => a.localeCompare(b));
   }, [locationsData]);
 
-  // Build parent → children map
   const childrenMap = useMemo(() => {
     const map = new Map<string, typeof locationsData>();
     for (const loc of locationsData) {
