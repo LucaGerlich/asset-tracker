@@ -20,10 +20,6 @@
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
-// ---------------------------------------------------------------------------
-// Schema-qualified table name — ensures raw queries work regardless of
-// the connection's search_path setting.
-// ---------------------------------------------------------------------------
 const S = process.env.DB_SCHEMA || "assettool";
 if (!/^[a-zA-Z0-9_]+$/.test(S)) {
   throw new Error(
@@ -37,10 +33,6 @@ interface CacheRow {
   value: unknown;
 }
 
-// ---------------------------------------------------------------------------
-// Self-healing: ensure cache table exists on first use.
-// Uses a shared promise so parallel calls on cold start only run once.
-// ---------------------------------------------------------------------------
 let tableChecked = false;
 let _ensurePromise: Promise<void> | null = null;
 
@@ -71,10 +63,6 @@ async function ensureCacheTable(): Promise<void> {
 
   return _ensurePromise;
 }
-
-// ---------------------------------------------------------------------------
-// Public cache object
-// ---------------------------------------------------------------------------
 
 export const cache = {
   /**
@@ -157,10 +145,6 @@ export const cache = {
     }
   },
 };
-
-// ---------------------------------------------------------------------------
-// Backward-compatible helpers (used by data.ts and API routes)
-// ---------------------------------------------------------------------------
 
 /**
  * Get or set cached data with TTL.

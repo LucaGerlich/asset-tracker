@@ -1,13 +1,3 @@
-/**
- * PostgreSQL-backed account lockout module.
- *
- * Uses the "account_lockouts" table for distributed lockout tracking that works
- * correctly in serverless environments (Vercel) where each invocation has its
- * own memory. All state is persisted in PostgreSQL via Prisma raw queries.
- *
- * Follows the same self-healing, fail-open pattern as rate-limit.ts.
- */
-
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { isFeatureEnabled } from "@/lib/feature-flags";
@@ -19,10 +9,6 @@ if (!/^[a-zA-Z0-9_]+$/.test(S)) {
   );
 }
 const LOCKOUT_TABLE = `"${S}"."account_lockouts"`;
-
-// ---------------------------------------------------------------------------
-// Self-healing table creation
-// ---------------------------------------------------------------------------
 
 let tableChecked = false;
 let _ensurePromise: Promise<void> | null = null;
@@ -53,10 +39,6 @@ async function ensureLockoutTable(): Promise<void> {
   return _ensurePromise;
 }
 
-// ---------------------------------------------------------------------------
-// Configuration
-// ---------------------------------------------------------------------------
-
 export const LOCKOUT_CONFIG = {
   /** Maximum failed attempts before lockout */
   maxAttempts: 5,
@@ -69,10 +51,6 @@ export const LOCKOUT_CONFIG = {
   /** Maximum lockout duration (24 hours) */
   maxLockoutDurationMs: 24 * 60 * 60 * 1000,
 };
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 interface LockoutRow {
   failed_attempts: number;
@@ -223,7 +201,6 @@ export async function recordFailedAttempt(
     logger.error("[account-lockout] recordFailedAttempt failed", {
       error: e,
     });
-    // Fail open
     return {
       locked: false,
       attemptsRemaining: LOCKOUT_CONFIG.maxAttempts,

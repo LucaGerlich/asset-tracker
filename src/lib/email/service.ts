@@ -1,12 +1,3 @@
-/**
- * Email Service
- * Main service for sending emails through configured provider
- *
- * API keys and secrets stored in the database are encrypted at rest using
- * AES-256-GCM via the encryption module. They are decrypted on-the-fly
- * when read for sending emails.
- */
-
 import prisma from "../prisma";
 import { createEmailProvider } from "./providers";
 import type { EmailOptions, EmailProvider, EmailSendResult } from "./types";

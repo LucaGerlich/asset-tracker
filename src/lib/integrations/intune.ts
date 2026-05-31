@@ -12,10 +12,6 @@ import { decrypt } from "@/lib/encryption";
 import { scopeToOrganization } from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
-// ---------------------------------------------------------------------------
-// Timeout helper — 30 s default for all Graph API calls
-// ---------------------------------------------------------------------------
-
 const GRAPH_API_TIMEOUT_MS = 30_000;
 
 function fetchWithTimeout(
@@ -30,10 +26,6 @@ function fetchWithTimeout(
     clearTimeout(timer),
   );
 }
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export interface IntuneSettings {
   enabled: boolean;
@@ -72,10 +64,6 @@ export interface SyncResult {
   errors: Array<{ deviceName: string; error: string }>;
 }
 
-// ---------------------------------------------------------------------------
-// Settings
-// ---------------------------------------------------------------------------
-
 export async function getIntuneSettings(): Promise<IntuneSettings> {
   const rows = await prisma.system_settings.findMany({
     where: { settingKey: { startsWith: "intune." } },
@@ -98,10 +86,6 @@ export async function getIntuneSettings(): Promise<IntuneSettings> {
     autoUpdateAssets: get("intune.autoUpdateAssets") !== "false",
   };
 }
-
-// ---------------------------------------------------------------------------
-// Graph API Authentication (client credentials flow)
-// ---------------------------------------------------------------------------
 
 async function getAccessToken(
   tenantId: string,
@@ -132,10 +116,6 @@ async function getAccessToken(
   return data.access_token;
 }
 
-// ---------------------------------------------------------------------------
-// Fetch devices (paginated)
-// ---------------------------------------------------------------------------
-
 async function fetchManagedDevices(
   accessToken: string,
 ): Promise<IntuneDevice[]> {
@@ -160,10 +140,6 @@ async function fetchManagedDevices(
 
   return devices;
 }
-
-// ---------------------------------------------------------------------------
-// Test connection
-// ---------------------------------------------------------------------------
 
 export async function testIntuneConnection(
   settings?: IntuneSettings,
@@ -191,10 +167,6 @@ export async function testIntuneConnection(
     return { success: false, message };
   }
 }
-
-// ---------------------------------------------------------------------------
-// Category mapping
-// ---------------------------------------------------------------------------
 
 const LAPTOP_KEYWORDS = [
   "laptop",
@@ -245,7 +217,6 @@ export function mapDeviceCategory(
     return "Windows Device";
   }
 
-  // Android
   if (os === "android" || os.includes("android")) {
     if (dt === "androidenterprise" || dt === "androidforwork") {
       return "Android Enterprise";
@@ -259,10 +230,6 @@ export function mapDeviceCategory(
 
   return "Other Device";
 }
-
-// ---------------------------------------------------------------------------
-// Auto-create helpers
-// ---------------------------------------------------------------------------
 
 async function getOrCreateManufacturer(name: string): Promise<string> {
   const normalized = name.trim();
@@ -319,10 +286,6 @@ async function getOrCreateCategory(name: string): Promise<string> {
   });
   return created.assetcategorytypeid;
 }
-
-// ---------------------------------------------------------------------------
-// Main sync
-// ---------------------------------------------------------------------------
 
 export async function syncIntuneDevices(
   organizationId: string | null | undefined,
@@ -425,7 +388,6 @@ export async function syncIntuneDevices(
         .join(" ");
 
       if (existingAsset) {
-        // UPDATE existing asset
         if (!settings.autoUpdateAssets) {
           skipped++;
           continue;
@@ -446,7 +408,6 @@ export async function syncIntuneDevices(
         });
         updated++;
       } else {
-        // CREATE new asset
         if (!settings.autoCreateAssets) {
           skipped++;
           continue;
@@ -493,7 +454,6 @@ export async function syncIntuneDevices(
         ? "failed"
         : "partial";
 
-  // Log the sync
   await prisma.intuneSyncLog.create({
     data: {
       organizationId: organizationId || null,

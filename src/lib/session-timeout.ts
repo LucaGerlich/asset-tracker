@@ -22,7 +22,10 @@ export const SESSION_TIMEOUT_CONFIG = {
 
 // In-memory storage for activity tracking
 // In production with multiple instances, use Redis or database
-const activityStore = new Map<string, { lastActivity: number; sessionStart: number }>();
+const activityStore = new Map<
+  string,
+  { lastActivity: number; sessionStart: number }
+>();
 
 /**
  * Record user activity (call this on each authenticated request)
@@ -66,7 +69,6 @@ export function isSessionTimedOut(sessionId: string): {
     return { timedOut: false };
   }
 
-  // Check absolute timeout first
   const sessionAge = now - entry.sessionStart;
   if (sessionAge > SESSION_TIMEOUT_CONFIG.absoluteTimeoutMs) {
     logger.info("Session expired due to absolute timeout", {
@@ -82,7 +84,6 @@ export function isSessionTimedOut(sessionId: string): {
     };
   }
 
-  // Check inactivity timeout
   const inactiveTime = now - entry.lastActivity;
   if (inactiveTime > SESSION_TIMEOUT_CONFIG.inactivityTimeoutMs) {
     logger.info("Session expired due to inactivity", {
@@ -122,8 +123,12 @@ export function isSessionAboutToExpire(sessionId: string): {
 
   // Check absolute timeout warning
   const sessionAge = now - entry.sessionStart;
-  const absoluteRemaining = SESSION_TIMEOUT_CONFIG.absoluteTimeoutMs - sessionAge;
-  if (absoluteRemaining <= SESSION_TIMEOUT_CONFIG.warningBeforeTimeoutMs && absoluteRemaining > 0) {
+  const absoluteRemaining =
+    SESSION_TIMEOUT_CONFIG.absoluteTimeoutMs - sessionAge;
+  if (
+    absoluteRemaining <= SESSION_TIMEOUT_CONFIG.warningBeforeTimeoutMs &&
+    absoluteRemaining > 0
+  ) {
     return {
       expiring: true,
       remainingMs: absoluteRemaining,
@@ -133,8 +138,12 @@ export function isSessionAboutToExpire(sessionId: string): {
 
   // Check inactivity timeout warning
   const inactiveTime = now - entry.lastActivity;
-  const inactivityRemaining = SESSION_TIMEOUT_CONFIG.inactivityTimeoutMs - inactiveTime;
-  if (inactivityRemaining <= SESSION_TIMEOUT_CONFIG.warningBeforeTimeoutMs && inactivityRemaining > 0) {
+  const inactivityRemaining =
+    SESSION_TIMEOUT_CONFIG.inactivityTimeoutMs - inactiveTime;
+  if (
+    inactivityRemaining <= SESSION_TIMEOUT_CONFIG.warningBeforeTimeoutMs &&
+    inactivityRemaining > 0
+  ) {
     return {
       expiring: true,
       remainingMs: inactivityRemaining,
@@ -150,7 +159,7 @@ export function isSessionAboutToExpire(sessionId: string): {
  */
 export function extendSession(sessionId: string): boolean {
   const entry = activityStore.get(sessionId);
-  
+
   if (!entry) {
     return false;
   }
@@ -188,10 +197,12 @@ export function getSessionStatus(sessionId: string): {
 
   const inactiveMs = now - entry.lastActivity;
   const sessionAgeMs = now - entry.sessionStart;
-  
+
   // Calculate when session will expire (whichever comes first)
-  const inactivityExpiry = SESSION_TIMEOUT_CONFIG.inactivityTimeoutMs - inactiveMs;
-  const absoluteExpiry = SESSION_TIMEOUT_CONFIG.absoluteTimeoutMs - sessionAgeMs;
+  const inactivityExpiry =
+    SESSION_TIMEOUT_CONFIG.inactivityTimeoutMs - inactiveMs;
+  const absoluteExpiry =
+    SESSION_TIMEOUT_CONFIG.absoluteTimeoutMs - sessionAgeMs;
   const expiresIn = Math.min(inactivityExpiry, absoluteExpiry);
 
   return {
@@ -231,8 +242,10 @@ export function cleanupExpiredSessions(): number {
   return cleaned;
 }
 
-// Start periodic cleanup
-const cleanupTimer = setInterval(cleanupExpiredSessions, SESSION_TIMEOUT_CONFIG.checkIntervalMs);
+const cleanupTimer = setInterval(
+  cleanupExpiredSessions,
+  SESSION_TIMEOUT_CONFIG.checkIntervalMs,
+);
 if (cleanupTimer.unref) {
   cleanupTimer.unref();
 }

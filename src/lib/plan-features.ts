@@ -7,8 +7,7 @@
 import prisma from "@/lib/prisma";
 import { isSelfHosted } from "@/lib/deployment-mode";
 import type { PlanKey } from "@/lib/stripe";
-import { getPlanFeatures } from "./plan-features-shared";
-import type { PlanFeature } from "./plan-features-shared";
+import { getPlanFeatures, type PlanFeature } from "./plan-features-shared";
 
 // Re-export everything from the shared module for server-side convenience
 export {

@@ -31,7 +31,6 @@ export async function requireAuth(): Promise<ExtendedSession> {
     redirect("/login");
   }
 
-  // Fetch custom fields
   const dbUser = await prisma.user.findUnique({
     where: { userid: session.user.id },
     select: {

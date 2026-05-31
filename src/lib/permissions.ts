@@ -28,7 +28,6 @@ export const PERMISSIONS = {
   LICENSE_EDIT: "license:edit",
   LICENSE_DELETE: "license:delete",
 
-  // Settings
   SETTINGS_VIEW: "settings:view",
   SETTINGS_EDIT: "settings:edit",
 
@@ -36,7 +35,7 @@ export const PERMISSIONS = {
   CATALOG_MANAGE: "catalog:manage",
 } as const;
 
-export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
+export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 interface User {
   id?: string;
@@ -47,7 +46,10 @@ interface User {
 /**
  * Check if a user has a specific permission
  */
-export function userHasPermission(user: User | null | undefined, permission: Permission): boolean {
+export function userHasPermission(
+  user: User | null | undefined,
+  permission: Permission,
+): boolean {
   if (!user) return false;
 
   // Admins have all permissions
@@ -55,7 +57,6 @@ export function userHasPermission(user: User | null | undefined, permission: Per
     return true;
   }
 
-  // Regular users permissions
   switch (permission) {
     // View permissions - all authenticated users
     case PERMISSIONS.ASSET_VIEW:
@@ -82,7 +83,10 @@ export function userHasPermission(user: User | null | undefined, permission: Per
 /**
  * Check if current user can edit a specific user
  */
-export function userCanEditUser(currentUser: User | null | undefined, targetUserId: string): boolean {
+export function userCanEditUser(
+  currentUser: User | null | undefined,
+  targetUserId: string,
+): boolean {
   if (!currentUser) return false;
 
   // Admins can edit anyone
@@ -97,7 +101,10 @@ export function userCanEditUser(currentUser: User | null | undefined, targetUser
 /**
  * Check if current user can delete a specific user
  */
-export function userCanDeleteUser(currentUser: User | null | undefined, targetUserId: string): boolean {
+export function userCanDeleteUser(
+  currentUser: User | null | undefined,
+  targetUserId: string,
+): boolean {
   if (!currentUser) return false;
 
   // Only admins can delete users

@@ -68,7 +68,6 @@ export class AzureStorageProvider implements StorageProvider {
     const container = await this.getContainer();
     const blockBlob = container.getBlockBlobClient(key);
 
-    // Parse connection string for account name and key
     const connStr = process.env.STORAGE_AZURE_CONNECTION_STRING!;
     const accountName = connStr.match(/AccountName=([^;]+)/)?.[1];
     const accountKey = connStr.match(/AccountKey=([^;]+)/)?.[1];

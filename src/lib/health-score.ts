@@ -32,10 +32,6 @@ const MAX_FACTOR = 25;
 const NEUTRAL = MAX_FACTOR / 2; // 12.5
 const DEFAULT_LIFESPAN_YEARS = 7;
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 export function calculateHealthScore(
   input: HealthScoreInput,
 ): HealthScoreResult {
@@ -114,10 +110,6 @@ export function labelBgColor(label: HealthLabel): string {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sub-factor calculations
-// ---------------------------------------------------------------------------
-
 function computeAgeFactor(input: HealthScoreInput): number {
   const { purchaseDate, expectedEndOfLife } = input;
 
@@ -179,10 +171,6 @@ function computeDepreciationFactor(input: HealthScoreInput): number {
 
   return clamp(MAX_FACTOR * (1 - percentDepreciated / 100), 0, MAX_FACTOR);
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function scoreToLabel(score: number): HealthLabel {
   if (score >= 80) return "excellent";

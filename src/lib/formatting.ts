@@ -8,10 +8,6 @@
 
 import { getLocale } from "@/lib/i18n";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function resolveLocale(locale?: string): string {
   return locale ?? getLocale();
 }
@@ -19,10 +15,6 @@ function resolveLocale(locale?: string): string {
 function toDate(date: Date | string): Date {
   return typeof date === "string" ? new Date(date) : date;
 }
-
-// ---------------------------------------------------------------------------
-// Date formatting
-// ---------------------------------------------------------------------------
 
 /**
  * Format a date value according to the active (or supplied) locale.
@@ -53,10 +45,6 @@ export function formatDate(
   return new Intl.DateTimeFormat(loc, optionsMap[style]).format(d);
 }
 
-// ---------------------------------------------------------------------------
-// Number formatting
-// ---------------------------------------------------------------------------
-
 /**
  * Format a number with locale-aware grouping and decimal separators.
  *
@@ -81,10 +69,6 @@ export function formatNumber(
   return new Intl.NumberFormat(loc, options).format(value);
 }
 
-// ---------------------------------------------------------------------------
-// Currency formatting
-// ---------------------------------------------------------------------------
-
 /**
  * Format a monetary value with the appropriate currency symbol and locale
  * conventions.
@@ -105,10 +89,6 @@ export function formatCurrency(
     currency,
   }).format(value);
 }
-
-// ---------------------------------------------------------------------------
-// Relative time formatting
-// ---------------------------------------------------------------------------
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -178,7 +158,6 @@ export function formatRelativeTime(
     }
   }
 
-  // Manual English fallback
   return manualRelativeFallback(value, matched.unit);
 }
 

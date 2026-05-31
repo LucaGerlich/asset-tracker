@@ -16,7 +16,6 @@ const pool = new pg.Pool({
   // Keep pool small — each Vercel function gets its own pool,
   // so 50 concurrent invocations × max = total DB connections.
   max: process.env.NODE_ENV === "production" ? 3 : 10,
-  // Return idle connections quickly in serverless
   idleTimeoutMillis: process.env.NODE_ENV === "production" ? 10_000 : 30_000,
   // Don't wait forever for a connection
   connectionTimeoutMillis: 5_000,
@@ -26,19 +25,20 @@ const pool = new pg.Pool({
 
 const adapter = new PrismaPg(pool);
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+declare global {
+   
+  var prisma: PrismaClient | undefined;
+}
 
 let prisma: PrismaClient;
 
 if (process.env.NODE_ENV === "production") {
   prisma = new PrismaClient({ adapter });
 } else {
-  if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = new PrismaClient({ adapter });
+  if (!globalThis.prisma) {
+    globalThis.prisma = new PrismaClient({ adapter });
   }
-  prisma = globalForPrisma.prisma;
+  prisma = globalThis.prisma;
 }
 
 export default prisma;

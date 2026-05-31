@@ -99,7 +99,6 @@ export function useUrlState<T extends Record<string, string>>(
     [flushToUrl],
   );
 
-  // Clean up pending timer on unmount.
   useEffect(() => {
     return () => {
       if (timerRef.current) {

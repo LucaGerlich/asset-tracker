@@ -55,14 +55,17 @@ export interface PasswordValidationResult {
 /**
  * Check if a password meets the complexity requirements
  */
-export function validatePasswordComplexity(password: string): PasswordValidationResult {
+export function validatePasswordComplexity(
+  password: string,
+): PasswordValidationResult {
   const errors: string[] = [];
   const suggestions: string[] = [];
   let score = 0;
 
-  // Length checks
   if (password.length < PASSWORD_CONFIG.minLength) {
-    errors.push(`Password must be at least ${PASSWORD_CONFIG.minLength} characters long`);
+    errors.push(
+      `Password must be at least ${PASSWORD_CONFIG.minLength} characters long`,
+    );
   } else {
     score++;
     if (password.length >= 12) score++;
@@ -73,7 +76,9 @@ export function validatePasswordComplexity(password: string): PasswordValidation
   }
 
   if (password.length > PASSWORD_CONFIG.maxLength) {
-    errors.push(`Password must be no more than ${PASSWORD_CONFIG.maxLength} characters`);
+    errors.push(
+      `Password must be no more than ${PASSWORD_CONFIG.maxLength} characters`,
+    );
   }
 
   // Character type checks
@@ -81,7 +86,7 @@ export function validatePasswordComplexity(password: string): PasswordValidation
   const hasLowercase = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
   const specialRegex = new RegExp(
-    `[${PASSWORD_CONFIG.specialChars.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&")}]`
+    `[${PASSWORD_CONFIG.specialChars.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&")}]`,
   );
   const hasSpecial = specialRegex.test(password);
 
@@ -98,39 +103,47 @@ export function validatePasswordComplexity(password: string): PasswordValidation
   }
 
   if (PASSWORD_CONFIG.requireSpecial && !hasSpecial) {
-    errors.push("Password must contain at least one special character (!@#$%^&*...)");
+    errors.push(
+      "Password must contain at least one special character (!@#$%^&*...)",
+    );
   }
 
   // Add score for variety
-  const charTypes = [hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(Boolean).length;
+  const charTypes = [hasUppercase, hasLowercase, hasNumber, hasSpecial].filter(
+    Boolean,
+  ).length;
   if (charTypes >= 3) score++;
   if (charTypes === 4) score++;
 
-  // Check for common passwords
   const lowerPassword = password.toLowerCase();
-  if (PASSWORD_CONFIG.commonPasswords.some((common) => lowerPassword.includes(common))) {
+  if (
+    PASSWORD_CONFIG.commonPasswords.some((common) =>
+      lowerPassword.includes(common),
+    )
+  ) {
     errors.push("Password is too common or contains a common password pattern");
     score = Math.max(0, score - 2);
   }
 
-  // Check for sequential characters
   if (/(.)\1{2,}/.test(password)) {
     suggestions.push("Avoid using repeated characters");
     score = Math.max(0, score - 1);
   }
 
-  // Check for sequential numbers or letters
   if (/(?:012|123|234|345|456|567|678|789|890)/.test(password)) {
     suggestions.push("Avoid using sequential numbers");
     score = Math.max(0, score - 1);
   }
 
-  if (/(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz)/i.test(password)) {
+  if (
+    /(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz)/i.test(
+      password,
+    )
+  ) {
     suggestions.push("Avoid using sequential letters");
     score = Math.max(0, score - 1);
   }
 
-  // Check for keyboard patterns
   const keyboardPatterns = ["qwerty", "asdf", "zxcv", "qazwsx", "1qaz", "2wsx"];
   if (keyboardPatterns.some((pattern) => lowerPassword.includes(pattern))) {
     suggestions.push("Avoid using keyboard patterns");
@@ -146,7 +159,9 @@ export function validatePasswordComplexity(password: string): PasswordValidation
       suggestions.push("Use a longer password for better security");
     }
     if (charTypes < 4) {
-      suggestions.push("Use a mix of uppercase, lowercase, numbers, and special characters");
+      suggestions.push(
+        "Use a mix of uppercase, lowercase, numbers, and special characters",
+      );
     }
   }
 
@@ -203,42 +218,47 @@ export function getPasswordStrengthColor(score: number): string {
  */
 export const passwordSchema = z
   .string()
-  .min(PASSWORD_CONFIG.minLength, `Password must be at least ${PASSWORD_CONFIG.minLength} characters`)
-  .max(PASSWORD_CONFIG.maxLength, `Password must be no more than ${PASSWORD_CONFIG.maxLength} characters`)
+  .min(
+    PASSWORD_CONFIG.minLength,
+    `Password must be at least ${PASSWORD_CONFIG.minLength} characters`,
+  )
+  .max(
+    PASSWORD_CONFIG.maxLength,
+    `Password must be no more than ${PASSWORD_CONFIG.maxLength} characters`,
+  )
   .refine(
     (password) => !PASSWORD_CONFIG.requireUppercase || /[A-Z]/.test(password),
-    "Password must contain at least one uppercase letter"
+    "Password must contain at least one uppercase letter",
   )
   .refine(
     (password) => !PASSWORD_CONFIG.requireLowercase || /[a-z]/.test(password),
-    "Password must contain at least one lowercase letter"
+    "Password must contain at least one lowercase letter",
   )
   .refine(
     (password) => !PASSWORD_CONFIG.requireNumber || /[0-9]/.test(password),
-    "Password must contain at least one number"
+    "Password must contain at least one number",
   )
-  .refine(
-    (password) => {
-      if (!PASSWORD_CONFIG.requireSpecial) return true;
-      const specialRegex = new RegExp(
-        `[${PASSWORD_CONFIG.specialChars.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&")}]`
-      );
-      return specialRegex.test(password);
-    },
-    "Password must contain at least one special character"
-  )
-  .refine(
-    (password) => {
-      const lowerPassword = password.toLowerCase();
-      return !PASSWORD_CONFIG.commonPasswords.some((common) => lowerPassword.includes(common));
-    },
-    "Password is too common"
-  );
+  .refine((password) => {
+    if (!PASSWORD_CONFIG.requireSpecial) return true;
+    const specialRegex = new RegExp(
+      `[${PASSWORD_CONFIG.specialChars.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&")}]`,
+    );
+    return specialRegex.test(password);
+  }, "Password must contain at least one special character")
+  .refine((password) => {
+    const lowerPassword = password.toLowerCase();
+    return !PASSWORD_CONFIG.commonPasswords.some((common) =>
+      lowerPassword.includes(common),
+    );
+  }, "Password is too common");
 
 /**
  * Check if two passwords match
  */
-export function passwordsMatch(password: string, confirmPassword: string): boolean {
+export function passwordsMatch(
+  password: string,
+  confirmPassword: string,
+): boolean {
   return password === confirmPassword;
 }
 
@@ -260,24 +280,24 @@ export const passwordWithConfirmationSchema = z
  */
 export function getPasswordRequirements(): string[] {
   const requirements: string[] = [];
-  
+
   requirements.push(`At least ${PASSWORD_CONFIG.minLength} characters long`);
-  
+
   if (PASSWORD_CONFIG.requireUppercase) {
     requirements.push("At least one uppercase letter (A-Z)");
   }
-  
+
   if (PASSWORD_CONFIG.requireLowercase) {
     requirements.push("At least one lowercase letter (a-z)");
   }
-  
+
   if (PASSWORD_CONFIG.requireNumber) {
     requirements.push("At least one number (0-9)");
   }
-  
+
   if (PASSWORD_CONFIG.requireSpecial) {
     requirements.push("At least one special character (!@#$%^&*...)");
   }
-  
+
   return requirements;
 }

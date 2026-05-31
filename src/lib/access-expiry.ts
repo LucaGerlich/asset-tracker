@@ -63,7 +63,6 @@ export async function processAccessExpiry(): Promise<ExpiryResult> {
       },
     });
 
-    // Notify the user
     if (user.email) {
       const html = renderTemplate(emailTemplates.accessExpired.html, {
         userName: `${user.firstname} ${user.lastname}`,
@@ -78,7 +77,6 @@ export async function processAccessExpiry(): Promise<ExpiryResult> {
       );
     }
 
-    // Notify org admins
     if (user.organizationId) {
       await notifyOrgAdmins(user.organizationId, user, "expired");
     }

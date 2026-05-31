@@ -48,7 +48,8 @@ export function useOfflineQueue(): UseOfflineQueueReturn {
         );
       }
       await refreshCount();
-    } catch {
+    } catch (err) {
+      console.error("Failed to sync offline changes", err);
       toast.error("Failed to sync offline changes");
     } finally {
       setIsSyncing(false);

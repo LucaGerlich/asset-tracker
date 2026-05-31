@@ -1,10 +1,3 @@
-/**
- * Report Generator
- *
- * Generates org-scoped report data and formats it as CSV, XLSX, or PDF buffers.
- * Used by the scheduled reports cron to create email attachments.
- */
-
 import prisma from "@/lib/prisma";
 import { scopeToOrganization } from "@/lib/organization-context";
 import { generateCSV, generateXLSX, type ExportColumn } from "@/lib/export";
@@ -22,10 +15,6 @@ export interface ReportBuffer {
   extension: string;
   filename: string;
 }
-
-// ---------------------------------------------------------------------------
-// Column definitions per report type
-// ---------------------------------------------------------------------------
 
 const SUMMARY_COLUMNS: ExportColumn[] = [
   { key: "metric", header: "Metric" },
@@ -60,10 +49,6 @@ const TCO_COLUMNS: ExportColumn[] = [
   { key: "maintenanceCost", header: "Maintenance Cost" },
   { key: "totalTco", header: "Total TCO" },
 ];
-
-// ---------------------------------------------------------------------------
-// Report data generators
-// ---------------------------------------------------------------------------
 
 async function generateSummaryData(
   orgId: string | null | undefined,
@@ -255,10 +240,6 @@ async function generateTcoData(
     };
   });
 }
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 const GENERATORS: Record<
   ReportType,

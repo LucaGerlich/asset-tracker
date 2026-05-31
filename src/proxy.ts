@@ -1,6 +1,5 @@
 import { getSessionCookie } from "better-auth/cookies";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { generateCorrelationId } from "@/lib/logger";
 import {
   checkRateLimit,

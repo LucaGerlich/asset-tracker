@@ -3,24 +3,6 @@ import { cached } from "./cache";
 import { getOrganizationContext } from "./organization-context";
 
 /**
- * Build an org-scoped where clause for data queries.
- * Returns an empty filter when org context is unavailable — suitable for
- * reference data that is intentionally global (manufacturers, suppliers,
- * locations, categories, statuses, models).
- */
-async function orgWhere(): Promise<Record<string, unknown>> {
-  try {
-    const ctx = await getOrganizationContext();
-    const orgId = ctx?.organization?.id;
-    if (!orgId) return {};
-    return { organizationId: orgId };
-  } catch {
-    // Outside of a request context (e.g., scripts) — no scoping
-    return {};
-  }
-}
-
-/**
  * Strict org-scoped where clause — throws when org context is missing.
  * Use this for entity data that MUST be scoped to the user's organization
  * (assets, accessories, consumables, licences, users, components, kits,
@@ -126,7 +108,6 @@ export async function getAssets() {
 }
 
 export async function getAssetById(id: string) {
-  // Validate the id parameter
   if (!id) {
     throw new Error("Invalid ID parameter");
   }

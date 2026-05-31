@@ -17,10 +17,6 @@ import fr from "./locales/fr";
 import es from "./locales/es";
 import nl from "./locales/nl";
 
-// ---------------------------------------------------------------------------
-// Translation store
-// ---------------------------------------------------------------------------
-
 type Translations = Record<string, string>;
 
 const translationStore: Record<string, Translations> = {
@@ -44,10 +40,6 @@ export type LocaleCode = keyof typeof AVAILABLE_LOCALES;
 
 let currentLocale = "en";
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 /**
  * Set the active locale. If the locale has no registered translations the
  * call is still accepted (strings will fall back to their keys until
@@ -69,7 +61,10 @@ export function getLocale(): string {
  * This allows lazy-loading additional languages without bundling them
  * upfront.
  */
-export function registerLocale(locale: string, translations: Translations): void {
+export function registerLocale(
+  locale: string,
+  translations: Translations,
+): void {
   translationStore[locale] = { ...translationStore[locale], ...translations };
 }
 
@@ -100,7 +95,9 @@ export function t(key: string, params?: Record<string, string>): string {
   // Interpolate parameters: replace every {{param}} with the supplied value
   if (params) {
     value = value.replace(/\{\{(\w+)\}\}/g, (_match, paramKey) => {
-      return params[paramKey] !== undefined ? params[paramKey] : `{{${paramKey}}}`;
+      return params[paramKey] !== undefined
+        ? params[paramKey]
+        : `{{${paramKey}}}`;
     });
   }
 

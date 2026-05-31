@@ -36,10 +36,6 @@ export interface DuplicateGroup {
 /** Maximum assets to compare per group for O(n^2) strategies. */
 const PAIRWISE_LIMIT = 500;
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 export function detectDuplicates(assets: DuplicateAsset[]): DuplicateGroup[] {
   const groups: DuplicateGroup[] = [];
 
@@ -49,10 +45,6 @@ export function detectDuplicates(assets: DuplicateAsset[]): DuplicateGroup[] {
 
   return groups;
 }
-
-// ---------------------------------------------------------------------------
-// Strategy 1: Same model + same location (high confidence)
-// ---------------------------------------------------------------------------
 
 function findSameModelLocation(assets: DuplicateAsset[]): DuplicateGroup[] {
   const groups: DuplicateGroup[] = [];
@@ -81,10 +73,6 @@ function findSameModelLocation(assets: DuplicateAsset[]): DuplicateGroup[] {
 
   return groups;
 }
-
-// ---------------------------------------------------------------------------
-// Strategy 2: Similar serial numbers (medium confidence)
-// ---------------------------------------------------------------------------
 
 function findSimilarSerials(assets: DuplicateAsset[]): DuplicateGroup[] {
   const groups: DuplicateGroup[] = [];
@@ -131,10 +119,6 @@ function findSimilarSerials(assets: DuplicateAsset[]): DuplicateGroup[] {
 
   return groups;
 }
-
-// ---------------------------------------------------------------------------
-// Strategy 3: Similar names (low confidence)
-// ---------------------------------------------------------------------------
 
 function findSimilarNames(assets: DuplicateAsset[]): DuplicateGroup[] {
   const groups: DuplicateGroup[] = [];
@@ -186,10 +170,6 @@ function findSimilarNames(assets: DuplicateAsset[]): DuplicateGroup[] {
   return groups;
 }
 
-// ---------------------------------------------------------------------------
-// Levenshtein distance (standard DP, O(n*m))
-// ---------------------------------------------------------------------------
-
 export function levenshteinDistance(a: string, b: string): number {
   if (a === b) return 0;
   if (a.length === 0) return b.length;
@@ -197,7 +177,7 @@ export function levenshteinDistance(a: string, b: string): number {
 
   // Use single-row optimization to save memory
   let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-  let curr = new Array<number>(b.length + 1);
+  let curr = Array.from<number>({ length: b.length + 1 });
 
   for (let i = 1; i <= a.length; i++) {
     curr[0] = i;

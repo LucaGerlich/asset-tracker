@@ -74,7 +74,6 @@ const DEFAULT_LICENCE_CATEGORIES = [
  * Called during registration to give new orgs a usable starting set.
  */
 export async function seedOrgDefaults(organizationId: string): Promise<void> {
-  // Seed status types
   await prisma.statusType.createMany({
     data: DEFAULT_STATUS_TYPES.map((st) => ({
       statustypename: st.name,
@@ -84,7 +83,6 @@ export async function seedOrgDefaults(organizationId: string): Promise<void> {
     })),
   });
 
-  // Seed asset categories
   await prisma.assetCategoryType.createMany({
     data: DEFAULT_ASSET_CATEGORIES.map((name) => ({
       assetcategorytypename: name,
@@ -92,7 +90,6 @@ export async function seedOrgDefaults(organizationId: string): Promise<void> {
     })),
   });
 
-  // Seed accessory categories
   await prisma.accessorieCategoryType.createMany({
     data: DEFAULT_ACCESSORY_CATEGORIES.map((name) => ({
       accessoriecategorytypename: name,
@@ -100,7 +97,6 @@ export async function seedOrgDefaults(organizationId: string): Promise<void> {
     })),
   });
 
-  // Seed consumable categories
   await prisma.consumableCategoryType.createMany({
     data: DEFAULT_CONSUMABLE_CATEGORIES.map((name) => ({
       consumablecategorytypename: name,
@@ -108,7 +104,6 @@ export async function seedOrgDefaults(organizationId: string): Promise<void> {
     })),
   });
 
-  // Seed licence categories
   await prisma.licenceCategoryType.createMany({
     data: DEFAULT_LICENCE_CATEGORIES.map((name) => ({
       licencecategorytypename: name,

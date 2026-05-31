@@ -14,10 +14,6 @@ import bcrypt from "bcryptjs";
 import { logger } from "@/lib/logger";
 import crypto from "crypto";
 
-// ---------------------------------------------------------------------------
-// Settings reader
-// ---------------------------------------------------------------------------
-
 export interface LdapSettings {
   enabled: boolean;
   serverUrl: string;
@@ -72,10 +68,6 @@ export async function getLdapSettings(): Promise<LdapSettings> {
     autoDeactivateUsers: get("ldap.autoDeactivateUsers") === "true",
   };
 }
-
-// ---------------------------------------------------------------------------
-// LDAP client helpers
-// ---------------------------------------------------------------------------
 
 function createClient(settings: LdapSettings): ldap.Client {
   const url = settings.serverUrl.includes("://")
@@ -144,10 +136,6 @@ function searchAsync(
     });
   });
 }
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 /**
  * Test LDAP connection by binding with service account credentials.
@@ -270,7 +258,6 @@ export async function syncUsers(
 
         seenExternalIds.add(externalId);
 
-        // Check if user already exists by externalId or username
         const existingUser = await prisma.user.findFirst({
           where: {
             OR: [{ externalId }, { username }],
@@ -278,7 +265,6 @@ export async function syncUsers(
         });
 
         if (existingUser) {
-          // Update existing user
           await prisma.user.update({
             where: { userid: existingUser.userid },
             data: {
@@ -348,7 +334,6 @@ export async function syncUsers(
       }
     }
 
-    // Log sync result
     const durationMs = Date.now() - startTime;
     await prisma.ldapSyncLog.create({
       data: {
@@ -455,10 +440,6 @@ export async function authenticateUser(
     return { success: false };
   }
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function getAttr(entry: LdapEntry, attr: string): string | undefined {
   const val = entry[attr];

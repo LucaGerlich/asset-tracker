@@ -13,7 +13,7 @@ import {
   microsoftEntraId,
 } from "better-auth/plugins/generic-oauth";
 import { nextCookies } from "better-auth/next-js";
-import { createAuthMiddleware } from "@better-auth/core/api";
+import { createAuthMiddleware } from "better-auth/api";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { logger } from "@/lib/logger";
@@ -57,9 +57,7 @@ function translateIdToUserid(where: Record<string, unknown>) {
   }
 }
 
-const authPrisma = (
-  prisma as unknown as Record<string, unknown> & { $extends: Function }
-).$extends({
+const authPrisma = prisma.$extends({
   result: {
     user: {
       id: {
@@ -399,7 +397,6 @@ export const auth = betterAuth({
       // Use canonical email for lockout tracking (consistent key)
       const lockoutKey = user?.email ?? rawIdentifier;
 
-      // Check account lockout
       const lockStatus = await isAccountLocked(lockoutKey);
       if (lockStatus.locked) {
         logger.securityEvent("Login attempt on locked account", {
@@ -417,7 +414,6 @@ export const auth = betterAuth({
         body.email = user.email;
       }
 
-      // Handle LDAP users — sync password to credential account
       if (user?.authProvider === "ldap" && body?.password) {
         const { authenticateUser: ldapAuth } = await import("@/lib/ldap");
         const ldapResult = await ldapAuth(
@@ -533,7 +529,6 @@ export const auth = betterAuth({
             // Non-critical — don't break login
           }
 
-          // --- Suspicious activity detection ---
           try {
             recordLoginAttempt(
               user.userid,

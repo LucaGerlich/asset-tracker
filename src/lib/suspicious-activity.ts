@@ -11,8 +11,6 @@
 
 import { logger } from "@/lib/logger";
 
-// --- Types ---
-
 interface LoginRecord {
   ip: string;
   userAgent: string;
@@ -32,22 +30,16 @@ export interface SuspiciousActivityResult {
   reasons: string[];
 }
 
-// --- Constants ---
-
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const SIXTY_MINUTES_MS = 60 * 60 * 1000;
 const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
 const BRUTE_FORCE_THRESHOLD = 10;
-
-// --- In-memory stores ---
 
 /** Per-user login history keyed by userId */
 const userHistory: Map<string, UserLoginHistory> = new Map();
 
 /** Failed login attempts keyed by IP address: array of timestamps */
 const failedAttemptsByIp: Map<string, number[]> = new Map();
-
-// --- Cleanup helpers ---
 
 /**
  * Remove stale entries from a user's known IPs (older than 30 days)
@@ -82,8 +74,6 @@ function cleanupFailedAttempts(ip: string, now: number): void {
   }
 }
 
-// --- Public API ---
-
 /**
  * Record a login attempt (successful or failed).
  * Call this after every sign-in attempt.
@@ -113,7 +103,6 @@ export function recordLoginAttempt(
     userHistory.set(userId, history);
   }
 
-  // Cleanup before recording
   cleanupUserHistory(history, now);
   cleanupFailedAttempts(ip, now);
 
@@ -134,7 +123,6 @@ export function checkSuspiciousActivity(
   const now = Date.now();
   const reasons: string[] = [];
 
-  // --- 1. Brute force detection (IP-based, checked even before user history) ---
   cleanupFailedAttempts(ip, now);
   const failedCount = failedAttemptsByIp.get(ip)?.length ?? 0;
   if (failedCount >= BRUTE_FORCE_THRESHOLD) {
@@ -143,7 +131,6 @@ export function checkSuspiciousActivity(
     );
   }
 
-  // --- 2. User-specific checks ---
   const history = userHistory.get(userId);
   if (!history) {
     // First login ever recorded for this user — nothing to compare against
@@ -168,8 +155,6 @@ export function checkSuspiciousActivity(
     );
   }
 
-  // --- 3. Impossible travel detection ---
-  // Check if there's a successful login from a *different* IP within 60 minutes
   const recentFromOtherIp = history.recentLogins.find(
     (r) => r.ip !== ip && r.success && now - r.timestamp <= SIXTY_MINUTES_MS,
   );

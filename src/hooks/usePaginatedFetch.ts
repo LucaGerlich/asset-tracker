@@ -62,7 +62,6 @@ export function usePaginatedFetch<T>(
 
       const json = await res.json();
       if (!controller.signal.aborted) {
-        // Handle both paginated envelope and plain array responses
         const data = Array.isArray(json) ? json : json.data;
         const total = Array.isArray(json) ? json.length : json.total;
         const pg = Array.isArray(json) ? 1 : json.page;

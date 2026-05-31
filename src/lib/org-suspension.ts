@@ -34,11 +34,6 @@ export function getOrgStatus(org: OrgSuspensionFields): OrgStatus {
   return "active";
 }
 
-/**
- * Check org status for a user. Returns null if active/accessible,
- * or a Response to return if blocked.
- * Used by requireApiAuth() — blocks only locked_out orgs.
- */
 export function requireActiveOrg(status: OrgStatus): Response | null {
   if (status === "active" || status === "read_only") return null;
 
@@ -51,11 +46,6 @@ export function requireActiveOrg(status: OrgStatus): Response | null {
   );
 }
 
-/**
- * Check org status for write operations. Returns null if allowed,
- * or a Response to return if blocked.
- * Used by write endpoints (POST/PUT/PATCH/DELETE).
- */
 export function requireWriteAccess(status: OrgStatus): Response | null {
   if (status === "active") return null;
 

@@ -1,11 +1,9 @@
 import prisma from "./prisma";
 import crypto from "crypto";
 
-// Parse user agent string into a friendly device name
 export function parseDeviceName(userAgent: string | null): string {
   if (!userAgent) return "Unknown Device";
 
-  // Simple UA parsing
   if (userAgent.includes("iPhone")) return "iPhone";
   if (userAgent.includes("iPad")) return "iPad";
   if (userAgent.includes("Android")) return "Android Device";
@@ -16,7 +14,6 @@ export function parseDeviceName(userAgent: string | null): string {
   return "Unknown Device";
 }
 
-// Parse browser from user agent
 export function parseBrowser(userAgent: string | null): string {
   if (!userAgent) return "Unknown Browser";
 
@@ -28,7 +25,6 @@ export function parseBrowser(userAgent: string | null): string {
   return "Unknown Browser";
 }
 
-// Create a new session record
 export async function createSessionRecord(
   userId: string,
   ipAddress: string | null,
@@ -53,7 +49,6 @@ export async function createSessionRecord(
   return sessionToken;
 }
 
-// Update last active time for a session
 export async function updateSessionActivity(
   sessionToken: string,
 ): Promise<void> {
@@ -67,7 +62,6 @@ export async function updateSessionActivity(
   }
 }
 
-// Get all active sessions for a user
 export async function getUserSessions(userId: string) {
   return prisma.sessions.findMany({
     where: {
@@ -120,7 +114,6 @@ export async function revokeOtherSessions(
   return result.count;
 }
 
-// Clean up expired sessions
 export async function cleanExpiredSessions(): Promise<number> {
   const result = await prisma.sessions.deleteMany({
     where: {

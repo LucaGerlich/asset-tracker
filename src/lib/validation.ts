@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 
-// ---------------------------------------------------------------------------
-// Validation helper
-// ---------------------------------------------------------------------------
-
 /**
  * Validate request body against a Zod schema.
  * Returns parsed data on success, or a NextResponse with 400 status and
@@ -37,10 +33,6 @@ export function validateBody<T extends z.ZodTypeAny>(
   );
 }
 
-// ---------------------------------------------------------------------------
-// Reusable field schemas
-// ---------------------------------------------------------------------------
-
 const uuidField = z.string().uuid("Must be a valid UUID");
 const optionalUuid = z
   .string()
@@ -50,10 +42,6 @@ const optionalUuid = z
 const trimmedString = z.string().trim().min(1, "Required");
 const optionalString = z.string().trim().optional().nullable();
 
-// ---------------------------------------------------------------------------
-// Authentication schemas
-// ---------------------------------------------------------------------------
-
 export const loginSchema = z.object({
   username: z
     .string()
@@ -61,10 +49,6 @@ export const loginSchema = z.object({
     .max(50, "Username too long"),
   password: z.string().min(1, "Password is required"),
 });
-
-// ---------------------------------------------------------------------------
-// User schemas
-// ---------------------------------------------------------------------------
 
 export const createUserSchema = z.object({
   username: z.string().min(3).max(50),
@@ -105,10 +89,6 @@ export const createReportScheduleSchema = z.object({
   frequency: z.enum(["daily", "weekly", "monthly"]),
   format: z.enum(["csv", "xlsx"]),
 });
-
-// ---------------------------------------------------------------------------
-// Asset schemas
-// ---------------------------------------------------------------------------
 
 export const createAssetSchema = z.object({
   assetname: trimmedString.max(255),
@@ -166,10 +146,6 @@ export const updateAssetSchema = z.object({
   warrantyExpires: z.string().optional().nullable(),
 });
 
-// ---------------------------------------------------------------------------
-// Accessory schemas
-// ---------------------------------------------------------------------------
-
 export const createAccessorySchema = z.object({
   accessoriename: z.string().min(1).max(255),
   accessorietag: z.string().min(1).max(50),
@@ -185,10 +161,6 @@ export const createAccessorySchema = z.object({
 });
 
 export const updateAccessorySchema = createAccessorySchema.partial();
-
-// ---------------------------------------------------------------------------
-// License schemas
-// ---------------------------------------------------------------------------
 
 export const createLicenseSchema = z.object({
   licencekey: z.string().max(255).nullable().optional(),
@@ -206,10 +178,6 @@ export const createLicenseSchema = z.object({
 
 export const updateLicenseSchema = createLicenseSchema.partial();
 
-// ---------------------------------------------------------------------------
-// Consumable schemas
-// ---------------------------------------------------------------------------
-
 export const createConsumableSchema = z.object({
   consumablename: z.string().min(1).max(255),
   consumablecategorytypeid: z.string().uuid(),
@@ -223,10 +191,6 @@ export const createConsumableSchema = z.object({
 
 export const updateConsumableSchema = createConsumableSchema.partial();
 
-// ---------------------------------------------------------------------------
-// Consumable checkout schema
-// ---------------------------------------------------------------------------
-
 export const consumableCheckoutSchema = z.object({
   consumableId: uuidField,
   userId: uuidField,
@@ -234,19 +198,11 @@ export const consumableCheckoutSchema = z.object({
   notes: optionalString,
 });
 
-// ---------------------------------------------------------------------------
-// Manufacturer schemas
-// ---------------------------------------------------------------------------
-
 export const createManufacturerSchema = z.object({
   manufacturername: z.string().min(1).max(255),
 });
 
 export const updateManufacturerSchema = createManufacturerSchema.partial();
-
-// ---------------------------------------------------------------------------
-// Supplier schemas
-// ---------------------------------------------------------------------------
 
 export const createSupplierSchema = z.object({
   suppliername: z.string().min(1).max(255),
@@ -260,10 +216,6 @@ export const createSupplierSchema = z.object({
 
 export const updateSupplierSchema = createSupplierSchema.partial();
 
-// ---------------------------------------------------------------------------
-// Location schemas
-// ---------------------------------------------------------------------------
-
 export const createLocationSchema = z.object({
   locationname: z.string().min(1).max(255),
   street: z.string().max(255).nullable().optional(),
@@ -274,10 +226,6 @@ export const createLocationSchema = z.object({
 });
 
 export const updateLocationSchema = createLocationSchema.partial();
-
-// ---------------------------------------------------------------------------
-// Category Type schemas
-// ---------------------------------------------------------------------------
 
 export const createAssetCategoryTypeSchema = z.object({
   assetcategorytypename: z.string().min(1).max(255),
@@ -307,10 +255,6 @@ export const createLicenceCategoryTypeSchema = z.object({
 export const updateLicenceCategoryTypeSchema =
   createLicenceCategoryTypeSchema.partial();
 
-// ---------------------------------------------------------------------------
-// Model schemas
-// ---------------------------------------------------------------------------
-
 export const createModelSchema = z.object({
   modelname: z.string().min(1).max(255),
   modelnumber: z.string().max(255).nullable().optional(),
@@ -318,34 +262,18 @@ export const createModelSchema = z.object({
 
 export const updateModelSchema = createModelSchema.partial();
 
-// ---------------------------------------------------------------------------
-// Status Type schemas
-// ---------------------------------------------------------------------------
-
 export const createStatusTypeSchema = z.object({
   statustypename: z.string().min(1).max(255),
 });
 
 export const updateStatusTypeSchema = createStatusTypeSchema.partial();
 
-// ---------------------------------------------------------------------------
-// Generic UUID validation
-// ---------------------------------------------------------------------------
-
 export const uuidSchema = z.string().uuid();
-
-// ---------------------------------------------------------------------------
-// Pagination schemas
-// ---------------------------------------------------------------------------
 
 export const paginationSchema = z.object({
   page: z.number().int().positive().default(1),
   limit: z.number().int().positive().max(100).default(20),
 });
-
-// ---------------------------------------------------------------------------
-// Approval schemas
-// ---------------------------------------------------------------------------
 
 export const createApprovalSchema = z.object({
   entityType: z.enum(["reservation", "asset_request", "transfer"], {
@@ -362,10 +290,6 @@ export const resolveApprovalSchema = z.object({
   notes: optionalString,
 });
 
-// ---------------------------------------------------------------------------
-// Transfer schema
-// ---------------------------------------------------------------------------
-
 export const createTransferSchema = z.object({
   assetId: uuidField,
   transferType: z.enum(["user", "location", "organization"], {
@@ -379,10 +303,6 @@ export const createTransferSchema = z.object({
   toOrgId: optionalUuid,
   reason: optionalString,
 });
-
-// ---------------------------------------------------------------------------
-// Automation rule schema
-// ---------------------------------------------------------------------------
 
 export const createAutomationRuleSchema = z.object({
   name: trimmedString,
@@ -406,10 +326,6 @@ export const createAutomationRuleSchema = z.object({
     .optional(),
   isActive: z.boolean().optional(),
 });
-
-// ---------------------------------------------------------------------------
-// Component schemas
-// ---------------------------------------------------------------------------
 
 export const createComponentSchema = z.object({
   name: trimmedString,
@@ -450,10 +366,6 @@ export const createComponentCategorySchema = z.object({
 export const updateComponentCategorySchema =
   createComponentCategorySchema.partial();
 
-// ---------------------------------------------------------------------------
-// Asset checkout schemas
-// ---------------------------------------------------------------------------
-
 export const assetCheckoutSchema = z
   .object({
     assetId: uuidField,
@@ -484,10 +396,6 @@ export const assetCheckinSchema = z.object({
   notes: optionalString,
 });
 
-// ---------------------------------------------------------------------------
-// Licence seat schemas
-// ---------------------------------------------------------------------------
-
 export const assignLicenceSeatSchema = z.object({
   licenceId: uuidField,
   userId: uuidField,
@@ -498,10 +406,6 @@ export const unassignLicenceSeatSchema = z.object({
   assignmentId: uuidField,
 });
 
-// ---------------------------------------------------------------------------
-// EULA Templates
-// ---------------------------------------------------------------------------
-
 export const createEulaTemplateSchema = z.object({
   name: trimmedString,
   content: z.string().min(1, "EULA content is required"),
@@ -510,10 +414,6 @@ export const createEulaTemplateSchema = z.object({
 });
 
 export const updateEulaTemplateSchema = createEulaTemplateSchema.partial();
-
-// ---------------------------------------------------------------------------
-// Bulk Checkout
-// ---------------------------------------------------------------------------
 
 export const bulkCheckoutSchema = z
   .object({
@@ -535,10 +435,6 @@ export const bulkCheckoutSchema = z
     },
     { message: "Target ID is required for the selected checkout type" },
   );
-
-// ---------------------------------------------------------------------------
-// Predefined Kits
-// ---------------------------------------------------------------------------
 
 export const createKitSchema = z.object({
   name: trimmedString,
@@ -569,10 +465,6 @@ export const kitCheckoutSchema = z.object({
   userId: uuidField,
   notes: optionalString,
 });
-
-// ---------------------------------------------------------------------------
-// Audit Campaigns
-// ---------------------------------------------------------------------------
 
 export const createAuditCampaignSchema = z.object({
   name: trimmedString,

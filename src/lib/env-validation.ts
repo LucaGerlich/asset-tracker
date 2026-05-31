@@ -214,7 +214,6 @@ export function validateEnvironment(): ValidationResult {
       masked: config.sensitive,
     };
 
-    // Check required
     if (config.required && !effectiveValue) {
       errors.push(
         `Missing required environment variable: ${config.name}${config.description ? ` (${config.description})` : ""}`,
@@ -227,7 +226,6 @@ export function validateEnvironment(): ValidationResult {
       continue;
     }
 
-    // Run validation
     if (config.validate && !config.validate(effectiveValue)) {
       const message = config.validateMessage || "Invalid value";
       if (config.required) {

@@ -2,6 +2,21 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import prisma from "./prisma";
 
+/** Typed interface for dynamic Prisma model access */
+interface PrismaDelegate {
+  findFirst: (args: Record<string, unknown>) => Promise<unknown>;
+}
+
+/** Safely access a Prisma delegate by name for dynamic model queries. */
+function getPrismaDelegate(name: string): PrismaDelegate | undefined {
+  const delegate: unknown =
+    name in prisma ? prisma[name as keyof typeof prisma] : undefined;
+  if (delegate && typeof delegate === "object" && "findFirst" in delegate) {
+    return delegate as PrismaDelegate;
+  }
+  return undefined;
+}
+
 export interface OrganizationContext {
   organization: {
     id: string;
@@ -69,7 +84,6 @@ export async function getOrganizationContext(): Promise<OrganizationContext | nu
 
   // Admins have all permissions
   if (user.isadmin) {
-    // Import permission list from rbac
     const { PERMISSIONS } = await import("./rbac");
     Object.keys(PERMISSIONS).forEach((perm) => permissions.add(perm));
   }
@@ -143,7 +157,6 @@ export async function canAccessResource(
     return false;
   }
 
-  // Check if organizations match
   return resourceOrganizationId === userOrganizationId;
 }
 
@@ -170,11 +183,7 @@ export async function verifyEntityOrgOwnership(
   if (!config) return false;
 
   // Dynamic Prisma model access — delegate names are validated by the map above
-  const model = (prisma as unknown as Record<string, unknown>)[
-    config.delegate
-  ] as {
-    findFirst: (args: Record<string, unknown>) => Promise<unknown>;
-  };
+  const model = getPrismaDelegate(config.delegate);
   if (!model?.findFirst) return false;
 
   const entity = await model.findFirst({

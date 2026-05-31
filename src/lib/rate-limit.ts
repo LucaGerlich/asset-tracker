@@ -198,7 +198,6 @@ export const rateLimiters = {
  * Get the client IP address from request headers.
  */
 export function getClientIP(request: Request): string {
-  // Check common proxy headers
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) {
     // Take the first IP in the list (client IP)

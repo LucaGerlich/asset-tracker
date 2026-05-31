@@ -112,7 +112,6 @@ export async function getAuthUser(): Promise<AuthUser> {
     throw new Error("Unauthorized");
   }
 
-  // Fetch custom user fields from DB
   const dbUser = await prisma.user.findUnique({
     where: { userid: session.user.id },
     select: {
@@ -258,9 +257,6 @@ export async function requirePermission(
     throw new Error("Unauthorized");
   }
 
-  // API key scope enforcement — applies to ALL users, including admins.
-  // apiKeyScopes is defined (even if empty) when authenticated via API key,
-  // and undefined when authenticated via session cookie.
   if (user.apiKeyScopes !== undefined) {
     const hasScope = permissions.some((p) => user.apiKeyScopes!.includes(p));
     if (!hasScope) {

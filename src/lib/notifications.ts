@@ -158,7 +158,6 @@ export async function notifyReservationDecision(decision: {
 export async function checkExpiringLicenses(): Promise<number> {
   const defaultDays = 30;
 
-  // Get all licenses expiring within the notification window
   const now = new Date();
   const maxDate = new Date(now);
   maxDate.setDate(maxDate.getDate() + defaultDays);
@@ -274,7 +273,6 @@ export async function checkMaintenanceDue(): Promise<number> {
  * Check and notify about low stock consumables
  */
 export async function checkLowStock(): Promise<number> {
-  // Fetch all consumables with a minimum quantity threshold set
   const allConsumables = await prisma.consumable.findMany({
     where: {
       minQuantity: { gt: 0 },
@@ -289,7 +287,6 @@ export async function checkLowStock(): Promise<number> {
     (item) => item.quantity <= item.minQuantity,
   );
 
-  // Get admin users for notification
   const admins = await prisma.user.findMany({
     where: { isadmin: true },
   });

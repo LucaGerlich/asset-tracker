@@ -18,7 +18,6 @@ export async function getDepartmentAndDescendants(
     select: { id: true, parentId: true },
   });
 
-  // Build a parent → children map for fast lookup
   const childrenOf = new Map<string, string[]>();
   for (const dept of allDepts) {
     if (dept.parentId) {

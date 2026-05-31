@@ -1,14 +1,4 @@
 /**
- * Input sanitization utilities.
- *
- * Provides lightweight, regex-based helpers to strip HTML tags and entities
- * from user-supplied text.  No external dependencies are required.
- *
- * These functions are designed to be applied to user-provided text fields
- * *before* they are persisted or rendered, as an additional XSS defence layer.
- */
-
-/**
  * Strip HTML tags and decode/remove common HTML entities from `input`.
  *
  * The function:

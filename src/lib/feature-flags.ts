@@ -58,14 +58,35 @@ const CACHE_TTL = 60000; // 1 minute
  */
 function loadFromEnvironment(): Partial<FeatureFlags> {
   return {
-    rateLimiting: getBoolEnvVar("FEATURE_RATE_LIMITING", DEFAULT_FLAGS.rateLimiting),
-    accountLockout: getBoolEnvVar("FEATURE_ACCOUNT_LOCKOUT", DEFAULT_FLAGS.accountLockout),
-    sessionTimeout: getBoolEnvVar("FEATURE_SESSION_TIMEOUT", DEFAULT_FLAGS.sessionTimeout),
+    rateLimiting: getBoolEnvVar(
+      "FEATURE_RATE_LIMITING",
+      DEFAULT_FLAGS.rateLimiting,
+    ),
+    accountLockout: getBoolEnvVar(
+      "FEATURE_ACCOUNT_LOCKOUT",
+      DEFAULT_FLAGS.accountLockout,
+    ),
+    sessionTimeout: getBoolEnvVar(
+      "FEATURE_SESSION_TIMEOUT",
+      DEFAULT_FLAGS.sessionTimeout,
+    ),
     demoMode: getBoolEnvVar("DEMO_MODE", DEFAULT_FLAGS.demoMode),
-    auditLogging: getBoolEnvVar("FEATURE_AUDIT_LOGGING", DEFAULT_FLAGS.auditLogging),
-    emailNotifications: getBoolEnvVar("FEATURE_EMAIL_NOTIFICATIONS", DEFAULT_FLAGS.emailNotifications),
-    advancedSearch: getBoolEnvVar("FEATURE_ADVANCED_SEARCH", DEFAULT_FLAGS.advancedSearch),
-    maintenanceMode: getBoolEnvVar("MAINTENANCE_MODE", DEFAULT_FLAGS.maintenanceMode),
+    auditLogging: getBoolEnvVar(
+      "FEATURE_AUDIT_LOGGING",
+      DEFAULT_FLAGS.auditLogging,
+    ),
+    emailNotifications: getBoolEnvVar(
+      "FEATURE_EMAIL_NOTIFICATIONS",
+      DEFAULT_FLAGS.emailNotifications,
+    ),
+    advancedSearch: getBoolEnvVar(
+      "FEATURE_ADVANCED_SEARCH",
+      DEFAULT_FLAGS.advancedSearch,
+    ),
+    maintenanceMode: getBoolEnvVar(
+      "MAINTENANCE_MODE",
+      DEFAULT_FLAGS.maintenanceMode,
+    ),
     selfHosted: getBoolEnvVar("SELF_HOSTED", DEFAULT_FLAGS.selfHosted),
   };
 }
@@ -75,13 +96,11 @@ function loadFromEnvironment(): Partial<FeatureFlags> {
  */
 export function getFeatureFlags(): FeatureFlags {
   const now = Date.now();
-  
-  // Return cached flags if still valid
+
   if (cachedFlags && now - cacheTime < CACHE_TTL) {
     return cachedFlags;
   }
 
-  // Load and cache new flags
   const envFlags = loadFromEnvironment();
   cachedFlags = {
     ...DEFAULT_FLAGS,
@@ -103,12 +122,15 @@ export function isFeatureEnabled(feature: keyof FeatureFlags): boolean {
 /**
  * Override a feature flag at runtime (useful for testing)
  */
-export function setFeatureFlag(feature: keyof FeatureFlags, enabled: boolean): void {
+export function setFeatureFlag(
+  feature: keyof FeatureFlags,
+  enabled: boolean,
+): void {
   const flags = getFeatureFlags();
   flags[feature] = enabled;
   cachedFlags = flags;
   cacheTime = Date.now();
-  
+
   logger.info(`Feature flag updated: ${feature} = ${enabled}`, {
     type: "feature_flag_change",
     feature,
@@ -138,7 +160,7 @@ export function getFeatureFlagsSummary(): Record<string, boolean> {
 export function withFeatureFlag<T extends (...args: unknown[]) => unknown>(
   feature: keyof FeatureFlags,
   fn: T,
-  fallback?: T
+  fallback?: T,
 ): T {
   return ((...args: Parameters<T>) => {
     if (isFeatureEnabled(feature)) {
@@ -156,11 +178,11 @@ export function withFeatureFlag<T extends (...args: unknown[]) => unknown>(
 }
 
 /**
- * React hook style feature flag checker (for use in components)
- * Returns the feature flag value
+ * React hook style feature flag checker (for use in components).
+ * Validates the feature key at call time and returns the flag value.
  */
 export function useFeatureFlag(feature: keyof FeatureFlags): boolean {
-  // In a real implementation, this could use React state and refresh periodically
+  if (!feature) return false;
   return isFeatureEnabled(feature);
 }
 
@@ -168,25 +190,31 @@ export function useFeatureFlag(feature: keyof FeatureFlags): boolean {
  * Decorator-style feature flag for class methods
  */
 export function featureFlagGuard(feature: keyof FeatureFlags) {
+  type MethodFn = (...args: unknown[]) => unknown;
   return function <T>(
     _target: object,
     propertyKey: string | symbol,
-    descriptor: TypedPropertyDescriptor<T>
+    descriptor: TypedPropertyDescriptor<T>,
   ): TypedPropertyDescriptor<T> {
     const originalMethod = descriptor.value;
-    
+    if (typeof originalMethod !== "function") return descriptor;
+    const method = originalMethod as MethodFn;
+
     descriptor.value = function (this: unknown, ...args: unknown[]) {
       if (!isFeatureEnabled(feature)) {
-        logger.debug(`Feature ${feature} is disabled, skipping ${String(propertyKey)}`, {
-          type: "feature_flag_skip",
-          feature,
-          method: String(propertyKey),
-        });
+        logger.debug(
+          `Feature ${feature} is disabled, skipping ${String(propertyKey)}`,
+          {
+            type: "feature_flag_skip",
+            feature,
+            method: String(propertyKey),
+          },
+        );
         return undefined;
       }
-      return (originalMethod as unknown as (...args: unknown[]) => unknown).apply(this, args);
+      return method.apply(this, args);
     } as T;
-    
+
     return descriptor;
   };
 }
@@ -197,7 +225,7 @@ export function featureFlagGuard(feature: keyof FeatureFlags) {
 export function requireFeature(feature: keyof FeatureFlags, message?: string) {
   return async function middleware(
     _request: Request,
-    next: () => Promise<Response>
+    next: () => Promise<Response>,
   ): Promise<Response> {
     if (!isFeatureEnabled(feature)) {
       return new Response(
@@ -207,7 +235,7 @@ export function requireFeature(feature: keyof FeatureFlags, message?: string) {
         {
           status: 503,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
     }
     return next();

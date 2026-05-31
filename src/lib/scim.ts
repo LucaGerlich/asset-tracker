@@ -8,12 +8,7 @@
 import prisma from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 import { NextResponse } from "next/server";
-import { logger } from "@/lib/logger";
 import crypto from "crypto";
-
-// ---------------------------------------------------------------------------
-// SCIM Bearer Token Auth
-// ---------------------------------------------------------------------------
 
 export interface ScimAuthResult {
   organizationId: string;
@@ -85,7 +80,6 @@ export async function authenticateScim(
     return { organizationId: firstOrg.id };
   }
 
-  // Check token against per-org SCIM tokens
   const tokenBuf = Buffer.from(token);
   for (const record of scimTokens) {
     const storedToken = record.token;
@@ -104,10 +98,6 @@ export async function authenticateScim(
   });
 }
 
-// ---------------------------------------------------------------------------
-// SCIM Response Helpers
-// ---------------------------------------------------------------------------
-
 export function scimHeaders(): Record<string, string> {
   return { "Content-Type": "application/scim+json" };
 }
@@ -122,10 +112,6 @@ export function scimError(
     status,
   };
 }
-
-// ---------------------------------------------------------------------------
-// User <-> SCIM Resource Mapping
-// ---------------------------------------------------------------------------
 
 export interface ScimUser {
   schemas: string[];

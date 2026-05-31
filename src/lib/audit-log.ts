@@ -120,6 +120,14 @@ interface AuditLogWithDiffParams extends AuditLogParams {
 }
 
 /**
+ * Convert a Prisma model instance to a plain record for audit logging.
+ * Avoids double type assertions (`as unknown as Record<string, unknown>`) at call sites.
+ */
+export function toRecord(obj: object): Record<string, unknown> {
+  return obj as Record<string, unknown>;
+}
+
+/**
  * Create an audit log entry that includes a diff of changed fields.
  * The diff is stored in the `details` JSON field under the `changes` key.
  */

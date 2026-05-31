@@ -173,7 +173,6 @@ async function deliverWebhook(
 
     const responseText = await response.text().catch(() => "");
 
-    // Log delivery
     await prisma.webhookDelivery.create({
       data: {
         webhookId: webhook.id,
@@ -199,7 +198,6 @@ async function deliverWebhook(
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
 
-    // Log failed delivery
     await prisma.webhookDelivery.create({
       data: {
         webhookId: webhook.id,
@@ -211,7 +209,6 @@ async function deliverWebhook(
       },
     });
 
-    // Retry on failure
     if (attempt < webhook.retryAttempts) {
       const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
       setTimeout(() => deliverWebhook(webhook, payload, attempt + 1), delay);

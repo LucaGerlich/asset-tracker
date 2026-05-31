@@ -7,15 +7,11 @@
  *  - exchangeOidcCode(): Exchange OIDC auth code for user info
  */
 
-import { SAML } from "@node-saml/node-saml";
+import { SAML, type SamlConfig, type Profile } from "@node-saml/node-saml";
 import prisma from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 import { logger } from "@/lib/logger";
 import { getBaseUrl } from "@/lib/url";
-
-// ---------------------------------------------------------------------------
-// Settings reader
-// ---------------------------------------------------------------------------
 
 export interface SsoSettings {
   enabled: boolean;
@@ -77,10 +73,6 @@ export async function getSsoSettings(): Promise<SsoSettings> {
   };
 }
 
-// ---------------------------------------------------------------------------
-// SAML
-// ---------------------------------------------------------------------------
-
 export interface SamlUserProfile {
   email?: string;
   firstName?: string;
@@ -96,14 +88,15 @@ export interface SamlUserProfile {
 function createSamlInstance(settings: SsoSettings): SAML {
   const callbackUrl = `${getBaseUrl()}/api/auth/callback/saml`;
 
-  return new SAML({
+  const config: SamlConfig = {
     callbackUrl,
     entryPoint: settings.ssoUrl,
     issuer: settings.entityId || callbackUrl,
     idpCert: settings.certificate,
     wantAssertionsSigned: true,
     wantAuthnResponseSigned: false,
-  } as any);
+  };
+  return new SAML(config);
 }
 
 /**
@@ -138,23 +131,19 @@ export async function validateSamlResponse(body: {
     throw new Error("Invalid SAML response - no profile returned");
   }
 
-  const attrs = (profile as any) || {};
+  const attrs = profile as Profile;
 
   return {
     nameID: profile.nameID || "",
-    email: attrs[settings.attrEmail] || profile.nameID,
-    firstName: attrs[settings.attrFirstName] || "",
-    lastName: attrs[settings.attrLastName] || "",
-    username: attrs[settings.attrUsername] || profile.nameID,
+    email: String(attrs[settings.attrEmail] ?? profile.nameID),
+    firstName: String(attrs[settings.attrFirstName] ?? ""),
+    lastName: String(attrs[settings.attrLastName] ?? ""),
+    username: String(attrs[settings.attrUsername] ?? profile.nameID),
     groups: settings.attrGroups
       ? (attrs[settings.attrGroups] as string[])
       : undefined,
   };
 }
-
-// ---------------------------------------------------------------------------
-// OIDC
-// ---------------------------------------------------------------------------
 
 export interface OidcUserProfile {
   sub: string;
@@ -253,14 +242,12 @@ export async function exchangeOidcCode(code: string): Promise<OidcUserProfile> {
       claims = JSON.parse(Buffer.from(parts[1], "base64url").toString());
     }
 
-    // Validate issuer — must match discovery document issuer
     if (claims.iss && expectedIssuer && claims.iss !== expectedIssuer) {
       throw new Error(
         `ID token issuer mismatch: expected ${expectedIssuer}, got ${claims.iss}`,
       );
     }
 
-    // Validate audience — must match our client ID
     const aud = claims.aud;
     const audMatch = Array.isArray(aud)
       ? aud.includes(settings.clientId)
@@ -271,7 +258,6 @@ export async function exchangeOidcCode(code: string): Promise<OidcUserProfile> {
       );
     }
 
-    // Validate expiration
     if (
       typeof claims.exp === "number" &&
       claims.exp < Math.floor(Date.now() / 1000)
@@ -313,10 +299,6 @@ export async function exchangeOidcCode(code: string): Promise<OidcUserProfile> {
       : undefined,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 interface OidcDiscovery {
   issuer?: string;

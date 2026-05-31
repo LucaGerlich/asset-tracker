@@ -32,7 +32,6 @@ const DEFAULT_CONFIG: Required<RetryConfig> = {
 export function isTransientError(error: unknown): boolean {
   if (!error) return false;
 
-  // Check for common transient error codes
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorCode =
     (error as { code?: string }).code ||
@@ -65,7 +64,6 @@ export function isTransientError(error: unknown): boolean {
     return true;
   }
 
-  // Check for transient error messages
   const transientMessages = [
     "connection",
     "timeout",
@@ -81,7 +79,7 @@ export function isTransientError(error: unknown): boolean {
 
   const lowerMessage = errorMessage.toLowerCase();
   return transientMessages.some((msg) =>
-    lowerMessage.includes(msg.toLowerCase())
+    lowerMessage.includes(msg.toLowerCase()),
   );
 }
 
@@ -92,7 +90,7 @@ function calculateDelay(
   attempt: number,
   initialDelayMs: number,
   maxDelayMs: number,
-  multiplier: number
+  multiplier: number,
 ): number {
   // Exponential backoff
   const exponentialDelay = initialDelayMs * Math.pow(multiplier, attempt);
@@ -115,7 +113,7 @@ function sleep(ms: number): Promise<void> {
 export async function withRetry<T>(
   operation: () => Promise<T>,
   config?: RetryConfig,
-  operationName = "database operation"
+  operationName = "database operation",
 ): Promise<T> {
   const {
     maxRetries,
@@ -138,7 +136,6 @@ export async function withRetry<T>(
       lastError = error;
       attempt++;
 
-      // Check if error is retryable
       if (!isRetryable(error)) {
         logger.dbError(operationName, "unknown", error, {
           attempt,
@@ -147,7 +144,6 @@ export async function withRetry<T>(
         throw error;
       }
 
-      // Check if we've exhausted retries
       if (attempt > maxRetries) {
         logger.dbError(operationName, "unknown", error, {
           attempt,
@@ -162,7 +158,7 @@ export async function withRetry<T>(
         attempt - 1,
         initialDelayMs,
         maxDelayMs,
-        backoffMultiplier
+        backoffMultiplier,
       );
 
       logger.warn(`Retrying ${operationName}`, {
@@ -180,7 +176,7 @@ export async function withRetry<T>(
   const error = new Error(
     `${operationName} failed after ${maxRetries} retries: ${
       lastError instanceof Error ? lastError.message : String(lastError)
-    }`
+    }`,
   );
   (error as { cause?: unknown }).cause = lastError;
   throw error;
@@ -192,7 +188,7 @@ export async function withRetry<T>(
 export function createRetryableOperation<TArgs extends unknown[], TResult>(
   operation: (...args: TArgs) => Promise<TResult>,
   operationName: string,
-  config?: RetryConfig
+  config?: RetryConfig,
 ): (...args: TArgs) => Promise<TResult> {
   return async (...args: TArgs): Promise<TResult> => {
     return withRetry(() => operation(...args), config, operationName);
@@ -204,7 +200,7 @@ export function createRetryableOperation<TArgs extends unknown[], TResult>(
  */
 export async function checkDatabaseConnectivity(
   queryFn: () => Promise<unknown>,
-  config?: RetryConfig
+  config?: RetryConfig,
 ): Promise<{ connected: boolean; latencyMs: number; error?: string }> {
   const startTime = Date.now();
 
@@ -240,7 +236,7 @@ export class RetryableDatabase<T extends object> {
    */
   async query<TResult>(
     operation: (db: T) => Promise<TResult>,
-    operationName = "query"
+    operationName = "query",
   ): Promise<TResult> {
     return withRetry(() => operation(this.db), this.config, operationName);
   }
@@ -251,7 +247,7 @@ export class RetryableDatabase<T extends object> {
    */
   async transaction<TResult>(
     operation: (db: T) => Promise<TResult>,
-    operationName = "transaction"
+    operationName = "transaction",
   ): Promise<TResult> {
     return withRetry(
       () => operation(this.db),
@@ -260,7 +256,7 @@ export class RetryableDatabase<T extends object> {
         // Transactions might have longer timeouts
         maxDelayMs: Math.max(this.config.maxDelayMs, 10000),
       },
-      operationName
+      operationName,
     );
   }
 }

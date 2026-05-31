@@ -47,7 +47,6 @@ export function loadDymoSdk(): Promise<void> {
     return Promise.reject(new Error("DYMO SDK requires a browser environment"));
   }
 
-  // Already loaded
   if (window.dymo?.label?.framework) {
     return Promise.resolve();
   }

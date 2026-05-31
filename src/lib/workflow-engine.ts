@@ -239,7 +239,6 @@ export async function processWorkflowTrigger(
         await executeAction(action, data);
       }
 
-      // Update rule metadata
       await prisma.automationRule.update({
         where: { id: rule.id },
         data: { lastRunAt: new Date(), runCount: rule.runCount + 1 },

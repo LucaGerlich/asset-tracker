@@ -13,10 +13,6 @@ const CACHE_PREFIX = "__api_cache__";
 const MAX_CACHE_BYTES = 5 * 1024 * 1024; // 5 MB
 const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
 interface CacheEntry {
   /** Serialised JSON response body */
   body: string;
@@ -81,10 +77,6 @@ function evictIfNeeded(maxBytes: number): void {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 /**
  * Fetch with transparent client-side caching.
  *
@@ -98,7 +90,7 @@ function evictIfNeeded(maxBytes: number): void {
  */
 export async function cachedFetch(
   url: string,
-  options?: RequestInit & { ttl?: number }
+  options?: RequestInit & { ttl?: number },
 ): Promise<Response> {
   const ttl = options?.ttl ?? DEFAULT_TTL_MS;
   const method = (options?.method ?? "GET").toUpperCase();
@@ -107,7 +99,6 @@ export async function cachedFetch(
   // Only cache GET-like requests
   const isCacheable = method === "GET" && !options?.body;
 
-  // ---------- offline path ----------
   if (!isOnline) {
     if (!isCacheable) {
       throw new Error("Cannot perform non-GET requests while offline.");
@@ -131,7 +122,6 @@ export async function cachedFetch(
     }
   }
 
-  // ---------- online path ----------
   const response = await fetch(url, options);
 
   if (isCacheable && response.ok) {

@@ -80,12 +80,10 @@ export function createStreamingCsvExport(
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        // Emit CSV header row
         const headerLine =
           columns.map((c) => escapeCsvValue(c.header)).join(",") + "\n";
         controller.enqueue(encoder.encode(headerLine));
 
-        // Fetch and stream in batches
         let offset = 0;
         let hasMore = true;
 
@@ -97,7 +95,6 @@ export function createStreamingCsvExport(
             break;
           }
 
-          // Build CSV text for this batch
           const lines = batch
             .map((row) => {
               const processed = transformRow ? transformRow(row) : row;

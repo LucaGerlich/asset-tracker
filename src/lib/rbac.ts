@@ -47,7 +47,6 @@ export const PERMISSIONS = {
   "reservation:create": "Create reservations",
   "reservation:approve": "Approve/reject reservations",
 
-  // Settings
   "settings:view": "View settings",
   "settings:edit": "Edit settings",
 
@@ -62,7 +61,6 @@ export const PERMISSIONS = {
   "webhook:view": "View webhooks",
   "webhook:manage": "Manage webhooks",
 
-  // Import
   "import:execute": "Execute bulk imports",
 
   // Procurement

@@ -15,10 +15,6 @@ export interface ExportColumn {
  */
 export type ExportFormat = "csv" | "xlsx";
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
 function formatCellValue(value: unknown): string | number | boolean | null {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return value.toISOString().split("T")[0];
@@ -32,10 +28,6 @@ function buildRows(
 ): (string | number | boolean | null)[][] {
   return data.map((row) => columns.map((col) => formatCellValue(row[col.key])));
 }
-
-// ---------------------------------------------------------------------------
-// CSV generation
-// ---------------------------------------------------------------------------
 
 const FORMULA_PREFIXES = ["=", "+", "-", "@"];
 
@@ -71,10 +63,6 @@ export function generateCSV(
     .join("\n");
 }
 
-// ---------------------------------------------------------------------------
-// XLSX generation
-// ---------------------------------------------------------------------------
-
 export async function generateXLSX(
   data: Record<string, unknown>[],
   columns: ExportColumn[],
@@ -98,10 +86,6 @@ export async function generateXLSX(
   return new Uint8Array(arrayBuffer);
 }
 
-// ---------------------------------------------------------------------------
-// Public API: build a downloadable Response
-// ---------------------------------------------------------------------------
-
 /**
  * Creates a Response for file download in either CSV or XLSX format.
  *
@@ -120,7 +104,7 @@ export async function buildExportResponse(
 ): Promise<Response> {
   if (format === "xlsx") {
     const buffer = await generateXLSX(data, columns, sheetName);
-    return new Response(buffer as unknown as BodyInit, {
+    return new Response(buffer.buffer as ArrayBuffer, {
       status: 200,
       headers: {
         "Content-Type":

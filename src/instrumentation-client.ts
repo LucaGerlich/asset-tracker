@@ -8,6 +8,7 @@ Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
   // Add optional integrations for additional features
+   
   integrations: [Sentry.replayIntegration()],
 
   // Sample 10% of traces in production, 100% in development
@@ -15,7 +16,6 @@ Sentry.init({
   // Enable logs to be sent to Sentry
   enableLogs: true,
 
-  // Define how likely Replay events are sampled.
   // This sets the sample rate to be 10%. You may want this to be 100% while
   // in development and sample at a lower rate in production
   replaysSessionSampleRate: 0.1,
@@ -28,4 +28,5 @@ Sentry.init({
   sendDefaultPii: false,
 });
 
+ 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

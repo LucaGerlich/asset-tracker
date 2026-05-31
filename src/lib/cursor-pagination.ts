@@ -15,10 +15,6 @@
  *   });
  */
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export interface CursorPaginationParams {
   /** The cursor value to start from (exclusive). Omit for the first page. */
   cursor?: string | null;
@@ -70,10 +66,6 @@ interface PrismaDelegate {
   findMany(args: Record<string, unknown>): Promise<unknown[]>;
 }
 
-// ---------------------------------------------------------------------------
-// Core function
-// ---------------------------------------------------------------------------
-
 /**
  * Execute a cursor-paginated query against any Prisma model delegate.
  *
@@ -108,7 +100,6 @@ export async function cursorPaginate<T = unknown>(
   const findArgs: Record<string, unknown> = {
     where,
     orderBy,
-    // Fetch one extra item to determine `hasMore`.
     take: (direction === "forward" ? 1 : -1) * (limit + 1),
   };
 
@@ -128,7 +119,6 @@ export async function cursorPaginate<T = unknown>(
   // Determine hasMore based on the extra row ----------------------------
   const hasMore = rows.length > limit;
   if (hasMore) {
-    // Remove the extra sentinel row.
     if (direction === "forward") {
       rows.pop();
     } else {
@@ -162,10 +152,6 @@ export async function cursorPaginate<T = unknown>(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Request-param helpers
-// ---------------------------------------------------------------------------
-
 /**
  * Extract cursor-pagination params from a URLSearchParams object.
  *
@@ -198,10 +184,6 @@ export function parseCursorParams(
     direction,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
 
 function clampLimit(value: number | undefined | null): number {
   if (value === undefined || value === null || isNaN(value)) return 25;

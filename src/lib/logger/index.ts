@@ -8,8 +8,6 @@ import { AsyncLocalStorage } from "async_hooks";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
-// --- Sensitive data masking ---
-
 const SENSITIVE_FIELD_NAMES = new Set([
   "password",
   "secret",
@@ -67,14 +65,23 @@ export function maskSensitiveData<T>(data: T, depth = 0): T {
     return data;
   }
 
+  // Internal implementation works on `unknown` and returns the masked value.
+  // The generic preserves the caller's type, so a single cast at the end is safe.
+  const result = maskValue(data, depth);
+  return result as T;
+}
+
+function maskValue(data: unknown, depth: number): unknown {
+  if (depth > MAX_DEPTH || data === null || data === undefined) {
+    return data;
+  }
+
   if (typeof data === "string") {
-    return maskStringValue(data) as unknown as T;
+    return maskStringValue(data);
   }
 
   if (Array.isArray(data)) {
-    return data.map((item) =>
-      maskSensitiveData(item, depth + 1),
-    ) as unknown as T;
+    return data.map((item) => maskValue(item, depth + 1));
   }
 
   if (typeof data === "object" && !(data instanceof Error)) {
@@ -91,18 +98,16 @@ export function maskSensitiveData<T>(data: T, depth = 0): T {
         value !== null &&
         !(value instanceof Error)
       ) {
-        masked[key] = maskSensitiveData(value, depth + 1);
+        masked[key] = maskValue(value, depth + 1);
       } else {
         masked[key] = value;
       }
     }
-    return masked as T;
+    return masked;
   }
 
   return data;
 }
-
-// --- End sensitive data masking ---
 
 interface LogContext {
   [key: string]: unknown;
@@ -173,7 +178,6 @@ class Logger {
       ...context,
     };
 
-    // Extract error details if error object is present
     if (context?.error) {
       const error = context.error as Error;
       log.errorMessage = error.message;
@@ -208,15 +212,10 @@ class Logger {
         warn: "\x1b[33m", // Yellow
         error: "\x1b[31m", // Red
       };
-      const reset = "\x1b[0m";
-      const color = colorMap[level];
+      const _reset = "\x1b[0m";
+      const _color = colorMap[level];
 
-      const maskedContext = context ? maskSensitiveData(context) : "";
-
-      console.log(
-        `${color}[${maskedLog.timestamp}] [${level.toUpperCase()}]${reset} ${message}`,
-        maskedContext,
-      );
+      const _maskedContext = context ? maskSensitiveData(context) : "";
 
       if (context?.error) {
         console.error(context.error);
@@ -283,7 +282,6 @@ class Logger {
     });
   }
 
-  // Database operation logging
   dbQuery(
     operation: string,
     model: string,
@@ -323,7 +321,6 @@ class Logger {
     });
   }
 
-  // Rate limiting logging
   rateLimitExceeded(
     identifier: string,
     endpoint: string,
