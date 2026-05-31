@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
 }
 
 // DELETE /api/notifications - Delete all notifications for the current user
-export async function DELETE(request: NextRequest) {
+export async function DELETE(_request: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

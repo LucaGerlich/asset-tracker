@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
 import prisma from "@/lib/prisma";
-import {
-  getOrganizationContext,
-  scopeToOrganization,
-} from "@/lib/organization-context";
+import { getOrganizationContext } from "@/lib/organization-context";
 import { getStorage } from "@/lib/storage";
 import { thumbKey, type ThumbVariant } from "@/lib/storage/thumbnails";
 
@@ -33,7 +30,6 @@ export async function GET(
 
     const storage = await getStorage();
 
-    // Check for thumbnail variant
     const { searchParams } = new URL(req.url);
     const thumb = searchParams.get("thumb") as ThumbVariant | null;
 

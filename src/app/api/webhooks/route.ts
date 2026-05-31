@@ -22,7 +22,6 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
 
-    // Get optional organization filter from user context
     const user = await prisma.user.findUnique({
       where: { userid: authUser.id! },
       select: { organizationId: true },
@@ -109,7 +108,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = webhookSchema.parse(body);
 
-    // Validate that all events are valid
     const validEvents = getWebhookEvents().map((e) => e.event);
     const invalidEvents = validated.events.filter(
       (e) => !validEvents.includes(e as (typeof validEvents)[number]),
@@ -124,7 +122,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get user's organization
     const user = await prisma.user.findUnique({
       where: { userid: authUser.id! },
       select: { organizationId: true },

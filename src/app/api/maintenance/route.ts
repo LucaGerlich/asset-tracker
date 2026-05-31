@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     // Scope through the related asset's organizationId
     if (orgId) {
       where.asset = {
-        ...((where.asset as Record<string, unknown>) || {}),
+        ...(where.asset as Record<string, unknown>),
         organizationId: orgId,
       };
     }
@@ -119,7 +119,6 @@ export async function POST(req: NextRequest) {
       isActive,
     } = body;
 
-    // Validate required fields
     if (!title || !assetId || !frequency || !nextDueDate) {
       return NextResponse.json(
         {
@@ -130,7 +129,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate frequency value
     const validFrequencies = [
       "daily",
       "weekly",

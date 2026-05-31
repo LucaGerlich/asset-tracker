@@ -25,7 +25,6 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
 
-    // Get user's organization
     const user = await prisma.user.findUnique({
       where: { userid: session.user.id! },
       select: { organizationId: true },
@@ -107,7 +106,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = roleSchema.parse(body);
 
-    // Validate permissions
     const validPermissions = Object.keys(PERMISSIONS);
     const invalidPerms = validated.permissions.filter(
       (p) => !validPermissions.includes(p),
@@ -129,7 +127,6 @@ export async function POST(req: NextRequest) {
     });
     const organizationId = adminUser?.organizationId || null;
 
-    // Check for duplicate name within organization
     const existingRole = await prisma.role.findFirst({
       where: {
         name: validated.name,
@@ -175,7 +172,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Get list of available permissions
 export async function OPTIONS() {
   const permissions = getAllPermissions().map((p) => p.key);
   return NextResponse.json({ permissions });

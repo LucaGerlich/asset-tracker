@@ -18,6 +18,7 @@ import { logger, logCatchError } from "@/lib/logger";
 import {
   createAuditLog,
   createAuditLogWithDiff,
+  toRecord,
   AUDIT_ACTIONS,
   AUDIT_ENTITIES,
 } from "@/lib/audit-log";
@@ -51,7 +52,6 @@ const normalizeNumberInput = (value: unknown) => {
   return Number.isNaN(num) ? value : num;
 };
 
-// GET /api/accessories
 // Pagination: ?page=1&pageSize=25&sortBy=accessoriename&sortOrder=asc&search=keyword
 export async function GET(req: NextRequest) {
   try {
@@ -295,8 +295,8 @@ export async function PUT(req: NextRequest) {
       action: AUDIT_ACTIONS.UPDATE,
       entity: AUDIT_ENTITIES.ACCESSORY,
       entityId: existing.accessorieid,
-      before: existing as unknown as Record<string, unknown>,
-      after: updated as unknown as Record<string, unknown>,
+      before: toRecord(existing),
+      after: toRecord(updated),
     }).catch(logCatchError("Audit log failed"));
     return NextResponse.json(updated, { status: 200 });
   } catch (e) {

@@ -66,7 +66,6 @@ export async function POST(req: Request) {
         },
       });
     } else {
-      // Update existing user with SSO info
       await prisma.user.update({
         where: { userid: user.userid },
         data: {

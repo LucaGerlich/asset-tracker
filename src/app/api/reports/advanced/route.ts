@@ -19,7 +19,6 @@ export async function GET() {
     const now = new Date();
     const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
-    // --- Lifecycle: acquisitions and disposals by month (last 12 months) ---
     const acquisitionsRaw = await prisma.asset.groupBy({
       by: ["creation_date"],
       where: {
@@ -42,7 +41,6 @@ export async function GET() {
       },
     });
 
-    // Build month buckets for lifecycle
     const lifecycleMap = new Map<
       string,
       { acquisitions: number; disposals: number }
@@ -79,7 +77,6 @@ export async function GET() {
       }),
     );
 
-    // --- Cost Breakdown: sum purchase prices by category across asset types ---
     const assetCosts = await prisma.asset.groupBy({
       by: ["assetcategorytypeid"],
       _sum: { purchaseprice: true },
@@ -202,7 +199,6 @@ export async function GET() {
       }),
     );
 
-    // --- Location Distribution: count assets per location ---
     const locationCounts = await prisma.asset.groupBy({
       by: ["locationid"],
       _count: { assetid: true },
@@ -221,7 +217,6 @@ export async function GET() {
       value: row._count.assetid,
     }));
 
-    // --- Maintenance Trend: count maintenance logs by month (last 12 months) ---
     const maintenanceRaw = await prisma.maintenance_logs.findMany({
       where: {
         completedAt: { gte: twelveMonthsAgo },
@@ -253,7 +248,6 @@ export async function GET() {
       }),
     );
 
-    // --- Depreciation Forecast ---
     const depreciationSettings = await prisma.depreciation_settings.findMany({
       include: {
         assetCategoryType: {
@@ -273,7 +267,6 @@ export async function GET() {
     let currentTotal = 0;
     const yearProjections = new Map<string, number>();
 
-    // Initialize projection years
     const currentYear = now.getFullYear();
     for (let y = 0; y <= 3; y++) {
       yearProjections.set(String(currentYear + y), 0);

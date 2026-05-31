@@ -121,7 +121,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // MFA validation successful
     await createAuditLog({
       userId: user.userid,
       action: AUDIT_ACTIONS.LOGIN,

@@ -23,7 +23,6 @@ import { getOrganizationContext } from "@/lib/organization-context";
 
 const SUPPLIER_SORT_FIELDS = ["suppliername", "email", "creation_date"];
 
-// GET /api/supplier
 export async function GET(req: NextRequest) {
   try {
     // Require authentication to view suppliers
@@ -92,7 +91,6 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate input
     const validationResult = createSupplierSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
@@ -131,7 +129,6 @@ export async function POST(req: NextRequest) {
       } as Prisma.supplierUncheckedCreateInput,
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.CREATE,
@@ -170,7 +167,6 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate supplier ID
     const idValidation = uuidSchema.safeParse(body.supplierid);
     if (!idValidation.success) {
       return NextResponse.json(
@@ -179,7 +175,6 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Validate update data
     const dataValidation = updateSupplierSchema.safeParse(body);
     if (!dataValidation.success) {
       return NextResponse.json(
@@ -230,7 +225,6 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.UPDATE,
@@ -264,7 +258,6 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE /api/supplier
 export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -276,7 +269,6 @@ export async function DELETE(req: NextRequest) {
     const body = await req.json();
     const { supplierid } = body;
 
-    // Validate supplier ID
     const idValidation = uuidSchema.safeParse(supplierid);
     if (!idValidation.success) {
       return NextResponse.json(
@@ -301,7 +293,6 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Check for referencing records before deleting
     const [
       assetRefs,
       accessoriesRefs,
@@ -337,12 +328,10 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Delete the supplier
     await prisma.supplier.delete({
       where: { supplierid },
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.DELETE,

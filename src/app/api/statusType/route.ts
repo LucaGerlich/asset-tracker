@@ -22,7 +22,6 @@ import { logger } from "@/lib/logger";
 
 const STATUS_TYPE_SORT_FIELDS = ["statustypename"];
 
-// GET /api/statusType
 export async function GET(req: NextRequest) {
   try {
     // Require authentication to view status types
@@ -92,7 +91,6 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate input
     const validationResult = createStatusTypeSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
@@ -131,7 +129,6 @@ export async function POST(req: NextRequest) {
     // Invalidate cached status types so subsequent reads reflect the new entry
     await invalidateCache("status_types");
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.CREATE,
@@ -169,7 +166,6 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate status ID
     const idValidation = uuidSchema.safeParse(body.statustypeid);
     if (!idValidation.success) {
       return NextResponse.json(
@@ -178,7 +174,6 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Validate update data
     const dataValidation = updateStatusTypeSchema.safeParse(body);
     if (!dataValidation.success) {
       return NextResponse.json(
@@ -228,7 +223,6 @@ export async function PUT(req: NextRequest) {
     // Invalidate cached status types so subsequent reads reflect the update
     await invalidateCache("status_types");
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.UPDATE,
@@ -261,7 +255,6 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE /api/statusType
 export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -273,7 +266,6 @@ export async function DELETE(req: NextRequest) {
     const body = await req.json();
     const { statustypeid } = body;
 
-    // Validate status type ID
     const idValidation = uuidSchema.safeParse(statustypeid);
     if (!idValidation.success) {
       return NextResponse.json(
@@ -285,7 +277,6 @@ export async function DELETE(req: NextRequest) {
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
-    // Get status type details before deletion for audit log
     const statusType = await prisma.statusType.findFirst({
       where: { statustypeid, organizationId: orgId ?? null },
       select: { statustypename: true },
@@ -298,7 +289,6 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Check for referencing records before deleting
     const [assetRefs, accessoriesRefs, transitionRefs] = await Promise.all([
       prisma.asset.count({ where: { statustypeid } }),
       prisma.accessories.count({ where: { statustypeid } }),
@@ -330,7 +320,6 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Delete the status type
     await prisma.statusType.delete({
       where: { statustypeid },
     });
@@ -338,7 +327,6 @@ export async function DELETE(req: NextRequest) {
     // Invalidate cached status types so subsequent reads reflect the deletion
     await invalidateCache("status_types");
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.DELETE,

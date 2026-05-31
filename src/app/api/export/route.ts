@@ -21,10 +21,6 @@ import {
 } from "@/lib/streaming-export";
 import { logger } from "@/lib/logger";
 
-// ---------------------------------------------------------------------------
-// Column definitions per entity
-// ---------------------------------------------------------------------------
-
 const ASSET_COLUMNS: ExportColumn[] = [
   { key: "assetname", header: "Name" },
   { key: "assettag", header: "Asset Tag" },
@@ -97,10 +93,6 @@ const CONSUMABLE_COLUMNS: ExportColumn[] = [
   { key: "creation_date", header: "Created" },
 ];
 
-// ---------------------------------------------------------------------------
-// Entity configuration
-// ---------------------------------------------------------------------------
-
 type EntityKey =
   | "assets"
   | "users"
@@ -123,9 +115,11 @@ interface EntityConfig {
   transformRow?: (row: Record<string, unknown>) => Record<string, unknown>;
 }
 
-function stripPassword(user: Record<string, unknown>): Record<string, unknown> {
-  const { password, mfaSecret, mfaBackupCodes, ...rest } = user;
-  return rest;
+/** Convert Prisma select results to generic records for export. */
+function toExportRows<T extends Record<string, unknown>>(
+  items: T[],
+): Record<string, unknown>[] {
+  return items;
 }
 
 const ENTITIES: Record<EntityKey, EntityConfig> = {
@@ -152,7 +146,7 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
           creation_date: true,
         },
       });
-      return items as unknown as Record<string, unknown>[];
+      return toExportRows(items);
     },
     fetchBatch: async (orgId, { skip, take }) => {
       const where = scopeToOrganization({}, orgId);
@@ -176,7 +170,7 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
           creation_date: true,
         },
       });
-      return items as unknown as Record<string, unknown>[];
+      return toExportRows(items);
     },
   },
   users: {
@@ -197,7 +191,7 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
           creation_date: true,
         },
       });
-      return items as unknown as Record<string, unknown>[];
+      return toExportRows(items);
     },
     fetchBatch: async (orgId, { skip, take }) => {
       const where = scopeToOrganization({}, orgId);
@@ -216,7 +210,7 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
           creation_date: true,
         },
       });
-      return items as unknown as Record<string, unknown>[];
+      return toExportRows(items);
     },
   },
   licences: {
@@ -238,7 +232,7 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
           creation_date: true,
         },
       });
-      return items as unknown as Record<string, unknown>[];
+      return toExportRows(items);
     },
     fetchBatch: async (orgId, { skip, take }) => {
       const where = scopeToOrganization({}, orgId);
@@ -258,7 +252,7 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
           creation_date: true,
         },
       });
-      return items as unknown as Record<string, unknown>[];
+      return toExportRows(items);
     },
   },
   accessories: {
@@ -278,7 +272,7 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
           creation_date: true,
         },
       });
-      return items as unknown as Record<string, unknown>[];
+      return toExportRows(items);
     },
     fetchBatch: async (orgId, { skip, take }) => {
       const where = scopeToOrganization({}, orgId);
@@ -296,7 +290,7 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
           creation_date: true,
         },
       });
-      return items as unknown as Record<string, unknown>[];
+      return toExportRows(items);
     },
   },
   consumables: {
@@ -316,7 +310,7 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
           creation_date: true,
         },
       });
-      return items as unknown as Record<string, unknown>[];
+      return toExportRows(items);
     },
     fetchBatch: async (orgId, { skip, take }) => {
       const where = scopeToOrganization({}, orgId);
@@ -334,7 +328,7 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
           creation_date: true,
         },
       });
-      return items as unknown as Record<string, unknown>[];
+      return toExportRows(items);
     },
   },
   depreciation: {
@@ -373,7 +367,6 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
         orgId,
       );
 
-      // Settings are a tiny table — always load all
       const [assets, depSettings] = await Promise.all([
         prisma.asset.findMany({
           where,
@@ -402,10 +395,6 @@ const ENTITIES: Record<EntityKey, EntityConfig> = {
     },
   },
 };
-
-// ---------------------------------------------------------------------------
-// Depreciation row builder
-// ---------------------------------------------------------------------------
 
 interface DepreciationAsset {
   assetname: string;
@@ -495,10 +484,6 @@ function buildDepreciationRows(
   });
 }
 
-// ---------------------------------------------------------------------------
-// GET /api/export?entity=assets&format=xlsx
-// ---------------------------------------------------------------------------
-
 export async function GET(req: NextRequest) {
   try {
     await requireApiAuth();
@@ -509,7 +494,6 @@ export async function GET(req: NextRequest) {
     const entityParam = searchParams.get("entity") as EntityKey | null;
     const formatParam = (searchParams.get("format") || "csv") as ExportFormat;
 
-    // Validate entity
     if (!entityParam || !ENTITIES[entityParam]) {
       return NextResponse.json(
         {
@@ -519,7 +503,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Validate format
     if (formatParam !== "csv" && formatParam !== "xlsx") {
       return NextResponse.json(
         { error: "Invalid format. Must be csv or xlsx" },
@@ -532,7 +515,6 @@ export async function GET(req: NextRequest) {
     const filename = `${entityParam}-export-${dateStr}`;
 
     // Use streaming for CSV exports to handle large datasets without
-    // loading everything into memory at once.
     if (formatParam === "csv") {
       const streamConfig: StreamingExportConfig = {
         columns: config.columns,

@@ -96,7 +96,6 @@ export async function POST(req: Request, { params }: RouteParams) {
         if (log.details) {
           try {
             const parsed = JSON.parse(log.details);
-            // Remove common PII fields from details
             const piiFields = [
               "email",
               "firstname",

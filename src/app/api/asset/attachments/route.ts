@@ -144,7 +144,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
     }
 
-    // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: "File size exceeds 10 MB limit" },
@@ -152,7 +151,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate file extension
     const ext = extname(file.name).toLowerCase();
     if (!ALLOWED_EXTENSIONS.has(ext)) {
       return NextResponse.json(

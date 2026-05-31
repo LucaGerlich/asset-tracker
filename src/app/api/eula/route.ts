@@ -9,7 +9,6 @@ import {
 } from "@/lib/validation";
 import { logger } from "@/lib/logger";
 
-// GET /api/eula
 export async function GET() {
   try {
     await requirePermission("eula:view");
@@ -142,7 +141,6 @@ export async function PUT(req: Request) {
   }
 }
 
-// DELETE /api/eula
 export async function DELETE(req: Request) {
   try {
     const demoBlock = requireNotDemoMode();

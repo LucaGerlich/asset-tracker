@@ -8,7 +8,6 @@ import {
   getOrganizationContext,
   scopeToOrganization,
 } from "@/lib/organization-context";
-import { conflictResponse } from "@/lib/concurrency";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -121,7 +120,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       data: updateData,
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.UPDATE,
@@ -181,7 +179,6 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       where: { id },
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.DELETE,

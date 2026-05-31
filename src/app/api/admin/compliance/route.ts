@@ -12,14 +12,11 @@ export async function GET() {
   try {
     await requireApiAdmin();
 
-    // --- Access Control ---
     const [totalUsers, adminUsers] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { isadmin: true } }),
     ]);
 
-    // --- Audit Coverage ---
-    // Count distinct entities that have at least one audit log entry in the last 90 days
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
@@ -55,12 +52,9 @@ export async function GET() {
       totalAssets + totalAccessories + totalLicences + totalConsumables;
     const auditedEntityCount = auditedEntitiesRaw.length;
 
-    // --- Data Retention / GDPR ---
     const gdprSettings = getGDPRSettings();
     const gdprConfigured = gdprSettings.updatedAt !== null;
 
-    // --- Asset Inventory Breakdown ---
-    // Count assets grouped by status type
     const statusCounts = await prisma.asset.groupBy({
       by: ["statustypeid"],
       _count: { assetid: true },

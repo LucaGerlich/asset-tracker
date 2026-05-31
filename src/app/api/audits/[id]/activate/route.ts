@@ -32,14 +32,12 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Build asset scope filter
     const assetWhere: Record<string, unknown> = {};
     if (campaign.scopeType === "location" && campaign.scopeId) {
       assetWhere.locationid = campaign.scopeId;
     } else if (campaign.scopeType === "category" && campaign.scopeId) {
       assetWhere.assetcategorytypeid = campaign.scopeId;
     }
-    // Org scoping
     if (campaign.organizationId) {
       assetWhere.organizationId = campaign.organizationId;
     }

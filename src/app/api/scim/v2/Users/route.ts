@@ -8,7 +8,6 @@ import {
   scimError,
   userToScim,
   scimListResponse,
-  type ScimAuthResult,
 } from "@/lib/scim";
 import { checkUserLimit } from "@/lib/tenant-limits";
 import { logger, logCatchError } from "@/lib/logger";
@@ -119,7 +118,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // Check for existing user
     const existing = await prisma.user.findFirst({
       where: {
         OR: [
@@ -137,7 +135,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // Check user quota before provisioning
     const limitCheck = await checkUserLimit();
     if (!limitCheck.allowed) {
       return NextResponse.json(
@@ -175,9 +172,6 @@ export async function POST(req: Request) {
       select: USER_SELECT,
     });
 
-    // Mirror to accounts.password so BetterAuth has a credential row for this user.
-    // Cannot fail meaningfully — the user already exists; if the account write fails
-    // the next login attempt's migration hook will create it from user.password.
     await prisma.accounts
       .create({
         data: {

@@ -20,7 +20,6 @@ import {
 
 const KIT_SORT_FIELDS = ["name", "createdAt"];
 
-// GET /api/kits
 // Pagination: ?page=1&pageSize=25&sortBy=name&sortOrder=asc&search=keyword
 export async function GET(req: Request) {
   try {
@@ -134,7 +133,6 @@ export async function POST(req: Request) {
       });
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id ?? null,
       action: AUDIT_ACTIONS.CREATE,
@@ -226,7 +224,6 @@ export async function PUT(req: Request) {
       });
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id ?? null,
       action: AUDIT_ACTIONS.UPDATE,
@@ -256,7 +253,6 @@ export async function PUT(req: Request) {
   }
 }
 
-// DELETE /api/kits
 export async function DELETE(req: Request) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -273,7 +269,6 @@ export async function DELETE(req: Request) {
       );
     }
 
-    // Get kit details before deletion for audit log
     const kit = await prisma.kit.findUnique({
       where: { id },
       select: { name: true },
@@ -287,7 +282,6 @@ export async function DELETE(req: Request) {
       where: { id },
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id ?? null,
       action: AUDIT_ACTIONS.DELETE,

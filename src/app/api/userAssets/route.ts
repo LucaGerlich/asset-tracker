@@ -4,7 +4,6 @@ import { requireApiAuth } from "@/lib/api-auth";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
-// GET /api/userAssets
 export async function GET() {
   try {
     const user = await requireApiAuth();

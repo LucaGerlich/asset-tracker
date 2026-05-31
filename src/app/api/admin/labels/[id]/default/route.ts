@@ -16,7 +16,6 @@ export async function POST(req: Request, { params }: RouteParams) {
     await requireApiAdmin();
     const { id } = await params;
 
-    // Unset all defaults
     await prisma.label_templates.updateMany({
       where: { isDefault: true },
       data: { isDefault: false, updatedAt: new Date() },

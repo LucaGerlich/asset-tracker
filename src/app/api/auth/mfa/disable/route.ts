@@ -14,8 +14,8 @@ import { logger } from "@/lib/logger";
  * twoFactor plugin.
  *
  * BetterAuth equivalent: POST /api/auth/two-factor/disable (partial overlap)
- * TODO: Evaluate consolidating with BetterAuth's twoFactor plugin once the
- * migration is fully stable.
+ * Note: Kept separate from BetterAuth's twoFactor plugin because this route
+ * handles encrypted secret clearing and audit logging not covered by the plugin.
  */
 export async function POST(req: Request) {
   try {
@@ -72,7 +72,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.UPDATE,

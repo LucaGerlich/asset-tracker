@@ -35,7 +35,6 @@ export async function POST(request) {
 
     const body = await request.json();
 
-    // Validate input using Zod schema
     const validationResult = createUserSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
@@ -85,10 +84,8 @@ export async function POST(request) {
       ? await hashPassword(finalPassword)
       : null;
 
-    // Get organization context for the creating admin
     const orgContext = await getOrganizationContext();
 
-    // Create user
     const created = await prisma.user.create({
       data: {
         username: username ?? null,
@@ -105,7 +102,6 @@ export async function POST(request) {
       } as Prisma.userUncheckedCreateInput,
     });
 
-    // Create credential account if password was set
     if (hashedPassword) {
       await prisma.accounts.upsert({
         where: {
@@ -165,7 +161,7 @@ export async function POST(request) {
         });
         const html = renderTemplate(emailTemplates.teamInvitation.html, {
           inviterName:
-            `${(admin as any).firstname || ""} ${(admin as any).lastname || ""}`.trim() ||
+            `${admin.firstname || ""} ${admin.lastname || ""}`.trim() ||
             "Admin",
           organizationName: orgContext.organization.name,
           inviteUrl,
@@ -179,7 +175,6 @@ export async function POST(request) {
       }
     }
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.CREATE,
@@ -202,7 +197,6 @@ export async function POST(request) {
       email: created.email,
     }).catch(logCatchError("Integration notification failed"));
 
-    // Remove password from response
     const { password: _, ...userWithoutPassword } = created;
 
     return NextResponse.json(
@@ -216,7 +210,6 @@ export async function POST(request) {
   } catch (error) {
     logger.error("POST /api/user/addUser error", { error });
 
-    // Handle specific error types
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -224,7 +217,6 @@ export async function POST(request) {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
 
-    // Handle unique constraint violations
     if (error instanceof Object && "code" in error && error.code === "P2002") {
       return NextResponse.json(
         {

@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
-import {
-  getOrganizationContext,
-  scopeToOrganization,
-} from "@/lib/organization-context";
+import { getOrganizationContext } from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// GET: Fetch a single maintenance schedule with its logs
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     await requireApiAuth();
@@ -91,7 +87,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Build update data from provided fields
     const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
@@ -164,7 +159,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   }
 }
 
-// DELETE: Delete a maintenance schedule
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
     const demoBlock = requireNotDemoMode();

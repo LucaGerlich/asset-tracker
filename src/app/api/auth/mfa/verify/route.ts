@@ -15,8 +15,8 @@ import { logger } from "@/lib/logger";
  * logging — not handled by BetterAuth's twoFactor plugin.
  *
  * BetterAuth equivalent: POST /api/auth/two-factor/verify-totp (partial overlap)
- * TODO: Evaluate consolidating with BetterAuth's twoFactor plugin once the
- * migration is fully stable.
+ * Note: Kept separate from BetterAuth's twoFactor plugin because this route
+ * handles encrypted backup code storage and audit logging not covered by the plugin.
  */
 export async function POST(req: Request) {
   try {
@@ -35,7 +35,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Token is required" }, { status: 400 });
     }
 
-    // Get user's pending MFA secret
     const user = await prisma.user.findUnique({
       where: { userid: authUser.id },
       select: { mfaSecret: true, mfaEnabled: true },
@@ -83,7 +82,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.UPDATE,

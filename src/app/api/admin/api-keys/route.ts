@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin } from "@/lib/api-auth";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
 import { generateApiKey } from "@/lib/api-keys";
 import { logger } from "@/lib/logger";
 import { PERMISSIONS } from "@/lib/rbac";
@@ -31,7 +30,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validate scopes — at least one scope is required
     if (!scopes || !Array.isArray(scopes) || scopes.length === 0) {
       return NextResponse.json(
         { error: "At least one scope is required" },
@@ -49,7 +47,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validate expiresAt if provided
     let parsedExpiry: Date | null = null;
     if (expiresAt) {
       parsedExpiry = new Date(expiresAt);
@@ -82,7 +79,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Return the full key ONCE - it cannot be retrieved again
     return NextResponse.json(
       {
         ...apiKey,

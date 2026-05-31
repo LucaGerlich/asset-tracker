@@ -21,7 +21,6 @@ const TICKET_SORT_FIELDS = [
   "updatedAt",
 ];
 
-// GET /api/tickets
 // Supports two sources:
 // - Default (local): Returns tickets from the local database based on user role
 // - Freshdesk (?source=freshdesk): Returns tickets from Freshdesk API
@@ -36,7 +35,6 @@ export async function GET(req: Request) {
   return getLocalTickets(url);
 }
 
-// Fetch tickets from the local Prisma database
 async function getLocalTickets(url: URL) {
   try {
     const user = await requireApiAuth();
@@ -153,7 +151,6 @@ async function getFreshdeskTickets(req: Request, url: URL) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get Freshdesk configuration from database
     const [domainSetting, apiKeySetting] = await Promise.all([
       prisma.system_settings.findUnique({
         where: { settingKey: "freshdesk_domain" },
@@ -173,7 +170,6 @@ async function getFreshdeskTickets(req: Request, url: URL) {
       );
     }
 
-    // Parse query params
     const page = parseInt(url.searchParams.get("page") || "1", 10);
     const typeFilter = url.searchParams.get("type");
 

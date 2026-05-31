@@ -21,7 +21,6 @@ export async function GET() {
     const orgId = orgCtx?.organization?.id;
     const orgScope = scopeToOrganization({}, orgId);
 
-    // --- User Access List (scoped to organization) ---
     const users = await prisma.user.findMany({
       where: orgScope,
       select: {
@@ -40,7 +39,6 @@ export async function GET() {
     const adminUsersList = users.filter((u) => u.isadmin);
     const regularUsersList = users.filter((u) => !u.isadmin);
 
-    // --- Audit Log Summary ---
     const [totalAuditLogs, lastAuditEntry, oldestAuditEntry] =
       await Promise.all([
         prisma.audit_logs.count(),
@@ -66,7 +64,6 @@ export async function GET() {
       _count: { id: true },
     });
 
-    // --- Asset Counts (scoped to organization) ---
     const [totalAssets, totalAccessories, totalLicences, totalConsumables] =
       await Promise.all([
         prisma.asset.count({ where: orgScope }),
@@ -75,10 +72,8 @@ export async function GET() {
         prisma.consumable.count({ where: orgScope }),
       ]);
 
-    // --- Data Retention Settings ---
     const gdprSettings = getGDPRSettings();
 
-    // --- Build Report ---
     const report = {
       reportMetadata: {
         generatedAt: new Date().toISOString(),

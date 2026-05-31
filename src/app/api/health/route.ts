@@ -7,7 +7,6 @@ export async function GET() {
   const startTime = Date.now();
 
   try {
-    // Check database connection
     let dbHealthy = false;
     try {
       await prisma.$queryRaw`SELECT 1`;

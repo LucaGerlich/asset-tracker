@@ -35,7 +35,6 @@ const normalizeNumberInput = (value: unknown) => {
   return Number.isNaN(num) ? value : num;
 };
 
-// Create asset via POST /api/asset/addAsset
 export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -74,7 +73,6 @@ export async function POST(req: NextRequest) {
     const { assetname, assettag, serialnumber, ...rest } =
       validationResult.data;
 
-    // Get organization context for the creating admin
     const orgContext = await getOrganizationContext();
 
     const created = await prisma.asset.create({

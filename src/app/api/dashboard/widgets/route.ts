@@ -19,7 +19,6 @@ export async function GET() {
     });
 
     if (widgets.length === 0) {
-      // Return role-appropriate defaults when user has none saved
       const defaultSet = user.isAdmin ? DEFAULT_WIDGETS : DEFAULT_USER_WIDGETS;
       const defaults = defaultSet.map((w, i) => ({
         id: `default-${i}`,
@@ -70,7 +69,6 @@ export async function PUT(req: NextRequest) {
     const hasDefaults = widgets.some((w) => w.id.startsWith("default-"));
 
     if (hasDefaults) {
-      // Create real records for default widgets
       const defaultWidgetMap = new Map(
         DEFAULT_WIDGETS.map((dw, i) => [`default-${i}`, dw]),
       );
@@ -105,7 +103,6 @@ export async function PUT(req: NextRequest) {
 
       await Promise.all(updatePromises);
     } else {
-      // Update existing widgets
       const updatePromises = widgets.map((w) =>
         prisma.dashboardWidget.update({
           where: { id: w.id },
@@ -116,7 +113,6 @@ export async function PUT(req: NextRequest) {
       await Promise.all(updatePromises);
     }
 
-    // Return the updated list
     const updated = await prisma.dashboardWidget.findMany({
       where: { userId: user.id },
       orderBy: { position: "asc" },
@@ -152,7 +148,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate widgetType
     const validTypes = WIDGET_DEFINITIONS.map((w) => w.type);
     if (!validTypes.includes(widgetType)) {
       return NextResponse.json(

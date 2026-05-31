@@ -23,7 +23,6 @@ import { getOrganizationContext } from "@/lib/organization-context";
 
 const MANUFACTURER_SORT_FIELDS = ["manufacturername", "creation_date"];
 
-// GET /api/manufacturer
 export async function GET(req: NextRequest) {
   try {
     // Require authentication to view manufacturers
@@ -88,7 +87,6 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate input
     const validationResult = createManufacturerSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
@@ -113,7 +111,6 @@ export async function POST(req: NextRequest) {
       } as Prisma.manufacturerUncheckedCreateInput,
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.CREATE,
@@ -151,7 +148,6 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate manufacturer ID
     const idValidation = uuidSchema.safeParse(body.manufacturerid);
     if (!idValidation.success) {
       return NextResponse.json(
@@ -160,7 +156,6 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Validate update data
     const dataValidation = updateManufacturerSchema.safeParse(body);
     if (!dataValidation.success) {
       return NextResponse.json(
@@ -196,7 +191,6 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.UPDATE,
@@ -230,7 +224,6 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE /api/manufacturer
 export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -241,7 +234,6 @@ export async function DELETE(req: NextRequest) {
     const body = await req.json();
     const { manufacturerid } = body;
 
-    // Validate manufacturer ID
     const idValidation = uuidSchema.safeParse(manufacturerid);
     if (!idValidation.success) {
       return NextResponse.json(
@@ -266,7 +258,6 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Check for referencing records before deleting
     const [
       assetRefs,
       accessoriesRefs,
@@ -304,12 +295,10 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Delete the manufacturer
     await prisma.manufacturer.delete({
       where: { manufacturerid },
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.DELETE,

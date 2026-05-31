@@ -34,7 +34,6 @@ export async function GET(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Invalid ticket ID" }, { status: 400 });
     }
 
-    // Get Freshdesk configuration from database
     const [domainSetting, apiKeySetting] = await Promise.all([
       prisma.system_settings.findUnique({
         where: { settingKey: "freshdesk_domain" },
@@ -86,7 +85,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const user = await requireApiAdmin();
+    const _user = await requireApiAdmin();
     const { id } = await params;
     const body = await req.json();
 
@@ -151,7 +150,6 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       comments: [],
     };
 
-    // Fire-and-forget: notify assignee if assignedTo changed
     if (
       assignedTo &&
       assignedTo !== existingTicket.assignedTo &&
@@ -171,7 +169,6 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       );
     }
 
-    // Fire-and-forget: notify creator if status changed
     if (status && status !== existingTicket.status && ticket.creator?.email) {
       const creatorName = `${ticket.creator.firstname} ${ticket.creator.lastname}`;
       notifyTicketStatusChanged(

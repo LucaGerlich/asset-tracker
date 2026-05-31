@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { createFreshdeskClient } from "@/lib/freshdesk";
 import { encrypt } from "@/lib/encryption";
 import { requireNotDemoMode, requireSuperAdmin } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";

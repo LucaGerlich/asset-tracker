@@ -5,7 +5,6 @@ import {
   scimHeaders,
   scimError,
   userToScim,
-  type ScimAuthResult,
 } from "@/lib/scim";
 import { logger } from "@/lib/logger";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
@@ -159,7 +158,6 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       change_date: new Date(),
     };
 
-    // Process SCIM PatchOp operations
     const operations = body.Operations || body.operations || [];
     for (const op of operations) {
       const path = op.path?.toLowerCase();

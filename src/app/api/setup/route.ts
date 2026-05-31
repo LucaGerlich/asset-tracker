@@ -63,7 +63,6 @@ export async function POST(req: Request) {
 
     const hashedPassword = await hashPassword(password);
 
-    // Create the organization
     const org = await prisma.organization.create({
       data: {
         name: organization,
@@ -71,7 +70,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Create the admin user
     const user = await prisma.user.create({
       data: {
         firstname,

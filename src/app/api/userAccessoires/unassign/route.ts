@@ -3,7 +3,6 @@ import prisma from "../../../../lib/prisma";
 import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
-// DELETE /api/userAccessoires/unassign
 // Body: { userId, accessorieId }
 export async function DELETE(req: NextRequest) {
   try {

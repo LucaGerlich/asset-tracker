@@ -29,7 +29,6 @@ export async function GET() {
       },
     });
 
-    // Fetch all depreciation settings in one query
     const depSettings = await prisma.depreciation_settings.findMany();
     const settingsMap = new Map(depSettings.map((s) => [s.categoryId, s]));
 

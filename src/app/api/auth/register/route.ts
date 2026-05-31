@@ -69,7 +69,6 @@ export async function POST(req: Request) {
     const { firstname, lastname, email, organization, username, password } =
       parsed.data;
 
-    // Check for existing username or email
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [{ username: username }, { email: email.toLowerCase().trim() }],
@@ -87,7 +86,6 @@ export async function POST(req: Request) {
 
     const hashedPassword = await hashPassword(password);
 
-    // Create the organization
     // SaaS mode: start with 14-day Professional trial
     // Self-hosted: unlimited, no trial
     const trialData = isSelfHosted()
@@ -107,7 +105,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Create the user as the first admin of the organization
     const user = await prisma.user.create({
       data: {
         firstname,

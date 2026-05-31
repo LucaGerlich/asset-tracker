@@ -20,7 +20,6 @@ const ORDER_SORT_FIELDS = [
   "expectedDeliveryDate",
 ];
 
-// GET /api/procurement/orders - List purchase orders
 export async function GET(req: NextRequest) {
   try {
     const user = await requirePermission("procurement:view");

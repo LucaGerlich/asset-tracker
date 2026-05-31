@@ -9,7 +9,6 @@ import {
 } from "@/lib/validation";
 import { logger } from "@/lib/logger";
 
-// GET /api/componentCategory
 export async function GET() {
   try {
     await requirePermission("component:view");
@@ -53,7 +52,6 @@ export async function POST(req: Request) {
       data: { name },
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.CREATE,
@@ -109,7 +107,6 @@ export async function PUT(req: Request) {
       },
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.UPDATE,
@@ -142,7 +139,6 @@ export async function PUT(req: Request) {
   }
 }
 
-// DELETE /api/componentCategory
 export async function DELETE(req: Request) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -175,7 +171,6 @@ export async function DELETE(req: Request) {
       where: { id },
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.DELETE,

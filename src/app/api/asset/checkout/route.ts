@@ -95,7 +95,6 @@ export async function POST(req: Request) {
       notes,
     } = data;
 
-    // Validate asset exists and belongs to user's organization
     const asset = await prisma.asset.findFirst({
       where: scopeToOrganization({ assetid: assetId }, orgId),
     });
@@ -104,7 +103,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
     }
 
-    // Validate the target exists based on checkedOutToType
     let targetLabel = "";
 
     if (checkedOutToType === "user") {
@@ -164,7 +162,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Audit log
     createAuditLog({
       userId: user.id as string,
       action: AUDIT_ACTIONS.CREATE,
@@ -177,7 +174,6 @@ export async function POST(req: Request) {
       },
     }).catch(logCatchError("Audit log failed"));
 
-    // Webhook
     triggerWebhook("asset.checked_out", {
       assetId,
       assetName: asset.assetname,

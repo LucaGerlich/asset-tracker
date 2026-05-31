@@ -30,7 +30,6 @@ export async function GET() {
     const result = await cached(
       cacheKey,
       async () => {
-        // Fetch assets with relevant fields
         const assets = await prisma.asset.findMany({
           where: scopeToOrganization({}, orgId),
           select: {
@@ -50,7 +49,6 @@ export async function GET() {
         const depSettings = await prisma.depreciation_settings.findMany();
         const settingsMap = new Map(depSettings.map((s) => [s.categoryId, s]));
 
-        // Fetch maintenance schedules with their most recent log
         const schedules = await prisma.maintenance_schedules.findMany({
           where: {
             asset: scopeToOrganization({}, orgId),

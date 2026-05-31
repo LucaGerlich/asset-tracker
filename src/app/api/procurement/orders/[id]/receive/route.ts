@@ -90,7 +90,6 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      // Create goods receipt
       const goodsReceipt = await tx.goodsReceipt.create({
         data: {
           purchaseOrderId: id,
@@ -104,7 +103,6 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         },
       });
 
-      // Update received quantities on each PurchaseRequestItem
       for (const receiveItem of validated.items) {
         await tx.purchaseRequestItem.update({
           where: { id: receiveItem.itemId },
@@ -116,7 +114,6 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         });
       }
 
-      // Check if all items are fully received
       const updatedItems = await tx.purchaseRequestItem.findMany({
         where: {
           purchaseRequestId: purchaseOrder.purchaseRequestId!,

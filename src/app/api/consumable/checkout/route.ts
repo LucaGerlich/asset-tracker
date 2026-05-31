@@ -114,7 +114,6 @@ export async function POST(req: Request) {
         },
       });
 
-      // Create the checkout record
       const created = await tx.consumable_checkouts.create({
         data: {
           consumableId,
@@ -136,7 +135,6 @@ export async function POST(req: Request) {
       return { error: null, consumable, checkout: created };
     });
 
-    // Handle transaction results
     if (result.error === "not_found") {
       return NextResponse.json(
         { error: "Consumable not found" },

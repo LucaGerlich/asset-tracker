@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma, PrismaClient } from "@prisma/client";
-import {
-  requireApiAuth,
-  requireApiAdmin,
-  requireNotDemoMode,
-} from "@/lib/api-auth";
+import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { logger, logCatchError } from "@/lib/logger";
 import {
@@ -19,7 +15,6 @@ type TxClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
 export const dynamic = "force-dynamic";
 
-// GET /api/requests — list item requests
 export async function GET(req: NextRequest) {
   try {
     const user = await requireApiAuth();
@@ -349,7 +344,6 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Request not found" }, { status: 404 });
     }
 
-    // Optimistic concurrency check
     if (
       _expectedVersion &&
       existing.updatedAt &&
@@ -390,7 +384,6 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // ---- Critical section: all mutations are atomic ----
     await prisma.$transaction(async (tx) => {
       const updateData: Record<string, unknown> = {
         status,
@@ -469,8 +462,6 @@ export async function PUT(req: NextRequest) {
       });
     });
 
-    // ---- Post-transaction side effects (non-critical) ----
-
     // Audit log for status change
     const actionMap: Record<string, string> = {
       approved: AUDIT_ACTIONS.APPROVE,
@@ -495,7 +486,6 @@ export async function PUT(req: NextRequest) {
       },
     }).catch(logCatchError("Audit log failed"));
 
-    // Notify the requester
     try {
       const requester = await prisma.user.findUnique({
         where: { userid: existing.userId },
@@ -569,7 +559,9 @@ async function getEntityName(
         return l?.licencekey || "Unknown";
       }
     }
-  } catch {}
+  } catch {
+    /* DB lookup failure falls back to "Unknown" */
+  }
   return "Unknown";
 }
 
@@ -587,13 +579,11 @@ async function autoAssignItem(
 ): Promise<void> {
   switch (entityType) {
     case "asset": {
-      // Check if the asset is already assigned to the correct user
       const existingAssignment = await tx.userAssets.findFirst({
         where: { assetid: entityId, userid: userId },
       });
 
       if (!existingAssignment) {
-        // Remove any stale assignment to a different user, then create
         await tx.userAssets.deleteMany({
           where: { assetid: entityId },
         });
@@ -622,7 +612,6 @@ async function autoAssignItem(
       break;
     }
     case "accessory": {
-      // Check if the accessory is already assigned to this user
       const existingAccessory = await tx.userAccessoires.findFirst({
         where: { accessorieid: entityId, userid: userId },
       });
@@ -656,7 +645,6 @@ async function autoAssignItem(
       break;
     }
     case "licence": {
-      // Update is already idempotent — just set the user
       await tx.licence.update({
         where: { licenceid: entityId },
         data: { licenceduserid: userId },
@@ -711,7 +699,6 @@ async function unassignItem(
       break;
     }
     case "licence": {
-      // Setting null is idempotent — safe even if already null
       await tx.licence.update({
         where: { licenceid: entityId },
         data: { licenceduserid: null },

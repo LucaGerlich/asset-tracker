@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    // Check for existing pending invitation for same email + org
     const existingInvitation = await prisma.teamInvitation.findFirst({
       where: {
         email: email.toLowerCase(),
@@ -47,7 +46,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check user limit before sending invitation
     const limitCheck = await checkUserLimit();
     if (!limitCheck.allowed) {
       return NextResponse.json(
@@ -63,7 +61,6 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    // Create TeamInvitation record
     const invitation = await prisma.teamInvitation.create({
       data: {
         email: email.toLowerCase(),

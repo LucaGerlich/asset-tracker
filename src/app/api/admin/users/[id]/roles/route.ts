@@ -13,7 +13,6 @@ interface RouteParams {
 }
 
 // GET /api/admin/users/[id]/roles
-// Get all roles assigned to a user
 export async function GET(req: Request, { params }: RouteParams) {
   try {
     await requireApiAdmin();
@@ -31,7 +30,6 @@ export async function GET(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Get all roles assigned to the user via the junction table
     const userRoles = await prisma.userRole.findMany({
       where: { userId: id },
       include: {
@@ -47,7 +45,6 @@ export async function GET(req: Request, { params }: RouteParams) {
       },
     });
 
-    // Return the role details as a flat array
     const roles = userRoles.map((ur) => ur.role);
 
     return NextResponse.json(roles, { status: 200 });
@@ -116,7 +113,6 @@ export async function POST(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
-    // Create the user-role assignment
     const userRole = await prisma.userRole.create({
       data: {
         userId: id,
@@ -136,7 +132,6 @@ export async function POST(req: Request, { params }: RouteParams) {
       },
     });
 
-    // Audit log
     await createAuditLog({
       userId: admin.id || null,
       action: AUDIT_ACTIONS.ASSIGN,
@@ -184,7 +179,6 @@ export async function POST(req: Request, { params }: RouteParams) {
 }
 
 // DELETE /api/admin/users/[id]/roles
-// Remove a role from a user
 export async function DELETE(req: Request, { params }: RouteParams) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -238,7 +232,6 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       );
     }
 
-    // Delete the assignment
     await prisma.userRole.delete({
       where: {
         userId_roleId: {
@@ -248,7 +241,6 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       },
     });
 
-    // Audit log
     await createAuditLog({
       userId: admin.id || null,
       action: AUDIT_ACTIONS.UNASSIGN,

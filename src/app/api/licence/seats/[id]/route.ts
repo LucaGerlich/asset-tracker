@@ -96,7 +96,6 @@ export async function DELETE(
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
-    // Fetch the existing assignment
     const existing = await prisma.licenceSeatAssignment.findUnique({
       where: { id },
       include: {
@@ -147,7 +146,6 @@ export async function DELETE(
       },
     });
 
-    // Audit log
     await createAuditLog({
       userId: admin.id ?? null,
       action: AUDIT_ACTIONS.UNASSIGN,
@@ -163,7 +161,6 @@ export async function DELETE(
     const userName =
       `${existing.user.firstname ?? ""} ${existing.user.lastname ?? ""}`.trim();
 
-    // Webhook
     triggerWebhook("license.seat_unassigned", {
       assignmentId: id,
       licenceId: existing.licenceId,

@@ -148,14 +148,14 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const validated = updatePurchaseRequestSchema.parse(body);
 
     // Calculate new estimated total if items are provided
-    let estimatedTotal = existing.estimatedTotal;
+    let computedTotal: number | undefined;
     if (validated.items) {
-      estimatedTotal = validated.items.reduce((sum, item) => {
+      computedTotal = validated.items.reduce((sum, item) => {
         if (item.estimatedUnitCost != null) {
           return sum + item.quantity * item.estimatedUnitCost;
         }
         return sum;
-      }, 0) as unknown as typeof estimatedTotal;
+      }, 0);
     }
 
     const updatedRequest = await prisma.$transaction(async (tx) => {
@@ -191,8 +191,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
             departmentId: validated.departmentId,
           }),
           ...(validated.notes !== undefined && { notes: validated.notes }),
-          ...(estimatedTotal !== existing.estimatedTotal && {
-            estimatedTotal,
+          ...(computedTotal !== undefined && {
+            estimatedTotal: computedTotal,
           }),
         },
         include: {

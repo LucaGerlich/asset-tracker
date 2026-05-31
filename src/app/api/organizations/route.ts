@@ -93,7 +93,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = organizationSchema.parse(body);
 
-    // Check if slug is unique
     const existingOrg = await prisma.organization.findUnique({
       where: { slug: validated.slug },
     });

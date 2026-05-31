@@ -22,7 +22,6 @@ import { logger } from "@/lib/logger";
 
 const CONSUMABLE_CATEGORY_SORT_FIELDS = ["consumablecategorytypename"];
 
-// GET /api/consumableCategory
 export async function GET(req: NextRequest) {
   try {
     // Require authentication to view consumable categories
@@ -91,7 +90,6 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate input
     const validationResult = createConsumableCategoryTypeSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
@@ -115,7 +113,6 @@ export async function POST(req: NextRequest) {
       } as Prisma.consumableCategoryTypeUncheckedCreateInput,
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.CREATE,
@@ -152,7 +149,6 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate category ID
     const idValidation = uuidSchema.safeParse(body.consumablecategorytypeid);
     if (!idValidation.success) {
       return NextResponse.json(
@@ -161,7 +157,6 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Validate update data
     const dataValidation = updateConsumableCategoryTypeSchema.safeParse(body);
     if (!dataValidation.success) {
       return NextResponse.json(
@@ -196,7 +191,6 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.UPDATE,

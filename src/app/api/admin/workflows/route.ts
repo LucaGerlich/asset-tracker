@@ -3,7 +3,6 @@ import prisma from "@/lib/prisma";
 import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
-// GET /api/admin/workflows - List all automation rules
 export async function GET() {
   try {
     await requireApiAdmin();

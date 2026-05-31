@@ -35,7 +35,6 @@ export async function DELETE(req: NextRequest) {
       });
     }
 
-    // Remove dependent relations first to satisfy FK constraints
     await prisma.$transaction([
       prisma.userAssets.deleteMany({ where: { assetid: assetId } }),
       prisma.assetCheckout.deleteMany({ where: { assetId: assetId } }),

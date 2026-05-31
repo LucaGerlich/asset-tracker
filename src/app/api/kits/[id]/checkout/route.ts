@@ -61,7 +61,6 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       detail?: string;
     }[] = [];
 
-    // Process each kit item
     await prisma.$transaction(async (tx) => {
       for (const item of kit.items) {
         if (item.entityType === "asset_category") {
@@ -69,7 +68,6 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           const asset = await tx.asset.findFirst({
             where: {
               assetcategorytypeid: item.entityId,
-              // Check no active checkout
               checkouts: { none: { status: "checked_out" } },
             },
           });
@@ -158,7 +156,6 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       }
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.CREATE,

@@ -185,9 +185,7 @@ export async function POST(
     }
 
     // 6. Fetch the current state so we can log the revert diff
-    const prismaModel = (prisma as unknown as Record<string, unknown>)[
-      mapping.model
-    ] as {
+    interface RevertableModel {
       findUnique: (args: {
         where: Record<string, unknown>;
       }) => Promise<Record<string, unknown> | null>;
@@ -195,7 +193,21 @@ export async function POST(
         where: Record<string, unknown>;
         data: Record<string, unknown>;
       }) => Promise<Record<string, unknown>>;
-    };
+    }
+    function getRevertableModel(name: string): RevertableModel | undefined {
+      if (!(name in prisma)) return undefined;
+      const delegate: unknown = prisma[name as keyof typeof prisma];
+      if (
+        delegate &&
+        typeof delegate === "object" &&
+        "findUnique" in delegate &&
+        "update" in delegate
+      ) {
+        return delegate as RevertableModel;
+      }
+      return undefined;
+    }
+    const prismaModel = getRevertableModel(mapping.model);
 
     if (!prismaModel) {
       return NextResponse.json(

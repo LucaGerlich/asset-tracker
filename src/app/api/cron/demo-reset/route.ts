@@ -10,7 +10,6 @@ const DEMO_USER_USERNAME = "demo_user";
 const DEMO_USER_PASSWORD = "demo123";
 
 async function clearDatabase() {
-  // Delete in order respecting foreign key constraints
   // Junction / leaf tables first, then entities, then reference data
   await prisma.webhookDelivery.deleteMany({});
   await prisma.webhook.deleteMany({});

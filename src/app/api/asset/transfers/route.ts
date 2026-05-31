@@ -3,11 +3,10 @@ import prisma from "@/lib/prisma";
 import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
-// GET /api/asset/transfers
 // Optional query: ?assetId=<uuid> to filter by asset
 export async function GET(req: Request) {
   try {
-    const user = await requireApiAdmin();
+    const _user = await requireApiAdmin();
 
     const url = new URL(req.url);
     const assetId = url.searchParams.get("assetId");
@@ -84,7 +83,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Fetch the current asset
     const asset = await prisma.asset.findUnique({
       where: { assetid: assetId },
     });
@@ -104,14 +102,12 @@ export async function POST(req: Request) {
       const fromUserId = currentAssignment?.userid ?? null;
 
       transfer = await prisma.$transaction(async (tx) => {
-        // Delete old assignment if it exists
         if (currentAssignment) {
           await tx.userAssets.delete({
             where: { userassetsid: currentAssignment.userassetsid },
           });
         }
 
-        // Create new assignment
         await tx.userAssets.create({
           data: {
             userid: toUserId,
@@ -120,7 +116,6 @@ export async function POST(req: Request) {
           },
         });
 
-        // Create the transfer record
         const record = await tx.assetTransfer.create({
           data: {
             assetId,
@@ -138,7 +133,6 @@ export async function POST(req: Request) {
       const fromLocationId = asset.locationid ?? null;
 
       transfer = await prisma.$transaction(async (tx) => {
-        // Update the asset location
         await tx.asset.update({
           where: { assetid: assetId },
           data: {
@@ -147,7 +141,6 @@ export async function POST(req: Request) {
           },
         });
 
-        // Create the transfer record
         const record = await tx.assetTransfer.create({
           data: {
             assetId,
@@ -166,7 +159,6 @@ export async function POST(req: Request) {
       const fromOrgId = asset.organizationId ?? null;
 
       transfer = await prisma.$transaction(async (tx) => {
-        // Update the asset organization
         await tx.asset.update({
           where: { assetid: assetId },
           data: {
@@ -175,7 +167,6 @@ export async function POST(req: Request) {
           },
         });
 
-        // Create the transfer record
         const record = await tx.assetTransfer.create({
           data: {
             assetId,

@@ -76,7 +76,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Validate thresholds
     const minThreshold = validated.minThreshold ?? existingAlert.minThreshold;
     const criticalThreshold =
       validated.criticalThreshold ?? existingAlert.criticalThreshold;

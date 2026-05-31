@@ -70,7 +70,6 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       schedule.frequency,
     );
 
-    // Create maintenance log and update schedule in a transaction
     const [log, updatedSchedule] = await prisma.$transaction([
       prisma.maintenance_logs.create({
         data: {

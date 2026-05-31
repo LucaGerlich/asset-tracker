@@ -7,7 +7,6 @@ import {
 } from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
-// GET /api/asset/nextTag
 export async function GET(req: NextRequest) {
   try {
     await requireApiAuth();

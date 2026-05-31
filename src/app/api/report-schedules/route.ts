@@ -8,10 +8,6 @@ import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-// ---------------------------------------------------------------------------
-// GET /api/report-schedules — list current user's schedules
-// ---------------------------------------------------------------------------
-
 export async function GET() {
   try {
     await requireApiAuth();
@@ -39,10 +35,6 @@ export async function GET() {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// POST /api/report-schedules — create a new schedule
-// ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
   try {
@@ -104,10 +96,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// PUT /api/report-schedules — update a schedule
-// ---------------------------------------------------------------------------
-
 export async function PUT(req: NextRequest) {
   try {
     await requireApiAuth();
@@ -163,10 +151,6 @@ export async function PUT(req: NextRequest) {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// DELETE /api/report-schedules?id=<uuid>
-// ---------------------------------------------------------------------------
 
 export async function DELETE(req: NextRequest) {
   try {

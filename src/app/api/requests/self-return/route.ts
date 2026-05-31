@@ -88,7 +88,6 @@ export async function POST(req: NextRequest) {
     // Create a "returned" ItemRequest for audit trail and unassign in a transaction
     const now = new Date();
     const result = await prisma.$transaction(async (tx) => {
-      // Create the request record
       const createData: Record<string, unknown> = {
         entityType,
         entityId,
@@ -103,7 +102,6 @@ export async function POST(req: NextRequest) {
         data: createData as never,
       });
 
-      // Unassign the item
       switch (entityType) {
         case "asset": {
           await tx.userAssets.deleteMany({

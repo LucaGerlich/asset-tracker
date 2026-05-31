@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "assetIds required" }, { status: 400 });
     }
 
-    // Fetch template
     const template = templateId
       ? await prisma.label_templates.findUnique({ where: { id: templateId } })
       : await prisma.label_templates.findFirst({
@@ -41,7 +40,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch assets with related data
     const assets = await prisma.asset.findMany({
       where: scopeToOrganization({ assetid: { in: assetIds } }, orgId),
       include: {
@@ -66,7 +64,6 @@ export async function POST(req: NextRequest) {
       const padding = 10;
       const qrUrl = `${baseUrl}/assets/${asset.assetid}`;
 
-      // Build template data
       const data: Record<string, string> = {
         assetName: asset.assetname || "",
         assetTag: asset.assettag || "",
@@ -109,7 +106,6 @@ export async function POST(req: NextRequest) {
         height: qrSize,
       });
 
-      // Render text from template
       const textWidth = qrX - padding * 2;
       const isTemplateLayout =
         template.layout && template.layout.includes("{{");

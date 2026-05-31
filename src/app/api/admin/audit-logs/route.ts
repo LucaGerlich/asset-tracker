@@ -17,7 +17,6 @@ const AUDIT_LOG_SORT_FIELDS = [
   "userId",
 ];
 
-// GET /api/admin/audit-logs
 export async function GET(req: Request) {
   try {
     await requirePermission("audit:view");
@@ -33,7 +32,6 @@ export async function GET(req: Request) {
 
     const prismaArgs = buildPrismaArgs(params, AUDIT_LOG_SORT_FIELDS);
 
-    // Build where clause from filters
     const where: Record<string, unknown> = {};
 
     // Scope audit logs to the caller's organization through the user relation

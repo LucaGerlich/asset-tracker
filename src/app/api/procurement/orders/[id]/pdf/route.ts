@@ -70,7 +70,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const page = pdfDoc.addPage([pageWidth, pageHeight]);
     let y = pageHeight - margin;
 
-    // --- Header ---
     page.drawText("Purchase Order", {
       x: margin,
       y,
@@ -89,7 +88,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     });
     y -= 24;
 
-    // Organization name
     if (purchaseOrder.organization?.name) {
       page.drawText(purchaseOrder.organization.name, {
         x: margin,
@@ -101,7 +99,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       y -= 16;
     }
 
-    // Date
     page.drawText(
       `Date: ${purchaseOrder.createdAt.toLocaleDateString("en-US", {
         year: "numeric",
@@ -118,7 +115,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     );
     y -= 14;
 
-    // Status
     page.drawText(`Status: ${purchaseOrder.status}`, {
       x: margin,
       y,
@@ -128,7 +124,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     });
     y -= 24;
 
-    // --- Separator ---
     page.drawLine({
       start: { x: margin, y },
       end: { x: margin + contentWidth, y },
@@ -137,7 +132,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     });
     y -= 20;
 
-    // --- Supplier details ---
     if (purchaseOrder.supplier) {
       page.drawText("Supplier", {
         x: margin,
@@ -182,7 +176,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       y -= 10;
     }
 
-    // --- Expected delivery date ---
     if (purchaseOrder.expectedDeliveryDate) {
       page.drawText(
         `Expected Delivery: ${new Date(
@@ -203,7 +196,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       y -= 20;
     }
 
-    // --- Line items table ---
     const items = purchaseOrder.purchaseRequest?.items ?? [];
 
     // Filter to items matching this PO's supplier (or all items if no supplier filter needed)
@@ -256,7 +248,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       });
       y -= 14;
 
-      // Table rows
       for (const item of poItems) {
         if (y < margin + 60) break; // Leave room for totals
 
@@ -303,7 +294,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         y -= 16;
       }
 
-      // Grand total
       y -= 4;
       page.drawLine({
         start: { x: colTotal - 10, y: y + 10 },
@@ -333,7 +323,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       y -= 24;
     }
 
-    // --- Notes ---
     if (purchaseOrder.notes) {
       page.drawText("Notes", {
         x: margin,

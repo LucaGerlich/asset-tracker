@@ -148,7 +148,9 @@ async function isItemStillAssigned(
         return !!l;
       }
     }
-  } catch {}
+  } catch {
+    /* DB lookup failure treated as not assigned */
+  }
   return false;
 }
 
@@ -180,6 +182,8 @@ async function getEntityName(
         return l?.licencekey || "Unknown";
       }
     }
-  } catch {}
+  } catch {
+    /* DB lookup failure falls back to "Unknown" */
+  }
   return "Unknown";
 }

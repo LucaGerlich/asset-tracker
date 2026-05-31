@@ -7,17 +7,13 @@ import {
   getOrganizationContext,
   scopeToOrganization,
 } from "@/lib/organization-context";
-import {
-  stockAlertSchema,
-  updateStockAlertSchema,
-} from "@/lib/validation-organization";
+import { stockAlertSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { z } from "zod";
 import { logger, logCatchError } from "@/lib/logger";
 
-// Get all stock alerts with optional low-stock filter
 export async function GET(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -72,7 +68,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Create a stock alert for a consumable
 export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -98,7 +93,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if alert already exists
     const existing = await prisma.stockAlert.findUnique({
       where: { consumableId: validated.consumableId },
     });
@@ -110,7 +104,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate thresholds
     if (validated.criticalThreshold > validated.minThreshold) {
       return NextResponse.json(
         {
@@ -160,7 +153,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Check all consumables for low stock and trigger alerts
 export async function PUT() {
   try {
     const demoBlock = requireNotDemoMode();
@@ -171,7 +163,6 @@ export async function PUT() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get all stock alerts with consumable data
     const alerts = await prisma.stockAlert.findMany({
       include: {
         consumable: {

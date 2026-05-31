@@ -13,7 +13,6 @@ import {
 
 const APPROVAL_SORT_FIELDS = ["status", "createdAt"];
 
-// GET /api/approvals - List approval requests
 export async function GET(req: NextRequest) {
   try {
     const user = await requirePermission("reservation:view");

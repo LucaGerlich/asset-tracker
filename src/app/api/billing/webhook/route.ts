@@ -80,7 +80,6 @@ export async function POST(req: Request) {
           stripeSubscriptionId: null,
           maxAssets: PLANS.starter.maxAssets,
           maxUsers: PLANS.starter.maxUsers,
-          // Start grace period suspension
           isActive: false,
           suspendedAt: new Date(),
         },

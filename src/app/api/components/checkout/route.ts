@@ -83,7 +83,6 @@ export async function POST(req: Request) {
         throw new Error(`INSUFFICIENT_STOCK:${comp.remainingQuantity}`);
       }
 
-      // Decrement the component remaining quantity
       await tx.component.update({
         where: { id: componentId },
         data: {
@@ -93,7 +92,6 @@ export async function POST(req: Request) {
         },
       });
 
-      // Create the checkout record
       const created = await tx.componentCheckout.create({
         data: {
           componentId,
@@ -115,7 +113,6 @@ export async function POST(req: Request) {
       return { checkout: created, component: comp };
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.CREATE,

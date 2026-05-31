@@ -93,7 +93,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     // Use a transaction to atomically increment stock and set returnedAt
     const checkin = await prisma.$transaction(async (tx) => {
-      // Increment the component remaining quantity
       await tx.component.update({
         where: { id: existing.componentId },
         data: {
@@ -122,7 +121,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       return updated;
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.UPDATE,

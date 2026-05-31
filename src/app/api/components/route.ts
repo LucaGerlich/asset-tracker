@@ -23,7 +23,6 @@ import {
 
 const COMPONENT_SORT_FIELDS = ["name", "remainingQuantity", "createdAt"];
 
-// GET /api/components
 // Pagination: ?page=1&pageSize=25&sortBy=name&sortOrder=asc&search=keyword
 export async function GET(req: Request) {
   try {
@@ -156,7 +155,6 @@ export async function POST(req: Request) {
       } as Prisma.ComponentUncheckedCreateInput,
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.CREATE,
@@ -236,8 +234,10 @@ export async function PUT(req: Request) {
     if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
     if (data.totalQuantity !== undefined)
       updateData.totalQuantity = data.totalQuantity;
-    if ((body as any).remainingQuantity !== undefined)
-      updateData.remainingQuantity = (body as any).remainingQuantity;
+    if ((body as Record<string, unknown>).remainingQuantity !== undefined)
+      updateData.remainingQuantity = (
+        body as Record<string, unknown>
+      ).remainingQuantity;
     if (data.purchasePrice !== undefined)
       updateData.purchasePrice = data.purchasePrice ?? null;
     if (data.purchaseDate !== undefined)
@@ -256,7 +256,6 @@ export async function PUT(req: Request) {
       data: updateData,
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.UPDATE,
@@ -299,7 +298,6 @@ export async function PUT(req: Request) {
   }
 }
 
-// DELETE /api/components
 export async function DELETE(req: Request) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -336,7 +334,6 @@ export async function DELETE(req: Request) {
       where: { id },
     });
 
-    // Audit log
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.DELETE,

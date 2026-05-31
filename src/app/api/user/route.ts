@@ -25,7 +25,6 @@ const stripPassword = (user) => {
   return rest;
 };
 
-// GET /api/user
 // Optional query: ?id=<userid>
 // Pagination: ?page=1&pageSize=25&sortBy=lastname&sortOrder=asc&search=keyword
 export async function GET(req: NextRequest) {
@@ -157,7 +156,6 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Optimistic concurrency check
     if (_expectedVersion) {
       const current = await prisma.user.findUnique({
         where: { userid },

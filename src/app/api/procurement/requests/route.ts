@@ -45,7 +45,6 @@ const createPurchaseRequestSchema = z.object({
   items: z.array(purchaseRequestItemSchema).min(1),
 });
 
-// GET /api/procurement/requests - List purchase requests
 export async function GET(req: NextRequest) {
   try {
     const user = await requirePermission("procurement:view");

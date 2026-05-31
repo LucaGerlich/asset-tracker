@@ -69,7 +69,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const body = await req.json();
     const validated = updateWebhookSchema.parse(body);
 
-    // Validate events if provided
     if (validated.events) {
       const validEvents = getWebhookEvents().map((e) => e.event);
       const invalidEvents = validated.events.filter(

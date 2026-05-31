@@ -5,10 +5,7 @@ import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger, logCatchError } from "@/lib/logger";
-import {
-  getOrganizationContext,
-  scopeToOrganization,
-} from "@/lib/organization-context";
+import { getOrganizationContext } from "@/lib/organization-context";
 
 // GET /api/asset/checkout/[id]
 export async function GET(
@@ -124,7 +121,6 @@ export async function PUT(
       },
     });
 
-    // Audit log
     createAuditLog({
       userId: user.id as string,
       action: AUDIT_ACTIONS.UPDATE,
@@ -137,7 +133,6 @@ export async function PUT(
       },
     }).catch(logCatchError("Audit log failed"));
 
-    // Webhook
     triggerWebhook("asset.checked_in", {
       assetId: existing.assetId,
       assetName: existing.asset?.assetname,

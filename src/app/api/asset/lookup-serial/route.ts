@@ -2,10 +2,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
-// ---------------------------------------------------------------------------
-// Serial-number pattern detection helpers
-// ---------------------------------------------------------------------------
-
 interface ManufacturerDetection {
   manufacturer: string;
   confidence: "high" | "medium" | "low";
@@ -80,8 +76,6 @@ const LENOVO_PREFIXES = ["PF", "MP", "MJ", "PB", "PC", "R9", "S4", "W1", "LR"];
 function detectManufacturer(serial: string): ManufacturerDetection | null {
   const upper = serial.toUpperCase();
 
-  // ---- Apple ---------------------------------------------------------------
-  // 12-char serials with a known factory prefix → high confidence
   if (/^[A-Z0-9]{12}$/.test(upper)) {
     const prefix3 = upper.slice(0, 3);
     const prefix2 = upper.slice(0, 2);
@@ -99,14 +93,10 @@ function detectManufacturer(serial: string): ManufacturerDetection | null {
     return { manufacturer: "Apple", confidence: "medium" };
   }
 
-  // ---- Dell Service Tag ----------------------------------------------------
-  // Exactly 7 chars, alphanumeric but never uses O, I, or 0
   if (/^[A-HJ-NP-Z1-9]{7}$/.test(upper)) {
     return { manufacturer: "Dell", confidence: "medium" };
   }
 
-  // ---- Lenovo --------------------------------------------------------------
-  // Starts with a known 2-char prefix followed by alphanumeric chars
   if (/^[A-Z0-9]{8,14}$/.test(upper)) {
     const prefix2 = upper.slice(0, 2);
     if (LENOVO_PREFIXES.includes(prefix2)) {
@@ -127,10 +117,7 @@ function suggestCategory(manufacturer: string, serial: string): string | null {
     // iPhones historically have shorter serials or specific model codes
     // For 12-char serials, last 4 chars encode the model
     if (upper.length === 12) {
-      const modelCode = upper.slice(8, 12);
-      // Common MacBook/iMac model-code patterns (non-exhaustive)
-      // Model codes starting with specific letters often correlate to laptops
-      // Without a full lookup table we return "Laptop" as the most common IT asset
+      const _modelCode = upper.slice(8, 12);
       return "Laptop";
     }
     return "Laptop";
@@ -143,10 +130,6 @@ function suggestCategory(manufacturer: string, serial: string): string | null {
   }
   return null;
 }
-
-// ---------------------------------------------------------------------------
-// Route handler
-// ---------------------------------------------------------------------------
 
 // GET /api/asset/lookup-serial?serial=XXXXX
 export async function GET(req: NextRequest) {

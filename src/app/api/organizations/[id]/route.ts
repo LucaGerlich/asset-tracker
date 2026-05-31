@@ -183,7 +183,6 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Check if organization has any associated data
     const organization = await prisma.organization.findUnique({
       where: { id },
       include: {

@@ -24,7 +24,6 @@ import { conflictResponse } from "@/lib/concurrency";
 
 const LICENCE_SORT_FIELDS = ["licencekey", "creation_date"];
 
-// GET /api/licence
 // Pagination: ?page=1&pageSize=25&sortBy=licencekey&sortOrder=asc&search=keyword
 export async function GET(req: NextRequest) {
   try {
@@ -142,7 +141,6 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate input
     const validationResult = createLicenseSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
@@ -196,7 +194,6 @@ export async function POST(req: NextRequest) {
       } as Prisma.licenceUncheckedCreateInput,
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.CREATE,
@@ -242,7 +239,6 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate licence ID
     const idValidation = uuidSchema.safeParse(body.licenceid);
     if (!idValidation.success) {
       return NextResponse.json(
@@ -251,7 +247,6 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Validate update data
     const dataValidation = updateLicenseSchema.safeParse(body);
     if (!dataValidation.success) {
       return NextResponse.json(
@@ -328,7 +323,6 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.UPDATE,
@@ -367,7 +361,6 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE /api/licence
 export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -378,7 +371,6 @@ export async function DELETE(req: NextRequest) {
     const body = await req.json();
     const { licenceid } = body;
 
-    // Validate licence ID
     const idValidation = uuidSchema.safeParse(licenceid);
     if (!idValidation.success) {
       return NextResponse.json(
@@ -399,12 +391,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Licence not found" }, { status: 404 });
     }
 
-    // Delete the licence
     await prisma.licence.delete({
       where: { licenceid: licence.licenceid },
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.DELETE,

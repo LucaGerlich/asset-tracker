@@ -81,7 +81,6 @@ export async function PUT(req: NextRequest) {
 
         if (!current) throw new Error("ASSET_NOT_FOUND");
 
-        // Optimistic concurrency check
         if (!checkVersion(_expectedVersion, current.change_date)) {
           throw new Error("VERSION_CONFLICT");
         }
@@ -175,7 +174,6 @@ export async function PUT(req: NextRequest) {
       });
     }
 
-    // Handle Prisma-specific errors
     let errorMessage = "Failed to update status";
     let statusCode = 500;
 

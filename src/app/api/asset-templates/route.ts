@@ -11,9 +11,8 @@ import {
 } from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
-// GET /api/asset-templates
 // List all active templates scoped to the user's organization
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     await requirePermission("asset:view");
     const orgCtx = await getOrganizationContext();
@@ -193,7 +192,6 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE /api/asset-templates
 // Delete a template (admin only)
 // Body must include id
 export async function DELETE(req: NextRequest) {

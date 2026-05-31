@@ -51,8 +51,7 @@ const ENTITY_FIELDS: Record<string, string[]> = {
   location: ["locationname", "street", "housenumber", "city", "country"],
 };
 
-// Get list of import jobs
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const authUser = await requirePermission("import:execute");
 
@@ -87,7 +86,6 @@ export async function POST(req: NextRequest) {
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("import:execute");
 
-    // Get user's organization for scoping imported entities
     const importUser = await prisma.user.findUnique({
       where: { userid: authUser.id! },
       select: { organizationId: true },
@@ -119,7 +117,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Validate entity type
     const validatedInput = importJobSchema.parse({
       entityType,
       fileName: file.name,
@@ -172,7 +169,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check quota limits before processing
     const rowCount = lines.length - 1;
     if (validatedInput.entityType === "asset") {
       const limitCheck = await checkAssetLimit();
@@ -218,7 +214,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Create import job
     const job = await prisma.importJob.create({
       data: {
         userId: authUser.id!,
@@ -295,7 +290,6 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // Update progress every 10 rows
       if (i % 10 === 0) {
         await prisma.importJob.update({
           where: { id: job.id },
@@ -371,7 +365,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Get expected CSV template fields for an entity
 export async function OPTIONS(req: NextRequest) {
   const entityType = req.nextUrl.searchParams.get("entityType");
 
@@ -388,8 +381,6 @@ export async function OPTIONS(req: NextRequest) {
     requiredFields: getRequiredFields(entityType),
   });
 }
-
-// Helper functions
 
 /** Detect delimiter from the first line (comma, semicolon, or tab) */
 function detectDelimiter(line: string): string {

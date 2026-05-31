@@ -35,7 +35,6 @@ export async function POST(req: Request) {
       notes,
     } = data;
 
-    // Validate the target exists based on checkedOutToType
     let targetLabel = "";
 
     if (checkedOutToType === "user") {
@@ -73,7 +72,6 @@ export async function POST(req: Request) {
       targetLabel = targetAsset.assetname || targetAsset.assettag;
     }
 
-    // Fetch all requested assets scoped to organization
     const foundAssets = await prisma.asset.findMany({
       where: scopeToOrganization({ assetid: { in: assetIds } }, orgId),
     });
@@ -96,7 +94,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Create all checkouts atomically
     const checkouts = await prisma.$transaction(
       foundAssets.map((asset) =>
         prisma.assetCheckout.create({
@@ -117,7 +114,6 @@ export async function POST(req: Request) {
       ),
     );
 
-    // Audit log
     createAuditLog({
       userId: user.id as string,
       action: AUDIT_ACTIONS.CREATE,
@@ -132,7 +128,6 @@ export async function POST(req: Request) {
       },
     }).catch(logCatchError("Audit log failed"));
 
-    // Webhook
     triggerWebhook("asset.bulk_checked_out", {
       count: checkouts.length,
       checkedOutToType,

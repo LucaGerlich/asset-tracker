@@ -23,7 +23,6 @@ import { getOrganizationContext } from "@/lib/organization-context";
 
 const MODEL_SORT_FIELDS = ["modelname", "modelnumber", "creation_date"];
 
-// GET /api/model
 export async function GET(req: NextRequest) {
   try {
     // Require authentication to view models
@@ -89,7 +88,6 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate input
     const validationResult = createModelSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
@@ -115,7 +113,6 @@ export async function POST(req: NextRequest) {
       } as Prisma.modelUncheckedCreateInput,
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.CREATE,
@@ -153,13 +150,11 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json();
 
-    // Validate model ID
     const idValidation = uuidSchema.safeParse(body.modelid);
     if (!idValidation.success) {
       return NextResponse.json({ error: "Invalid model ID" }, { status: 400 });
     }
 
-    // Validate update data
     const dataValidation = updateModelSchema.safeParse(body);
     if (!dataValidation.success) {
       return NextResponse.json(
@@ -193,7 +188,6 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.UPDATE,
@@ -224,7 +218,6 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE /api/model
 export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -235,7 +228,6 @@ export async function DELETE(req: NextRequest) {
     const body = await req.json();
     const { modelid } = body;
 
-    // Validate model ID
     const idValidation = uuidSchema.safeParse(modelid);
     if (!idValidation.success) {
       return NextResponse.json({ error: "Invalid model ID" }, { status: 400 });
@@ -254,7 +246,6 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Model not found" }, { status: 404 });
     }
 
-    // Check for referencing records before deleting
     const [assetRefs, accessoriesRefs] = await Promise.all([
       prisma.asset.count({ where: { modelid } }),
       prisma.accessories.count({ where: { modelid } }),
@@ -273,12 +264,10 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Delete the model
     await prisma.model.delete({
       where: { modelid },
     });
 
-    // Create audit log
     await createAuditLog({
       userId: admin.id,
       action: AUDIT_ACTIONS.DELETE,

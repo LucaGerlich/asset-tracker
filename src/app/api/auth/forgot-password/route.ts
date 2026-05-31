@@ -67,7 +67,6 @@ export async function POST(req: Request) {
     });
 
     if (user) {
-      // Delete any existing tokens for this user
       await prisma.verification.deleteMany({
         where: { identifier: user.email! },
       });
@@ -84,7 +83,6 @@ export async function POST(req: Request) {
         },
       });
 
-      // Build reset URL
       const baseUrl = getBaseUrl();
       const resetUrl = `${baseUrl}/reset-password?token=${token}&email=${encodeURIComponent(user.email!)}`;
 

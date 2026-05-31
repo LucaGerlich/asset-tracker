@@ -24,7 +24,6 @@ export async function POST(req: Request) {
       warrantyExpiryDays,
     } = body;
 
-    // Validate input
     if (
       typeof enableAssignmentEmails !== "boolean" ||
       typeof enableUnassignmentEmails !== "boolean" ||

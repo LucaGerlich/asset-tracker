@@ -31,7 +31,6 @@ export async function PATCH(
       );
     }
 
-    // Build update data object with only provided fields
     const updateData: {
       isadmin?: boolean;
       canrequest?: boolean;

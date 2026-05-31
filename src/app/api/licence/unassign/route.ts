@@ -7,7 +7,6 @@ import {
 } from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
-// DELETE /api/licence/unassign
 // Body: { licenceId }
 export async function DELETE(req: NextRequest) {
   try {

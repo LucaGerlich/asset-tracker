@@ -1,11 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
-import {
-  requireApiAuth,
-  requirePermission,
-  requireNotDemoMode,
-} from "@/lib/api-auth";
+import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { invalidateCache } from "@/lib/cache";
 import {
   getOrganizationContext,
@@ -30,6 +26,7 @@ import { conflictResponse } from "@/lib/concurrency";
 import {
   createAuditLog,
   createAuditLogWithDiff,
+  toRecord,
   AUDIT_ACTIONS,
   AUDIT_ENTITIES,
 } from "@/lib/audit-log";
@@ -43,7 +40,6 @@ const ASSET_SORT_FIELDS = [
   "purchaseprice",
 ];
 
-// GET /api/asset
 // Optional query: ?id=<assetid>
 // Pagination: ?page=1&pageSize=25&sortBy=assetname&sortOrder=asc&search=keyword&statusId=<id>
 export async function GET(req: NextRequest) {
@@ -68,7 +64,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(asset, { status: 200 });
     }
 
-    // Build shared where clause for filtered/paginated paths
     const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
     // Status filter
@@ -103,8 +98,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // --- Cursor-based pagination -----------------------------------------
-    // Activated when `cursor` or `limit`/`direction` params are present.
     const cursorParams = parseCursorParams(searchParams);
     if (cursorParams) {
       const sortBy = searchParams.get("sortBy");
@@ -129,8 +122,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(result, { status: 200 });
     }
 
-    // --- Offset-based pagination (legacy) --------------------------------
-    // If no `page` param, return all results for backward compatibility
     if (!searchParams.has("page")) {
       const assets = await prisma.asset.findMany({ where });
       return NextResponse.json(assets, { status: 200 });
@@ -296,8 +287,8 @@ export async function PUT(req: NextRequest) {
       action: AUDIT_ACTIONS.UPDATE,
       entity: AUDIT_ENTITIES.ASSET,
       entityId: existing.assetid,
-      before: existing as unknown as Record<string, unknown>,
-      after: updated as unknown as Record<string, unknown>,
+      before: toRecord(existing),
+      after: toRecord(updated),
     }).catch(logCatchError("Audit log failed"));
     triggerWebhook("asset.updated", {
       assetId: updated.assetid,

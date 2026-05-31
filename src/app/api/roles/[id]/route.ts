@@ -109,7 +109,6 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const body = await req.json();
     const validated = updateRoleSchema.parse(body);
 
-    // Validate permissions if provided
     if (validated.permissions) {
       const validPermissions = Object.keys(PERMISSIONS);
       const invalidPerms = validated.permissions.filter(

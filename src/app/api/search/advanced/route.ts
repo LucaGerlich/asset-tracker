@@ -154,7 +154,6 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
 
-    // Parse entity
     const entityParam = searchParams.get("entity");
     if (
       !entityParam ||
@@ -169,7 +168,6 @@ export async function GET(req: NextRequest) {
     }
     const entity = entityParam as SearchableEntity;
 
-    // Parse filters
     const filtersParam = searchParams.get("filters");
     let filters: SearchFilter[] = [];
     if (filtersParam) {
@@ -190,7 +188,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Validate each filter
     for (const f of filters) {
       if (!f.field || !f.op || f.value === undefined || f.value === null) {
         return NextResponse.json(
@@ -212,7 +209,6 @@ export async function GET(req: NextRequest) {
     const standardFilters = filters.filter((f) => !f.isCustom);
     const customFilters = filters.filter((f) => f.isCustom);
 
-    // Build the standard where clause
     const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
     for (const f of standardFilters) {
@@ -256,7 +252,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Handle custom field filters by finding matching entity IDs
     if (customFilters.length > 0) {
       const idField = ENTITY_ID_FIELD[entity];
       let matchingEntityIds: string[] | null = null;

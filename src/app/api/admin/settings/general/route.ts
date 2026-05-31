@@ -25,7 +25,6 @@ export async function POST(req: Request) {
       maintenanceMode,
     } = body;
 
-    // Validate input
     if (
       typeof enableDemoMode !== "boolean" ||
       typeof requireStrongPasswords !== "boolean" ||

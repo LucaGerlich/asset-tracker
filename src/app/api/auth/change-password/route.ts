@@ -164,7 +164,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Audit log success
     await createAuditLog({
       userId,
       action: AUDIT_ACTIONS.UPDATE,

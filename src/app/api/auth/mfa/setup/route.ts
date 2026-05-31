@@ -16,8 +16,8 @@ import { logger } from "@/lib/logger";
  * mfaEnabled / mfaSecret fields.
  *
  * BetterAuth equivalent: POST /api/auth/two-factor/enable
- * TODO: Evaluate consolidating with BetterAuth's twoFactor plugin once the
- * migration is fully stable.
+ * Note: Kept separate from BetterAuth's twoFactor plugin because this route
+ * handles encrypted secret storage and QR code generation not covered by the plugin.
  */
 export async function POST() {
   try {
@@ -30,7 +30,6 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user email for the TOTP URI
     const user = await prisma.user.findUnique({
       where: { userid: authUser.id },
       select: { email: true, username: true, mfaEnabled: true },

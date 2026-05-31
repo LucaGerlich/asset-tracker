@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
-import {
-  validateBody,
-  createAuditCampaignSchema,
-  updateAuditCampaignSchema,
-} from "@/lib/validation";
+import { validateBody, createAuditCampaignSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger, logCatchError } from "@/lib/logger";
@@ -22,7 +18,6 @@ import {
 
 const AUDIT_SORT_FIELDS = ["name", "status", "createdAt"];
 
-// GET /api/audits
 export async function GET(req: Request) {
   try {
     await requirePermission("audit_campaign:view");
@@ -160,7 +155,6 @@ export async function POST(req: Request) {
   }
 }
 
-// DELETE /api/audits
 export async function DELETE(req: Request) {
   try {
     const demoBlock = requireNotDemoMode();

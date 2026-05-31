@@ -95,7 +95,6 @@ export async function POST(
       password: string;
     };
 
-    // Check if user with that email already exists
     const existingUser = await prisma.user.findFirst({
       where: { email: invitation.email },
     });
@@ -140,7 +139,6 @@ export async function POST(
         });
       }
     } else {
-      // Validate required fields for new user
       if (!firstname || !lastname || !password) {
         return NextResponse.json(
           {

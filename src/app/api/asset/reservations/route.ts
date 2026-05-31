@@ -300,7 +300,6 @@ export async function PUT(req: NextRequest) {
               },
             });
 
-            // Update asset status to "Active"
             const activeStatus = await tx.statusType.findFirst({
               where: { statustypename: "Active" },
             });
@@ -325,7 +324,6 @@ export async function PUT(req: NextRequest) {
       },
     );
 
-    // Log auto-assign results outside the transaction
     if (status === "approved") {
       if (autoAssignResult === "assigned") {
         logger.info("Auto-assigned asset to user on reservation approval", {

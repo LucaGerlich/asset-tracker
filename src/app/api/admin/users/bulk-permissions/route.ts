@@ -21,7 +21,6 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // Build update data object with only provided fields
     const updateData: {
       isadmin?: boolean;
       canrequest?: boolean;

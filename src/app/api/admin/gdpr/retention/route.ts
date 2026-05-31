@@ -45,7 +45,6 @@ export async function PUT(req: Request) {
       exportRetentionDays,
     } = body;
 
-    // Validate input
     if (
       typeof auditLogRetentionDays !== "number" ||
       typeof deletedUserRetentionDays !== "number" ||

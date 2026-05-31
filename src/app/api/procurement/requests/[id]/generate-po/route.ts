@@ -106,7 +106,6 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         pos.push(po);
       }
 
-      // Update request status to ordered
       await tx.purchaseRequest.update({
         where: { id },
         data: { status: "ordered" },

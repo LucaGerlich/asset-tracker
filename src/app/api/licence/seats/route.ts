@@ -22,7 +22,6 @@ export async function GET(req: Request) {
       );
     }
 
-    // Fetch the licence to get seatCount
     const licence = await prisma.licence.findUnique({
       where: { licenceid: licenceId },
       select: { licenceid: true, licencekey: true, seatCount: true },
@@ -32,7 +31,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Licence not found" }, { status: 404 });
     }
 
-    // Fetch active seat assignments
     const seats = await prisma.licenceSeatAssignment.findMany({
       where: {
         licenceId,
@@ -96,7 +94,6 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
-    // Validate input
     const data = validateBody(assignLicenceSeatSchema, body);
     if (data instanceof NextResponse) return data;
 
@@ -104,7 +101,6 @@ export async function POST(req: Request) {
 
     // Use a transaction to ensure atomicity
     const assignment = await prisma.$transaction(async (tx) => {
-      // Fetch the licence
       const licence = await tx.licence.findUnique({
         where: { licenceid: licenceId },
         select: { licenceid: true, licencekey: true, seatCount: true },
@@ -126,7 +122,6 @@ export async function POST(req: Request) {
         throw new Error("No available seats for this licence");
       }
 
-      // Check if user is already assigned to this licence
       const existingAssignment = await tx.licenceSeatAssignment.findFirst({
         where: {
           licenceId,
@@ -147,7 +142,6 @@ export async function POST(req: Request) {
 
       const nextSeatNumber = (maxSeat._max.seatNumber ?? 0) + 1;
 
-      // Create the assignment
       return tx.licenceSeatAssignment.create({
         data: {
           licenceId,
@@ -177,7 +171,6 @@ export async function POST(req: Request) {
       });
     });
 
-    // Audit log
     await createAuditLog({
       userId: admin.id ?? null,
       action: AUDIT_ACTIONS.ASSIGN,
@@ -190,7 +183,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Webhook
     triggerWebhook("license.seat_assigned", {
       assignmentId: assignment.id,
       licenceId,

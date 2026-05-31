@@ -119,7 +119,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check for overlapping reservations
     const startDate = new Date(validated.startDate);
     const endDate = new Date(validated.endDate);
 
@@ -177,7 +176,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Trigger webhook
     await triggerWebhook(
       "asset.reserved",
       {
