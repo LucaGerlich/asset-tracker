@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -14,7 +14,14 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Loader2, Bell, Mail, AlertTriangle, Wrench, Package } from "lucide-react";
+import {
+  Loader2,
+  Bell,
+  Mail,
+  AlertTriangle,
+  Wrench,
+  Package,
+} from "lucide-react";
 
 interface NotificationSettingsTabProps {
   settings: Array<{
@@ -27,19 +34,25 @@ interface NotificationSettingsTabProps {
   }>;
 }
 
-export default function NotificationSettingsTab({ settings }: NotificationSettingsTabProps) {
-  const getSettingValue = (key: string) => settings.find((s) => s.key === key)?.value || "";
+export default function NotificationSettingsTab({
+  settings,
+}: NotificationSettingsTabProps) {
+  const getSettingValue = (key: string) =>
+    settings.find((s) => s.key === key)?.value || "";
 
   const [isSaving, setIsSaving] = useState(false);
   const [notifications, setNotifications] = useState({
     enableAssignmentEmails: getSettingValue("notify_assignments") === "true",
-    enableUnassignmentEmails: getSettingValue("notify_unassignments") === "true",
-    enableLicenseExpiryEmails: getSettingValue("notify_license_expiry") === "true",
+    enableUnassignmentEmails:
+      getSettingValue("notify_unassignments") === "true",
+    enableLicenseExpiryEmails:
+      getSettingValue("notify_license_expiry") === "true",
     enableMaintenanceEmails: getSettingValue("notify_maintenance") === "true",
     enableLowStockEmails: getSettingValue("notify_low_stock") === "true",
     enableWarrantyEmails: getSettingValue("notify_warranty_expiry") === "true",
     licenseExpiryDays: parseInt(getSettingValue("license_expiry_days")) || 30,
-    maintenanceReminderDays: parseInt(getSettingValue("maintenance_reminder_days")) || 7,
+    maintenanceReminderDays:
+      parseInt(getSettingValue("maintenance_reminder_days")) || 7,
     lowStockThreshold: parseInt(getSettingValue("low_stock_threshold")) || 10,
     warrantyExpiryDays: parseInt(getSettingValue("warranty_expiry_days")) || 30,
   });
@@ -58,7 +71,8 @@ export default function NotificationSettingsTab({ settings }: NotificationSettin
       } else {
         toast.error("Failed to save notification settings");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to save notification settings", err);
       toast.error("Failed to save notification settings");
     } finally {
       setIsSaving(false);
@@ -84,16 +98,21 @@ export default function NotificationSettingsTab({ settings }: NotificationSettin
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4" />
-                  <Label className="font-medium">Asset Assignment Notifications</Label>
+                  <Label className="font-medium">
+                    Asset Assignment Notifications
+                  </Label>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Send emails when assets are assigned to users
                 </p>
               </div>
               <Switch
                 checked={notifications.enableAssignmentEmails}
                 onCheckedChange={(checked) =>
-                  setNotifications({ ...notifications, enableAssignmentEmails: checked })
+                  setNotifications({
+                    ...notifications,
+                    enableAssignmentEmails: checked,
+                  })
                 }
               />
             </div>
@@ -102,16 +121,21 @@ export default function NotificationSettingsTab({ settings }: NotificationSettin
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4" />
-                  <Label className="font-medium">Asset Unassignment Notifications</Label>
+                  <Label className="font-medium">
+                    Asset Unassignment Notifications
+                  </Label>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Send emails when assets are unassigned from users
                 </p>
               </div>
               <Switch
                 checked={notifications.enableUnassignmentEmails}
                 onCheckedChange={(checked) =>
-                  setNotifications({ ...notifications, enableUnassignmentEmails: checked })
+                  setNotifications({
+                    ...notifications,
+                    enableUnassignmentEmails: checked,
+                  })
                 }
               />
             </div>
@@ -127,14 +151,17 @@ export default function NotificationSettingsTab({ settings }: NotificationSettin
                   <AlertTriangle className="h-4 w-4 text-yellow-500" />
                   <Label className="font-medium">License Expiry Alerts</Label>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Notify users when their assigned licenses are about to expire
                 </p>
               </div>
               <Switch
                 checked={notifications.enableLicenseExpiryEmails}
                 onCheckedChange={(checked) =>
-                  setNotifications({ ...notifications, enableLicenseExpiryEmails: checked })
+                  setNotifications({
+                    ...notifications,
+                    enableLicenseExpiryEmails: checked,
+                  })
                 }
               />
             </div>
@@ -169,14 +196,17 @@ export default function NotificationSettingsTab({ settings }: NotificationSettin
                   <Wrench className="h-4 w-4 text-blue-500" />
                   <Label className="font-medium">Maintenance Reminders</Label>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Send reminders for upcoming scheduled maintenance
                 </p>
               </div>
               <Switch
                 checked={notifications.enableMaintenanceEmails}
                 onCheckedChange={(checked) =>
-                  setNotifications({ ...notifications, enableMaintenanceEmails: checked })
+                  setNotifications({
+                    ...notifications,
+                    enableMaintenanceEmails: checked,
+                  })
                 }
               />
             </div>
@@ -211,14 +241,17 @@ export default function NotificationSettingsTab({ settings }: NotificationSettin
                   <Package className="h-4 w-4 text-red-500" />
                   <Label className="font-medium">Low Stock Alerts</Label>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Notify admins when consumable stock falls below threshold
                 </p>
               </div>
               <Switch
                 checked={notifications.enableLowStockEmails}
                 onCheckedChange={(checked) =>
-                  setNotifications({ ...notifications, enableLowStockEmails: checked })
+                  setNotifications({
+                    ...notifications,
+                    enableLowStockEmails: checked,
+                  })
                 }
               />
             </div>
@@ -239,7 +272,7 @@ export default function NotificationSettingsTab({ settings }: NotificationSettin
                   }
                   className="w-32"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   This can be overridden per consumable item
                 </p>
               </div>
@@ -256,14 +289,17 @@ export default function NotificationSettingsTab({ settings }: NotificationSettin
                   <AlertTriangle className="h-4 w-4 text-orange-500" />
                   <Label className="font-medium">Warranty Expiry Alerts</Label>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Notify admins when asset warranties are about to expire
                 </p>
               </div>
               <Switch
                 checked={notifications.enableWarrantyEmails}
                 onCheckedChange={(checked) =>
-                  setNotifications({ ...notifications, enableWarrantyEmails: checked })
+                  setNotifications({
+                    ...notifications,
+                    enableWarrantyEmails: checked,
+                  })
                 }
               />
             </div>
@@ -290,7 +326,7 @@ export default function NotificationSettingsTab({ settings }: NotificationSettin
 
           <div className="flex justify-end pt-4">
             <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Settings
             </Button>
           </div>
@@ -301,15 +337,16 @@ export default function NotificationSettingsTab({ settings }: NotificationSettin
         <CardHeader>
           <CardTitle>Notification Schedule</CardTitle>
           <CardDescription>
-            Automated notifications are processed periodically. Configure a cron job or scheduled task
-            to run the notification processor.
+            Automated notifications are processed periodically. Configure a cron
+            job or scheduled task to run the notification processor.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="bg-muted p-4 rounded-lg">
-            <p className="text-sm font-mono">
-              # Add to your crontab to process notifications daily at 8 AM:<br />
-              0 8 * * * curl -X POST https://your-domain.com/api/cron/notifications
+          <div className="bg-muted rounded-lg p-4">
+            <p className="font-mono text-sm">
+              # Add to your crontab to process notifications daily at 8 AM:
+              <br />0 8 * * * curl -X POST
+              https://your-domain.com/api/cron/notifications
             </p>
           </div>
         </CardContent>

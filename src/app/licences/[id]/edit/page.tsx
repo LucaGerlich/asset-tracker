@@ -1,4 +1,3 @@
-import React from "react";
 import LicenceCreateForm from "../../create/ui/LicenceCreateForm";
 import {
   getLicenceById,

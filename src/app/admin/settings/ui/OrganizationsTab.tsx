@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,7 +70,6 @@ export default function OrganizationsTab() {
     description: "",
   });
 
-  // Settings dialog state
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [settingsOrgId, setSettingsOrgId] = useState<string | null>(null);
   const [settingsForm, setSettingsForm] = useState<OrgSettings>({
@@ -108,7 +107,8 @@ export default function OrganizationsTab() {
         const error = await response.json();
         toast.error(error.error || "Failed to save settings");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to save settings", err);
       toast.error("Failed to save settings");
     }
   };
@@ -122,7 +122,8 @@ export default function OrganizationsTab() {
       } else {
         toast.error("Failed to load organizations");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to load organizations", err);
       toast.error("Failed to load organizations");
     } finally {
       setIsLoading(false);
@@ -188,7 +189,8 @@ export default function OrganizationsTab() {
         const error = await response.json();
         toast.error(error.error || "Failed to create organization");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to create organization", err);
       toast.error("Failed to create organization");
     }
   };
@@ -210,7 +212,7 @@ export default function OrganizationsTab() {
       if (response.ok) {
         const updatedOrg = await response.json();
         setOrganizations(
-          organizations.map((o) => (o.id === editingId ? updatedOrg : o))
+          organizations.map((o) => (o.id === editingId ? updatedOrg : o)),
         );
         setIsDialogOpen(false);
         setEditingId(null);
@@ -220,13 +222,19 @@ export default function OrganizationsTab() {
         const error = await response.json();
         toast.error(error.error || "Failed to update organization");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to update organization", err);
       toast.error("Failed to update organization");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this organization? This action cannot be undone.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this organization? This action cannot be undone.",
+      )
+    )
+      return;
 
     try {
       const response = await fetch(`/api/organizations/${id}`, {
@@ -240,7 +248,8 @@ export default function OrganizationsTab() {
         const error = await response.json();
         toast.error(error.error || "Failed to delete organization");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete organization", err);
       toast.error("Failed to delete organization");
     }
   };
@@ -255,13 +264,14 @@ export default function OrganizationsTab() {
 
       if (response.ok) {
         setOrganizations(
-          organizations.map((o) => (o.id === id ? { ...o, isActive } : o))
+          organizations.map((o) => (o.id === id ? { ...o, isActive } : o)),
         );
         toast.success(`Organization ${isActive ? "activated" : "deactivated"}`);
       } else {
         toast.error("Failed to update organization status");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to update organization status", err);
       toast.error("Failed to update organization status");
     }
   };
@@ -280,21 +290,21 @@ export default function OrganizationsTab() {
             </CardDescription>
           </div>
           <Button onClick={openCreateDialog}>
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             Create Organization
           </Button>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
+            <p className="text-muted-foreground py-8 text-center text-sm">
               Loading organizations...
             </p>
           ) : organizations.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
+            <p className="text-muted-foreground py-8 text-center text-sm">
               No organizations found. Create one to get started.
             </p>
           ) : (
-            <div className="border rounded-lg">
+            <div className="rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -393,7 +403,7 @@ export default function OrganizationsTab() {
                 }
                 placeholder="e.g., acme-corporation"
               />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Auto-generated from name. Used as a unique identifier.
               </p>
             </div>
@@ -475,7 +485,10 @@ export default function OrganizationsTab() {
                 id="settings-role"
                 value={settingsForm.defaultRole || ""}
                 onChange={(e) =>
-                  setSettingsForm({ ...settingsForm, defaultRole: e.target.value })
+                  setSettingsForm({
+                    ...settingsForm,
+                    defaultRole: e.target.value,
+                  })
                 }
                 placeholder="e.g., Standard User"
               />

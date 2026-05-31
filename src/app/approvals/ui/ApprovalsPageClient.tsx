@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useSession, type SessionUser } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -216,7 +216,8 @@ export default function ApprovalsPageClient({
       }
       const data = await response.json();
       setApprovals(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
       setApprovals([]);
     } finally {
@@ -242,7 +243,8 @@ export default function ApprovalsPageClient({
       }
       const data = await response.json();
       setReservations(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
       setReservations([]);
     } finally {
@@ -266,7 +268,8 @@ export default function ApprovalsPageClient({
       }
       const data = await response.json();
       setItemRequests(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
       setItemRequests([]);
     } finally {
@@ -325,7 +328,8 @@ export default function ApprovalsPageClient({
 
       setDialogOpen(false);
       fetchApprovals(activeTab);
-    } catch {
+    } catch (err) {
+      console.error(`Failed to ${dialogAction} request`, err);
       toast.error(`Failed to ${dialogAction} request`);
     } finally {
       setIsSubmitting(false);
@@ -375,7 +379,8 @@ export default function ApprovalsPageClient({
 
       setReservationDialogOpen(false);
       fetchReservations(activeTab);
-    } catch {
+    } catch (err) {
+      console.error(`Failed to ${reservationDialogAction} reservation`, err);
       toast.error(`Failed to ${reservationDialogAction} reservation`);
     } finally {
       setIsSubmittingReservation(false);
@@ -430,7 +435,8 @@ export default function ApprovalsPageClient({
 
       setItemRequestDialogOpen(false);
       fetchItemRequests(activeTab);
-    } catch {
+    } catch (err) {
+      console.error(`Failed to ${itemRequestDialogAction} item request`, err);
       toast.error(`Failed to ${itemRequestDialogAction} item request`);
     } finally {
       setIsSubmittingItemRequest(false);

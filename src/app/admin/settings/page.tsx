@@ -91,12 +91,10 @@ async function getDepreciationSettings() {
 export default async function Page() {
   const session = await auth.api.getSession({ headers: await headers() });
 
-  // Require admin access
   if (!session?.user?.isadmin) {
     redirect("/dashboard");
   }
 
-  // Get admin's org for scoping user list and plan info
   const adminUser = await prisma.user.findUnique({
     where: { userid: session.user.id },
     select: { organizationId: true },

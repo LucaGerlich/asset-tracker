@@ -1,5 +1,4 @@
-import React, { Suspense } from "react";
-import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";

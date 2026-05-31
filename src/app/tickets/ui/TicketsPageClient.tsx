@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,7 +27,6 @@ import {
   Search,
   Ticket,
   AlertCircle,
-  ExternalLink,
   Settings,
 } from "lucide-react";
 import Link from "next/link";
@@ -93,26 +92,23 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
         (ticket) =>
           ticket.subject.toLowerCase().includes(query) ||
           ticket.description_text?.toLowerCase().includes(query) ||
-          String(ticket.id).includes(query)
+          String(ticket.id).includes(query),
       );
     }
 
-    // Status filter
     if (statusFilter !== "all") {
       result = result.filter(
-        (ticket) => ticket.status === parseInt(statusFilter, 10)
+        (ticket) => ticket.status === parseInt(statusFilter, 10),
       );
     }
 
-    // Type filter
     if (typeFilter !== "all") {
       result = result.filter((ticket) => ticket.type === typeFilter);
     }
 
-    // Priority filter
     if (priorityFilter !== "all") {
       result = result.filter(
-        (ticket) => ticket.priority === parseInt(priorityFilter, 10)
+        (ticket) => ticket.priority === parseInt(priorityFilter, 10),
       );
     }
 
@@ -127,13 +123,13 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
   if (error) {
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold flex items-center gap-2">
+            <h1 className="flex items-center gap-2 text-2xl font-semibold">
               <Ticket className="h-6 w-6" />
               IT Tickets
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-muted-foreground mt-1 text-sm">
               Hardware Requests and Problems from Freshdesk
             </p>
           </div>
@@ -147,7 +143,7 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
             {isAdmin && error.includes("not configured") && (
               <Button asChild variant="outline" size="sm" className="mt-3">
                 <Link href="/admin/settings">
-                  <Settings className="h-4 w-4 mr-2" />
+                  <Settings className="mr-2 h-4 w-4" />
                   Configure Freshdesk
                 </Link>
               </Button>
@@ -161,13 +157,13 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
             <Ticket className="h-6 w-6" />
             IT Tickets
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             Hardware Requests and Problems from Freshdesk
           </p>
         </div>
@@ -199,9 +195,9 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
               <Input
                 placeholder="Search tickets..."
                 value={searchQuery}
@@ -211,7 +207,10 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-[160px]" aria-label="Filter by ticket type">
+                <SelectTrigger
+                  className="w-[160px]"
+                  aria-label="Filter by ticket type"
+                >
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -225,7 +224,10 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
               </Select>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]" aria-label="Filter by status">
+                <SelectTrigger
+                  className="w-[140px]"
+                  aria-label="Filter by status"
+                >
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -246,7 +248,10 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
               </Select>
 
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-[140px]" aria-label="Filter by priority">
+                <SelectTrigger
+                  className="w-[140px]"
+                  aria-label="Filter by priority"
+                >
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
@@ -272,15 +277,15 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
 
       {/* Tickets List */}
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
         </div>
       ) : filteredTickets.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Ticket className="h-12 w-12 text-muted-foreground mb-4" />
+            <Ticket className="text-muted-foreground mb-4 h-12 w-12" />
             <h3 className="text-lg font-medium">No tickets found</h3>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-muted-foreground mt-1 text-sm">
               {tickets.length === 0
                 ? "There are no Hardware Request or Problem tickets in Freshdesk"
                 : "Try adjusting your filters"}
@@ -289,7 +294,7 @@ export default function TicketsPageClient({ isAdmin }: TicketsPageClientProps) {
         </Card>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Showing {filteredTickets.length} of {tickets.length} tickets
           </p>
           {filteredTickets.map((ticket) => (
@@ -310,11 +315,11 @@ function TicketCard({ ticket }: TicketCardProps) {
   const updatedDate = new Date(ticket.updated_at).toLocaleDateString();
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="transition-shadow hover:shadow-md">
       <CardHeader className="pb-2">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-base font-medium leading-tight">
+            <CardTitle className="text-base leading-tight font-medium">
               <span className="text-muted-foreground mr-2">#{ticket.id}</span>
               {ticket.subject}
             </CardTitle>
@@ -340,11 +345,11 @@ function TicketCard({ ticket }: TicketCardProps) {
       </CardHeader>
       <Separator />
       <CardContent className="pt-4">
-        <p className="text-sm text-muted-foreground line-clamp-2">
+        <p className="text-muted-foreground line-clamp-2 text-sm">
           {ticket.description_text || "No description provided"}
         </p>
         {ticket.tags && ticket.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-3">
+          <div className="mt-3 flex flex-wrap gap-1">
             {ticket.tags.map((tag) => (
               <Badge key={tag} variant="secondary" className="text-xs">
                 {tag}

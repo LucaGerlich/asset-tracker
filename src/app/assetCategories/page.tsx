@@ -1,4 +1,3 @@
-import React from "react";
 import Breadcrumb from "@/components/Breadcrumb";
 import AssetCategoriesTable from "../../ui/assetCategories/AssetCategoriesTable";
 import { getCategories } from "@/lib/data";

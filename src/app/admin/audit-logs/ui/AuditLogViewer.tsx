@@ -43,10 +43,6 @@ import {
   X,
 } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface AuditLogUser {
   userid: string;
   firstname: string;
@@ -73,10 +69,6 @@ interface PaginatedResponse {
   pageSize: number;
   totalPages: number;
 }
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
 
 const ACTION_OPTIONS = [
   "CREATE",
@@ -133,10 +125,6 @@ const ACTION_COLORS: Record<string, string> = {
   REVERT: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
 };
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleString();
 }
@@ -156,10 +144,6 @@ function formatEntityLabel(entity: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
-
-// ---------------------------------------------------------------------------
-// Detail Row Component
-// ---------------------------------------------------------------------------
 
 function DetailPanel({
   log,
@@ -260,10 +244,6 @@ function DetailPanel({
   );
 }
 
-// ---------------------------------------------------------------------------
-// CSV Export
-// ---------------------------------------------------------------------------
-
 function buildAuditExportRows(logs: AuditLogEntry[]) {
   return {
     headers: [
@@ -334,10 +314,6 @@ async function exportToExcel(logs: AuditLogEntry[]) {
   link.click();
   URL.revokeObjectURL(url);
 }
-
-// ---------------------------------------------------------------------------
-// Main Component
-// ---------------------------------------------------------------------------
 
 export default function AuditLogViewer() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);

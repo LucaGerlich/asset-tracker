@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,9 +91,12 @@ export default function LDAPSettingsTab() {
           setSyncInterval(getValue("ldap.syncInterval") || "60");
           setSyncEnabled(getValue("ldap.syncEnabled") === "true");
           setAutoCreateUsers(getValue("ldap.autoCreateUsers") !== "false");
-          setAutoDeactivateUsers(getValue("ldap.autoDeactivateUsers") === "true");
+          setAutoDeactivateUsers(
+            getValue("ldap.autoDeactivateUsers") === "true",
+          );
         }
-      } catch {
+      } catch (err) {
+        console.error("Failed to load LDAP settings", err);
         toast.error("Failed to load LDAP settings");
       } finally {
         setIsLoading(false);
@@ -145,7 +148,8 @@ export default function LDAPSettingsTab() {
         const error = await response.json();
         toast.error(error.error || "Failed to save LDAP settings");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to save LDAP settings", err);
       toast.error("Failed to save LDAP settings");
     } finally {
       setIsSaving(false);
@@ -163,7 +167,7 @@ export default function LDAPSettingsTab() {
 
     if (missingFields.length > 0) {
       toast.error(
-        `Please fill in required fields: ${missingFields.join(", ")}`
+        `Please fill in required fields: ${missingFields.join(", ")}`,
       );
       return;
     }
@@ -180,7 +184,8 @@ export default function LDAPSettingsTab() {
       } else {
         toast.error(data.message || "Connection test failed");
       }
-    } catch {
+    } catch (err) {
+      console.error("Connection test failed", err);
       toast.error("Connection test failed");
     } finally {
       setIsTesting(false);
@@ -198,12 +203,13 @@ export default function LDAPSettingsTab() {
       if (data.success) {
         toast.success(
           `Sync complete: ${data.created} created, ${data.updated} updated, ${data.deactivated} deactivated`,
-          { duration: 5000 }
+          { duration: 5000 },
         );
       } else {
         toast.error(data.errors?.[0] || "Sync failed");
       }
-    } catch {
+    } catch (err) {
+      console.error("Sync failed", err);
       toast.error("Sync failed");
     } finally {
       setIsSyncing(false);
@@ -213,7 +219,7 @@ export default function LDAPSettingsTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
       </div>
     );
   }
@@ -235,7 +241,7 @@ export default function LDAPSettingsTab() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="ldap-enabled">Enable LDAP</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Enable LDAP/AD authentication and user sync
               </p>
             </div>
@@ -267,7 +273,9 @@ export default function LDAPSettingsTab() {
                   <SelectItem value="389">389 (LDAP)</SelectItem>
                   <SelectItem value="636">636 (LDAPS)</SelectItem>
                   <SelectItem value="3268">3268 (Global Catalog)</SelectItem>
-                  <SelectItem value="3269">3269 (Global Catalog SSL)</SelectItem>
+                  <SelectItem value="3269">
+                    3269 (Global Catalog SSL)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -276,7 +284,7 @@ export default function LDAPSettingsTab() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="ldap-tls">Use TLS / StartTLS</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Encrypt the connection using TLS
               </p>
             </div>
@@ -295,7 +303,7 @@ export default function LDAPSettingsTab() {
               onChange={(e) => setBindDN(e.target.value)}
               placeholder="CN=service-account,OU=Service Accounts,DC=example,DC=com"
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Distinguished name of the service account used to bind
             </p>
           </div>
@@ -333,7 +341,7 @@ export default function LDAPSettingsTab() {
               onChange={(e) => setSearchBase(e.target.value)}
               placeholder="DC=example,DC=com"
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               The base DN to search for users and groups
             </p>
           </div>
@@ -413,7 +421,7 @@ export default function LDAPSettingsTab() {
             </div>
           </div>
 
-          <div className="space-y-2 mt-4">
+          <div className="mt-4 space-y-2">
             <Label htmlFor="ldap-attr-group">Group Membership Attribute</Label>
             <Input
               id="ldap-attr-group"
@@ -421,7 +429,7 @@ export default function LDAPSettingsTab() {
               onChange={(e) => setGroupMemberAttr(e.target.value)}
               placeholder="memberOf"
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Used to map LDAP groups to application roles
             </p>
           </div>
@@ -440,7 +448,7 @@ export default function LDAPSettingsTab() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="ldap-sync-enabled">Enable Auto Sync</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Periodically sync users from the directory
               </p>
             </div>
@@ -467,7 +475,7 @@ export default function LDAPSettingsTab() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="ldap-auto-create">Auto-Create Users</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Automatically create new user accounts for directory users
               </p>
             </div>
@@ -483,7 +491,7 @@ export default function LDAPSettingsTab() {
               <Label htmlFor="ldap-auto-deactivate">
                 Auto-Deactivate Users
               </Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Deactivate users no longer found in the directory
               </p>
             </div>
@@ -505,9 +513,9 @@ export default function LDAPSettingsTab() {
             disabled={isTesting || !ldapEnabled}
           >
             {isTesting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <CheckCircle className="h-4 w-4 mr-2" />
+              <CheckCircle className="mr-2 h-4 w-4" />
             )}
             Test Connection
           </Button>
@@ -517,18 +525,18 @@ export default function LDAPSettingsTab() {
             disabled={isSyncing || !ldapEnabled}
           >
             {isSyncing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Server className="h-4 w-4 mr-2" />
+              <Server className="mr-2 h-4 w-4" />
             )}
             Sync Now
           </Button>
         </div>
         <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="mr-2 h-4 w-4" />
           )}
           Save Settings
         </Button>

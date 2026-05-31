@@ -12,7 +12,6 @@ export const metadata = {
 export default async function Page() {
   const session = await auth.api.getSession({ headers: await headers() });
 
-  // Require authentication
   if (!session?.user) {
     redirect("/login");
   }

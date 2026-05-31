@@ -1,4 +1,3 @@
-import React from "react";
 import ConsumableCreateForm from "../../create/ui/ConsumableCreateForm";
 import {
   getConsumableById,

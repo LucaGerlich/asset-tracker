@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -67,7 +67,7 @@ const METHOD_COLORS: Record<string, string> = {
 function MethodBadge({ method }: { method: string }) {
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold uppercase border ${METHOD_COLORS[method] || "bg-gray-100 text-gray-700"}`}
+      className={`inline-flex items-center rounded border px-2.5 py-0.5 text-xs font-bold uppercase ${METHOD_COLORS[method] || "bg-gray-100 text-gray-700"}`}
     >
       {method}
     </span>
@@ -88,30 +88,30 @@ function EndpointCard({
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="w-full">
-        <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left">
+        <div className="hover:bg-muted/50 flex items-center gap-3 rounded-lg p-3 text-left transition-colors">
           <ChevronRight
             className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
           />
           <MethodBadge method={method} />
-          <code className="text-sm font-mono flex-1">{path}</code>
+          <code className="flex-1 font-mono text-sm">{path}</code>
           {operation.summary && (
-            <span className="text-sm text-muted-foreground hidden md:inline truncate max-w-xs">
+            <span className="text-muted-foreground hidden max-w-xs truncate text-sm md:inline">
               {operation.summary}
             </span>
           )}
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="ml-11 pb-4 space-y-3">
+        <div className="ml-11 space-y-3 pb-4">
           {operation.description && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {operation.description}
             </p>
           )}
 
           {operation.parameters && operation.parameters.length > 0 && (
             <div>
-              <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-1">
+              <h4 className="text-muted-foreground mb-1 text-xs font-semibold uppercase">
                 Parameters
               </h4>
               <div className="space-y-1">
@@ -120,7 +120,7 @@ function EndpointCard({
                     key={`${param.in}-${param.name}`}
                     className="flex items-center gap-2 text-sm"
                   >
-                    <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
+                    <code className="bg-muted rounded px-1.5 py-0.5 text-xs">
                       {param.name}
                     </code>
                     <Badge variant="outline" className="text-[10px]">
@@ -132,12 +132,12 @@ function EndpointCard({
                       </Badge>
                     )}
                     {param.schema?.type && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-muted-foreground text-xs">
                         {param.schema.type}
                       </span>
                     )}
                     {param.description && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-muted-foreground text-xs">
                         — {param.description}
                       </span>
                     )}
@@ -149,18 +149,15 @@ function EndpointCard({
 
           {operation.requestBody && (
             <div>
-              <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-1">
+              <h4 className="text-muted-foreground mb-1 text-xs font-semibold uppercase">
                 Request Body
                 {operation.requestBody.required && (
-                  <Badge
-                    variant="destructive"
-                    className="text-[10px] ml-2"
-                  >
+                  <Badge variant="destructive" className="ml-2 text-[10px]">
                     required
                   </Badge>
                 )}
               </h4>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-muted-foreground text-xs">
                 {Object.keys(operation.requestBody.content || {}).join(", ")}
               </div>
             </div>
@@ -168,25 +165,21 @@ function EndpointCard({
 
           {operation.responses && (
             <div>
-              <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-1">
+              <h4 className="text-muted-foreground mb-1 text-xs font-semibold uppercase">
                 Responses
               </h4>
               <div className="flex flex-wrap gap-1">
-                {Object.entries(operation.responses).map(
-                  ([code, response]) => (
-                    <Badge
-                      key={code}
-                      variant={code.startsWith("2") ? "default" : "outline"}
-                      className="text-[10px]"
-                      title={response.description}
-                    >
-                      {code}
-                      {response.description
-                        ? ` — ${response.description}`
-                        : ""}
-                    </Badge>
-                  )
-                )}
+                {Object.entries(operation.responses).map(([code, response]) => (
+                  <Badge
+                    key={code}
+                    variant={code.startsWith("2") ? "default" : "outline"}
+                    className="text-[10px]"
+                    title={response.description}
+                  >
+                    {code}
+                    {response.description ? ` — ${response.description}` : ""}
+                  </Badge>
+                ))}
               </div>
             </div>
           )}
@@ -213,7 +206,7 @@ export default function ApiDocsPage() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center text-muted-foreground">
+      <div className="text-muted-foreground p-8 text-center">
         Loading API documentation...
       </div>
     );
@@ -221,7 +214,7 @@ export default function ApiDocsPage() {
 
   if (!spec) {
     return (
-      <div className="p-8 text-center text-muted-foreground">
+      <div className="text-muted-foreground p-8 text-center">
         Failed to load API specification.
       </div>
     );
@@ -256,21 +249,21 @@ export default function ApiDocsPage() {
   }
 
   const tagDescriptions = Object.fromEntries(
-    (spec.tags || []).map((t) => [t.name, t.description])
+    (spec.tags || []).map((t) => [t.name, t.description]),
   );
 
   return (
-    <div className="flex flex-col gap-6 max-w-5xl mx-auto p-6">
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
             <FileJson className="h-6 w-6" />
             {spec.info.title}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             {spec.info.description}
           </p>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="mt-2 flex items-center gap-2">
             <Badge variant="outline">v{spec.info.version}</Badge>
             <Badge variant="outline">OpenAPI {spec.openapi}</Badge>
           </div>
@@ -279,14 +272,14 @@ export default function ApiDocsPage() {
           href="/openapi.json"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
         >
           Raw spec <ExternalLink className="h-3 w-3" />
         </a>
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
         <Input
           placeholder="Search endpoints..."
           value={search}
@@ -319,7 +312,7 @@ export default function ApiDocsPage() {
       ))}
 
       {Object.keys(grouped).length === 0 && (
-        <p className="text-center text-muted-foreground py-8">
+        <p className="text-muted-foreground py-8 text-center">
           No endpoints match your search.
         </p>
       )}

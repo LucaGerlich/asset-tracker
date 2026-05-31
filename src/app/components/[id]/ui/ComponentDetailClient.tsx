@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,7 +89,8 @@ export default function ComponentDetailClient({
       if (!res.ok) throw new Error("Check-in failed");
       toast.success("Component returned");
       window.location.reload();
-    } catch {
+    } catch (err) {
+      console.error("Check-in failed", err);
       toast.error("Check-in failed");
     }
   };

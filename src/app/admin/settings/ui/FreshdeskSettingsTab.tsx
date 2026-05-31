@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,13 +35,17 @@ interface FreshdeskSettingsTabProps {
   }>;
 }
 
-export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabProps) {
+export default function FreshdeskSettingsTab({
+  settings,
+}: FreshdeskSettingsTabProps) {
   const getSettingValue = (key: string) =>
     settings.find((s) => s.key === key)?.value || "";
 
-  const [domain, setDomain] = useState(getSettingValue("freshdesk_domain") || "");
+  const [domain, setDomain] = useState(
+    getSettingValue("freshdesk_domain") || "",
+  );
   const [apiKey, setApiKey] = useState(
-    getSettingValue("freshdesk_api_key") ? "********" : ""
+    getSettingValue("freshdesk_api_key") ? "********" : "",
   );
   const [showApiKey, setShowApiKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -77,7 +81,8 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
         const error = await response.json();
         toast.error(error.error || "Failed to save settings");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to save settings", err);
       toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);
@@ -110,7 +115,8 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
         setConnectionStatus("failed");
         toast.error(result.error || "Connection test failed");
       }
-    } catch {
+    } catch (err) {
+      console.error("Connection test failed", err);
       setConnectionStatus("failed");
       toast.error("Connection test failed");
     } finally {
@@ -130,25 +136,25 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
             {connectionStatus === "connected" && (
               <Badge
                 variant="outline"
-                className="bg-green-50 text-green-700 border-green-200"
+                className="border-green-200 bg-green-50 text-green-700"
               >
-                <CheckCircle className="h-3 w-3 mr-1" />
+                <CheckCircle className="mr-1 h-3 w-3" />
                 Connected
               </Badge>
             )}
             {connectionStatus === "failed" && (
               <Badge
                 variant="outline"
-                className="bg-red-50 text-red-700 border-red-200"
+                className="border-red-200 bg-red-50 text-red-700"
               >
-                <XCircle className="h-3 w-3 mr-1" />
+                <XCircle className="mr-1 h-3 w-3" />
                 Connection Failed
               </Badge>
             )}
           </CardTitle>
           <CardDescription>
-            Connect to Freshdesk to view IT support tickets for Hardware Requests
-            and Problems
+            Connect to Freshdesk to view IT support tickets for Hardware
+            Requests and Problems
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -156,7 +162,7 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
             <div className="space-y-2">
               <Label htmlFor="domain">Freshdesk Domain</Label>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">https://</span>
+                <span className="text-muted-foreground text-sm">https://</span>
                 <Input
                   id="domain"
                   value={domain}
@@ -164,13 +170,13 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
                   placeholder="yourcompany"
                   className="flex-1"
                 />
-                <span className="text-sm text-muted-foreground">
+                <span className="text-muted-foreground text-sm">
                   .freshdesk.com
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Enter your Freshdesk subdomain (e.g., &quot;yourcompany&quot; from
-                yourcompany.freshdesk.com)
+              <p className="text-muted-foreground text-sm">
+                Enter your Freshdesk subdomain (e.g., &quot;yourcompany&quot;
+                from yourcompany.freshdesk.com)
               </p>
             </div>
 
@@ -189,7 +195,7 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-0 top-0 h-full px-3"
+                  className="absolute top-0 right-0 h-full px-3"
                   onClick={() => setShowApiKey(!showApiKey)}
                 >
                   {showApiKey ? (
@@ -199,8 +205,9 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
                   )}
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Find your API key in Freshdesk under Profile Settings &gt; API Key
+              <p className="text-muted-foreground text-sm">
+                Find your API key in Freshdesk under Profile Settings &gt; API
+                Key
               </p>
             </div>
           </div>
@@ -210,17 +217,21 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
               variant="outline"
               onClick={handleTestConnection}
               // Disable if testing, no domain, or no API key (unless it's masked from database)
-              disabled={isTesting || !domain || (!apiKey && apiKey !== "********")}
+              disabled={
+                isTesting || !domain || (!apiKey && apiKey !== "********")
+              }
             >
-              {isTesting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isTesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Test Connection
             </Button>
             <Button
               onClick={handleSave}
               // Disable if saving, no domain, or no API key (unless it's masked from database)
-              disabled={isSaving || !domain || (!apiKey && apiKey !== "********")}
+              disabled={
+                isSaving || !domain || (!apiKey && apiKey !== "********")
+              }
             >
-              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Settings
             </Button>
           </div>
@@ -240,9 +251,10 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
             <Badge variant="secondary">Hardware Request</Badge>
             <Badge variant="secondary">Problem</Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-4">
-            Tickets with these types will appear in the IT Tickets page. Make sure
-            these ticket types are configured in your Freshdesk admin settings.
+          <p className="text-muted-foreground mt-4 text-sm">
+            Tickets with these types will appear in the IT Tickets page. Make
+            sure these ticket types are configured in your Freshdesk admin
+            settings.
           </p>
         </CardContent>
       </Card>
@@ -253,7 +265,7 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
           <CardDescription>How to get your Freshdesk API key</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <ol className="list-decimal list-inside space-y-2 text-sm">
+          <ol className="list-inside list-decimal space-y-2 text-sm">
             <li>Log in to your Freshdesk account</li>
             <li>Click on your profile picture in the top right</li>
             <li>Select &quot;Profile Settings&quot;</li>
@@ -262,8 +274,8 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
           </ol>
           <Alert>
             <AlertDescription>
-              Your API key is stored securely and encrypted. It will only be used
-              to fetch ticket data from Freshdesk.
+              Your API key is stored securely and encrypted. It will only be
+              used to fetch ticket data from Freshdesk.
             </AlertDescription>
           </Alert>
           <Button variant="link" className="p-0" asChild>
@@ -273,7 +285,7 @@ export default function FreshdeskSettingsTab({ settings }: FreshdeskSettingsTabP
               rel="noopener noreferrer"
             >
               Learn more about Freshdesk API keys
-              <ExternalLink className="h-3 w-3 ml-1" />
+              <ExternalLink className="ml-1 h-3 w-3" />
             </a>
           </Button>
         </CardContent>

@@ -1,4 +1,3 @@
-import React from "react";
 import StatusTypeCreateForm from "./ui/StatusTypeCreateForm";
 import Breadcrumb from "@/components/Breadcrumb";
 

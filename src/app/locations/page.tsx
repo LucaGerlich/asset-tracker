@@ -1,4 +1,3 @@
-import React from "react";
 import Breadcrumb from "@/components/Breadcrumb";
 import LocationsTable from "../../ui/locations/LocationsTable";
 import { getLocation } from "@/lib/data";

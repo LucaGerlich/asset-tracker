@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -150,7 +150,8 @@ export default function LabelSettingsTab({
       } else {
         toast.error("Failed to create template");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to create template", err);
       toast.error("Failed to create template");
     }
   };
@@ -198,7 +199,8 @@ export default function LabelSettingsTab({
       } else {
         toast.error("Failed to update template");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to update template", err);
       toast.error("Failed to update template");
     }
   };
@@ -217,7 +219,8 @@ export default function LabelSettingsTab({
       } else {
         toast.error("Failed to delete template");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete template", err);
       toast.error("Failed to delete template");
     }
   };
@@ -234,7 +237,8 @@ export default function LabelSettingsTab({
       } else {
         toast.error("Failed to update default template");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to update default template", err);
       toast.error("Failed to update default template");
     }
   };

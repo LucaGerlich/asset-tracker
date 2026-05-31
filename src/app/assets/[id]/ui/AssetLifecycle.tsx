@@ -174,7 +174,8 @@ export default function AssetLifecycle({
         const error = await response.json();
         toast.error(error.error || "Failed to update status");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to update status", err);
       toast.error("Failed to update status");
     } finally {
       setIsSaving(false);

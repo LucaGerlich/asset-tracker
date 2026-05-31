@@ -137,7 +137,6 @@ export default async function DashboardPage() {
     chartData.push({ name: "Unassigned", value: unassignedCount });
   }
 
-  // Build accessory status chart data
   const accStatusCounts = new Map<string, number>();
   accessoryStatusDistribution.forEach((entry) => {
     const key = entry.statustypeid ?? "__unassigned";

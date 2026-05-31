@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import { Suspense } from "react";
 import Breadcrumb from "@/components/Breadcrumb";
 import LicencesTable from "../../ui/licences/LicencesTable";
 import {
@@ -30,7 +30,9 @@ export default async function Page() {
   let ctx;
   try {
     ctx = await getOrganizationContext();
-  } catch {}
+  } catch {
+    /* non-admin context resolution is optional */
+  }
   const isAdmin = ctx?.isAdmin ?? false;
 
   let filteredLicences = licencesRaw;

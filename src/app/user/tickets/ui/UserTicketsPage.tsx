@@ -12,7 +12,9 @@ interface UserTicketsPageProps {
   tickets: Ticket[];
 }
 
-export default function UserTicketsPage({ tickets: initialTickets }: UserTicketsPageProps) {
+export default function UserTicketsPage({
+  tickets: initialTickets,
+}: UserTicketsPageProps) {
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
   const [showNewTicketForm, setShowNewTicketForm] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -37,14 +39,13 @@ export default function UserTicketsPage({ tickets: initialTickets }: UserTickets
       }
 
       const newComment = await response.json();
-      
-      // Update tickets with new comment
+
       setTickets((prevTickets) =>
         prevTickets.map((ticket) =>
           ticket.id === ticketId
             ? { ...ticket, comments: [...ticket.comments, newComment] }
-            : ticket
-        )
+            : ticket,
+        ),
       );
 
       return newComment;

@@ -27,10 +27,6 @@ import {
 import { toast } from "sonner";
 import { Plus, Edit, Trash2, Loader2, FileText } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface EulaTemplateItem {
   id: string;
   name: string;
@@ -42,34 +38,24 @@ interface EulaTemplateItem {
   updatedAt: string;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export default function EulaTab() {
-  // ---- Data state ----------------------------------------------------------
   const [templates, setTemplates] = useState<EulaTemplateItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ---- Create/Edit dialog state -------------------------------------------
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] =
     useState<EulaTemplateItem | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // ---- Form state ----------------------------------------------------------
   const [formName, setFormName] = useState("");
   const [formContent, setFormContent] = useState("");
   const [formVersion, setFormVersion] = useState(1);
   const [formIsActive, setFormIsActive] = useState(true);
 
-  // ---- Delete confirmation -------------------------------------------------
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingTemplate, setDeletingTemplate] =
     useState<EulaTemplateItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // ---- Fetch templates ----------------------------------------------------
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -77,7 +63,8 @@ export default function EulaTab() {
       if (!res.ok) throw new Error("Failed to fetch EULA templates");
       const data: EulaTemplateItem[] = await res.json();
       setTemplates(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load EULA templates", err);
       toast.error("Failed to load EULA templates");
     }
   }, []);
@@ -90,8 +77,6 @@ export default function EulaTab() {
     }
     init();
   }, [fetchTemplates]);
-
-  // ---- Dialog helpers ------------------------------------------------------
 
   function openCreateDialog() {
     setEditingTemplate(null);
@@ -115,8 +100,6 @@ export default function EulaTab() {
     setDeletingTemplate(template);
     setDeleteDialogOpen(true);
   }
-
-  // ---- Save (create / update) ---------------------------------------------
 
   async function handleSave() {
     if (!formName.trim()) {
@@ -166,14 +149,13 @@ export default function EulaTab() {
       );
       setDialogOpen(false);
       await fetchTemplates();
-    } catch {
+    } catch (err) {
+      console.error("Failed to save EULA template", err);
       toast.error("Failed to save EULA template");
     } finally {
       setIsSaving(false);
     }
   }
-
-  // ---- Delete --------------------------------------------------------------
 
   async function handleDelete() {
     if (!deletingTemplate) return;
@@ -200,14 +182,13 @@ export default function EulaTab() {
       setDeleteDialogOpen(false);
       setDeletingTemplate(null);
       await fetchTemplates();
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete EULA template", err);
       toast.error("Failed to delete EULA template");
     } finally {
       setIsDeleting(false);
     }
   }
-
-  // ---- Render --------------------------------------------------------------
 
   if (isLoading) {
     return (

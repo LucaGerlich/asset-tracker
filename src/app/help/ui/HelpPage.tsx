@@ -10,10 +10,6 @@ import {
 } from "@/components/ui/collapsible";
 import { ChevronDown, Search } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface FAQItem {
   question: string;
   answer: string;
@@ -26,10 +22,6 @@ interface FAQSection {
   adminOnly?: boolean;
   items: FAQItem[];
 }
-
-// ---------------------------------------------------------------------------
-// FAQ Data
-// ---------------------------------------------------------------------------
 
 const FAQ_SECTIONS: FAQSection[] = [
   {
@@ -312,10 +304,6 @@ const FAQ_SECTIONS: FAQSection[] = [
     ],
   },
 ];
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 export default function HelpPage({ isAdmin }: { isAdmin: boolean }) {
   const [searchQuery, setSearchQuery] = useState("");

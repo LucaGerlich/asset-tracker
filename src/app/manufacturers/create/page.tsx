@@ -1,4 +1,3 @@
-import React from "react";
 import ManufacturerCreateForm from "./ui/ManufacturerCreateForm";
 import Breadcrumb from "@/components/Breadcrumb";
 

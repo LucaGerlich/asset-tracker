@@ -17,9 +17,10 @@ const PRIORITY_COLORS = {
 };
 
 export function TicketCard({ ticket, onClick }: TicketCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: ticket.id,
-  });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: ticket.id,
+    });
 
   const style = transform
     ? {
@@ -32,18 +33,19 @@ export function TicketCard({ ticket, onClick }: TicketCardProps) {
     PRIORITY_COLORS.medium;
 
   return (
-    <div
+    <button
+      type="button"
       ref={setNodeRef}
       style={style}
       {...listeners}
       {...attributes}
       onClick={onClick}
-      className={`cursor-pointer rounded-lg border bg-card p-4 shadow-sm transition-all hover:shadow-md ${
+      className={`bg-card cursor-pointer rounded-lg border p-4 text-left shadow-sm transition-all hover:shadow-md ${
         isDragging ? "opacity-50" : ""
       }`}
     >
       <div className="mb-2 flex items-start justify-between">
-        <h4 className="font-medium text-sm line-clamp-2">{ticket.title}</h4>
+        <h4 className="line-clamp-2 text-sm font-medium">{ticket.title}</h4>
         <span
           className={`ml-2 rounded-full border px-2 py-0.5 text-xs font-medium ${priorityColor}`}
         >
@@ -52,12 +54,12 @@ export function TicketCard({ ticket, onClick }: TicketCardProps) {
       </div>
 
       {ticket.description && (
-        <p className="mb-3 text-xs text-muted-foreground line-clamp-2">
+        <p className="text-muted-foreground mb-3 line-clamp-2 text-xs">
           {ticket.description}
         </p>
       )}
 
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <div className="text-muted-foreground flex items-center justify-between text-xs">
         <div className="flex items-center gap-1">
           <User className="h-3 w-3" />
           <span>
@@ -78,6 +80,6 @@ export function TicketCard({ ticket, onClick }: TicketCardProps) {
           </span>
         </div>
       )}
-    </div>
+    </button>
   );
 }

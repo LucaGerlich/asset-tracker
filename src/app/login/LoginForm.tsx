@@ -17,7 +17,21 @@ import {
 import { Info, Shield, Eye, EyeOff } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
+interface TurnstileWidget {
+  render: (container: HTMLElement, options: Record<string, unknown>) => string;
+  reset: (id: string) => void;
+  remove: (id: string) => void;
+}
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileWidget;
+  }
+}
+
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
+const TURNSTILE_SCRIPT_URL =
+  "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 
 /**
  * Lightweight Turnstile hook — loads the script once and renders the widget
@@ -32,9 +46,9 @@ function useTurnstile(containerRef: React.RefObject<HTMLDivElement | null>) {
     if (
       widgetIdRef.current !== null &&
       typeof window !== "undefined" &&
-      (window as any).turnstile
+      window.turnstile
     ) {
-      (window as any).turnstile.reset(widgetIdRef.current);
+      window.turnstile.reset(widgetIdRef.current);
     }
   }, []);
 
@@ -45,36 +59,30 @@ function useTurnstile(containerRef: React.RefObject<HTMLDivElement | null>) {
       if (!containerRef.current) return;
       // Avoid double-render
       if (widgetIdRef.current !== null) return;
-      widgetIdRef.current = (window as any).turnstile.render(
-        containerRef.current,
-        {
-          sitekey: TURNSTILE_SITE_KEY,
-          size: "flexible",
-          callback: (tok: string) => setToken(tok),
-          "expired-callback": () => setToken(null),
-          "error-callback": () => setToken(null),
-        },
-      );
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        size: "flexible",
+        callback: (tok: string) => setToken(tok),
+        "expired-callback": () => setToken(null),
+        "error-callback": () => setToken(null),
+      });
     }
 
     // If script already loaded, render immediately
-    if ((window as any).turnstile) {
+    if (window.turnstile) {
       renderWidget();
       return;
     }
 
-    // Load the Turnstile script
     const script = document.createElement("script");
-    script.src =
-      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.src = TURNSTILE_SCRIPT_URL;
     script.async = true;
     script.onload = () => renderWidget();
     document.head.appendChild(script);
 
     return () => {
-      // Cleanup widget on unmount
-      if (widgetIdRef.current !== null && (window as any).turnstile) {
-        (window as any).turnstile.remove(widgetIdRef.current);
+      if (widgetIdRef.current !== null && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
       }
     };
@@ -154,7 +162,9 @@ export default function LoginPage({
         setError(result.error.message || "Invalid username or password");
         resetTurnstile();
         setIsLoading(false);
-      } else if ((result?.data as any)?.twoFactorRedirect) {
+      } else if (
+        (result?.data as { twoFactorRedirect?: boolean })?.twoFactorRedirect
+      ) {
         // User has 2FA enabled — redirect to MFA verification
         router.push("/mfa-verify");
       } else {

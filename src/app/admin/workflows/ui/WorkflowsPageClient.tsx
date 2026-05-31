@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,10 +34,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Edit, Trash2, Loader2, Zap } from "lucide-react";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 interface AutomationRule {
   id: string;
@@ -73,10 +69,6 @@ interface ActionConfig {
   messageTemplate?: string;
   webhookUrl?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
 
 const TRIGGER_OPTIONS = [
   { value: "warranty_expiring", label: "Warranty Expiring" },
@@ -132,21 +124,14 @@ function parseActions(raw: string): ActionConfig[] {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export default function WorkflowsPageClient() {
-  // ---- Data state ----------------------------------------------------------
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ---- Create/Edit dialog state -------------------------------------------
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<AutomationRule | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // ---- Form state ----------------------------------------------------------
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formTrigger, setFormTrigger] = useState("");
@@ -154,15 +139,11 @@ export default function WorkflowsPageClient() {
   const [formActions, setFormActions] = useState<ActionConfig[]>([]);
   const [formIsActive, setFormIsActive] = useState(true);
 
-  // ---- Delete confirmation -------------------------------------------------
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingRule, setDeletingRule] = useState<AutomationRule | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // ---- Toggling active status inline ---------------------------------------
   const [togglingId, setTogglingId] = useState<string | null>(null);
-
-  // ---- Fetch rules ---------------------------------------------------------
 
   const fetchRules = useCallback(async () => {
     try {
@@ -170,7 +151,8 @@ export default function WorkflowsPageClient() {
       if (!res.ok) throw new Error("Failed to fetch automation rules");
       const data: AutomationRule[] = await res.json();
       setRules(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load automation rules", err);
       toast.error("Failed to load automation rules");
     }
   }, []);
@@ -183,8 +165,6 @@ export default function WorkflowsPageClient() {
     }
     init();
   }, [fetchRules]);
-
-  // ---- Dialog helpers ------------------------------------------------------
 
   function resetForm() {
     setFormName("");
@@ -217,8 +197,6 @@ export default function WorkflowsPageClient() {
     setDeleteDialogOpen(true);
   }
 
-  // ---- Action helpers ------------------------------------------------------
-
   function isActionSelected(actionType: string): boolean {
     return formActions.some((a) => a.type === actionType);
   }
@@ -236,8 +214,6 @@ export default function WorkflowsPageClient() {
       prev.map((a) => (a.type === actionType ? { ...a, [key]: value } : a)),
     );
   }
-
-  // ---- Toggle active status inline ----------------------------------------
 
   async function handleToggleActive(rule: AutomationRule) {
     setTogglingId(rule.id);
@@ -258,14 +234,13 @@ export default function WorkflowsPageClient() {
 
       toast.success(rule.isActive ? "Rule deactivated" : "Rule activated");
       await fetchRules();
-    } catch {
+    } catch (err) {
+      console.error("Failed to update rule", err);
       toast.error("Failed to update rule");
     } finally {
       setTogglingId(null);
     }
   }
-
-  // ---- Save (create / update) ---------------------------------------------
 
   async function handleSave() {
     if (!formName.trim()) {
@@ -316,14 +291,13 @@ export default function WorkflowsPageClient() {
       );
       setDialogOpen(false);
       await fetchRules();
-    } catch {
+    } catch (err) {
+      console.error("Failed to save automation rule", err);
       toast.error("Failed to save automation rule");
     } finally {
       setIsSaving(false);
     }
   }
-
-  // ---- Delete --------------------------------------------------------------
 
   async function handleDelete() {
     if (!deletingRule) return;
@@ -346,14 +320,13 @@ export default function WorkflowsPageClient() {
       setDeleteDialogOpen(false);
       setDeletingRule(null);
       await fetchRules();
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete automation rule", err);
       toast.error("Failed to delete automation rule");
     } finally {
       setIsDeleting(false);
     }
   }
-
-  // ---- Conditions builder --------------------------------------------------
 
   function renderConditionsBuilder() {
     switch (formTrigger) {
@@ -480,8 +453,6 @@ export default function WorkflowsPageClient() {
     }
   }
 
-  // ---- Actions config per type ---------------------------------------------
-
   function renderActionConfig(actionType: string) {
     const action = formActions.find((a) => a.type === actionType);
     if (!action) return null;
@@ -545,8 +516,6 @@ export default function WorkflowsPageClient() {
         return null;
     }
   }
-
-  // ---- Render --------------------------------------------------------------
 
   if (isLoading) {
     return (

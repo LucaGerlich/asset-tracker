@@ -1,4 +1,3 @@
-import React from "react";
 import ComponentCategoryCreateForm from "../../create/ui/ComponentCategoryCreateForm";
 import { getComponentCategoryById } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";

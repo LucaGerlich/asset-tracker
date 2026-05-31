@@ -1,4 +1,3 @@
-import React from "react";
 import ComponentCreateForm from "../../create/ui/ComponentCreateForm";
 import {
   getComponentById,

@@ -1,4 +1,3 @@
-import React from "react";
 import Link from "next/link";
 import UserResources from "./ui/UserResources";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -93,7 +92,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     (lic) => lic.licenceduserid === user.userid,
   );
 
-  // Fetch history for this user from audit_logs
   const historyEntries = await prisma.audit_logs.findMany({
     where: {
       OR: [{ entity: "user", entityId: params.id }, { userId: params.id }],

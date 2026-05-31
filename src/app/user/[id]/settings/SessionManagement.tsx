@@ -1,11 +1,25 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Monitor, Smartphone, Globe, Clock, Trash2, RefreshCw, ShieldAlert } from "lucide-react";
+import {
+  Monitor,
+  Smartphone,
+  Globe,
+  Clock,
+  Trash2,
+  RefreshCw,
+  ShieldAlert,
+} from "lucide-react";
 
 interface SessionInfo {
   id: string;
@@ -27,20 +41,22 @@ function formatRelativeTime(dateString: string): string {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffSeconds < 60) return "Just now";
-  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+  if (diffMinutes < 60)
+    return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
+  if (diffHours < 24)
+    return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
   if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
 
   return date.toLocaleDateString();
 }
 
 function getDeviceIcon(deviceName: string | null) {
-  if (!deviceName) return <Monitor className="h-5 w-5 text-muted-foreground" />;
+  if (!deviceName) return <Monitor className="text-muted-foreground h-5 w-5" />;
   const lower = deviceName.toLowerCase();
   if (lower.includes("iphone") || lower.includes("android")) {
-    return <Smartphone className="h-5 w-5 text-muted-foreground" />;
+    return <Smartphone className="text-muted-foreground h-5 w-5" />;
   }
-  return <Monitor className="h-5 w-5 text-muted-foreground" />;
+  return <Monitor className="text-muted-foreground h-5 w-5" />;
 }
 
 export default function SessionManagement() {
@@ -111,7 +127,9 @@ export default function SessionManagement() {
         throw new Error(err?.error || "Failed to revoke sessions");
       }
       const data = await res.json();
-      toast.success(`Revoked ${data.revokedCount} session${data.revokedCount === 1 ? "" : "s"}`);
+      toast.success(
+        `Revoked ${data.revokedCount} session${data.revokedCount === 1 ? "" : "s"}`,
+      );
       await fetchSessions();
     } catch (err) {
       toast.error("Failed to revoke sessions", {
@@ -144,18 +162,20 @@ export default function SessionManagement() {
             onClick={fetchSessions}
             disabled={loading}
           >
-            <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
         </div>
       </CardHeader>
       <CardContent>
         {loading && sessions.length === 0 ? (
-          <div className="flex items-center justify-center py-8 text-muted-foreground">
+          <div className="text-muted-foreground flex items-center justify-center py-8">
             Loading sessions...
           </div>
         ) : sessions.length === 0 ? (
-          <div className="flex items-center justify-center py-8 text-muted-foreground">
+          <div className="text-muted-foreground flex items-center justify-center py-8">
             No active sessions found.
           </div>
         ) : (
@@ -170,7 +190,7 @@ export default function SessionManagement() {
                     {getDeviceIcon(session.deviceName)}
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">
+                        <span className="text-sm font-medium">
                           {session.deviceName || "Unknown Device"}
                         </span>
                         {session.isCurrent && (
@@ -179,7 +199,7 @@ export default function SessionManagement() {
                           </Badge>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                         {session.ipAddress && (
                           <span className="flex items-center gap-1">
                             <Globe className="h-3 w-3" />
@@ -190,7 +210,7 @@ export default function SessionManagement() {
                           <Clock className="h-3 w-3" />
                           Last active: {formatRelativeTime(session.lastActive)}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-muted-foreground text-xs">
                           Created: {formatRelativeTime(session.createdAt)}
                         </span>
                       </div>
@@ -204,7 +224,7 @@ export default function SessionManagement() {
                       disabled={revokingId === session.id}
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
-                      <Trash2 className="h-4 w-4 mr-1" />
+                      <Trash2 className="mr-1 h-4 w-4" />
                       {revokingId === session.id ? "Revoking..." : "Revoke"}
                     </Button>
                   )}
@@ -213,7 +233,7 @@ export default function SessionManagement() {
             </div>
 
             {otherSessionCount > 0 && (
-              <div className="mt-4 pt-4 border-t">
+              <div className="mt-4 border-t pt-4">
                 <Button
                   variant="destructive"
                   size="sm"

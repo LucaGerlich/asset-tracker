@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,10 +26,6 @@ import {
 } from "@/components/ui/table";
 import { Plus, Edit, Trash2, Shield, Lock, Loader2 } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface Role {
   id: string;
   name: string;
@@ -45,10 +41,6 @@ interface PermissionGroup {
   label: string;
   permissions: string[];
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 /** Group a flat permission list by the entity prefix (asset, user, ...) */
 function groupPermissions(allPermissions: string[]): PermissionGroup[] {
@@ -91,32 +83,22 @@ function permissionAction(perm: string): string {
   return action.charAt(0).toUpperCase() + action.slice(1);
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export default function RolesTab() {
-  // ---- Data state ----------------------------------------------------------
   const [roles, setRoles] = useState<Role[]>([]);
   const [allPermissions, setAllPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ---- Dialog state --------------------------------------------------------
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // ---- Form state ----------------------------------------------------------
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formPermissions, setFormPermissions] = useState<string[]>([]);
 
-  // ---- Delete confirmation -------------------------------------------------
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingRole, setDeletingRole] = useState<Role | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // ---- Fetch roles & permissions -------------------------------------------
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -124,7 +106,8 @@ export default function RolesTab() {
       if (!res.ok) throw new Error("Failed to fetch roles");
       const data: Role[] = await res.json();
       setRoles(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load roles", err);
       toast.error("Failed to load roles");
     }
   }, []);
@@ -138,7 +121,8 @@ export default function RolesTab() {
         (p: unknown): p is string => typeof p === "string",
       );
       setAllPermissions(perms);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load permissions", err);
       toast.error("Failed to load permissions");
     }
   }, []);
@@ -151,8 +135,6 @@ export default function RolesTab() {
     }
     init();
   }, [fetchRoles, fetchPermissions]);
-
-  // ---- Dialog helpers ------------------------------------------------------
 
   function openCreateDialog() {
     setEditingRole(null);
@@ -196,8 +178,6 @@ export default function RolesTab() {
     }
   }
 
-  // ---- Save (create / update) ---------------------------------------------
-
   async function handleSave() {
     if (!formName.trim()) {
       toast.error("Role name is required");
@@ -233,14 +213,13 @@ export default function RolesTab() {
       );
       setDialogOpen(false);
       await fetchRoles();
-    } catch {
+    } catch (err) {
+      console.error("Failed to save role", err);
       toast.error("Failed to save role");
     } finally {
       setIsSaving(false);
     }
   }
-
-  // ---- Delete --------------------------------------------------------------
 
   async function handleDelete() {
     if (!deletingRole) return;
@@ -263,18 +242,15 @@ export default function RolesTab() {
       setDeleteDialogOpen(false);
       setDeletingRole(null);
       await fetchRoles();
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete role", err);
       toast.error("Failed to delete role");
     } finally {
       setIsDeleting(false);
     }
   }
 
-  // ---- Derived data --------------------------------------------------------
-
   const permissionGroups = groupPermissions(allPermissions);
-
-  // ---- Render --------------------------------------------------------------
 
   if (isLoading) {
     return (

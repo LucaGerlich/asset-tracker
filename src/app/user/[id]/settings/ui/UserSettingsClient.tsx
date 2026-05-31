@@ -282,7 +282,8 @@ export default function UserSettingsClient({
                 body: JSON.stringify({ onboardingCompleted: false }),
               });
               router.push("?onboarding=1");
-            } catch {
+            } catch (err) {
+              console.error("Failed to restart onboarding", err);
               toast.error("Failed to restart onboarding");
             }
           }}

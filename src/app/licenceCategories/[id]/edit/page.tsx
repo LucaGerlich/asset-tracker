@@ -1,4 +1,3 @@
-import React from "react";
 import LicenceCategoriesCreateForm from "../../create/ui/LicenceCategoriesCreateForm";
 import { getLicenceCategoryById } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";

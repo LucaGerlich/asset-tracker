@@ -50,7 +50,10 @@ export default function BillingTab() {
     fetch("/api/billing/usage")
       .then((res) => res.json())
       .then(setData)
-      .catch(() => toast.error("Failed to load billing data"))
+      .catch((err) => {
+        console.error("Failed to load billing data", err);
+        toast.error("Failed to load billing data");
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -67,7 +70,8 @@ export default function BillingTab() {
       } else {
         toast.error(result.error || "Failed to start checkout");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to start checkout", err);
       toast.error("Failed to start checkout");
     }
   };
@@ -81,7 +85,8 @@ export default function BillingTab() {
       } else {
         toast.error("Failed to open billing portal");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to open billing portal", err);
       toast.error("Failed to open billing portal");
     }
   };

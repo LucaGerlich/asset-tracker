@@ -1,3 +1,4 @@
+import Link from "next/link";
 import prisma from "@/lib/prisma";
 import InviteAcceptForm from "./InviteAcceptForm";
 
@@ -32,12 +33,12 @@ export default async function InvitePage({ params }: InvitePageProps) {
           <p className="text-muted-foreground mt-4">
             This invitation link is invalid or does not exist.
           </p>
-          <a
+          <Link
             href="/login"
             className="bg-primary text-primary-foreground hover:bg-primary/90 mt-6 inline-block rounded-md px-4 py-2 text-sm font-medium"
           >
             Go to Login
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -59,12 +60,12 @@ export default async function InvitePage({ params }: InvitePageProps) {
             Invitation Unavailable
           </h1>
           <p className="text-muted-foreground mt-4">{message}</p>
-          <a
+          <Link
             href="/login"
             className="bg-primary text-primary-foreground hover:bg-primary/90 mt-6 inline-block rounded-md px-4 py-2 text-sm font-medium"
           >
             Go to Login
-          </a>
+          </Link>
         </div>
       </div>
     );

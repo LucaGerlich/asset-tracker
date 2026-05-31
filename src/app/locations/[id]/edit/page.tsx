@@ -1,4 +1,3 @@
-import React from "react";
 import LocationCreateForm from "../../create/ui/LocationCreateForm";
 import { getLocationById, getLocation } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";

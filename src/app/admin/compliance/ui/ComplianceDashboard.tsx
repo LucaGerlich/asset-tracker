@@ -6,10 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface ComplianceData {
   accessControl: {
     totalUsers: number;
@@ -51,10 +47,6 @@ interface ComplianceCheckItem {
   framework: string;
   getStatus: (data: ComplianceData) => ComplianceStatus;
 }
-
-// ---------------------------------------------------------------------------
-// Compliance checklist definitions
-// ---------------------------------------------------------------------------
 
 const complianceChecklist: ComplianceCheckItem[] = [
   {
@@ -149,10 +141,6 @@ const complianceChecklist: ComplianceCheckItem[] = [
   },
 ];
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function statusBadgeVariant(
   status: ComplianceStatus,
 ): "default" | "secondary" | "destructive" | "outline" {
@@ -181,10 +169,6 @@ function formatDate(dateStr: string | null): string {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export default function ComplianceDashboard() {
   const [data, setData] = useState<ComplianceData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -197,7 +181,8 @@ export default function ComplianceDashboard() {
         if (!res.ok) throw new Error("Failed to fetch compliance data");
         const json = await res.json();
         setData(json);
-      } catch {
+      } catch (err) {
+        console.error("Failed to load compliance data", err);
         toast.error("Failed to load compliance data");
       } finally {
         setLoading(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,12 +80,21 @@ function getStatusInfo(nextDueDate: string): {
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
   if (diffDays < 0) {
-    return { label: "Overdue", className: "bg-red-100 text-red-800 border-red-200" };
+    return {
+      label: "Overdue",
+      className: "bg-red-100 text-red-800 border-red-200",
+    };
   }
   if (diffDays <= 7) {
-    return { label: "Due Soon", className: "bg-yellow-100 text-yellow-800 border-yellow-200" };
+    return {
+      label: "Due Soon",
+      className: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    };
   }
-  return { label: "Scheduled", className: "bg-green-100 text-green-800 border-green-200" };
+  return {
+    label: "Scheduled",
+    className: "bg-green-100 text-green-800 border-green-200",
+  };
 }
 
 export default function MaintenancePageClient() {
@@ -95,7 +104,6 @@ export default function MaintenancePageClient() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
   const [formAssetId, setFormAssetId] = useState("");
   const [formTitle, setFormTitle] = useState("");
@@ -105,9 +113,9 @@ export default function MaintenancePageClient() {
   const [formAssignedTo, setFormAssignedTo] = useState("");
   const [formEstimatedCost, setFormEstimatedCost] = useState("");
 
-  // Delete dialog state
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<MaintenanceSchedule | null>(null);
+  const [selectedSchedule, setSelectedSchedule] =
+    useState<MaintenanceSchedule | null>(null);
 
   const fetchSchedules = useCallback(async () => {
     try {
@@ -128,7 +136,6 @@ export default function MaintenancePageClient() {
       const res = await fetch("/api/asset");
       if (!res.ok) throw new Error("Failed to fetch assets");
       const data = await res.json();
-      // Handle paginated response
       setAssets(data.data || data);
     } catch (err) {
       console.error("Error fetching assets:", err);
@@ -140,7 +147,6 @@ export default function MaintenancePageClient() {
       const res = await fetch("/api/user");
       if (!res.ok) throw new Error("Failed to fetch users");
       const data = await res.json();
-      // Handle paginated response
       setUsers(data.data || data);
     } catch (err) {
       console.error("Error fetching users:", err);
@@ -289,18 +295,12 @@ export default function MaintenancePageClient() {
       case "frequency":
         return capitalize(item.frequency);
       case "assignedTo":
-        return item.user
-          ? `${item.user.firstname} ${item.user.lastname}`
-          : "-";
+        return item.user ? `${item.user.firstname} ${item.user.lastname}` : "-";
       case "nextDueDate":
         return formatDate(item.nextDueDate);
       case "status": {
         const status = getStatusInfo(item.nextDueDate);
-        return (
-          <Badge className={status.className}>
-            {status.label}
-          </Badge>
-        );
+        return <Badge className={status.className}>{status.label}</Badge>;
       }
       case "actions":
         return (
@@ -310,7 +310,7 @@ export default function MaintenancePageClient() {
               size="sm"
               onClick={() => handleComplete(item)}
             >
-              <CheckCircle className="h-4 w-4 mr-1" />
+              <CheckCircle className="mr-1 h-4 w-4" />
               Mark Complete
             </Button>
             <Button
@@ -334,7 +334,7 @@ export default function MaintenancePageClient() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -343,17 +343,17 @@ export default function MaintenancePageClient() {
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Wrench className="h-6 w-6 text-muted-foreground" />
+          <Wrench className="text-muted-foreground h-6 w-6" />
           <h1 className="text-2xl font-semibold">Maintenance Schedules</h1>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           Create Schedule
         </Button>
       </div>
 
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
+        <span className="text-muted-foreground text-sm">
           {schedules.length} schedule{schedules.length !== 1 ? "s" : ""} total
         </span>
       </div>
@@ -368,10 +368,13 @@ export default function MaintenancePageClient() {
       />
 
       {/* Create Schedule Dialog */}
-      <Dialog open={createOpen} onOpenChange={(open) => {
-        setCreateOpen(open);
-        if (!open) resetForm();
-      }}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) resetForm();
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create Maintenance Schedule</DialogTitle>
@@ -466,10 +469,13 @@ export default function MaintenancePageClient() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => {
-              setCreateOpen(false);
-              resetForm();
-            }}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setCreateOpen(false);
+                resetForm();
+              }}
+            >
               Cancel
             </Button>
             <Button onClick={handleCreate} disabled={submitting}>
@@ -485,8 +491,8 @@ export default function MaintenancePageClient() {
           <DialogHeader>
             <DialogTitle>Delete Maintenance Schedule</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{selectedSchedule?.title}&quot;? This action
-              cannot be undone.
+              Are you sure you want to delete &quot;{selectedSchedule?.title}
+              &quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

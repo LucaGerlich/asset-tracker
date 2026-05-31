@@ -82,6 +82,7 @@ export default function MfaVerifyForm() {
                 inputMode={useBackupCode ? "text" : "numeric"}
                 maxLength={useBackupCode ? 20 : 6}
                 required
+                 
                 autoFocus
               />
             </div>

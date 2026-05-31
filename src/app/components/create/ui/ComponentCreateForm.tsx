@@ -129,7 +129,6 @@ export default function ComponentCreateForm({
       }
 
       const created = await res.json();
-      // Save custom field values
       if (mode === "create" && Object.keys(customFieldValues).length > 0) {
         await fetch("/api/custom-fields/values", {
           method: "POST",

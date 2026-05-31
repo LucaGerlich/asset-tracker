@@ -32,10 +32,6 @@ import {
 import { toast } from "sonner";
 import type { TCOCategoryBreakdown, TCOSummary } from "@/lib/tco";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 type SortField = keyof Pick<
   TCOCategoryBreakdown,
   | "categoryName"
@@ -49,10 +45,6 @@ type SortField = keyof Pick<
 
 type SortDirection = "asc" | "desc";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -61,10 +53,6 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
 function formatCurrency(value: number): string {
   return currencyFormatter.format(value);
 }
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
 
 interface SummaryCardProps {
   title: string;
@@ -108,10 +96,6 @@ function LoadingSkeleton() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Sortable header
-// ---------------------------------------------------------------------------
-
 interface SortableHeaderProps {
   label: string;
   field: SortField;
@@ -148,19 +132,11 @@ function SortableHeader({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Chart colors
-// ---------------------------------------------------------------------------
-
 const CHART_COLORS = {
   purchase: "#3b82f6", // blue-500
   maintenance: "#f97316", // orange-500
   depreciation: "#ef4444", // red-500
 } as const;
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
 
 export default function TCODashboard() {
   const [data, setData] = useState<TCOSummary | null>(null);

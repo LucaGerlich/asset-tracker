@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession, type SessionUser } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -26,10 +26,6 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Calendar, Plus, Loader2, Check, X } from "lucide-react";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 interface Reservation {
   id: string;
@@ -60,10 +56,6 @@ interface AssetReservationsProps {
   assetName: string;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function statusBadgeClass(status: string): string {
   switch (status) {
     case "pending":
@@ -86,10 +78,6 @@ function formatDate(dateString: string): string {
     day: "numeric",
   });
 }
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 export default function AssetReservations({
   assetId,
@@ -117,10 +105,6 @@ export default function AssetReservations({
   const [endDate, setEndDate] = useState("");
   const [notes, setNotes] = useState("");
 
-  // ---------------------------------------------------------------------------
-  // Fetch reservations
-  // ---------------------------------------------------------------------------
-
   const fetchReservations = useCallback(async () => {
     try {
       setLoading(true);
@@ -143,10 +127,6 @@ export default function AssetReservations({
   useEffect(() => {
     fetchReservations();
   }, [fetchReservations]);
-
-  // ---------------------------------------------------------------------------
-  // Create reservation
-  // ---------------------------------------------------------------------------
 
   const handleCreateReservation = async () => {
     if (!startDate || !endDate) {
@@ -198,10 +178,6 @@ export default function AssetReservations({
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Update reservation status
-  // ---------------------------------------------------------------------------
-
   const handleUpdateStatus = async (
     reservationId: string,
     newStatus: string,
@@ -233,19 +209,11 @@ export default function AssetReservations({
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-
   const resetForm = () => {
     setStartDate("");
     setEndDate("");
     setNotes("");
   };
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
 
   return (
     <div className="space-y-4">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -282,7 +282,7 @@ export default function ImportPageClient() {
         setHistory(data);
       }
     } catch {
-      // History is optional
+      /* import history fetch failure is non-critical */
     } finally {
       setLoadingHistory(false);
     }
@@ -308,7 +308,6 @@ export default function ImportPageClient() {
     URL.revokeObjectURL(url);
   };
 
-  // Parse CSV on file select to extract headers and preview rows
   const handleFileSelected = useCallback(
     (files: File[]) => {
       const file = files[0];
@@ -454,12 +453,15 @@ export default function ImportPageClient() {
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="max-w-xs flex-1">
-              <label className="mb-1.5 flex items-center text-sm font-medium">
+              <label
+                htmlFor="entity-type-select"
+                className="mb-1.5 flex items-center text-sm font-medium"
+              >
                 Entity Type
                 <HelpTooltip text="Select the type of data you want to import. Each type has specific required columns — download a template to see the expected format." />
               </label>
               <Select value={entityType} onValueChange={setEntityType}>
-                <SelectTrigger>
+                <SelectTrigger id="entity-type-select">
                   <SelectValue placeholder="Select type..." />
                 </SelectTrigger>
                 <SelectContent>

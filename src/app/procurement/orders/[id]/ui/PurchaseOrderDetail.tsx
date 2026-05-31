@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -172,7 +172,8 @@ export default function PurchaseOrderDetail() {
       }
       const data = await response.json();
       setOrder(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setIsLoading(false);
@@ -267,7 +268,8 @@ export default function PurchaseOrderDetail() {
       toast.success("Goods receipt recorded successfully");
       setReceiptDialogOpen(false);
       fetchOrder();
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setIsSubmittingReceipt(false);

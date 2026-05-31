@@ -62,10 +62,16 @@ export default function KitCreateForm({
     setItems(items.filter((_, i) => i !== index));
   }
 
-  function updateItem(index: number, field: keyof KitItemInput, value: any) {
-    const updated = [...items];
-    (updated[index] as any)[field] = value;
-    setItems(updated);
+  function updateItem(
+    index: number,
+    field: keyof KitItemInput,
+    value: KitItemInput[keyof KitItemInput],
+  ) {
+    setItems(
+      items.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item,
+      ),
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -73,7 +79,7 @@ export default function KitCreateForm({
     setLoading(true);
 
     try {
-      const body: any = { name, description, isActive, items };
+      const body = { name, description, isActive, items };
       const url =
         mode === "edit" ? `/api/kits/${initialData!.id}` : "/api/kits";
       const method = mode === "edit" ? "PUT" : "POST";

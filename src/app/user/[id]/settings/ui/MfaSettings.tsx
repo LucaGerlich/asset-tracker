@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,7 @@ interface MfaSettingsProps {
 type SetupStep = "idle" | "qr" | "verify" | "backup" | "disable";
 
 export default function MfaSettings({
-  userId,
+  userId: _userId,
   mfaEnabled: initialMfaEnabled,
 }: MfaSettingsProps) {
   const [mfaEnabled, setMfaEnabled] = useState(initialMfaEnabled);
@@ -265,6 +265,7 @@ export default function MfaSettings({
                     maxLength={6}
                     inputMode="numeric"
                     autoComplete="one-time-code"
+                     
                     autoFocus
                   />
                 </div>
@@ -362,6 +363,7 @@ export default function MfaSettings({
                 placeholder="Enter your password"
                 value={disablePassword}
                 onChange={(e) => setDisablePassword(e.target.value)}
+                 
                 autoFocus
               />
             </div>

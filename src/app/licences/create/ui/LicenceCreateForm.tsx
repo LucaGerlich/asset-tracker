@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -154,7 +154,6 @@ export default function LicenceCreateForm({
       }
 
       const created = await res.json();
-      // Save custom field values
       if (mode === "create" && Object.keys(customFieldValues).length > 0) {
         await fetch("/api/custom-fields/values", {
           method: "POST",

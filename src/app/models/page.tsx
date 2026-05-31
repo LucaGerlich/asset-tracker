@@ -1,4 +1,3 @@
-import React from "react";
 import Breadcrumb from "@/components/Breadcrumb";
 import ModelsTable from "../../ui/models/ModelsTable";
 import { getModel } from "@/lib/data";

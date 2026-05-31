@@ -90,7 +90,8 @@ export default function ReportSubscriptions() {
       toast.success("Report subscription created");
       setShowForm(false);
       await fetchSchedules();
-    } catch {
+    } catch (err) {
+      console.error("Failed to create subscription", err);
       toast.error("Failed to create subscription");
     } finally {
       setSaving(false);
@@ -113,7 +114,8 @@ export default function ReportSubscriptions() {
         toast.error("Failed to update subscription");
         await fetchSchedules();
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to update subscription", err);
       toast.error("Failed to update subscription");
       await fetchSchedules();
     }
@@ -133,7 +135,8 @@ export default function ReportSubscriptions() {
       } else {
         toast.success("Subscription removed");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete subscription", err);
       toast.error("Failed to delete subscription");
       await fetchSchedules();
     }

@@ -1,4 +1,3 @@
-import React from "react";
 import ConsumableCategoriesCreateForm from "./ui/ConsumableCategoriesCreateForm";
 import Breadcrumb from "@/components/Breadcrumb";
 

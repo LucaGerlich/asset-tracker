@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,22 +24,18 @@ import { toast } from "sonner";
 import { MapPin, Radio, Settings, Loader2 } from "lucide-react";
 
 export default function LocationTrackingTab() {
-  // ---- GPS Tracking state --------------------------------------------------
   const [gpsEnabled, setGpsEnabled] = useState(false);
   const [gpsInterval, setGpsInterval] = useState("15");
   const [geofencingEnabled, setGeofencingEnabled] = useState(false);
 
-  // ---- RFID/NFC state ------------------------------------------------------
   const [rfidEnabled, setRfidEnabled] = useState(false);
   const [readerType, setReaderType] = useState("fixed");
   const [autoAssignLocation, setAutoAssignLocation] = useState(false);
 
-  // ---- Tracking Policies state ---------------------------------------------
   const [trackAllAssets, setTrackAllAssets] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [retentionPeriod, setRetentionPeriod] = useState("90");
 
-  // ---- Save (scaffolding only) ---------------------------------------------
   const [isSaving, setIsSaving] = useState(false);
 
   async function handleSave() {
@@ -54,11 +50,11 @@ export default function LocationTrackingTab() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-lg font-semibold flex items-center gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
           <MapPin className="h-5 w-5" />
           Location Tracking
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-muted-foreground mt-1 text-sm">
           Configure GPS tracking, RFID/NFC readers, and tracking policies for
           asset location management.
         </p>
@@ -82,7 +78,7 @@ export default function LocationTrackingTab() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="font-medium">Enable GPS Tracking</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Track asset locations using GPS-enabled hardware
               </p>
             </div>
@@ -103,7 +99,7 @@ export default function LocationTrackingTab() {
                 <SelectItem value="60">1 hour</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               How often asset locations are updated
             </p>
           </div>
@@ -112,7 +108,7 @@ export default function LocationTrackingTab() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="font-medium">Geofencing</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Trigger alerts when assets leave designated areas
               </p>
             </div>
@@ -140,7 +136,7 @@ export default function LocationTrackingTab() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="font-medium">Enable RFID/NFC</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Use RFID/NFC readers for asset tracking
               </p>
             </div>
@@ -160,7 +156,7 @@ export default function LocationTrackingTab() {
                 <SelectItem value="both">Both</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               The type of RFID/NFC readers deployed in your environment
             </p>
           </div>
@@ -169,7 +165,7 @@ export default function LocationTrackingTab() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="font-medium">Auto-assign Location</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Automatically update asset location when scanned by a reader
               </p>
             </div>
@@ -198,7 +194,7 @@ export default function LocationTrackingTab() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="font-medium">Track All Assets</Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Enable location tracking for all assets in the system
               </p>
             </div>
@@ -218,7 +214,7 @@ export default function LocationTrackingTab() {
               placeholder="Filter by asset category..."
               disabled={trackAllAssets}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Only track assets in specific categories (disabled when tracking
               all assets)
             </p>
@@ -226,13 +222,8 @@ export default function LocationTrackingTab() {
 
           {/* Location history retention */}
           <div className="space-y-2">
-            <Label htmlFor="retention-period">
-              Location History Retention
-            </Label>
-            <Select
-              value={retentionPeriod}
-              onValueChange={setRetentionPeriod}
-            >
+            <Label htmlFor="retention-period">Location History Retention</Label>
+            <Select value={retentionPeriod} onValueChange={setRetentionPeriod}>
               <SelectTrigger id="retention-period" className="w-48">
                 <SelectValue />
               </SelectTrigger>
@@ -243,7 +234,7 @@ export default function LocationTrackingTab() {
                 <SelectItem value="forever">Forever</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               How long location history records are kept before being purged
             </p>
           </div>
@@ -253,7 +244,7 @@ export default function LocationTrackingTab() {
       {/* Save button */}
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save Settings
         </Button>
       </div>

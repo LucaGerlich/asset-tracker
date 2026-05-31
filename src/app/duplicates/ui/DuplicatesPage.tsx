@@ -6,10 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Copy, AlertTriangle, ExternalLink } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface DuplicateAsset {
   assetId: string;
   assetName: string;
@@ -24,10 +20,6 @@ interface DuplicateGroup {
 }
 
 type ConfidenceFilter = "all" | "high" | "medium" | "low";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
 
 const REASON_LABELS: Record<string, string> = {
   same_model_location: "Same Model & Location",
@@ -46,10 +38,6 @@ const CONFIDENCE_DESCRIPTIONS: Record<string, string> = {
   medium: "Possible duplicates — serial numbers differ by 1-2 characters",
   low: "Worth checking — asset names are very similar",
 };
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 export default function DuplicatesPage() {
   const [groups, setGroups] = useState<DuplicateGroup[]>([]);

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,7 +81,9 @@ export default function UserEditForm({
       ]);
       if (rolesRes.ok) setAllRoles(await rolesRes.json());
       if (userRolesRes.ok) setUserRoles(await userRolesRes.json());
-    } catch {}
+    } catch {
+      /* roles fetch failure is non-critical */
+    }
   }, [initial.userid]);
 
   const assignRole = async (roleId: string) => {
@@ -98,7 +100,8 @@ export default function UserEditForm({
         const err = await res.json();
         toast.error(err.error || "Failed to assign role");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to assign role", err);
       toast.error("Failed to assign role");
     }
   };
@@ -114,7 +117,8 @@ export default function UserEditForm({
         toast.success("Role removed");
         refreshRoles();
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to remove role", err);
       toast.error("Failed to remove role");
     }
   };
@@ -352,7 +356,9 @@ export default function UserEditForm({
                       );
                       const data = await res.json();
                       setUsernameTaken(Boolean(data?.username?.exists));
-                    } catch {}
+                    } catch {
+                      /* validation fetch failure is non-blocking */
+                    }
                   }}
                   className={usernameTaken ? "border-destructive" : ""}
                 />
@@ -396,7 +402,9 @@ export default function UserEditForm({
                       );
                       const data = await res.json();
                       setEmailTaken(Boolean(data?.email?.exists));
-                    } catch {}
+                    } catch {
+                      /* validation fetch failure is non-blocking */
+                    }
                   }}
                   className={emailTaken ? "border-destructive" : ""}
                 />

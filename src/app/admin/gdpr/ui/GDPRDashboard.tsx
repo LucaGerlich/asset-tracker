@@ -36,9 +36,10 @@ interface RetentionSettings {
 export default function GDPRDashboard() {
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-2">GDPR Management</h1>
+      <h1 className="mb-2 text-2xl font-bold">GDPR Management</h1>
       <p className="text-muted-foreground mb-6">
-        Manage data subject requests, anonymization, and data retention policies.
+        Manage data subject requests, anonymization, and data retention
+        policies.
       </p>
 
       <Tabs defaultValue="export" className="space-y-6">
@@ -64,10 +65,6 @@ export default function GDPRDashboard() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Data Export Tab
-// ---------------------------------------------------------------------------
-
 function DataExportTab() {
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<User[]>([]);
@@ -81,11 +78,14 @@ function DataExportTab() {
     }
     setSearching(true);
     try {
-      const res = await fetch(`/api/user?page=1&pageSize=10&search=${encodeURIComponent(search.trim())}`);
+      const res = await fetch(
+        `/api/user?page=1&pageSize=10&search=${encodeURIComponent(search.trim())}`,
+      );
       if (!res.ok) throw new Error("Failed to search users");
       const data = await res.json();
       setUsers(data.data || []);
-    } catch {
+    } catch (err) {
+      console.error("Failed to search users", err);
       toast.error("Failed to search users");
       setUsers([]);
     } finally {
@@ -137,7 +137,7 @@ function DataExportTab() {
         <CardTitle>Data Subject Access Request (DSAR)</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Search for a user to export all their associated data as a JSON file.
           This fulfills GDPR Article 15 (Right of Access) requests.
         </p>
@@ -150,12 +150,14 @@ function DataExportTab() {
             className="max-w-md"
           />
           {searching && (
-            <span className="text-sm text-muted-foreground self-center">Searching...</span>
+            <span className="text-muted-foreground self-center text-sm">
+              Searching...
+            </span>
           )}
         </div>
 
         {users.length > 0 && (
-          <div className="border rounded-lg divide-y">
+          <div className="divide-y rounded-lg border">
             {users.map((user) => (
               <div
                 key={user.userid}
@@ -166,13 +168,11 @@ function DataExportTab() {
                     <p className="font-medium">
                       {user.firstname} {user.lastname}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                       {user.email || "No email"}
                     </p>
                   </div>
-                  {user.isadmin && (
-                    <Badge variant="secondary">Admin</Badge>
-                  )}
+                  {user.isadmin && <Badge variant="secondary">Admin</Badge>}
                 </div>
                 <Button
                   size="sm"
@@ -187,16 +187,12 @@ function DataExportTab() {
         )}
 
         {search.trim().length >= 2 && !searching && users.length === 0 && (
-          <p className="text-sm text-muted-foreground">No users found.</p>
+          <p className="text-muted-foreground text-sm">No users found.</p>
         )}
       </CardContent>
     </Card>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Data Anonymization Tab
-// ---------------------------------------------------------------------------
 
 function DataAnonymizationTab() {
   const [search, setSearch] = useState("");
@@ -214,11 +210,14 @@ function DataAnonymizationTab() {
     }
     setSearching(true);
     try {
-      const res = await fetch(`/api/user?page=1&pageSize=10&search=${encodeURIComponent(search.trim())}`);
+      const res = await fetch(
+        `/api/user?page=1&pageSize=10&search=${encodeURIComponent(search.trim())}`,
+      );
       if (!res.ok) throw new Error("Failed to search users");
       const data = await res.json();
       setUsers(data.data || []);
-    } catch {
+    } catch (err) {
+      console.error("Failed to search users", err);
       toast.error("Failed to search users");
       setUsers([]);
     } finally {
@@ -241,14 +240,19 @@ function DataAnonymizationTab() {
     if (!selectedUser) return;
     setAnonymizing(true);
     try {
-      const res = await fetch(`/api/admin/gdpr/anonymize/${selectedUser.userid}`, {
-        method: "POST",
-      });
+      const res = await fetch(
+        `/api/admin/gdpr/anonymize/${selectedUser.userid}`,
+        {
+          method: "POST",
+        },
+      );
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || "Anonymization failed");
       }
-      toast.success(`User ${selectedUser.firstname} ${selectedUser.lastname} has been anonymized.`);
+      toast.success(
+        `User ${selectedUser.firstname} ${selectedUser.lastname} has been anonymized.`,
+      );
       setDialogOpen(false);
       setSelectedUser(null);
       setConfirmText("");
@@ -257,7 +261,9 @@ function DataAnonymizationTab() {
         searchUsers();
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Anonymization failed");
+      toast.error(
+        error instanceof Error ? error.message : "Anonymization failed",
+      );
     } finally {
       setAnonymizing(false);
     }
@@ -276,9 +282,10 @@ function DataAnonymizationTab() {
           <CardTitle>Right to be Forgotten</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Search for a user and anonymize their personal data. This fulfills GDPR
-            Article 17 (Right to Erasure) requests. This action is irreversible.
+          <p className="text-muted-foreground text-sm">
+            Search for a user and anonymize their personal data. This fulfills
+            GDPR Article 17 (Right to Erasure) requests. This action is
+            irreversible.
           </p>
 
           <div className="flex gap-2">
@@ -289,12 +296,14 @@ function DataAnonymizationTab() {
               className="max-w-md"
             />
             {searching && (
-              <span className="text-sm text-muted-foreground self-center">Searching...</span>
+              <span className="text-muted-foreground self-center text-sm">
+                Searching...
+              </span>
             )}
           </div>
 
           {users.length > 0 && (
-            <div className="border rounded-lg divide-y">
+            <div className="divide-y rounded-lg border">
               {users.map((user) => (
                 <div
                   key={user.userid}
@@ -305,20 +314,20 @@ function DataAnonymizationTab() {
                       <p className="font-medium">
                         {user.firstname} {user.lastname}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-muted-foreground text-sm">
                         {user.email || "No email"}
                       </p>
                     </div>
-                    {user.isadmin && (
-                      <Badge variant="secondary">Admin</Badge>
-                    )}
+                    {user.isadmin && <Badge variant="secondary">Admin</Badge>}
                   </div>
                   <Button
                     size="sm"
                     variant="destructive"
                     onClick={() => openConfirmDialog(user)}
                     disabled={user.isadmin}
-                    title={user.isadmin ? "Cannot anonymize admin users" : undefined}
+                    title={
+                      user.isadmin ? "Cannot anonymize admin users" : undefined
+                    }
                   >
                     Anonymize
                   </Button>
@@ -328,7 +337,7 @@ function DataAnonymizationTab() {
           )}
 
           {search.trim().length >= 2 && !searching && users.length === 0 && (
-            <p className="text-sm text-muted-foreground">No users found.</p>
+            <p className="text-muted-foreground text-sm">No users found.</p>
           )}
         </CardContent>
       </Card>
@@ -342,17 +351,19 @@ function DataAnonymizationTab() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
-              <p className="text-sm font-medium text-destructive">
+            <div className="border-destructive/50 bg-destructive/10 rounded-lg border p-4">
+              <p className="text-destructive text-sm font-medium">
                 Warning: This will permanently anonymize all personal data for:
               </p>
               {selectedUser && (
                 <p className="mt-2 text-sm">
-                  <strong>{selectedUser.firstname} {selectedUser.lastname}</strong>{" "}
+                  <strong>
+                    {selectedUser.firstname} {selectedUser.lastname}
+                  </strong>{" "}
                   ({selectedUser.email || "no email"})
                 </p>
               )}
-              <ul className="mt-3 text-sm text-muted-foreground list-disc list-inside space-y-1">
+              <ul className="text-muted-foreground mt-3 list-inside list-disc space-y-1 text-sm">
                 <li>Name will be replaced with &quot;[Deleted] User&quot;</li>
                 <li>Email will be replaced with a random anonymized address</li>
                 <li>Username will be removed</li>
@@ -399,10 +410,6 @@ function DataAnonymizationTab() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Retention Policy Tab
-// ---------------------------------------------------------------------------
-
 function RetentionPolicyTab() {
   const [settings, setSettings] = useState<RetentionSettings>({
     auditLogRetentionDays: 365,
@@ -420,7 +427,8 @@ function RetentionPolicyTab() {
         if (!res.ok) throw new Error("Failed to fetch settings");
         const data = await res.json();
         setSettings(data);
-      } catch {
+      } catch (err) {
+        console.error("Failed to load retention settings", err);
         toast.error("Failed to load retention settings");
       } finally {
         setLoading(false);
@@ -449,7 +457,9 @@ function RetentionPolicyTab() {
       setSettings(data);
       toast.success("Retention settings saved successfully");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save settings");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save settings",
+      );
     } finally {
       setSaving(false);
     }
@@ -459,7 +469,9 @@ function RetentionPolicyTab() {
     return (
       <Card>
         <CardContent className="py-8">
-          <p className="text-center text-muted-foreground">Loading retention settings...</p>
+          <p className="text-muted-foreground text-center">
+            Loading retention settings...
+          </p>
         </CardContent>
       </Card>
     );
@@ -471,12 +483,13 @@ function RetentionPolicyTab() {
         <CardTitle>Data Retention Policy</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <p className="text-sm text-muted-foreground">
-          Configure how long different types of data are retained before they become
-          eligible for cleanup. These settings help maintain GDPR compliance.
+        <p className="text-muted-foreground text-sm">
+          Configure how long different types of data are retained before they
+          become eligible for cleanup. These settings help maintain GDPR
+          compliance.
         </p>
 
-        <div className="grid gap-6 max-w-md">
+        <div className="grid max-w-md gap-6">
           <div className="space-y-2">
             <Label htmlFor="audit-retention">Audit Log Retention (days)</Label>
             <Input
@@ -491,13 +504,15 @@ function RetentionPolicyTab() {
                 }))
               }
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               How long audit log entries are kept before automatic cleanup.
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="deleted-user-retention">Deleted User Retention (days)</Label>
+            <Label htmlFor="deleted-user-retention">
+              Deleted User Retention (days)
+            </Label>
             <Input
               id="deleted-user-retention"
               type="number"
@@ -510,8 +525,9 @@ function RetentionPolicyTab() {
                 }))
               }
             />
-            <p className="text-xs text-muted-foreground">
-              How long anonymized user records are retained before permanent deletion.
+            <p className="text-muted-foreground text-xs">
+              How long anonymized user records are retained before permanent
+              deletion.
             </p>
           </div>
 
@@ -529,7 +545,7 @@ function RetentionPolicyTab() {
                 }))
               }
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               How long generated data export files are available for download.
             </p>
           </div>
@@ -540,7 +556,7 @@ function RetentionPolicyTab() {
             {saving ? "Saving..." : "Save Settings"}
           </Button>
           {settings.updatedAt && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               Last updated: {new Date(settings.updatedAt).toLocaleString()}
             </span>
           )}

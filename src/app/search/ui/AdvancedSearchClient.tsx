@@ -140,7 +140,6 @@ export default function AdvancedSearchClient() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Fetch custom fields when entity changes
   useEffect(() => {
     let cancelled = false;
     async function fetchCustomFields() {
@@ -234,7 +233,6 @@ export default function AdvancedSearchClient() {
 
   const handleSearch = useCallback(
     async (page: number = 1) => {
-      // Validate that all filters have required values
       const validFilters = filters.filter((f) => f.field && f.op && f.value);
       if (validFilters.length === 0) {
         setError("Please add at least one complete filter.");

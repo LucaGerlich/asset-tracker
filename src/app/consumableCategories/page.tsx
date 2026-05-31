@@ -1,4 +1,3 @@
-import React from "react";
 import Breadcrumb from "@/components/Breadcrumb";
 import ConsumableCategoriesTable from "../../ui/consumableCategories/ConsumableCategoriesTable";
 import { getConsumableCategories } from "@/lib/data";

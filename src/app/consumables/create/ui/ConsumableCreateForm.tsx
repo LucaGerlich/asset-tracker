@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,7 +130,6 @@ export default function ConsumableCreateForm({
       }
 
       const created = await res.json();
-      // Save custom field values
       if (mode === "create" && Object.keys(customFieldValues).length > 0) {
         await fetch("/api/custom-fields/values", {
           method: "POST",

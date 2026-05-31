@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,10 +34,6 @@ import {
 import { toast } from "sonner";
 import { ClipboardCheck, LogOut, LogIn, Loader2 } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface CheckoutUser {
   userid: string;
   firstname: string;
@@ -70,10 +66,6 @@ interface AssetCheckoutHistoryProps {
   assetId: string;
   assetName: string;
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function getStatusBadge(status: string, expectedReturn: string | null) {
   if (status === "returned") {
@@ -109,10 +101,6 @@ function formatDate(dateStr: string | null) {
   return new Date(dateStr).toLocaleDateString();
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export default function AssetCheckoutHistory({
   assetId,
   assetName,
@@ -144,7 +132,8 @@ export default function AssetCheckoutHistory({
       }
       const data: Checkout[] = await res.json();
       setCheckouts(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setIsLoading(false);
@@ -159,7 +148,8 @@ export default function AssetCheckoutHistory({
         const data: UserOption[] = await res.json();
         setUsers(data);
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to load users", err);
       toast.error("Failed to load users");
     } finally {
       setLoadingUsers(false);
@@ -214,7 +204,8 @@ export default function AssetCheckoutHistory({
       setExpectedReturn("");
       setNotes("");
       fetchCheckouts();
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setSubmitting(false);
@@ -237,7 +228,8 @@ export default function AssetCheckoutHistory({
 
       toast.success("Asset checked in successfully");
       fetchCheckouts();
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setCheckingIn(null);

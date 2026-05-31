@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import jsQR from "jsqr";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,6 @@ export default function ScannerPageClient({
 }: ScannerPageClientProps) {
   const router = useRouter();
 
-  // --- Scan mode state ---
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -62,10 +61,8 @@ export default function ScannerPageClient({
   const [scannedAsset, setScannedAsset] = useState<ScannedAsset | null>(null);
   const [isLoadingAsset, setIsLoadingAsset] = useState(false);
 
-  // --- Fallback manual tag input ---
-  const [manualTag, setManualTag] = useState("");
+  const [_manualTag, _setManualTag] = useState("");
 
-  // --- Generate mode state ---
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<AssetSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -73,7 +70,6 @@ export default function ScannerPageClient({
     null,
   );
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopScanning();
@@ -92,7 +88,8 @@ export default function ScannerPageClient({
       }
       setCameraPermission("granted");
       toast.success("Camera access granted");
-    } catch {
+    } catch (err) {
+      console.error("Camera access denied", err);
       setCameraPermission("denied");
       toast.error("Camera access denied. Please allow camera permissions.");
     }
@@ -140,7 +137,8 @@ export default function ScannerPageClient({
               assignedUser: null,
             });
             toast.success(`Asset found: ${asset.assetname}`);
-          } catch {
+          } catch (err) {
+            console.error("Could not load asset details", err);
             toast.error(
               "Could not load asset details. Navigating to asset page.",
             );
@@ -151,7 +149,7 @@ export default function ScannerPageClient({
           return true;
         }
       } catch {
-        // Not a URL
+        /* rawValue is not a valid URL; fall through to generic detection */
       }
 
       toast.info(`Detected: ${rawValue}`);
@@ -228,7 +226,6 @@ export default function ScannerPageClient({
     startScanning();
   }, [startScanning]);
 
-  // --- Generate mode: asset search ---
   useEffect(() => {
     if (searchQuery.length < 2) {
       setSearchResults([]);
@@ -302,7 +299,7 @@ export default function ScannerPageClient({
           <Card>
             <CardContent className="flex flex-col items-center gap-4 p-6">
               {/* Hidden canvas for jsQR frame processing */}
-              <canvas ref={canvasRef} className="hidden" />
+              <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
 
               {cameraPermission === "prompt" && (
                 <div className="flex flex-col items-center gap-4 py-8">
@@ -337,6 +334,7 @@ export default function ScannerPageClient({
                       playsInline
                       muted
                       className="aspect-video w-full object-cover"
+                      aria-label="Camera feed for scanning QR codes"
                     />
                     {scanning && (
                       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

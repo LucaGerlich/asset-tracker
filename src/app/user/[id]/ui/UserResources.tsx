@@ -151,8 +151,8 @@ export default function UserResources({
         setAccList(newAccList);
         setLicList(newLicList);
         if (auto) toast("User resources refreshed");
-      } catch (e) {
-        // Silent fail
+      } catch (_e) {
+        /* resource refresh failure is non-critical */
       } finally {
         setIsRefreshing(false);
       }
@@ -161,14 +161,14 @@ export default function UserResources({
   );
 
   React.useEffect(() => {
-    const onFocus = () => refreshData(true);
     const onVisibility = () => {
       if (document.visibilityState === "visible") refreshData(true);
     };
-    window.addEventListener("focus", onFocus);
+    const handleFocus = refreshData.bind(null, true);
+    window.addEventListener("focus", handleFocus);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [refreshData]);

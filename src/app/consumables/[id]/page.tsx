@@ -1,4 +1,3 @@
-import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -77,12 +76,10 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     suppliers.find((s) => s.supplierid === consumable.supplierid)
       ?.suppliername ?? "-";
 
-  // Fetch stock alert for this consumable
   const stockAlert = await prisma.stockAlert.findUnique({
     where: { consumableId: params.id },
   });
 
-  // Fetch recent checkouts
   const checkouts = await prisma.consumable_checkouts.findMany({
     where: { consumableId: params.id },
     orderBy: { checkedOutAt: "desc" },
@@ -94,7 +91,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     },
   });
 
-  // Fetch users for the checkout dialog
   const users = await prisma.user.findMany({
     select: { userid: true, firstname: true, lastname: true },
     orderBy: { firstname: "asc" },

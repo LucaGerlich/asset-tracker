@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,28 +49,43 @@ interface EmailSettingsTabProps {
   } | null;
 }
 
-export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSettingsTabProps) {
+export default function EmailSettingsTab({
+  settings,
+  envEmailConfig,
+}: EmailSettingsTabProps) {
   const getSettingValue = (key: string) =>
     settings.find((s) => s.key === key)?.value || "";
 
-  const [provider, setProvider] = useState(getSettingValue("email_provider") || "");
+  const [provider, setProvider] = useState(
+    getSettingValue("email_provider") || "",
+  );
   const [apiKey, setApiKey] = useState("");
-  const [fromEmail, setFromEmail] = useState(getSettingValue("email_from") || "");
-  const [fromName, setFromName] = useState(getSettingValue("email_from_name") || "Asset Tracker");
+  const [fromEmail, setFromEmail] = useState(
+    getSettingValue("email_from") || "",
+  );
+  const [fromName, setFromName] = useState(
+    getSettingValue("email_from_name") || "Asset Tracker",
+  );
   const [domain, setDomain] = useState(getSettingValue("email_domain") || "");
-  const [region, setRegion] = useState(getSettingValue("email_region") || "us-east-1");
+  const [region, setRegion] = useState(
+    getSettingValue("email_region") || "us-east-1",
+  );
   const [accessKeyId, setAccessKeyId] = useState("");
   const [secretAccessKey, setSecretAccessKey] = useState("");
   const [testEmail, setTestEmail] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<"unknown" | "connected" | "failed">("unknown");
+  const [connectionStatus, setConnectionStatus] = useState<
+    "unknown" | "connected" | "failed"
+  >("unknown");
 
   const selectedProvider = EMAIL_PROVIDERS.find((p) => p.id === provider);
 
   // Determine if config is coming from DB or env
-  const hasDbConfig = settings.some((s) => s.key === "email_provider" && s.value);
+  const hasDbConfig = settings.some(
+    (s) => s.key === "email_provider" && s.value,
+  );
   const isUsingEnvConfig = !hasDbConfig && !!envEmailConfig;
 
   const handleSave = async () => {
@@ -97,7 +112,8 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
         const error = await response.json();
         toast.error(error.message || "Failed to save settings");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to save settings", err);
       toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);
@@ -122,7 +138,8 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
         setConnectionStatus("failed");
         toast.error(result.error || "Connection test failed");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Connection test failed", err);
       setConnectionStatus("failed");
       toast.error("Connection test failed");
     } finally {
@@ -138,12 +155,14 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
           <AlertDescription>
             Email is configured via environment variables.{" "}
             <span className="font-medium">Provider:</span>{" "}
-            {envEmailConfig.provider.charAt(0).toUpperCase() + envEmailConfig.provider.slice(1)},{" "}
-            <span className="font-medium">From:</span>{" "}
-            {envEmailConfig.fromName} &lt;{envEmailConfig.fromEmail || "not set"}&gt;,{" "}
+            {envEmailConfig.provider.charAt(0).toUpperCase() +
+              envEmailConfig.provider.slice(1)}
+            , <span className="font-medium">From:</span>{" "}
+            {envEmailConfig.fromName} &lt;
+            {envEmailConfig.fromEmail || "not set"}&gt;,{" "}
             <span className="font-medium">API Key:</span>{" "}
-            {envEmailConfig.hasApiKey ? "configured" : "missing"}.
-            {" "}Saving settings below will override the environment configuration.
+            {envEmailConfig.hasApiKey ? "configured" : "missing"}. Saving
+            settings below will override the environment configuration.
           </AlertDescription>
         </Alert>
       )}
@@ -152,7 +171,8 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            Email is configured in both the database and environment variables. The database settings below take priority.
+            Email is configured in both the database and environment variables.
+            The database settings below take priority.
           </AlertDescription>
         </Alert>
       )}
@@ -162,20 +182,27 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
           <CardTitle className="flex items-center justify-between">
             Email Provider Configuration
             {connectionStatus === "connected" && (
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                <CheckCircle className="h-3 w-3 mr-1" />
+              <Badge
+                variant="outline"
+                className="border-green-200 bg-green-50 text-green-700"
+              >
+                <CheckCircle className="mr-1 h-3 w-3" />
                 Connected
               </Badge>
             )}
             {connectionStatus === "failed" && (
-              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                <XCircle className="h-3 w-3 mr-1" />
+              <Badge
+                variant="outline"
+                className="border-red-200 bg-red-50 text-red-700"
+              >
+                <XCircle className="mr-1 h-3 w-3" />
                 Connection Failed
               </Badge>
             )}
           </CardTitle>
           <CardDescription>
-            Choose your preferred email provider for sending transactional emails
+            Choose your preferred email provider for sending transactional
+            emails
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -195,7 +222,7 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
                 </SelectContent>
               </Select>
               {selectedProvider && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   {selectedProvider.description}
                 </p>
               )}
@@ -217,10 +244,14 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
+                    className="absolute top-0 right-0 h-full px-3"
                     onClick={() => setShowApiKey(!showApiKey)}
                   >
-                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showApiKey ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -267,15 +298,27 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="us-east-1">US East (N. Virginia)</SelectItem>
+                      <SelectItem value="us-east-1">
+                        US East (N. Virginia)
+                      </SelectItem>
                       <SelectItem value="us-east-2">US East (Ohio)</SelectItem>
-                      <SelectItem value="us-west-1">US West (N. California)</SelectItem>
-                      <SelectItem value="us-west-2">US West (Oregon)</SelectItem>
+                      <SelectItem value="us-west-1">
+                        US West (N. California)
+                      </SelectItem>
+                      <SelectItem value="us-west-2">
+                        US West (Oregon)
+                      </SelectItem>
                       <SelectItem value="eu-west-1">EU (Ireland)</SelectItem>
                       <SelectItem value="eu-west-2">EU (London)</SelectItem>
-                      <SelectItem value="eu-central-1">EU (Frankfurt)</SelectItem>
-                      <SelectItem value="ap-southeast-1">Asia Pacific (Singapore)</SelectItem>
-                      <SelectItem value="ap-southeast-2">Asia Pacific (Sydney)</SelectItem>
+                      <SelectItem value="eu-central-1">
+                        EU (Frankfurt)
+                      </SelectItem>
+                      <SelectItem value="ap-southeast-1">
+                        Asia Pacific (Singapore)
+                      </SelectItem>
+                      <SelectItem value="ap-southeast-2">
+                        Asia Pacific (Sydney)
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -306,8 +349,11 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
           </div>
 
           <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={isSaving || !provider || !fromEmail}>
-              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || !provider || !fromEmail}
+            >
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Settings
             </Button>
           </div>
@@ -335,9 +381,9 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
               disabled={isTesting || !testEmail || !provider}
             >
               {isTesting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Send className="h-4 w-4 mr-2" />
+                <Send className="mr-2 h-4 w-4" />
               )}
               Send Test Email
             </Button>
@@ -356,7 +402,8 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
             <Alert variant="destructive">
               <XCircle className="h-4 w-4" />
               <AlertDescription>
-                Failed to send test email. Please check your configuration and try again.
+                Failed to send test email. Please check your configuration and
+                try again.
               </AlertDescription>
             </Alert>
           )}
@@ -371,16 +418,20 @@ export default function EmailSettingsTab({ settings, envEmailConfig }: EmailSett
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {EMAIL_PROVIDERS.map((p) => (
               <div
                 key={p.id}
-                className={`p-4 rounded-lg border ${
-                  provider === p.id ? "border-primary bg-primary/5" : "border-default-200"
+                className={`rounded-lg border p-4 ${
+                  provider === p.id
+                    ? "border-primary bg-primary/5"
+                    : "border-default-200"
                 }`}
               >
                 <h4 className="font-medium">{p.name}</h4>
-                <p className="text-sm text-muted-foreground mt-1">{p.description}</p>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  {p.description}
+                </p>
               </div>
             ))}
           </div>

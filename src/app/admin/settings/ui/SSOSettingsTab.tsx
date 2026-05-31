@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +33,6 @@ interface SSOSetting {
 }
 
 export default function SSOSettingsTab() {
-  // Loading states
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -65,7 +64,6 @@ export default function SSOSettingsTab() {
   const [usernameAttribute, setUsernameAttribute] = useState("username");
   const [groupsAttribute, setGroupsAttribute] = useState("");
 
-  // Fetch settings on mount
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -76,19 +74,15 @@ export default function SSOSettingsTab() {
             data.find((s) => s.key === key)?.value || "";
 
           setSsoEnabled(getValue("sso.enabled") === "true");
-          setProvider(
-            (getValue("sso.provider") as "saml" | "oidc") || "saml"
-          );
+          setProvider((getValue("sso.provider") as "saml" | "oidc") || "saml");
           setProviderName(getValue("sso.providerName"));
 
-          // SAML
           setEntityId(getValue("sso.entityId"));
           setSsoUrl(getValue("sso.ssoUrl"));
           setSloUrl(getValue("sso.sloUrl"));
           setCertificate(getValue("sso.certificate"));
           setSignRequests(getValue("sso.signRequests") === "true");
 
-          // OIDC
           setClientId(getValue("sso.clientId"));
           setClientSecret(getValue("sso.clientSecret") ? "********" : "");
           setDiscoveryUrl(getValue("sso.discoveryUrl"));
@@ -96,18 +90,14 @@ export default function SSOSettingsTab() {
           setTokenUrl(getValue("sso.tokenUrl"));
           setScopes(getValue("sso.scopes") || "openid profile email");
 
-          // Attribute Mapping
           setEmailAttribute(getValue("sso.attr.email") || "email");
-          setFirstNameAttribute(
-            getValue("sso.attr.firstName") || "firstName"
-          );
+          setFirstNameAttribute(getValue("sso.attr.firstName") || "firstName");
           setLastNameAttribute(getValue("sso.attr.lastName") || "lastName");
-          setUsernameAttribute(
-            getValue("sso.attr.username") || "username"
-          );
+          setUsernameAttribute(getValue("sso.attr.username") || "username");
           setGroupsAttribute(getValue("sso.attr.groups"));
         }
-      } catch {
+      } catch (err) {
+        console.error("Failed to load SSO settings", err);
         toast.error("Failed to load SSO settings");
       } finally {
         setIsLoading(false);
@@ -138,7 +128,7 @@ export default function SSOSettingsTab() {
           { key: "sso.ssoUrl", value: ssoUrl },
           { key: "sso.sloUrl", value: sloUrl },
           { key: "sso.certificate", value: certificate },
-          { key: "sso.signRequests", value: String(signRequests) }
+          { key: "sso.signRequests", value: String(signRequests) },
         );
       } else {
         settings.push(
@@ -150,7 +140,7 @@ export default function SSOSettingsTab() {
           { key: "sso.discoveryUrl", value: discoveryUrl },
           { key: "sso.authorizationUrl", value: authorizationUrl },
           { key: "sso.tokenUrl", value: tokenUrl },
-          { key: "sso.scopes", value: scopes }
+          { key: "sso.scopes", value: scopes },
         );
       }
 
@@ -169,7 +159,8 @@ export default function SSOSettingsTab() {
         const error = await response.json();
         toast.error(error.error || "Failed to save SSO settings");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to save SSO settings", err);
       toast.error("Failed to save SSO settings");
     } finally {
       setIsSaving(false);
@@ -177,7 +168,6 @@ export default function SSOSettingsTab() {
   };
 
   const handleTestConnection = async () => {
-    // Validate required fields based on provider type
     const missingFields: string[] = [];
 
     if (!providerName) missingFields.push("Provider Name");
@@ -197,22 +187,25 @@ export default function SSOSettingsTab() {
 
     if (missingFields.length > 0) {
       toast.error(
-        `Please fill in the following required fields: ${missingFields.join(", ")}`
+        `Please fill in the following required fields: ${missingFields.join(", ")}`,
       );
       return;
     }
 
     setIsTesting(true);
     try {
-      // Validate URLs client-side first
       if (provider === "saml") {
         try {
           new URL(entityId);
           new URL(ssoUrl);
           if (sloUrl) new URL(sloUrl);
-        } catch {
+        } catch (err) {
+          console.error(
+            "One or more URLs are invalid. Please check Entity ID, SSO URL, and SLO URL.",
+            err,
+          );
           toast.error(
-            "One or more URLs are invalid. Please check Entity ID, SSO URL, and SLO URL."
+            "One or more URLs are invalid. Please check Entity ID, SSO URL, and SLO URL.",
           );
           setIsTesting(false);
           return;
@@ -222,9 +215,13 @@ export default function SSOSettingsTab() {
           if (discoveryUrl) new URL(discoveryUrl);
           if (authorizationUrl) new URL(authorizationUrl);
           if (tokenUrl) new URL(tokenUrl);
-        } catch {
+        } catch (err) {
+          console.error(
+            "One or more URLs are invalid. Please check Discovery URL, Authorization URL, and Token URL.",
+            err,
+          );
           toast.error(
-            "One or more URLs are invalid. Please check Discovery URL, Authorization URL, and Token URL."
+            "One or more URLs are invalid. Please check Discovery URL, Authorization URL, and Token URL.",
           );
           setIsTesting(false);
           return;
@@ -238,7 +235,7 @@ export default function SSOSettingsTab() {
               const disco = await discoRes.json();
               toast.success(
                 `OIDC Discovery successful. Found authorization endpoint: ${disco.authorization_endpoint ? "Yes" : "No"}, token endpoint: ${disco.token_endpoint ? "Yes" : "No"}`,
-                { duration: 5000 }
+                { duration: 5000 },
               );
               setIsTesting(false);
               return;
@@ -251,9 +248,10 @@ export default function SSOSettingsTab() {
 
       toast.success(
         "Configuration validated. All required fields are present and URLs are well-formed. Save settings and test with an actual login to verify the full flow.",
-        { duration: 5000 }
+        { duration: 5000 },
       );
-    } catch {
+    } catch (err) {
+      console.error("Configuration validation failed", err);
       toast.error("Configuration validation failed");
     } finally {
       setIsTesting(false);
@@ -263,7 +261,7 @@ export default function SSOSettingsTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
       </div>
     );
   }
@@ -285,7 +283,7 @@ export default function SSOSettingsTab() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="sso-enabled">Enable SSO</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Allow users to sign in using an external identity provider
               </p>
             </div>
@@ -320,7 +318,7 @@ export default function SSOSettingsTab() {
               onChange={(e) => setProviderName(e.target.value)}
               placeholder="e.g., Okta, Azure AD, Google Workspace"
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               A display name for the identity provider shown on the login page
             </p>
           </div>
@@ -380,16 +378,19 @@ export default function SSOSettingsTab() {
                 rows={6}
                 className="font-mono text-xs"
               />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Paste the X.509 certificate provided by your identity provider
               </p>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="sign-requests">Sign Authentication Requests</Label>
-                <p className="text-sm text-muted-foreground">
-                  Sign SAML authentication requests sent to the identity provider
+                <Label htmlFor="sign-requests">
+                  Sign Authentication Requests
+                </Label>
+                <p className="text-muted-foreground text-sm">
+                  Sign SAML authentication requests sent to the identity
+                  provider
                 </p>
               </div>
               <Switch
@@ -446,8 +447,9 @@ export default function SSOSettingsTab() {
                 onChange={(e) => setDiscoveryUrl(e.target.value)}
                 placeholder="https://idp.example.com/.well-known/openid-configuration"
               />
-              <p className="text-sm text-muted-foreground">
-                If provided, Authorization URL and Token URL will be auto-discovered
+              <p className="text-muted-foreground text-sm">
+                If provided, Authorization URL and Token URL will be
+                auto-discovered
               </p>
             </div>
 
@@ -479,7 +481,7 @@ export default function SSOSettingsTab() {
                 onChange={(e) => setScopes(e.target.value)}
                 placeholder="openid profile email"
               />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Space-separated list of OAuth scopes to request
               </p>
             </div>
@@ -551,7 +553,7 @@ export default function SSOSettingsTab() {
               onChange={(e) => setGroupsAttribute(e.target.value)}
               placeholder="groups"
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Map a groups or roles claim to automatically assign user roles
             </p>
           </div>
@@ -566,17 +568,17 @@ export default function SSOSettingsTab() {
           disabled={isTesting || !ssoEnabled}
         >
           {isTesting ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <CheckCircle className="h-4 w-4 mr-2" />
+            <CheckCircle className="mr-2 h-4 w-4" />
           )}
           Test Connection
         </Button>
         <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="mr-2 h-4 w-4" />
           )}
           Save Settings
         </Button>

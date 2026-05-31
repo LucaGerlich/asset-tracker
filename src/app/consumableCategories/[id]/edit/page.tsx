@@ -1,4 +1,3 @@
-import React from "react";
 import ConsumableCategoriesCreateForm from "../../create/ui/ConsumableCategoriesCreateForm";
 import { getConsumableCategoryById } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";

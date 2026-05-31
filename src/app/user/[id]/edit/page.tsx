@@ -1,4 +1,3 @@
-import React from "react";
 import { getUserById } from "@/lib/data";
 import { requireAuth } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";

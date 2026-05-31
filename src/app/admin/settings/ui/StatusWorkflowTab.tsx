@@ -74,7 +74,8 @@ export default function StatusWorkflowTab({
     try {
       const res = await fetch("/api/admin/status-workflow");
       if (res.ok) setTransitions(await res.json());
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch workflow transitions", err);
       toast.error("Failed to fetch workflow transitions");
     } finally {
       setLoading(false);
@@ -114,7 +115,8 @@ export default function StatusWorkflowTab({
         const err = await res.json();
         toast.error(err.error || "Failed to create transition");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to create transition", err);
       toast.error("Failed to create transition");
     }
   };
@@ -130,7 +132,8 @@ export default function StatusWorkflowTab({
         setTransitions(transitions.filter((t) => t.id !== id));
         toast.success("Transition removed");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to remove transition", err);
       toast.error("Failed to remove transition");
     }
   };

@@ -1,4 +1,3 @@
-import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -70,7 +69,9 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   try {
     ctx = await getOrganizationContext();
     isAdmin = ctx?.isAdmin ?? true;
-  } catch {}
+  } catch {
+    /* non-admin context resolution is optional */
+  }
   // First: fetch the asset (needed by subsequent queries)
   let assetRaw;
   try {

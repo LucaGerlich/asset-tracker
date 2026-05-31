@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,7 +103,8 @@ export default function CustomFieldsAdminTab() {
       if (!response.ok) throw new Error("Failed to fetch");
       const data = await response.json();
       setFields(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch custom field definitions", err);
       toast.error("Failed to fetch custom field definitions");
     } finally {
       setLoading(false);

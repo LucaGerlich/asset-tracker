@@ -1,18 +1,11 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -21,8 +14,6 @@ import SelectWithQuickCreate, {
 } from "@/components/SelectWithQuickCreate";
 import CustomFieldsSection from "@/components/CustomFieldsSection";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
-
-const statusSort = (a, b) => a.statustypename.localeCompare(b.statustypename);
 
 export default function AccessoryCreateForm({
   categories: initialCategories,
@@ -172,7 +163,6 @@ export default function AccessoryCreateForm({
       }
 
       const created = await res.json();
-      // Save custom field values
       if (mode === "create" && Object.keys(customFieldValues).length > 0) {
         await fetch("/api/custom-fields/values", {
           method: "POST",

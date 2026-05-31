@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import jsQR from "jsqr";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,6 @@ export default function AuditScanClient({
   const progressPercent =
     total > 0 ? Math.round((scannedCount / total) * 100) : 0;
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopCamera();
@@ -82,7 +81,8 @@ export default function AuditScanClient({
       }
       setCameraPermission("granted");
       toast.success("Camera access granted");
-    } catch {
+    } catch (err) {
+      console.error("Camera access denied", err);
       setCameraPermission("denied");
       toast.error("Camera access denied. Please allow camera permissions.");
     }
@@ -112,7 +112,6 @@ export default function AuditScanClient({
       // Prevent duplicate concurrent scans for same asset
       if (scanningAssetRef.current.has(assetId)) return;
 
-      // Check if already scanned
       const entry = entries.find((e) => e.assetId === assetId);
       if (entry && entry.status !== "unscanned") {
         toast.info(`${entry.asset.assetname} already scanned`);
@@ -138,7 +137,6 @@ export default function AuditScanClient({
         const assetName = matchedEntry?.asset.assetname || "Unknown asset";
         const assetTag = matchedEntry?.asset.assettag || "";
 
-        // Update local entries
         setEntries((prev) =>
           prev.map((e) =>
             e.assetId === assetId ? { ...e, status: "found" } : e,
@@ -167,7 +165,6 @@ export default function AuditScanClient({
     [campaignId, entries],
   );
 
-  // Extract asset ID from a QR code URL
   const extractAssetId = useCallback((rawValue: string): string | null => {
     try {
       const url = new URL(rawValue);
@@ -179,7 +176,6 @@ export default function AuditScanClient({
     return null;
   }, []);
 
-  // Handle a detected QR code value
   const handleDetectedValue = useCallback(
     async (rawValue: string) => {
       const assetId = extractAssetId(rawValue);
@@ -327,7 +323,7 @@ export default function AuditScanClient({
       <Card>
         <CardContent className="flex flex-col items-center gap-4 p-6">
           {/* Hidden canvas for jsQR frame processing */}
-          <canvas ref={canvasRef} className="hidden" />
+          <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
 
           {cameraPermission === "prompt" && (
             <div className="flex flex-col items-center gap-4 py-8">
@@ -362,6 +358,7 @@ export default function AuditScanClient({
                   playsInline
                   muted
                   className="aspect-video w-full object-cover"
+                  aria-label="Camera feed for scanning asset QR codes"
                 />
                 {scanning && (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

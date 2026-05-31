@@ -1,4 +1,3 @@
-import React from "react";
 import { redirect } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
 import { getUsers } from "@/lib/data";

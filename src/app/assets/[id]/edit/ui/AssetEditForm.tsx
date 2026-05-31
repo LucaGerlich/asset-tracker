@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -489,7 +489,9 @@ export default function AssetEditForm({
                       );
                       const data = await res.json();
                       setAssettagTaken(Boolean(data?.assettag?.exists));
-                    } catch {}
+                    } catch {
+                      /* validation fetch failure is non-blocking */
+                    }
                   }}
                   className={assettagTaken ? "border-red-500" : ""}
                   required
@@ -519,7 +521,9 @@ export default function AssetEditForm({
                       );
                       const data = await res.json();
                       setSerialTaken(Boolean(data?.serialnumber?.exists));
-                    } catch {}
+                    } catch {
+                      /* validation fetch failure is non-blocking */
+                    }
                   }}
                   className={serialTaken ? "border-red-500" : ""}
                   required

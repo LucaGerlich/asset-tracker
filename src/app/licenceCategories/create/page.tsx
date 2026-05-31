@@ -1,4 +1,3 @@
-import React from "react";
 import LicenceCategoriesCreateForm from "./ui/LicenceCategoriesCreateForm";
 import Breadcrumb from "@/components/Breadcrumb";
 

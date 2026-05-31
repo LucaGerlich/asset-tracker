@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -175,7 +175,8 @@ export default function CreatePurchaseRequest() {
       }
 
       router.push(`/procurement/${requestId}`);
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setIsSubmitting(false);

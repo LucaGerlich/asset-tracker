@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import { MessageSquare, User, Clock } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Ticket } from "@/types/ticket";
 
@@ -18,9 +22,18 @@ interface TicketDetailsModalProps {
 
 const STATUS_CONFIG = {
   new: { label: "New", color: "bg-blue-100 text-blue-800 border-blue-300" },
-  in_progress: { label: "In Progress", color: "bg-yellow-100 text-yellow-800 border-yellow-300" },
-  completed: { label: "Completed", color: "bg-green-100 text-green-800 border-green-300" },
-  cancelled: { label: "Cancelled", color: "bg-gray-100 text-gray-800 border-gray-300" },
+  in_progress: {
+    label: "In Progress",
+    color: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  },
+  completed: {
+    label: "Completed",
+    color: "bg-green-100 text-green-800 border-green-300",
+  },
+  cancelled: {
+    label: "Cancelled",
+    color: "bg-gray-100 text-gray-800 border-gray-300",
+  },
 };
 
 const PRIORITY_CONFIG = {
@@ -38,8 +51,12 @@ export function TicketDetailsModal({
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const status = STATUS_CONFIG[ticket.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.new;
-  const priority = PRIORITY_CONFIG[ticket.priority as keyof typeof PRIORITY_CONFIG] || PRIORITY_CONFIG.medium;
+  const status =
+    STATUS_CONFIG[ticket.status as keyof typeof STATUS_CONFIG] ||
+    STATUS_CONFIG.new;
+  const priority =
+    PRIORITY_CONFIG[ticket.priority as keyof typeof PRIORITY_CONFIG] ||
+    PRIORITY_CONFIG.medium;
 
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
@@ -49,7 +66,8 @@ export function TicketDetailsModal({
       await onAddComment(ticket.id, newComment);
       setNewComment("");
       toast.success("Comment added");
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to add comment", err);
       toast.error("Failed to add comment");
     } finally {
       setIsSubmitting(false);
@@ -58,15 +76,21 @@ export function TicketDetailsModal({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between">
-            <DialogTitle className="text-xl font-bold pr-8">{ticket.title}</DialogTitle>
+            <DialogTitle className="pr-8 text-xl font-bold">
+              {ticket.title}
+            </DialogTitle>
             <div className="flex gap-2">
-              <span className={`rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap ${priority.color}`}>
+              <span
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap ${priority.color}`}
+              >
                 {ticket.priority}
               </span>
-              <span className={`rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap ${status.color}`}>
+              <span
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap ${status.color}`}
+              >
                 {status.label}
               </span>
             </div>
@@ -76,7 +100,9 @@ export function TicketDetailsModal({
         <div className="space-y-6">
           {/* Description */}
           <div>
-            <Label className="text-sm font-medium text-muted-foreground">Description</Label>
+            <Label className="text-muted-foreground text-sm font-medium">
+              Description
+            </Label>
             <p className="mt-1 text-sm">
               {ticket.description || "No description provided"}
             </p>
@@ -85,7 +111,7 @@ export function TicketDetailsModal({
           {/* Metadata */}
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Clock className="text-muted-foreground h-4 w-4" />
               <span className="text-muted-foreground">Created:</span>
               <span className="font-medium">
                 {new Date(ticket.createdAt).toLocaleString()}
@@ -95,7 +121,7 @@ export function TicketDetailsModal({
 
           {ticket.assignee && (
             <div className="flex items-center gap-2 text-sm">
-              <User className="h-4 w-4 text-muted-foreground" />
+              <User className="text-muted-foreground h-4 w-4" />
               <span className="text-muted-foreground">Assigned to:</span>
               <span className="font-medium">
                 {ticket.assignee.firstname} {ticket.assignee.lastname}
@@ -105,27 +131,29 @@ export function TicketDetailsModal({
 
           {/* Comments Section */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="mb-3 flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               <Label className="text-base font-semibold">
                 Comments ({ticket.comments.length})
               </Label>
             </div>
 
-            <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+            <div className="mb-4 max-h-64 space-y-3 overflow-y-auto">
               {ticket.comments.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic">No comments yet</p>
+                <p className="text-muted-foreground text-sm italic">
+                  No comments yet
+                </p>
               ) : (
                 ticket.comments.map((comment) => (
                   <div
                     key={comment.id}
-                    className="rounded-lg border bg-muted/50 p-3 text-sm"
+                    className="bg-muted/50 rounded-lg border p-3 text-sm"
                   >
-                    <div className="flex items-start justify-between mb-1">
+                    <div className="mb-1 flex items-start justify-between">
                       <span className="font-medium">
                         {comment.user.firstname} {comment.user.lastname}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-muted-foreground text-xs">
                         {new Date(comment.createdAt).toLocaleString()}
                       </span>
                     </div>

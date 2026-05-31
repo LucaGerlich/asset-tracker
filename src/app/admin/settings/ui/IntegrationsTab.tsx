@@ -15,13 +15,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { MessageSquare, Save, Loader2, CheckCircle, Send } from "lucide-react";
+import { MessageSquare, Save, Loader2, Send } from "lucide-react";
 
 interface IntegrationSetting {
   id: string;
   key: string;
   value: string | null;
 }
+
+const SLACK_WEBHOOK_PLACEHOLDER =
+  "https://hooks.slack.com/services/T00000/B00000/XXXX";
+const TEAMS_WEBHOOK_PLACEHOLDER = "https://outlook.office.com/webhook/...";
 
 const NOTIFICATION_EVENTS = [
   { key: "asset.created", label: "Asset Created" },
@@ -73,7 +77,8 @@ export default function IntegrationsTab() {
           const teamsEvts = getValue("integrations.teams.events");
           setTeamsEvents(teamsEvts ? teamsEvts.split(",") : []);
         }
-      } catch {
+      } catch (err) {
+        console.error("Failed to load integration settings", err);
         toast.error("Failed to load integration settings");
       } finally {
         setIsLoading(false);
@@ -86,12 +91,12 @@ export default function IntegrationsTab() {
   const toggleEvent = (
     events: string[],
     setEvents: React.Dispatch<React.SetStateAction<string[]>>,
-    event: string
+    event: string,
   ) => {
     setEvents(
       events.includes(event)
         ? events.filter((e) => e !== event)
-        : [...events, event]
+        : [...events, event],
     );
   };
 
@@ -120,7 +125,8 @@ export default function IntegrationsTab() {
         const error = await response.json();
         toast.error(error.error || "Failed to save integration settings");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to save integration settings", err);
       toast.error("Failed to save integration settings");
     } finally {
       setIsSaving(false);
@@ -149,7 +155,8 @@ export default function IntegrationsTab() {
         const error = await response.json();
         toast.error(error.error || "Failed to send test notification");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to send test notification", err);
       toast.error("Failed to send test notification");
     } finally {
       setIsTestingSlack(false);
@@ -177,7 +184,8 @@ export default function IntegrationsTab() {
         const error = await response.json();
         toast.error(error.error || "Failed to send test notification");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to send test notification", err);
       toast.error("Failed to send test notification");
     } finally {
       setIsTestingTeams(false);
@@ -187,7 +195,7 @@ export default function IntegrationsTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
       </div>
     );
   }
@@ -230,10 +238,10 @@ export default function IntegrationsTab() {
               id="slack-webhook"
               value={slackWebhookUrl}
               onChange={(e) => setSlackWebhookUrl(e.target.value)}
-              placeholder="https://hooks.slack.com/services/T00000/B00000/XXXX"
+              placeholder={SLACK_WEBHOOK_PLACEHOLDER}
               type="url"
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Create an incoming webhook in your Slack workspace settings
             </p>
           </div>
@@ -246,7 +254,7 @@ export default function IntegrationsTab() {
               onChange={(e) => setSlackChannel(e.target.value)}
               placeholder="#asset-notifications"
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Override the default channel configured in the webhook
             </p>
           </div>
@@ -265,7 +273,7 @@ export default function IntegrationsTab() {
                   />
                   <Label
                     htmlFor={`slack-${event.key}`}
-                    className="text-sm font-normal cursor-pointer"
+                    className="cursor-pointer text-sm font-normal"
                   >
                     {event.label}
                   </Label>
@@ -280,9 +288,9 @@ export default function IntegrationsTab() {
             disabled={isTestingSlack || !slackWebhookUrl}
           >
             {isTestingSlack ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Send className="h-4 w-4 mr-2" />
+              <Send className="mr-2 h-4 w-4" />
             )}
             Send Test Notification
           </Button>
@@ -325,10 +333,10 @@ export default function IntegrationsTab() {
               id="teams-webhook"
               value={teamsWebhookUrl}
               onChange={(e) => setTeamsWebhookUrl(e.target.value)}
-              placeholder="https://outlook.office.com/webhook/..."
+              placeholder={TEAMS_WEBHOOK_PLACEHOLDER}
               type="url"
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Create an incoming webhook connector in your Teams channel
             </p>
           </div>
@@ -347,7 +355,7 @@ export default function IntegrationsTab() {
                   />
                   <Label
                     htmlFor={`teams-${event.key}`}
-                    className="text-sm font-normal cursor-pointer"
+                    className="cursor-pointer text-sm font-normal"
                   >
                     {event.label}
                   </Label>
@@ -362,9 +370,9 @@ export default function IntegrationsTab() {
             disabled={isTestingTeams || !teamsWebhookUrl}
           >
             {isTestingTeams ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Send className="h-4 w-4 mr-2" />
+              <Send className="mr-2 h-4 w-4" />
             )}
             Send Test Notification
           </Button>
@@ -375,9 +383,9 @@ export default function IntegrationsTab() {
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="mr-2 h-4 w-4" />
           )}
           Save All Integration Settings
         </Button>

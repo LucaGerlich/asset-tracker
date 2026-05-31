@@ -1,4 +1,3 @@
-import React from "react";
 import AccessoryCreateForm from "../../create/ui/AccessoryCreateForm";
 import {
   getAccessoryById,

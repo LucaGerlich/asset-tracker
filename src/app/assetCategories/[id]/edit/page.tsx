@@ -1,4 +1,3 @@
-import React from "react";
 import AssetCategoryCreateForm from "../../create/ui/AssetCategoryCreateForm";
 import { getAssetCategoryById } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";

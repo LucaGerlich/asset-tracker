@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { X, MessageSquare, User, Clock, AlertCircle } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MessageSquare, User, Clock } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,15 +85,19 @@ export function TicketModal({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">{ticket.title}</DialogTitle>
+          <DialogTitle className="text-xl font-bold">
+            {ticket.title}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Description */}
           <div>
-            <Label className="text-sm font-medium text-muted-foreground">Description</Label>
+            <Label className="text-muted-foreground text-sm font-medium">
+              Description
+            </Label>
             <p className="mt-1 text-sm">
               {ticket.description || "No description provided"}
             </p>
@@ -97,14 +106,14 @@ export function TicketModal({
           {/* Creator Info */}
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
+              <User className="text-muted-foreground h-4 w-4" />
               <span className="text-muted-foreground">Created by:</span>
               <span className="font-medium">
                 {ticket.creator.firstname} {ticket.creator.lastname}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Clock className="text-muted-foreground h-4 w-4" />
               <span className="text-muted-foreground">
                 {new Date(ticket.createdAt).toLocaleString()}
               </span>
@@ -112,13 +121,10 @@ export function TicketModal({
           </div>
 
           {/* Status, Priority, Assignee Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select
-                value={ticket.status}
-                onValueChange={handleStatusChange}
-              >
+              <Select value={ticket.status} onValueChange={handleStatusChange}>
                 <SelectTrigger id="status">
                   <SelectValue />
                 </SelectTrigger>
@@ -174,27 +180,29 @@ export function TicketModal({
 
           {/* Comments Section */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="mb-3 flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               <Label className="text-base font-semibold">
                 Comments ({ticket.comments.length})
               </Label>
             </div>
 
-            <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+            <div className="mb-4 max-h-64 space-y-3 overflow-y-auto">
               {ticket.comments.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic">No comments yet</p>
+                <p className="text-muted-foreground text-sm italic">
+                  No comments yet
+                </p>
               ) : (
                 ticket.comments.map((comment) => (
                   <div
                     key={comment.id}
-                    className="rounded-lg border bg-muted/50 p-3 text-sm"
+                    className="bg-muted/50 rounded-lg border p-3 text-sm"
                   >
-                    <div className="flex items-start justify-between mb-1">
+                    <div className="mb-1 flex items-start justify-between">
                       <span className="font-medium">
                         {comment.user.firstname} {comment.user.lastname}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-muted-foreground text-xs">
                         {new Date(comment.createdAt).toLocaleString()}
                       </span>
                     </div>

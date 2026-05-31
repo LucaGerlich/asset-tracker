@@ -1,4 +1,3 @@
-import React from "react";
 import ManufacturerCreateForm from "../../create/ui/ManufacturerCreateForm";
 import { getManufacturerById } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,11 +82,11 @@ export default function IntuneSettingsTab() {
         setAutoSync(get("intune.autoSync") === "true");
         setAutoCreateAssets(get("intune.autoCreateAssets") !== "false");
         setAutoUpdateAssets(get("intune.autoUpdateAssets") !== "false");
-      } catch {
+      } catch (err) {
+        console.error("Failed to load Intune settings", err);
         toast.error("Failed to load Intune settings");
       }
 
-      // Load sync history
       try {
         const res = await fetch(
           "/api/admin/audit-logs?entity=intune_sync&pageSize=10&sortBy=createdAt&sortOrder=desc",
@@ -137,7 +137,8 @@ export default function IntuneSettingsTab() {
       } else {
         toast.error("Failed to save settings");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to save settings", err);
       toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);
@@ -158,7 +159,8 @@ export default function IntuneSettingsTab() {
       } else {
         toast.error(data.message);
       }
-    } catch {
+    } catch (err) {
+      console.error("Connection test failed", err);
       setTestResult({ success: false, message: "Connection test failed" });
       toast.error("Connection test failed");
     } finally {
@@ -180,7 +182,8 @@ export default function IntuneSettingsTab() {
       } else {
         toast.error(data.error || "Sync failed");
       }
-    } catch {
+    } catch (err) {
+      console.error("Sync failed", err);
       toast.error("Sync failed");
     } finally {
       setIsSyncing(false);

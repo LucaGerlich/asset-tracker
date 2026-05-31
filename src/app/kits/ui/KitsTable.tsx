@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,8 @@ export default function KitsTable({ kits }: { kits: Kit[] }) {
       setIsDeleteModalOpen(false);
       setSelectedKit(null);
       router.refresh();
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete kit", err);
       toast.error("Failed to delete kit");
     } finally {
       setDeleting(null);

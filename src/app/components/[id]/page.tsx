@@ -1,4 +1,3 @@
-import React from "react";
 import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Separator } from "@/components/ui/separator";

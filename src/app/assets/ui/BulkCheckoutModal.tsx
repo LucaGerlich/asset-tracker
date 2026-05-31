@@ -93,13 +93,12 @@ export function BulkCheckoutModal({
       if (failedCount === 0) {
         toast.success(`${successCount} asset(s) checked out successfully`);
       } else {
-        toast.warning(
-          `${successCount} succeeded, ${failedCount} failed`,
-        );
+        toast.warning(`${successCount} succeeded, ${failedCount} failed`);
       }
 
       onSuccess();
-    } catch {
+    } catch (err) {
+      console.error("An unexpected error occurred", err);
       toast.error("An unexpected error occurred");
     } finally {
       setIsSubmitting(false);
@@ -198,12 +197,12 @@ export function BulkCheckoutModal({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-lg border bg-muted/50 p-4">
+            <div className="bg-muted/50 rounded-lg border p-4">
               <p className="text-sm font-medium">
                 {result.success.length} asset(s) checked out successfully
               </p>
               {result.failed.length > 0 && (
-                <p className="text-sm text-destructive mt-1">
+                <p className="text-destructive mt-1 text-sm">
                   {result.failed.length} asset(s) failed
                 </p>
               )}
@@ -211,7 +210,7 @@ export function BulkCheckoutModal({
 
             {result.failed.length > 0 && (
               <div>
-                <Label className="text-sm font-medium text-destructive">
+                <Label className="text-destructive text-sm font-medium">
                   Failed Assets
                 </Label>
                 <ul className="mt-1 space-y-1 text-sm">

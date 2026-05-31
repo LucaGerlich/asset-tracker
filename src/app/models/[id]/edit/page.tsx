@@ -1,4 +1,3 @@
-import React from "react";
 import ModelCreateForm from "../../create/ui/ModelCreateForm";
 import { getModelById } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";

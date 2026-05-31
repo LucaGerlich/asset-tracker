@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,8 +30,8 @@ interface ComponentItem {
 export default function ComponentsTable({
   items,
   categories,
-  manufacturers,
-  suppliers,
+  manufacturers: _manufacturers,
+  suppliers: _suppliers,
 }: {
   items: ComponentItem[];
   categories: { id: string; name: string }[];
@@ -61,7 +61,8 @@ export default function ComponentsTable({
       if (!res.ok) throw new Error("Failed to delete");
       toast.success("Component deleted", { description: name });
       window.location.reload();
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete component", err);
       toast.error("Failed to delete component");
     }
   };
@@ -163,7 +164,7 @@ export default function ComponentsTable({
                     <td className="px-4 py-3">
                       {item.location?.locationname ?? "-"}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" aria-label="Actions">
                       <div className="flex items-center gap-2">
                         <Link
                           href={`/components/${item.id}/edit`}

@@ -103,7 +103,8 @@ export default function TeamInvitationsClient() {
       } else {
         toast.error("Failed to load invitations");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to load invitations", err);
       toast.error("Failed to load invitations");
     } finally {
       setLoading(false);
@@ -153,7 +154,8 @@ export default function TeamInvitationsClient() {
       setEmail("");
       setSelectedRoleId("");
       fetchInvitations();
-    } catch {
+    } catch (err) {
+      console.error("Failed to send invitation", err);
       toast.error("Failed to send invitation");
     } finally {
       setSubmitting(false);
@@ -175,7 +177,8 @@ export default function TeamInvitationsClient() {
 
       toast.success("Invitation revoked");
       fetchInvitations();
-    } catch {
+    } catch (err) {
+      console.error("Failed to revoke invitation", err);
       toast.error("Failed to revoke invitation");
     }
   }

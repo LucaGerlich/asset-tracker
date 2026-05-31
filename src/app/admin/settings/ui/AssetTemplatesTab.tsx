@@ -27,10 +27,6 @@ import {
 import { toast } from "sonner";
 import { Plus, Edit, Trash2, Loader2, LayoutTemplate } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface AssetTemplateItem {
   id: string;
   name: string;
@@ -50,22 +46,15 @@ interface AssetTemplateItem {
   updatedAt: string;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export default function AssetTemplatesTab() {
-  // ---- Data state ----------------------------------------------------------
   const [templates, setTemplates] = useState<AssetTemplateItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ---- Create/Edit dialog state -------------------------------------------
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] =
     useState<AssetTemplateItem | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // ---- Form state ----------------------------------------------------------
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formCategoryId, setFormCategoryId] = useState("");
@@ -78,13 +67,10 @@ export default function AssetTemplatesTab() {
   const [formDefaultNotes, setFormDefaultNotes] = useState("");
   const [formIsActive, setFormIsActive] = useState(true);
 
-  // ---- Delete confirmation -------------------------------------------------
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingTemplate, setDeletingTemplate] =
     useState<AssetTemplateItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // ---- Fetch templates ----------------------------------------------------
 
   const fetchTemplates = useCallback(async () => {
     try {
@@ -92,7 +78,8 @@ export default function AssetTemplatesTab() {
       if (!res.ok) throw new Error("Failed to fetch asset templates");
       const data: AssetTemplateItem[] = await res.json();
       setTemplates(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load asset templates", err);
       toast.error("Failed to load asset templates");
     }
   }, []);
@@ -105,8 +92,6 @@ export default function AssetTemplatesTab() {
     }
     init();
   }, [fetchTemplates]);
-
-  // ---- Dialog helpers ------------------------------------------------------
 
   function resetForm() {
     setFormName("");
@@ -148,8 +133,6 @@ export default function AssetTemplatesTab() {
     setDeletingTemplate(template);
     setDeleteDialogOpen(true);
   }
-
-  // ---- Save (create / update) ---------------------------------------------
 
   async function handleSave() {
     if (!formName.trim()) {
@@ -202,14 +185,13 @@ export default function AssetTemplatesTab() {
       );
       setDialogOpen(false);
       await fetchTemplates();
-    } catch {
+    } catch (err) {
+      console.error("Failed to save asset template", err);
       toast.error("Failed to save asset template");
     } finally {
       setIsSaving(false);
     }
   }
-
-  // ---- Delete --------------------------------------------------------------
 
   async function handleDelete() {
     if (!deletingTemplate) return;
@@ -236,14 +218,13 @@ export default function AssetTemplatesTab() {
       setDeleteDialogOpen(false);
       setDeletingTemplate(null);
       await fetchTemplates();
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete asset template", err);
       toast.error("Failed to delete asset template");
     } finally {
       setIsDeleting(false);
     }
   }
-
-  // ---- Render --------------------------------------------------------------
 
   if (isLoading) {
     return (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,8 @@ export default function AuditCampaignsTable({
       if (!res.ok) throw new Error("Failed to delete");
       toast.success("Campaign deleted");
       router.refresh();
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete campaign", err);
       toast.error("Failed to delete campaign");
     } finally {
       setDeleting(null);

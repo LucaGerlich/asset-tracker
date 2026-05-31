@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -125,7 +125,8 @@ export default function AssetTransfers({
       }
       const data: Transfer[] = await res.json();
       setTransfers(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setIsLoading(false);
@@ -179,7 +180,6 @@ export default function AssetTransfers({
     fetchLookupData();
   }, [fetchTransfers, fetchLookupData]);
 
-  // Load target options when transfer type changes in the dialog
   const fetchTargetOptions = useCallback(async (type: string) => {
     setLoadingOptions(true);
     try {
@@ -193,7 +193,8 @@ export default function AssetTransfers({
         const res = await fetch("/api/organizations");
         if (res.ok) setOrgs(await res.json());
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to load options", err);
       toast.error("Failed to load options");
     } finally {
       setLoadingOptions(false);
@@ -242,7 +243,8 @@ export default function AssetTransfers({
       setTargetId("");
       setReason("");
       fetchTransfers();
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setSubmitting(false);

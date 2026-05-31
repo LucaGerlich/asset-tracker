@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -417,8 +417,12 @@ export default function ChangePasswordSection() {
 
           {/* Options */}
           <div className="space-y-3 pt-1">
-            <label className="flex items-start gap-2 text-sm">
+            <label
+              htmlFor="revoke-sessions"
+              className="flex items-start gap-2 text-sm"
+            >
               <Checkbox
+                id="revoke-sessions"
                 checked={revokeOtherSessions}
                 onCheckedChange={(v) => setRevokeOtherSessions(Boolean(v))}
                 className="mt-0.5"
@@ -434,8 +438,12 @@ export default function ChangePasswordSection() {
               </span>
             </label>
 
-            <label className="flex items-start gap-2 text-sm">
+            <label
+              htmlFor="send-notification-email"
+              className="flex items-start gap-2 text-sm"
+            >
               <Checkbox
+                id="send-notification-email"
                 checked={sendNotificationEmail}
                 onCheckedChange={(v) => setSendNotificationEmail(Boolean(v))}
                 className="mt-0.5"

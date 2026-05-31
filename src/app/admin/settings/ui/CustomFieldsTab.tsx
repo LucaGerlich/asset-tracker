@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -117,7 +117,8 @@ export default function CustomFieldsTab({
       } else {
         toast.error("Failed to create custom field");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to create custom field", err);
       toast.error("Failed to create custom field");
     }
   };
@@ -148,7 +149,8 @@ export default function CustomFieldsTab({
       } else {
         toast.error("Failed to update custom field");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to update custom field", err);
       toast.error("Failed to update custom field");
     }
   };
@@ -172,7 +174,8 @@ export default function CustomFieldsTab({
       } else {
         toast.error("Failed to delete custom field");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to delete custom field", err);
       toast.error("Failed to delete custom field");
     }
   };
@@ -191,7 +194,8 @@ export default function CustomFieldsTab({
       } else {
         toast.error("Failed to update custom field");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to update custom field", err);
       toast.error("Failed to update custom field");
     }
   };

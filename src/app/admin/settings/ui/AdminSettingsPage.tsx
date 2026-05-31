@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Settings,
@@ -25,8 +25,9 @@ import {
   ScrollText,
   LayoutTemplate,
   Monitor,
+  CreditCard,
+  type LucideIcon,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,7 +61,6 @@ import EulaTab from "./EulaTab";
 import AssetTemplatesTab from "./AssetTemplatesTab";
 import { PlanGate } from "@/components/PlanGate";
 import BillingTab from "./BillingTab";
-import { CreditCard } from "lucide-react";
 
 interface NavItem {
   value: string;
@@ -208,9 +208,9 @@ interface AdminSettingsPageProps {
 export default function AdminSettingsPage({
   settings,
   users,
-  emailTemplates,
+  emailTemplates: _emailTemplates,
   labelTemplates,
-  customFields,
+  customFields: _customFields,
   depreciationSettings,
   envEmailConfig,
   statuses = [],

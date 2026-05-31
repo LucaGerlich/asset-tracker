@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,10 +36,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface WebhookItem {
   id: string;
   name: string;
@@ -74,10 +70,6 @@ interface WebhookDelivery {
 interface WebhookWithDeliveries extends WebhookItem {
   deliveries: WebhookDelivery[];
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 /** Event categories for grouping in the form */
 const EVENT_CATEGORIES: Record<string, string> = {
@@ -121,24 +113,17 @@ function generateSecret(): string {
     .join("");
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export default function WebhooksTab() {
-  // ---- Data state ----------------------------------------------------------
   const [webhooks, setWebhooks] = useState<WebhookItem[]>([]);
   const [availableEvents, setAvailableEvents] = useState<WebhookEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ---- Create/Edit dialog state -------------------------------------------
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingWebhook, setEditingWebhook] = useState<WebhookItem | null>(
     null,
   );
   const [isSaving, setIsSaving] = useState(false);
 
-  // ---- Form state ----------------------------------------------------------
   const [formName, setFormName] = useState("");
   const [formUrl, setFormUrl] = useState("");
   const [formSecret, setFormSecret] = useState("");
@@ -146,23 +131,18 @@ export default function WebhooksTab() {
   const [formIsActive, setFormIsActive] = useState(true);
   const [formRetryAttempts, setFormRetryAttempts] = useState(3);
 
-  // ---- Delete confirmation -------------------------------------------------
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingWebhook, setDeletingWebhook] = useState<WebhookItem | null>(
     null,
   );
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // ---- Delivery log dialog -------------------------------------------------
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [deliveryWebhook, setDeliveryWebhook] =
     useState<WebhookWithDeliveries | null>(null);
   const [isLoadingDeliveries, setIsLoadingDeliveries] = useState(false);
 
-  // ---- Toggling active status inline ---------------------------------------
   const [togglingId, setTogglingId] = useState<string | null>(null);
-
-  // ---- Fetch webhooks & events --------------------------------------------
 
   const fetchWebhooks = useCallback(async () => {
     try {
@@ -170,7 +150,8 @@ export default function WebhooksTab() {
       if (!res.ok) throw new Error("Failed to fetch webhooks");
       const data: WebhookItem[] = await res.json();
       setWebhooks(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load webhooks", err);
       toast.error("Failed to load webhooks");
     }
   }, []);
@@ -181,7 +162,8 @@ export default function WebhooksTab() {
       if (!res.ok) throw new Error("Failed to fetch events");
       const data = await res.json();
       setAvailableEvents(data.events ?? []);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load webhook events", err);
       toast.error("Failed to load webhook events");
     }
   }, []);
@@ -194,8 +176,6 @@ export default function WebhooksTab() {
     }
     init();
   }, [fetchWebhooks, fetchEvents]);
-
-  // ---- Dialog helpers ------------------------------------------------------
 
   function openCreateDialog() {
     setEditingWebhook(null);
@@ -234,7 +214,8 @@ export default function WebhooksTab() {
       if (!res.ok) throw new Error("Failed to fetch deliveries");
       const data: WebhookWithDeliveries = await res.json();
       setDeliveryWebhook(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load delivery log", err);
       toast.error("Failed to load delivery log");
       setDeliveryDialogOpen(false);
     } finally {
@@ -270,8 +251,6 @@ export default function WebhooksTab() {
     toast.success("Secret copied to clipboard");
   }
 
-  // ---- Toggle active status inline ----------------------------------------
-
   async function handleToggleActive(webhook: WebhookItem) {
     setTogglingId(webhook.id);
     try {
@@ -295,14 +274,13 @@ export default function WebhooksTab() {
         webhook.isActive ? "Webhook deactivated" : "Webhook activated",
       );
       await fetchWebhooks();
-    } catch {
+    } catch (err) {
+      console.error("Failed to update webhook", err);
       toast.error("Failed to update webhook");
     } finally {
       setTogglingId(null);
     }
   }
-
-  // ---- Save (create / update) ---------------------------------------------
 
   async function handleSave() {
     if (!formName.trim()) {
@@ -360,14 +338,13 @@ export default function WebhooksTab() {
       );
       setDialogOpen(false);
       await fetchWebhooks();
-    } catch {
+    } catch (err) {
+      console.error("Failed to save webhook", err);
       toast.error("Failed to save webhook");
     } finally {
       setIsSaving(false);
     }
   }
-
-  // ---- Delete --------------------------------------------------------------
 
   async function handleDelete() {
     if (!deletingWebhook) return;
@@ -392,18 +369,15 @@ export default function WebhooksTab() {
       setDeleteDialogOpen(false);
       setDeletingWebhook(null);
       await fetchWebhooks();
-    } catch {
+    } catch (err) {
+      console.error("Failed to delete webhook", err);
       toast.error("Failed to delete webhook");
     } finally {
       setIsDeleting(false);
     }
   }
 
-  // ---- Derived data --------------------------------------------------------
-
   const eventGroups = groupEventsByCategory(availableEvents);
-
-  // ---- Render --------------------------------------------------------------
 
   if (isLoading) {
     return (

@@ -1,4 +1,3 @@
-import React from "react";
 import SupplierCreateForm from "../../create/ui/SupplierCreateForm";
 import { getSupplierById } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";

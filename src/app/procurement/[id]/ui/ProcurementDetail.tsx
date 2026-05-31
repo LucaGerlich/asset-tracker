@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -190,7 +190,8 @@ export default function ProcurementDetail() {
       }
       const data = await response.json();
       setRequest(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setIsLoading(false);
@@ -215,7 +216,8 @@ export default function ProcurementDetail() {
       }
       toast.success("Request submitted for approval");
       fetchRequest();
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setIsActioning(false);
@@ -236,7 +238,8 @@ export default function ProcurementDetail() {
       }
       toast.success("Request approved");
       fetchRequest();
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setIsActioning(false);
@@ -267,7 +270,8 @@ export default function ProcurementDetail() {
       setRejectDialogOpen(false);
       setRejectReason("");
       fetchRequest();
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setIsActioning(false);
@@ -287,7 +291,8 @@ export default function ProcurementDetail() {
       }
       toast.success("Request deleted");
       router.push("/procurement");
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setIsActioning(false);
@@ -315,7 +320,8 @@ export default function ProcurementDetail() {
       } else {
         fetchRequest();
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to connect to the server", err);
       toast.error("Failed to connect to the server");
     } finally {
       setIsActioning(false);

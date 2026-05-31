@@ -45,7 +45,8 @@ export default function RateLimitTab() {
       if (res.ok) {
         setData(await res.json());
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch rate limits", err);
       toast.error("Failed to fetch rate limits");
     } finally {
       setLoading(false);
@@ -71,7 +72,8 @@ export default function RateLimitTab() {
       } else {
         toast.error("Failed to reset");
       }
-    } catch {
+    } catch (err) {
+      console.error("Failed to reset rate limit", err);
       toast.error("Failed to reset rate limit");
     }
   };

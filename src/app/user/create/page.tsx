@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,9 +34,8 @@ export default function Page() {
     null,
   );
   const [copied, setCopied] = useState(false);
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [_magicLinkSent, setMagicLinkSent] = useState(false);
 
-  // Debounced username validation
   useEffect(() => {
     const handle = setTimeout(async () => {
       if (!form.username) {
@@ -56,7 +55,6 @@ export default function Page() {
     return () => clearTimeout(handle);
   }, [form.username]);
 
-  // Debounced email validation
   useEffect(() => {
     const handle = setTimeout(async () => {
       if (!form.email) {

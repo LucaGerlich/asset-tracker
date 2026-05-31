@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,8 +27,11 @@ interface GeneralSettingsTabProps {
   }>;
 }
 
-export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps) {
-  const getSettingValue = (key: string) => settings.find((s) => s.key === key)?.value || "";
+export default function GeneralSettingsTab({
+  settings,
+}: GeneralSettingsTabProps) {
+  const getSettingValue = (key: string) =>
+    settings.find((s) => s.key === key)?.value || "";
 
   const [isSaving, setIsSaving] = useState(false);
   const [generalSettings, setGeneralSettings] = useState({
@@ -40,8 +43,10 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
     defaultLanguage: getSettingValue("default_language") || "en",
     enableDemoMode: getSettingValue("demo_mode") === "true",
     autoLogoutMinutes: parseInt(getSettingValue("auto_logout_minutes")) || 0,
-    requireStrongPasswords: getSettingValue("require_strong_passwords") !== "false",
-    allowSelfRegistration: getSettingValue("allow_self_registration") === "true",
+    requireStrongPasswords:
+      getSettingValue("require_strong_passwords") !== "false",
+    allowSelfRegistration:
+      getSettingValue("allow_self_registration") === "true",
     maintenanceMode: getSettingValue("maintenance_mode") === "true",
   });
 
@@ -59,7 +64,8 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
       } else {
         toast.error("Failed to save settings");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to save settings", err);
       toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);
@@ -80,14 +86,17 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="companyName">Company Name</Label>
               <Input
                 id="companyName"
                 value={generalSettings.companyName}
                 onChange={(e) =>
-                  setGeneralSettings({ ...generalSettings, companyName: e.target.value })
+                  setGeneralSettings({
+                    ...generalSettings,
+                    companyName: e.target.value,
+                  })
                 }
                 placeholder="Your Company Name"
               />
@@ -98,7 +107,10 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
                 id="companyLogo"
                 value={generalSettings.companyLogo}
                 onChange={(e) =>
-                  setGeneralSettings({ ...generalSettings, companyLogo: e.target.value })
+                  setGeneralSettings({
+                    ...generalSettings,
+                    companyLogo: e.target.value,
+                  })
                 }
                 placeholder="https://example.com/logo.png"
               />
@@ -119,14 +131,17 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="timezone">Timezone</Label>
               <Input
                 id="timezone"
                 value={generalSettings.timezone}
                 onChange={(e) =>
-                  setGeneralSettings({ ...generalSettings, timezone: e.target.value })
+                  setGeneralSettings({
+                    ...generalSettings,
+                    timezone: e.target.value,
+                  })
                 }
                 placeholder="UTC"
               />
@@ -137,7 +152,10 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
                 id="dateFormat"
                 value={generalSettings.dateFormat}
                 onChange={(e) =>
-                  setGeneralSettings({ ...generalSettings, dateFormat: e.target.value })
+                  setGeneralSettings({
+                    ...generalSettings,
+                    dateFormat: e.target.value,
+                  })
                 }
                 placeholder="MM/DD/YYYY"
               />
@@ -148,7 +166,10 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
                 id="currency"
                 value={generalSettings.currency}
                 onChange={(e) =>
-                  setGeneralSettings({ ...generalSettings, currency: e.target.value })
+                  setGeneralSettings({
+                    ...generalSettings,
+                    currency: e.target.value,
+                  })
                 }
                 placeholder="USD"
               />
@@ -159,7 +180,10 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
                 id="defaultLanguage"
                 value={generalSettings.defaultLanguage}
                 onChange={(e) =>
-                  setGeneralSettings({ ...generalSettings, defaultLanguage: e.target.value })
+                  setGeneralSettings({
+                    ...generalSettings,
+                    defaultLanguage: e.target.value,
+                  })
                 }
                 placeholder="en"
               />
@@ -183,14 +207,18 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="font-medium">Require Strong Passwords</Label>
-              <p className="text-sm text-muted-foreground">
-                Enforce minimum password requirements (8+ chars, mixed case, numbers)
+              <p className="text-muted-foreground text-sm">
+                Enforce minimum password requirements (8+ chars, mixed case,
+                numbers)
               </p>
             </div>
             <Switch
               checked={generalSettings.requireStrongPasswords}
               onCheckedChange={(checked) =>
-                setGeneralSettings({ ...generalSettings, requireStrongPasswords: checked })
+                setGeneralSettings({
+                  ...generalSettings,
+                  requireStrongPasswords: checked,
+                })
               }
             />
           </div>
@@ -200,14 +228,17 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="font-medium">Allow Self Registration</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Allow new users to create their own accounts
               </p>
             </div>
             <Switch
               checked={generalSettings.allowSelfRegistration}
               onCheckedChange={(checked) =>
-                setGeneralSettings({ ...generalSettings, allowSelfRegistration: checked })
+                setGeneralSettings({
+                  ...generalSettings,
+                  allowSelfRegistration: checked,
+                })
               }
             />
           </div>
@@ -230,7 +261,7 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
               }
               className="w-32"
             />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Set to 0 to disable auto logout
             </p>
           </div>
@@ -244,22 +275,23 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
             <Database className="h-5 w-5" />
             System
           </CardTitle>
-          <CardDescription>
-            System-wide configuration options
-          </CardDescription>
+          <CardDescription>System-wide configuration options</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="font-medium">Demo Mode</Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Enable demo mode with sample data and restricted functionality
               </p>
             </div>
             <Switch
               checked={generalSettings.enableDemoMode}
               onCheckedChange={(checked) =>
-                setGeneralSettings({ ...generalSettings, enableDemoMode: checked })
+                setGeneralSettings({
+                  ...generalSettings,
+                  enableDemoMode: checked,
+                })
               }
             />
           </div>
@@ -268,15 +300,20 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="font-medium text-yellow-600">Maintenance Mode</Label>
-              <p className="text-sm text-muted-foreground">
+              <Label className="font-medium text-yellow-600">
+                Maintenance Mode
+              </Label>
+              <p className="text-muted-foreground text-sm">
                 Put the application in maintenance mode (only admins can access)
               </p>
             </div>
             <Switch
               checked={generalSettings.maintenanceMode}
               onCheckedChange={(checked) =>
-                setGeneralSettings({ ...generalSettings, maintenanceMode: checked })
+                setGeneralSettings({
+                  ...generalSettings,
+                  maintenanceMode: checked,
+                })
               }
             />
           </div>
@@ -285,7 +322,7 @@ export default function GeneralSettingsTab({ settings }: GeneralSettingsTabProps
 
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save All Settings
         </Button>
       </div>

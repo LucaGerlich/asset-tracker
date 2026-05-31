@@ -1,4 +1,3 @@
-import React from "react";
 import Breadcrumb from "@/components/Breadcrumb";
 import AssetsTableClient from "./ui/AssetsTableClient";
 import {
@@ -88,7 +87,9 @@ export default async function Page() {
   let ctx;
   try {
     ctx = await getOrganizationContext();
-  } catch {}
+  } catch {
+    /* non-admin context resolution is optional */
+  }
   const isAdmin = ctx?.isAdmin ?? false;
 
   let displayAssets = databaseAssets;

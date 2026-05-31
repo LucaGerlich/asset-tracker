@@ -38,10 +38,6 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface ApiKeyItem {
   id: string;
   name: string;
@@ -63,10 +59,6 @@ interface CreatedKeyResponse {
   key: string;
   message: string;
 }
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
 
 const READ_SCOPES = [
   { value: "asset:view", label: "Assets" },
@@ -210,32 +202,22 @@ function ScopesSummary({ scopes }: { scopes: string[] }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export default function ApiKeysTab() {
-  // ---- Data state ----------------------------------------------------------
   const [keys, setKeys] = useState<ApiKeyItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ---- Create dialog state ------------------------------------------------
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formName, setFormName] = useState("");
   const [formExpiresAt, setFormExpiresAt] = useState("");
   const [formScopes, setFormScopes] = useState<string[]>([]);
 
-  // ---- Created key reveal dialog ------------------------------------------
   const [revealDialogOpen, setRevealDialogOpen] = useState(false);
   const [createdKey, setCreatedKey] = useState<CreatedKeyResponse | null>(null);
 
-  // ---- Delete confirmation ------------------------------------------------
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingKey, setDeletingKey] = useState<ApiKeyItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // ---- Fetch keys ---------------------------------------------------------
 
   const fetchKeys = useCallback(async () => {
     try {
@@ -243,7 +225,8 @@ export default function ApiKeysTab() {
       if (!res.ok) throw new Error("Failed to fetch API keys");
       const data = await res.json();
       setKeys(data.keys ?? []);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load API keys", err);
       toast.error("Failed to load API keys");
     }
   }, []);
@@ -256,8 +239,6 @@ export default function ApiKeysTab() {
     }
     init();
   }, [fetchKeys]);
-
-  // ---- Dialog helpers ------------------------------------------------------
 
   function openCreateDialog() {
     setFormName("");
@@ -282,8 +263,6 @@ export default function ApiKeysTab() {
     navigator.clipboard.writeText(createdKey.key);
     toast.success("API key copied to clipboard");
   }
-
-  // ---- Create key ---------------------------------------------------------
 
   async function handleCreate() {
     if (!formName.trim()) {
@@ -324,14 +303,13 @@ export default function ApiKeysTab() {
       setRevealDialogOpen(true);
       await fetchKeys();
       toast.success("API key created successfully");
-    } catch {
+    } catch (err) {
+      console.error("Failed to create API key", err);
       toast.error("Failed to create API key");
     } finally {
       setIsSaving(false);
     }
   }
-
-  // ---- Delete key ---------------------------------------------------------
 
   async function handleDelete() {
     if (!deletingKey) return;
@@ -356,14 +334,13 @@ export default function ApiKeysTab() {
       setDeleteDialogOpen(false);
       setDeletingKey(null);
       await fetchKeys();
-    } catch {
+    } catch (err) {
+      console.error("Failed to revoke API key", err);
       toast.error("Failed to revoke API key");
     } finally {
       setIsDeleting(false);
     }
   }
-
-  // ---- Render -------------------------------------------------------------
 
   if (isLoading) {
     return (

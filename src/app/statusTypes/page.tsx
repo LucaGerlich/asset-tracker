@@ -1,4 +1,3 @@
-import React from "react";
 import Breadcrumb from "@/components/Breadcrumb";
 import StatusTypesTable from "../../ui/statusTypes/StatusTypesTable";
 import { getStatus } from "@/lib/data";

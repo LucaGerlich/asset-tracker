@@ -1,4 +1,3 @@
-import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -16,6 +15,8 @@ import HistoryTimeline from "@/components/HistoryTimeline";
 export const metadata = {
   title: "Asset Tracker - Licence Details",
 };
+
+const DEFAULT_CURRENCY = "USD";
 
 function getExpiryStatus(expirationdate: string | null): {
   label: string;
@@ -171,7 +172,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
                   {licence.purchaseprice != null
                     ? new Intl.NumberFormat(undefined, {
                         style: "currency",
-                        currency: "USD",
+                        currency: DEFAULT_CURRENCY,
                       }).format(licence.purchaseprice)
                     : "-"}
                 </dd>

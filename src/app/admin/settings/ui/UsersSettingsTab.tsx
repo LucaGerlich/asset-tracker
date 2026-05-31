@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,18 +20,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Search, UserPlus, Shield, ShieldOff, Trash2, Edit } from "lucide-react";
+import { Search, Shield, ShieldOff } from "lucide-react";
 
 interface UsersSettingsTabProps {
   users: Array<{
@@ -46,7 +36,9 @@ interface UsersSettingsTabProps {
   }>;
 }
 
-export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsTabProps) {
+export default function UsersSettingsTab({
+  users: initialUsers,
+}: UsersSettingsTabProps) {
   const [users, setUsers] = useState(initialUsers);
   const [search, setSearch] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
@@ -56,7 +48,7 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
       user.firstname.toLowerCase().includes(search.toLowerCase()) ||
       user.lastname.toLowerCase().includes(search.toLowerCase()) ||
       user.email?.toLowerCase().includes(search.toLowerCase()) ||
-      user.username?.toLowerCase().includes(search.toLowerCase())
+      user.username?.toLowerCase().includes(search.toLowerCase()),
   );
 
   const toggleUserSelection = (userId: string) => {
@@ -86,12 +78,19 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
       });
 
       if (response.ok) {
-        setUsers(users.map((u) => (u.userid === userId ? { ...u, isadmin: makeAdmin } : u)));
-        toast.success(`User ${makeAdmin ? "promoted to" : "removed from"} admin`);
+        setUsers(
+          users.map((u) =>
+            u.userid === userId ? { ...u, isadmin: makeAdmin } : u,
+          ),
+        );
+        toast.success(
+          `User ${makeAdmin ? "promoted to" : "removed from"} admin`,
+        );
       } else {
         toast.error("Failed to update user permissions");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to update user permissions", err);
       toast.error("Failed to update user permissions");
     }
   };
@@ -105,19 +104,28 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
       });
 
       if (response.ok) {
-        setUsers(users.map((u) => (u.userid === userId ? { ...u, canrequest: canRequest } : u)));
-        toast.success(`User request permission ${canRequest ? "granted" : "revoked"}`);
+        setUsers(
+          users.map((u) =>
+            u.userid === userId ? { ...u, canrequest: canRequest } : u,
+          ),
+        );
+        toast.success(
+          `User request permission ${canRequest ? "granted" : "revoked"}`,
+        );
       } else {
         toast.error("Failed to update user permissions");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to update user permissions", err);
       toast.error("Failed to update user permissions");
     }
   };
 
-  const handleBulkAction = async (action: "makeAdmin" | "removeAdmin" | "enableRequest" | "disableRequest") => {
+  const handleBulkAction = async (
+    action: "makeAdmin" | "removeAdmin" | "enableRequest" | "disableRequest",
+  ) => {
     const updates: Record<string, boolean> = {};
-    
+
     switch (action) {
       case "makeAdmin":
         updates.isadmin = true;
@@ -146,15 +154,16 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
       if (response.ok) {
         setUsers(
           users.map((u) =>
-            selectedUsers.has(u.userid) ? { ...u, ...updates } : u
-          )
+            selectedUsers.has(u.userid) ? { ...u, ...updates } : u,
+          ),
         );
         setSelectedUsers(new Set());
         toast.success("User permissions updated successfully");
       } else {
         toast.error("Failed to update user permissions");
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Failed to update user permissions", err);
       toast.error("Failed to update user permissions");
     }
   };
@@ -164,10 +173,10 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Total Users
             </CardTitle>
           </CardHeader>
@@ -177,7 +186,7 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Administrators
             </CardTitle>
           </CardHeader>
@@ -187,7 +196,7 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Can Request
             </CardTitle>
           </CardHeader>
@@ -206,8 +215,8 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative max-w-sm flex-1">
+              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform" />
               <Input
                 placeholder="Search users..."
                 value={search}
@@ -217,7 +226,7 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
             </div>
             {selectedUsers.size > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-muted-foreground text-sm">
                   {selectedUsers.size} selected
                 </span>
                 <Button
@@ -225,7 +234,7 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
                   size="sm"
                   onClick={() => handleBulkAction("makeAdmin")}
                 >
-                  <Shield className="h-4 w-4 mr-1" />
+                  <Shield className="mr-1 h-4 w-4" />
                   Make Admin
                 </Button>
                 <Button
@@ -233,7 +242,7 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
                   size="sm"
                   onClick={() => handleBulkAction("removeAdmin")}
                 >
-                  <ShieldOff className="h-4 w-4 mr-1" />
+                  <ShieldOff className="mr-1 h-4 w-4" />
                   Remove Admin
                 </Button>
                 <Button
@@ -254,7 +263,7 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
             )}
           </div>
 
-          <div className="border rounded-lg">
+          <div className="rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -289,7 +298,7 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
                           {user.firstname} {user.lastname}
                         </span>
                         {user.username && (
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-muted-foreground text-sm">
                             @{user.username}
                           </span>
                         )}
@@ -298,9 +307,7 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
                     <TableCell>{user.email || "-"}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        {user.isadmin && (
-                          <Badge variant="default">Admin</Badge>
-                        )}
+                        {user.isadmin && <Badge variant="default">Admin</Badge>}
                         {user.canrequest && (
                           <Badge variant="secondary">Can Request</Badge>
                         )}
@@ -342,7 +349,7 @@ export default function UsersSettingsTab({ users: initialUsers }: UsersSettingsT
                 ))}
                 {filteredUsers.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={6} className="py-8 text-center">
                       <p className="text-muted-foreground">No users found</p>
                     </TableCell>
                   </TableRow>

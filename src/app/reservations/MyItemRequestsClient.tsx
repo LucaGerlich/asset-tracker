@@ -176,7 +176,8 @@ export default function MyItemRequestsClient() {
       }
       toast.success("Request cancelled");
       fetchRequests();
-    } catch {
+    } catch (err) {
+      console.error("Failed to cancel request", err);
       toast.error("Failed to cancel request");
     }
   };
