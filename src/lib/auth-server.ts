@@ -103,18 +103,23 @@ const authPrisma = prisma.$extends({
   },
 });
 
-const vercelUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : undefined;
+/** Collect all Vercel-provided URLs so preview deployments are trusted. */
+const vercelOrigins = [
+  process.env.VERCEL_URL,
+  process.env.VERCEL_BRANCH_URL,
+  process.env.VERCEL_PROJECT_PRODUCTION_URL,
+]
+  .filter(Boolean)
+  .map((h) => `https://${h}`);
 
 export const auth = betterAuth({
   appName: "AssetTracker",
-  baseURL: process.env.BETTER_AUTH_URL || vercelUrl,
+  baseURL: process.env.BETTER_AUTH_URL || vercelOrigins[0],
   basePath: "/api/auth",
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins: [
     ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
-    ...(vercelUrl ? [vercelUrl] : []),
+    ...vercelOrigins,
   ],
 
   database: prismaAdapter(authPrisma, { provider: "postgresql" }),
