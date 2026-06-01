@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-} from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
-import * as api from '../api/client';
-import type { RootStackParamList } from '../types';
+} from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useNavigation } from "@react-navigation/native";
+import * as api from "../api/client";
+import type { RootStackParamList } from "../types";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -31,13 +31,11 @@ export function ScannerScreen() {
         // Try to parse QR data – could be an asset tag, URL, or JSON
         let assetId: string | null = null;
 
-        // Check if it's a URL containing an asset ID
         const urlMatch = data.match(/\/assets?\/([a-zA-Z0-9-]+)/);
         if (urlMatch) {
           assetId = urlMatch[1];
         }
 
-        // Check if it's a JSON payload with an id field
         if (!assetId) {
           try {
             const parsed = JSON.parse(data) as Record<string, string>;
@@ -53,22 +51,20 @@ export function ScannerScreen() {
             const asset = await api.getAssetByTag(data);
             assetId = asset.id;
           } catch {
-            Alert.alert(
-              'Asset Not Found',
-              `No asset found for: ${data}`,
-              [{ text: 'Scan Again', onPress: () => setScanned(false) }],
-            );
+            Alert.alert("Asset Not Found", `No asset found for: ${data}`, [
+              { text: "Scan Again", onPress: () => setScanned(false) },
+            ]);
             setProcessing(false);
             return;
           }
         }
 
-        navigation.navigate('AssetDetail', { assetId });
+        navigation.navigate("AssetDetail", { assetId });
       } catch (err) {
         Alert.alert(
-          'Scan Error',
-          err instanceof Error ? err.message : 'Failed to process QR code',
-          [{ text: 'Try Again', onPress: () => setScanned(false) }],
+          "Scan Error",
+          err instanceof Error ? err.message : "Failed to process QR code",
+          [{ text: "Try Again", onPress: () => setScanned(false) }],
         );
       } finally {
         setProcessing(false);
@@ -96,9 +92,7 @@ export function ScannerScreen() {
           style={styles.permissionButton}
           onPress={requestPermission}
         >
-          <Text style={styles.permissionButtonText}>
-            Grant Permission
-          </Text>
+          <Text style={styles.permissionButtonText}>Grant Permission</Text>
         </TouchableOpacity>
       </View>
     );
@@ -109,7 +103,7 @@ export function ScannerScreen() {
       <CameraView
         style={styles.camera}
         barcodeScannerSettings={{
-          barcodeTypes: ['qr', 'code128', 'code39', 'ean13'],
+          barcodeTypes: ["qr", "code128", "code39", "ean13"],
         }}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
       >
@@ -131,9 +125,7 @@ export function ScannerScreen() {
           {processing && (
             <View style={styles.processingOverlay}>
               <ActivityIndicator size="large" color="#ffffff" />
-              <Text style={styles.processingText}>
-                Looking up asset...
-              </Text>
+              <Text style={styles.processingText}>Looking up asset...</Text>
             </View>
           )}
 
@@ -156,13 +148,13 @@ const SCAN_SIZE = 260;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   center: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#0f172a",
     padding: 32,
   },
   camera: {
@@ -170,35 +162,35 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
-    position: 'absolute',
+    position: "absolute",
     top: 80,
-    alignItems: 'center',
+    alignItems: "center",
   },
   headerText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   headerSubtext: {
-    color: 'rgba(255,255,255,0.7)',
+    color: "rgba(255,255,255,0.7)",
     fontSize: 14,
     marginTop: 6,
   },
   scanFrame: {
     width: SCAN_SIZE,
     height: SCAN_SIZE,
-    position: 'relative',
+    position: "relative",
   },
   corner: {
-    position: 'absolute',
+    position: "absolute",
     width: 32,
     height: 32,
-    borderColor: '#6366f1',
+    borderColor: "#6366f1",
   },
   topLeft: {
     top: 0,
@@ -229,50 +221,50 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 8,
   },
   processingOverlay: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 120,
-    alignItems: 'center',
+    alignItems: "center",
   },
   processingText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 15,
     marginTop: 10,
   },
   rescanButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 120,
-    backgroundColor: '#6366f1',
+    backgroundColor: "#6366f1",
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 10,
   },
   rescanText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   permissionTitle: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 12,
   },
   permissionText: {
-    color: '#94a3b8',
+    color: "#94a3b8",
     fontSize: 15,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 24,
     lineHeight: 22,
   },
   permissionButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: "#6366f1",
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 10,
   },
   permissionButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import * as api from '../api/client';
+import { useState, useEffect, useReducer } from "react";
+import * as api from "../api/client";
 import {
   getCachedAssets,
   setCachedAssets,
   getCachedAssetById,
-} from '../services/offline';
-import { useNetworkStatus } from './useNetworkStatus';
-import type { Asset } from '../types';
+} from "../services/offline";
+import { useNetworkStatus } from "./useNetworkStatus";
+import type { Asset } from "../types";
 
 /**
  * Hook providing assets with offline-first behavior.
@@ -22,49 +22,61 @@ export function useAssets(params?: {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isConnected } = useNetworkStatus();
+  const [refreshKey, forceRefresh] = useReducer((x: number) => x + 1, 0);
 
-  const fetchAssets = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    // Load from cache first
-    const cached = await getCachedAssets();
-    if (cached.length > 0) {
-      setAssets(cached);
-      setTotal(cached.length);
-    }
-
-    // If online, fetch fresh data
-    if (isConnected) {
-      try {
-        const result = await api.getAssets({
-          search: params?.search,
-          status: params?.status,
-          page: params?.page,
-          limit: 50,
-        });
-        setAssets(result.assets);
-        setTotal(result.total);
-        await setCachedAssets(result.assets);
-      } catch (err) {
-        if (cached.length === 0) {
-          setError(
-            err instanceof Error ? err.message : 'Failed to load assets',
-          );
-        }
-      }
-    } else if (cached.length === 0) {
-      setError('No internet connection and no cached data available');
-    }
-
-    setLoading(false);
-  }, [isConnected, params?.search, params?.status, params?.page]);
+  const search = params?.search;
+  const status = params?.status;
+  const page = params?.page;
 
   useEffect(() => {
-    void fetchAssets();
-  }, [fetchAssets]);
+    let cancelled = false;
 
-  return { assets, total, loading, error, refetch: fetchAssets };
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      const cached = await getCachedAssets();
+      if (!cancelled && cached.length > 0) {
+        setAssets(cached);
+        setTotal(cached.length);
+      }
+
+      if (isConnected) {
+        try {
+          const result = await api.getAssets({
+            search,
+            status,
+            page,
+            limit: 50,
+          });
+          if (!cancelled) {
+            setAssets(result.assets);
+            setTotal(result.total);
+          }
+          await setCachedAssets(result.assets);
+        } catch (err) {
+          if (!cancelled && cached.length === 0) {
+            setError(
+              err instanceof Error ? err.message : "Failed to load assets",
+            );
+          }
+        }
+      } else if (!cancelled && cached.length === 0) {
+        setError("No internet connection and no cached data available");
+      }
+
+      if (!cancelled) {
+        setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isConnected, search, status, page, refreshKey]);
+
+  return { assets, total, loading, error, refetch: forceRefresh };
 }
 
 /**
@@ -75,40 +87,47 @@ export function useAsset(id: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isConnected } = useNetworkStatus();
-
-  const fetchAsset = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    // Try cache first
-    const cached = await getCachedAssetById(id);
-    if (cached) {
-      setAsset(cached);
-    }
-
-    if (isConnected) {
-      try {
-        const result = await api.getAssetById(id);
-        setAsset(result);
-      } catch (err) {
-        if (!cached) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : 'Failed to load asset',
-          );
-        }
-      }
-    } else if (!cached) {
-      setError('No internet connection and asset not cached');
-    }
-
-    setLoading(false);
-  }, [id, isConnected]);
+  const [refreshKey, forceRefresh] = useReducer((x: number) => x + 1, 0);
 
   useEffect(() => {
-    void fetchAsset();
-  }, [fetchAsset]);
+    let cancelled = false;
 
-  return { asset, loading, error, refetch: fetchAsset };
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      const cached = await getCachedAssetById(id);
+      if (!cancelled && cached) {
+        setAsset(cached);
+      }
+
+      if (isConnected) {
+        try {
+          const result = await api.getAssetById(id);
+          if (!cancelled) {
+            setAsset(result);
+          }
+        } catch (err) {
+          if (!cancelled && !cached) {
+            setError(
+              err instanceof Error ? err.message : "Failed to load asset",
+            );
+          }
+        }
+      } else if (!cancelled && !cached) {
+        setError("No internet connection and asset not cached");
+      }
+
+      if (!cancelled) {
+        setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isConnected, refreshKey]);
+
+  return { asset, loading, error, refetch: forceRefresh };
 }

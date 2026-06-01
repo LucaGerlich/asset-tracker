@@ -1,11 +1,11 @@
-import NetInfo from '@react-native-community/netinfo';
-import * as api from '../api/client';
+import NetInfo from "@react-native-community/netinfo";
+import * as api from "../api/client";
 import {
   getSyncQueue,
   removeFromSyncQueue,
   incrementRetryCount,
   setCachedAssets,
-} from './offline';
+} from "./offline";
 
 const MAX_RETRIES = 5;
 
@@ -38,10 +38,10 @@ export async function processQueue(): Promise<{
       const baseUrl = await api.getServerUrl();
       const token = await api.getSessionToken();
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       };
       if (token) {
-        headers['Cookie'] = `better-auth.session_token=${token}`;
+        headers["Cookie"] = `better-auth.session_token=${token}`;
       }
 
       const response = await fetch(`${baseUrl}${item.endpoint}`, {
@@ -86,7 +86,6 @@ let unsubscribe: (() => void) | null = null;
 let syncInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startBackgroundSync(intervalMs = 60_000): void {
-  // Process queue whenever connectivity changes
   unsubscribe = NetInfo.addEventListener((state) => {
     if (state.isConnected) {
       void processQueue();
@@ -94,7 +93,6 @@ export function startBackgroundSync(intervalMs = 60_000): void {
     }
   });
 
-  // Periodic sync
   syncInterval = setInterval(() => {
     void processQueue();
     void syncAssets();

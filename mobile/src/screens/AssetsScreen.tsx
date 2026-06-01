@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,23 +7,20 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
-} from 'react-native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
-import { useAssets } from '../hooks/useAssets';
-import { AssetCard } from '../components/AssetCard';
-import { OfflineBanner } from '../components/OfflineBanner';
-import type { Asset, RootStackParamList } from '../types';
+} from "react-native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useNavigation } from "@react-navigation/native";
+import { useAssets } from "../hooks/useAssets";
+import { AssetCard } from "../components/AssetCard";
+import { OfflineBanner } from "../components/OfflineBanner";
+import type { Asset, RootStackParamList } from "../types";
 
-type NavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'Main'
->;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Main">;
 
 export function AssetsScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const [search, setSearch] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const { assets, loading, error, refetch } = useAssets({
     search: searchQuery,
   });
@@ -35,7 +32,7 @@ export function AssetsScreen() {
 
   const handleAssetPress = useCallback(
     (asset: Asset) => {
-      navigation.navigate('AssetDetail', { assetId: asset.id });
+      navigation.navigate("AssetDetail", { assetId: asset.id });
     },
     [navigation],
   );
@@ -101,44 +98,44 @@ export function AssetsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
   },
   searchBar: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: "#e2e8f0",
   },
   searchInput: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: "#f1f5f9",
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#1e293b',
+    color: "#1e293b",
   },
   list: {
     paddingVertical: 8,
   },
   center: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 24,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#64748b',
+    color: "#64748b",
   },
   errorText: {
     fontSize: 14,
-    color: '#ef4444',
-    textAlign: 'center',
+    color: "#ef4444",
+    textAlign: "center",
   },
   emptyText: {
     fontSize: 15,
-    color: '#94a3b8',
+    color: "#94a3b8",
   },
 });

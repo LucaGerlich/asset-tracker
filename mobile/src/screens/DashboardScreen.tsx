@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useReducer } from "react";
 import {
   View,
   Text,
@@ -6,13 +6,13 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
-} from 'react-native';
-import { useNetworkStatus } from '../hooks/useNetworkStatus';
-import { OfflineBanner } from '../components/OfflineBanner';
-import * as api from '../api/client';
-import { getCachedData, cacheData } from '../services/offline';
-import { useAuth } from '../context/AuthContext';
-import type { DashboardStats } from '../types';
+} from "react-native";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import { OfflineBanner } from "../components/OfflineBanner";
+import * as api from "../api/client";
+import { getCachedData, cacheData } from "../services/offline";
+import { useAuth } from "../context/AuthContext";
+import type { DashboardStats } from "../types";
 
 export function DashboardScreen() {
   const { user } = useAuth();
@@ -20,33 +20,38 @@ export function DashboardScreen() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  const fetchDashboard = useCallback(async () => {
-    // Try cache first
-    const cached = await getCachedData<DashboardStats>('dashboard');
-    if (cached) setStats(cached);
-
-    if (isConnected) {
-      try {
-        const data = await api.getDashboardStats();
-        setStats(data);
-        await cacheData('dashboard', data);
-      } catch {
-        // Use cached data if available
-      }
-    }
-    setLoading(false);
-  }, [isConnected]);
+  const [refreshKey, forceRefresh] = useReducer((x: number) => x + 1, 0);
 
   useEffect(() => {
-    void fetchDashboard();
-  }, [fetchDashboard]);
+    let cancelled = false;
+
+    async function load() {
+      const cached = await getCachedData<DashboardStats>("dashboard");
+      if (!cancelled && cached) setStats(cached);
+
+      if (isConnected) {
+        try {
+          const data = await api.getDashboardStats();
+          if (!cancelled) setStats(data);
+          await cacheData("dashboard", data);
+        } catch {
+          /* use cached data if available */
+        }
+      }
+      if (!cancelled) setLoading(false);
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isConnected, refreshKey]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchDashboard();
+    forceRefresh();
     setRefreshing(false);
-  }, [fetchDashboard]);
+  }, []);
 
   if (loading && !stats) {
     return (
@@ -70,7 +75,7 @@ export function DashboardScreen() {
         }
       >
         <Text style={styles.greeting}>
-          Welcome back{user?.firstname ? `, ${user.firstname}` : ''}
+          Welcome back{user?.firstname ? `, ${user.firstname}` : ""}
         </Text>
 
         <View style={styles.grid}>
@@ -117,9 +122,7 @@ export function DashboardScreen() {
             <Text style={styles.sectionTitle}>Recent Activity</Text>
             {stats.recentActivity.slice(0, 10).map((item) => (
               <View key={item.id} style={styles.activityItem}>
-                <Text style={styles.activityAction}>
-                  {item.action}
-                </Text>
+                <Text style={styles.activityAction}>{item.action}</Text>
                 <Text style={styles.activityDetail} numberOfLines={1}>
                   {item.entityName} by {item.userName}
                 </Text>
@@ -158,36 +161,36 @@ function StatCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: "#f8fafc",
   },
   center: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
   },
   content: {
     padding: 16,
   },
   greeting: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#1e293b',
+    fontWeight: "700",
+    color: "#1e293b",
     marginBottom: 20,
   },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginHorizontal: -6,
   },
   statCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
-    width: '47%',
-    margin: '1.5%',
+    width: "47%",
+    margin: "1.5%",
     borderLeftWidth: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 2,
@@ -199,12 +202,12 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 26,
-    fontWeight: '800',
-    color: '#1e293b',
+    fontWeight: "800",
+    color: "#1e293b",
   },
   statTitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: "#64748b",
     marginTop: 2,
   },
   section: {
@@ -212,29 +215,29 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
+    fontWeight: "700",
+    color: "#1e293b",
     marginBottom: 12,
   },
   activityItem: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 10,
     padding: 14,
     marginBottom: 8,
   },
   activityAction: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: "600",
+    color: "#1e293b",
   },
   activityDetail: {
     fontSize: 13,
-    color: '#64748b',
+    color: "#64748b",
     marginTop: 2,
   },
   activityTime: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: "#94a3b8",
     marginTop: 4,
   },
 });

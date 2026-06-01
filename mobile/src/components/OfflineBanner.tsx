@@ -1,6 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { View, Text, StyleSheet } from "react-native";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
 
 /**
  * Banner displayed when the device is offline.
@@ -21,14 +20,14 @@ export function OfflineBanner() {
 
 const styles = StyleSheet.create({
   banner: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: "#f59e0b",
     paddingVertical: 8,
     paddingHorizontal: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   text: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
