@@ -105,7 +105,9 @@ const authPrisma = prisma.$extends({
 
 export const auth = betterAuth({
   appName: "AssetTracker",
-  baseURL: process.env.BETTER_AUTH_URL,
+  baseURL:
+    process.env.BETTER_AUTH_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined),
   basePath: "/api/auth",
   secret: process.env.BETTER_AUTH_SECRET,
 
