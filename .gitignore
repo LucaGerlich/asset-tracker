@@ -63,3 +63,4 @@ mobile/*.p12
 mobile/*.key
 mobile/*.mobileprovision
 mobile/*.orig.*
+.playwright-mcp
