@@ -19,6 +19,7 @@ import {
   getEntityHistory,
 } from "@/lib/data";
 import HistoryTimeline from "@/components/HistoryTimeline";
+import EntityAttachments from "@/components/EntityAttachments";
 import ConsumableDetailClient from "./ui/ConsumableDetailClient";
 
 export const metadata = {
@@ -318,6 +319,13 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         </section>
 
         <Separator className="my-6" />
+
+        <div className="mb-6">
+          <EntityAttachments
+            entityType="consumable"
+            entityId={consumable.consumableid}
+          />
+        </div>
 
         <div>
           <h2 className="text-lg font-semibold">Consumable History</h2>

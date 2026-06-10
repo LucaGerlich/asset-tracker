@@ -12,6 +12,7 @@ import {
 import prisma from "@/lib/prisma";
 import { getComponentById, getEntityHistory } from "@/lib/data";
 import HistoryTimeline from "@/components/HistoryTimeline";
+import EntityAttachments from "@/components/EntityAttachments";
 import ComponentDetailClient from "./ui/ComponentDetailClient";
 
 export const metadata = {
@@ -252,6 +253,10 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         </section>
 
         <Separator className="my-6" />
+
+        <div className="mb-6">
+          <EntityAttachments entityType="component" entityId={component.id} />
+        </div>
 
         <div>
           <h2 className="text-lg font-semibold">Component History</h2>

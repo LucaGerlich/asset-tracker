@@ -26,6 +26,7 @@ import {
   LayoutTemplate,
   Monitor,
   CreditCard,
+  HardDrive,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -61,6 +62,7 @@ import EulaTab from "./EulaTab";
 import AssetTemplatesTab from "./AssetTemplatesTab";
 import { PlanGate } from "@/components/PlanGate";
 import BillingTab from "./BillingTab";
+import StorageSettingsTab from "./StorageSettingsTab";
 
 interface NavItem {
   value: string;
@@ -119,6 +121,7 @@ const settingsNav: NavGroup[] = [
   {
     title: "Integrations",
     items: [
+      { value: "storage", label: "Storage", icon: HardDrive },
       { value: "freshdesk", label: "Freshdesk", icon: Ticket },
       { value: "webhooks", label: "Webhooks", icon: Webhook },
       { value: "integrations", label: "Integrations", icon: MessageSquare },
@@ -373,6 +376,7 @@ export default function AdminSettingsPage({
           )}
           {activeTab === "eula" && <EulaTab />}
           {activeTab === "asset-templates" && <AssetTemplatesTab />}
+          {activeTab === "storage" && <StorageSettingsTab />}
         </div>
       </div>
     </div>

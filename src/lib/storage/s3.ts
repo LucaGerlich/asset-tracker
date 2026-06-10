@@ -1,12 +1,27 @@
 import type { StorageProvider } from "./types";
 
+export interface S3Config {
+  bucket: string;
+  region?: string;
+  endpoint?: string;
+  accessKey?: string;
+  secretKey?: string;
+}
+
 export class S3StorageProvider implements StorageProvider {
   private bucket: string;
-  private client: any;
-  private presigner: any;
+  private config: S3Config;
+  private client: unknown;
 
-  constructor() {
-    this.bucket = process.env.STORAGE_BUCKET!;
+  constructor(config?: S3Config) {
+    this.config = config ?? {
+      bucket: process.env.STORAGE_BUCKET ?? "",
+      region: process.env.STORAGE_REGION,
+      endpoint: process.env.STORAGE_ENDPOINT,
+      accessKey: process.env.STORAGE_ACCESS_KEY,
+      secretKey: process.env.STORAGE_SECRET_KEY,
+    };
+    this.bucket = this.config.bucket;
     if (!this.bucket)
       throw new Error("STORAGE_BUCKET is required for S3 storage");
   }
@@ -15,21 +30,23 @@ export class S3StorageProvider implements StorageProvider {
     if (!this.client) {
       const { S3Client } = await import("@aws-sdk/client-s3");
       this.client = new S3Client({
-        region: process.env.STORAGE_REGION || "us-east-1",
-        ...(process.env.STORAGE_ENDPOINT
-          ? { endpoint: process.env.STORAGE_ENDPOINT, forcePathStyle: true }
+        region: this.config.region || "us-east-1",
+        ...(this.config.endpoint
+          ? { endpoint: this.config.endpoint, forcePathStyle: true }
           : {}),
-        ...(process.env.STORAGE_ACCESS_KEY && process.env.STORAGE_SECRET_KEY
+        ...(this.config.accessKey && this.config.secretKey
           ? {
               credentials: {
-                accessKeyId: process.env.STORAGE_ACCESS_KEY,
-                secretAccessKey: process.env.STORAGE_SECRET_KEY,
+                accessKeyId: this.config.accessKey,
+                secretAccessKey: this.config.secretKey,
               },
             }
           : {}),
       });
     }
-    return this.client;
+    return this.client as Awaited<
+      ReturnType<typeof import("@aws-sdk/client-s3")>
+    >["S3Client"]["prototype"];
   }
 
   async upload(

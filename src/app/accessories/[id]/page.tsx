@@ -14,6 +14,7 @@ import {
   getEntityHistory,
 } from "@/lib/data";
 import HistoryTimeline from "@/components/HistoryTimeline";
+import EntityAttachments from "@/components/EntityAttachments";
 
 export const metadata = {
   title: "Asset Tracker - Accessory Details",
@@ -222,6 +223,13 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         </div>
 
         <Separator className="my-6" />
+
+        <div className="mb-6">
+          <EntityAttachments
+            entityType="accessory"
+            entityId={accessory.accessorieid}
+          />
+        </div>
 
         <div>
           <h2 className="text-lg font-semibold">Accessory History</h2>

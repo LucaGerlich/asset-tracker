@@ -2,6 +2,7 @@ import type { StorageProvider } from "./types";
 import { LocalStorageProvider } from "./local";
 
 export type { StorageProvider } from "./types";
+export type { S3Config } from "./s3";
 
 let instance: StorageProvider | null = null;
 let initPromise: Promise<StorageProvider> | null = null;
@@ -39,4 +40,24 @@ export async function getStorage(): Promise<StorageProvider> {
     });
   }
   return initPromise;
+}
+
+export async function getOrgStorage(orgId: string): Promise<StorageProvider> {
+  const prisma = (await import("@/lib/prisma")).default;
+  const config = await prisma.organizationStorageConfig.findUnique({
+    where: { organizationId: orgId, isEnabled: true },
+  });
+
+  if (!config) return getStorage();
+
+  const { decrypt } = await import("@/lib/encryption");
+  // @ts-ignore -- optional dependency
+  const { S3StorageProvider } = await import(/* webpackIgnore: true */ "./s3");
+  return new S3StorageProvider({
+    bucket: config.bucket,
+    region: config.region,
+    endpoint: config.endpoint,
+    accessKey: decrypt(config.accessKey),
+    secretKey: decrypt(config.secretKey),
+  });
 }
