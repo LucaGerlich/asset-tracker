@@ -57,6 +57,18 @@ export default function StorageSettingsTab() {
   const [maskedSecretKey, setMaskedSecretKey] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
 
+  // Credential inputs are active whenever there is no saved config yet, or the
+  // admin explicitly clicked "Change credentials" on an existing config.
+  const credsInputActive = credentialsEditing || !isConfigured;
+
+  // Hetzner endpoints are entered without scheme; the AWS SDK requires a full
+  // URL. Normalize to a trimmed https:// origin before sending to the API.
+  const normalizeEndpoint = (raw: string): string => {
+    const trimmed = raw.trim().replace(/\/+$/, "");
+    if (!trimmed) return "";
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -81,18 +93,12 @@ export default function StorageSettingsTab() {
   }, []);
 
   const handleTest = async () => {
-    if (!endpoint || !bucket) {
+    if (!endpoint.trim() || !bucket.trim()) {
       toast.error("Endpoint and bucket are required to test the connection");
       return;
     }
-    const testAccessKey = credentialsEditing ? accessKey : undefined;
-    const testSecretKey = credentialsEditing ? secretKey : undefined;
-    if (credentialsEditing && (!testAccessKey || !testSecretKey)) {
+    if (credsInputActive && (!accessKey || !secretKey)) {
       toast.error("Access key and secret key are required to test");
-      return;
-    }
-    if (!credentialsEditing && !isConfigured) {
-      toast.error("Enter credentials first");
       return;
     }
 
@@ -100,8 +106,12 @@ export default function StorageSettingsTab() {
     setTestResult(null);
     setTestError(null);
     try {
-      const body: Record<string, string> = { endpoint, bucket, region };
-      if (credentialsEditing) {
+      const body: Record<string, string> = {
+        endpoint: normalizeEndpoint(endpoint),
+        bucket: bucket.trim(),
+        region: region.trim() || "auto",
+      };
+      if (credsInputActive) {
         body.accessKey = accessKey;
         body.secretKey = secretKey;
       }
@@ -129,20 +139,26 @@ export default function StorageSettingsTab() {
   };
 
   const handleSave = async () => {
-    if (!endpoint || !bucket) {
+    if (!endpoint.trim() || !bucket.trim()) {
       toast.error("Endpoint and bucket are required");
       return;
     }
-    if (!isConfigured && (!accessKey || !secretKey)) {
+    if (credsInputActive && (!accessKey || !secretKey)) {
       toast.error("Access key and secret key are required");
       return;
     }
 
     setIsSaving(true);
     try {
-      const body: Record<string, string> = { endpoint, bucket, region };
-      if (credentialsEditing && accessKey) body.accessKey = accessKey;
-      if (credentialsEditing && secretKey) body.secretKey = secretKey;
+      const body: Record<string, string> = {
+        endpoint: normalizeEndpoint(endpoint),
+        bucket: bucket.trim(),
+        region: region.trim() || "auto",
+      };
+      if (credsInputActive) {
+        body.accessKey = accessKey;
+        body.secretKey = secretKey;
+      }
 
       const res = await fetch("/api/admin/settings/storage", {
         method: "PUT",
@@ -154,8 +170,9 @@ export default function StorageSettingsTab() {
         throw new Error(err.error ?? "Failed to save");
       }
       toast.success("Storage configuration saved");
+      setEndpoint(normalizeEndpoint(endpoint));
       setIsConfigured(true);
-      if (credentialsEditing) {
+      if (credsInputActive) {
         setMaskedAccessKey(accessKey.substring(0, 4) + "****");
         setMaskedSecretKey(secretKey.substring(0, 4) + "****");
         setAccessKey("");
@@ -339,7 +356,7 @@ export default function StorageSettingsTab() {
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="accessKey">Access Key ID</Label>
-            {!credentialsEditing && isConfigured ? (
+            {!credsInputActive ? (
               <Input
                 id="accessKey"
                 value={maskedAccessKey ?? ""}
@@ -358,7 +375,7 @@ export default function StorageSettingsTab() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="secretKey">Secret Access Key</Label>
-            {!credentialsEditing && isConfigured ? (
+            {!credsInputActive ? (
               <Input
                 id="secretKey"
                 value={maskedSecretKey ?? ""}
