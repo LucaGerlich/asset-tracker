@@ -7,8 +7,9 @@ import {
 } from "@/lib/organization-context";
 import { basename, extname } from "path";
 import crypto from "crypto";
-import { getStorage } from "@/lib/storage";
+import { getStorage, getOrgStorage } from "@/lib/storage";
 import { isImageMimeType, generateThumbnails } from "@/lib/storage/thumbnails";
+import { logger } from "@/lib/logger";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -174,7 +175,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const storage = await getStorage();
+    const storage = orgId ? await getOrgStorage(orgId) : await getStorage();
     await storage.upload(uniqueFilename, buffer, file.type);
 
     // Generate thumbnails for images
@@ -207,8 +208,10 @@ export async function POST(req: NextRequest) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    logger.error("Asset attachment upload failed", { error });
+    const detail = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Failed to upload attachment" },
+      { error: `Failed to upload attachment: ${detail}` },
       { status: 500 },
     );
   }

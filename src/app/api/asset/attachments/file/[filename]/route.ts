@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
 import prisma from "@/lib/prisma";
 import { getOrganizationContext } from "@/lib/organization-context";
-import { getStorage } from "@/lib/storage";
+import { getStorage, getOrgStorage } from "@/lib/storage";
 import { thumbKey, type ThumbVariant } from "@/lib/storage/thumbnails";
 
 export async function GET(
@@ -28,7 +28,7 @@ export async function GET(
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    const storage = await getStorage();
+    const storage = orgId ? await getOrgStorage(orgId) : await getStorage();
 
     const { searchParams } = new URL(req.url);
     const thumb = searchParams.get("thumb") as ThumbVariant | null;
