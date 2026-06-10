@@ -4,6 +4,56 @@ import { encrypt } from "@/lib/encryption";
 import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { maskSecret } from "@/lib/secrets";
+import { logger } from "@/lib/logger";
+
+/**
+ * Categorize a storage-config failure into an actionable response. Full details
+ * are always logged server-side; the returned message is safe for the (admin-only)
+ * caller and points at the concrete cause.
+ */
+function storageErrorResponse(action: string, error: unknown): NextResponse {
+  logger.error(`Storage config ${action} failed`, { error });
+
+  const message = error instanceof Error ? error.message : String(error);
+
+  // Forbidden (non-admin)
+  if (message.startsWith("Forbidden")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Encryption key missing/malformed — the most common deployment gap
+  if (message.includes("ENCRYPTION_KEY")) {
+    return NextResponse.json(
+      {
+        error:
+          "Server encryption is not configured. Set the ENCRYPTION_KEY environment variable (64-character hex) and redeploy.",
+        code: "encryption_not_configured",
+      },
+      { status: 503 },
+    );
+  }
+
+  // Prisma: table does not exist (migration not applied in this database)
+  if (
+    typeof (error as { code?: unknown })?.code === "string" &&
+    (error as { code: string }).code === "P2021"
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "The storage configuration table is missing in this database. Apply the database migration, then retry.",
+        code: "table_missing",
+      },
+      { status: 500 },
+    );
+  }
+
+  // Fall back to the real message (admin-only endpoint — safe to surface)
+  return NextResponse.json(
+    { error: `Failed to ${action} storage config: ${message}` },
+    { status: 500 },
+  );
+}
 
 export async function GET() {
   try {
@@ -36,13 +86,7 @@ export async function GET() {
       isEnabled: config.isEnabled,
     });
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    return NextResponse.json(
-      { error: "Failed to load storage config" },
-      { status: 500 },
-    );
+    return storageErrorResponse("load", error);
   }
 }
 
@@ -127,13 +171,7 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    return NextResponse.json(
-      { error: "Failed to save storage config" },
-      { status: 500 },
-    );
+    return storageErrorResponse("save", error);
   }
 }
 
@@ -158,13 +196,7 @@ export async function DELETE() {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    return NextResponse.json(
-      { error: "Failed to remove storage config" },
-      { status: 500 },
-    );
+    return storageErrorResponse("remove", error);
   }
 }
 
