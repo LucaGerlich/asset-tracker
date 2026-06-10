@@ -25,41 +25,50 @@ function validateMagicBytes(buffer: Buffer, ext: string): boolean {
   return signatures.some((sig) => sig.every((byte, i) => buffer[i] === byte));
 }
 
-const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"]);
+// Trusted MIME type derived from the (validated) extension. The browser-supplied
+// `file.type` is never trusted for storage or serving — a real image can be
+// uploaded with a spoofed `text/html` type to attempt content-type-confusion XSS.
+const EXT_TO_MIME: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+};
+
+const ALLOWED_EXTENSIONS = new Set(Object.keys(EXT_TO_MIME));
 
 function sanitizeFilename(name: string): string {
   return basename(name).replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
+// Fail-closed org scoping: when orgId is undefined the filter becomes
+// `organizationId: null` (only unscoped records), never an unfiltered query.
+// Mirrors scopeToOrganization / verifyEntityOrgOwnership in organization-context.
 async function verifyEntityOwnership(
   entityType: EntityType,
   entityId: string,
   orgId: string | undefined,
 ): Promise<boolean> {
+  const organizationId = orgId ?? null;
   switch (entityType) {
     case "accessory": {
       const record = await prisma.accessories.findFirst({
-        where: {
-          accessorieid: entityId,
-          ...(orgId ? { organizationId: orgId } : {}),
-        },
+        where: { accessorieid: entityId, organizationId },
         select: { accessorieid: true },
       });
       return !!record;
     }
     case "consumable": {
       const record = await prisma.consumable.findFirst({
-        where: {
-          consumableid: entityId,
-          ...(orgId ? { organizationId: orgId } : {}),
-        },
+        where: { consumableid: entityId, organizationId },
         select: { consumableid: true },
       });
       return !!record;
     }
     case "component": {
       const record = await prisma.component.findFirst({
-        where: { id: entityId, ...(orgId ? { organizationId: orgId } : {}) },
+        where: { id: entityId, organizationId },
         select: { id: true },
       });
       return !!record;
@@ -222,11 +231,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Derive a trusted MIME from the validated extension — never persist or
+    // serve the browser-supplied file.type (content-type-confusion XSS vector).
+    const trustedMime = EXT_TO_MIME[ext];
+
     const storage = await getOrgStorage(orgId);
-    await storage.upload(uniqueFilename, buffer, file.type);
+    await storage.upload(uniqueFilename, buffer, trustedMime);
 
     let thumbnailPath: string | null = null;
-    if (isImageMimeType(file.type)) {
+    if (isImageMimeType(trustedMime)) {
       try {
         const uuid = uniqueFilename.replace(/\.[^.]+$/, "");
         thumbnailPath = await generateThumbnails(storage, uuid, buffer);
@@ -239,7 +252,7 @@ export async function POST(req: NextRequest) {
     const baseData = {
       filename: uniqueFilename,
       originalName: safeName,
-      mimeType: file.type,
+      mimeType: trustedMime,
       size: file.size,
       path: filePath,
       thumbnailPath,

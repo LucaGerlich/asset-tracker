@@ -21,18 +21,17 @@ const VALID_ENTITY_TYPES = new Set<EntityType>([
   "component",
 ]);
 
+// orgId is required (non-optional) so the org filter can never be dropped at
+// the type level — every caller must establish a concrete org first.
 async function findAttachment(
   id: string,
   entityType: EntityType,
-  orgId: string | undefined,
+  orgId: string,
 ): Promise<AttachmentRecord | null> {
   switch (entityType) {
     case "accessory": {
       const att = await prisma.accessory_attachments.findFirst({
-        where: {
-          id,
-          ...(orgId ? { accessory: { organizationId: orgId } } : {}),
-        },
+        where: { id, accessory: { organizationId: orgId } },
       });
       return att
         ? {
@@ -46,10 +45,7 @@ async function findAttachment(
     }
     case "consumable": {
       const att = await prisma.consumable_attachments.findFirst({
-        where: {
-          id,
-          ...(orgId ? { consumable: { organizationId: orgId } } : {}),
-        },
+        where: { id, consumable: { organizationId: orgId } },
       });
       return att
         ? {
@@ -63,10 +59,7 @@ async function findAttachment(
     }
     case "component": {
       const att = await prisma.component_attachments.findFirst({
-        where: {
-          id,
-          ...(orgId ? { component: { organizationId: orgId } } : {}),
-        },
+        where: { id, component: { organizationId: orgId } },
       });
       return att
         ? {
@@ -103,18 +96,15 @@ export async function DELETE(
       );
     }
 
+    if (!orgId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const attachment = await findAttachment(id, entityType, orgId);
     if (!attachment) {
       return NextResponse.json(
         { error: "Attachment not found" },
         { status: 404 },
-      );
-    }
-
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 400 },
       );
     }
 
@@ -176,6 +166,10 @@ export async function PATCH(
         { error: "entityType is required in request body" },
         { status: 400 },
       );
+    }
+
+    if (!orgId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const attachment = await findAttachment(id, entityType, orgId);
