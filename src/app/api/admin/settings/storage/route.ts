@@ -21,13 +21,26 @@ function storageErrorResponse(action: string, error: unknown): NextResponse {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Encryption key missing/malformed — the most common deployment gap
+  // Encryption key absent at runtime — Vercel isn't injecting it (not set for
+  // this environment/scope, or the deployment predates the variable).
+  if (message.includes("ENCRYPTION_KEY is required")) {
+    return NextResponse.json(
+      {
+        error:
+          "ENCRYPTION_KEY is not present at runtime. Confirm it is set for THIS environment (Production/Preview) on the correct Vercel project, then trigger a NEW deployment — env var changes only apply to fresh builds.",
+        code: "encryption_key_absent",
+      },
+      { status: 503 },
+    );
+  }
+
+  // Encryption key present but the wrong format.
   if (message.includes("ENCRYPTION_KEY")) {
     return NextResponse.json(
       {
         error:
-          "Server encryption is not configured. Set the ENCRYPTION_KEY environment variable (64-character hex) and redeploy.",
-        code: "encryption_not_configured",
+          "ENCRYPTION_KEY is set but malformed — it must be exactly 64 hex characters (32 bytes), no quotes or whitespace. Re-generate with `openssl rand -hex 32`.",
+        code: "encryption_key_malformed",
       },
       { status: 503 },
     );
