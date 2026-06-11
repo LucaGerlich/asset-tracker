@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import { validateBody, componentCheckoutSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
@@ -155,6 +156,9 @@ export async function POST(req: Request) {
         minQuantity: minQty,
       }).catch(logCatchError("Integration notification failed"));
     }
+
+    // Stock changed — bust the cached component list so quantities are current.
+    await invalidateCacheByPrefix("components_all");
 
     return NextResponse.json(checkout, { status: 201 });
   } catch (e: unknown) {

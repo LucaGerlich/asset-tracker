@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import { validateBody, updateComponentSchema } from "@/lib/validation";
 import { logger } from "@/lib/logger";
 import {
@@ -128,6 +129,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       details: { name: updated.name },
     });
 
+    await invalidateCacheByPrefix("components_all");
+
     return NextResponse.json(updated, { status: 200 });
   } catch (e: any) {
     logger.error("PUT /api/components/[id] error", { error: e });
@@ -186,6 +189,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       entityId: id,
       details: { name: component.name },
     });
+
+    await invalidateCacheByPrefix("components_all");
 
     return NextResponse.json(
       { message: "Component deleted successfully" },

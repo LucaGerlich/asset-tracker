@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   validateBody,
   createComponentSchema,
@@ -172,6 +173,10 @@ export async function POST(req: Request) {
       componentName: created.name,
     }).catch(logCatchError("Integration notification failed"));
 
+    // Bust the cached component list (per-org suffixed keys) so the new
+    // component appears immediately instead of after the TTL.
+    await invalidateCacheByPrefix("components_all");
+
     return NextResponse.json(created, { status: 201 });
   } catch (e: any) {
     logger.error("POST /api/components error", { error: e });
@@ -274,6 +279,8 @@ export async function PUT(req: Request) {
       componentName: updated.name,
     }).catch(logCatchError("Integration notification failed"));
 
+    await invalidateCacheByPrefix("components_all");
+
     return NextResponse.json(updated, { status: 200 });
   } catch (e: any) {
     logger.error("PUT /api/components error", { error: e });
@@ -350,6 +357,8 @@ export async function DELETE(req: Request) {
     notifyIntegrations("component.deleted", {
       componentName: component.name,
     }).catch(logCatchError("Integration notification failed"));
+
+    await invalidateCacheByPrefix("components_all");
 
     return NextResponse.json(
       { message: "Component deleted successfully" },
