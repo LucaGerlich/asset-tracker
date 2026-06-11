@@ -5,13 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CreatableSelect } from "@/components/CreatableSelect";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -210,84 +204,104 @@ export default function ComponentCreateForm({
               <Label htmlFor="categoryId">
                 Category <span className="text-destructive">*</span>
               </Label>
-              <Select
+              <CreatableSelect
+                id="categoryId"
                 value={form.categoryId}
-                onValueChange={(value) =>
+                onChange={(value) =>
                   setForm((prev) => ({ ...prev, categoryId: value }))
                 }
+                options={categories.map((cat) => ({
+                  value: cat.id,
+                  label: cat.name,
+                }))}
+                placeholder="Select a category"
                 required
-              >
-                <SelectTrigger id="categoryId">
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                entityLabel="category"
+                createUrl="/api/componentCategory"
+                buildBody={(name) => ({ name })}
+                parseCreated={(data) => {
+                  const c = data as { id: string; name: string };
+                  return { value: c.id, label: c.name };
+                }}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="locationId">Location</Label>
-              <Select
+              <CreatableSelect
+                id="locationId"
                 value={form.locationId}
-                onValueChange={(value) =>
+                onChange={(value) =>
                   setForm((prev) => ({ ...prev, locationId: value }))
                 }
-              >
-                <SelectTrigger id="locationId">
-                  <SelectValue placeholder="Select a location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.locationid} value={loc.locationid}>
-                      {loc.locationname || "Unnamed"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={locations.map((loc) => ({
+                  value: loc.locationid,
+                  label: loc.locationname || "Unnamed",
+                }))}
+                placeholder="Select a location"
+                entityLabel="location"
+                createUrl="/api/location"
+                buildBody={(name) => ({ locationname: name })}
+                parseCreated={(data) => {
+                  const l = data as {
+                    locationid: string;
+                    locationname: string | null;
+                  };
+                  return {
+                    value: l.locationid,
+                    label: l.locationname || "Unnamed",
+                  };
+                }}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="manufacturerId">Manufacturer</Label>
-              <Select
+              <CreatableSelect
+                id="manufacturerId"
                 value={form.manufacturerId}
-                onValueChange={(value) =>
+                onChange={(value) =>
                   setForm((prev) => ({ ...prev, manufacturerId: value }))
                 }
-              >
-                <SelectTrigger id="manufacturerId">
-                  <SelectValue placeholder="Select a manufacturer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {manufacturers.map((m) => (
-                    <SelectItem key={m.manufacturerid} value={m.manufacturerid}>
-                      {m.manufacturername}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={manufacturers.map((m) => ({
+                  value: m.manufacturerid,
+                  label: m.manufacturername,
+                }))}
+                placeholder="Select a manufacturer"
+                entityLabel="manufacturer"
+                createUrl="/api/manufacturer"
+                buildBody={(name) => ({ manufacturername: name })}
+                parseCreated={(data) => {
+                  const m = data as {
+                    manufacturerid: string;
+                    manufacturername: string;
+                  };
+                  return { value: m.manufacturerid, label: m.manufacturername };
+                }}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="supplierId">Supplier</Label>
-              <Select
+              <CreatableSelect
+                id="supplierId"
                 value={form.supplierId}
-                onValueChange={(value) =>
+                onChange={(value) =>
                   setForm((prev) => ({ ...prev, supplierId: value }))
                 }
-              >
-                <SelectTrigger id="supplierId">
-                  <SelectValue placeholder="Select a supplier" />
-                </SelectTrigger>
-                <SelectContent>
-                  {suppliers.map((s) => (
-                    <SelectItem key={s.supplierid} value={s.supplierid}>
-                      {s.suppliername}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={suppliers.map((s) => ({
+                  value: s.supplierid,
+                  label: s.suppliername,
+                }))}
+                placeholder="Select a supplier"
+                entityLabel="supplier"
+                createUrl="/api/supplier"
+                buildBody={(name) => ({ suppliername: name })}
+                parseCreated={(data) => {
+                  const s = data as {
+                    supplierid: string;
+                    suppliername: string;
+                  };
+                  return { value: s.supplierid, label: s.suppliername };
+                }}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="totalQuantity">Total Quantity</Label>
