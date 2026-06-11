@@ -5,7 +5,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CreatableSelect } from "@/components/CreatableSelect";
+import SelectWithQuickCreate, {
+  type QuickCreateOption,
+} from "@/components/SelectWithQuickCreate";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -29,6 +31,27 @@ export default function ComponentCreateForm({
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [categoryOptions, setCategoryOptions] = useState<QuickCreateOption[]>(
+    () => categories.map((c) => ({ id: c.id, label: c.name })),
+  );
+  const [manufacturerOptions, setManufacturerOptions] = useState<
+    QuickCreateOption[]
+  >(() =>
+    manufacturers.map((m) => ({
+      id: m.manufacturerid,
+      label: m.manufacturername,
+    })),
+  );
+  const [supplierOptions, setSupplierOptions] = useState<QuickCreateOption[]>(
+    () => suppliers.map((s) => ({ id: s.supplierid, label: s.suppliername })),
+  );
+  const [locationOptions, setLocationOptions] = useState<QuickCreateOption[]>(
+    () =>
+      locations.map((l) => ({
+        id: l.locationid,
+        label: l.locationname || "Unnamed",
+      })),
+  );
   const [customFieldValues, setCustomFieldValues] = useState<
     Record<string, string | null>
   >({});
@@ -204,103 +227,78 @@ export default function ComponentCreateForm({
               <Label htmlFor="categoryId">
                 Category <span className="text-destructive">*</span>
               </Label>
-              <CreatableSelect
+              <SelectWithQuickCreate
                 id="categoryId"
                 value={form.categoryId}
-                onChange={(value) =>
+                onValueChange={(value) =>
                   setForm((prev) => ({ ...prev, categoryId: value }))
                 }
-                options={categories.map((cat) => ({
-                  value: cat.id,
-                  label: cat.name,
-                }))}
+                options={categoryOptions}
+                onItemCreated={(item) =>
+                  setCategoryOptions((prev) => [...prev, item])
+                }
                 placeholder="Select a category"
-                required
-                entityLabel="category"
-                createUrl="/api/componentCategory"
-                buildBody={(name) => ({ name })}
-                parseCreated={(data) => {
-                  const c = data as { id: string; name: string };
-                  return { value: c.id, label: c.name };
-                }}
+                apiEndpoint="/api/componentCategory"
+                nameField="name"
+                idField="id"
+                entityLabel="Category"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="locationId">Location</Label>
-              <CreatableSelect
+              <SelectWithQuickCreate
                 id="locationId"
                 value={form.locationId}
-                onChange={(value) =>
+                onValueChange={(value) =>
                   setForm((prev) => ({ ...prev, locationId: value }))
                 }
-                options={locations.map((loc) => ({
-                  value: loc.locationid,
-                  label: loc.locationname || "Unnamed",
-                }))}
+                options={locationOptions}
+                onItemCreated={(item) =>
+                  setLocationOptions((prev) => [...prev, item])
+                }
                 placeholder="Select a location"
-                entityLabel="location"
-                createUrl="/api/location"
-                buildBody={(name) => ({ locationname: name })}
-                parseCreated={(data) => {
-                  const l = data as {
-                    locationid: string;
-                    locationname: string | null;
-                  };
-                  return {
-                    value: l.locationid,
-                    label: l.locationname || "Unnamed",
-                  };
-                }}
+                apiEndpoint="/api/location"
+                nameField="locationname"
+                idField="locationid"
+                entityLabel="Location"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="manufacturerId">Manufacturer</Label>
-              <CreatableSelect
+              <SelectWithQuickCreate
                 id="manufacturerId"
                 value={form.manufacturerId}
-                onChange={(value) =>
+                onValueChange={(value) =>
                   setForm((prev) => ({ ...prev, manufacturerId: value }))
                 }
-                options={manufacturers.map((m) => ({
-                  value: m.manufacturerid,
-                  label: m.manufacturername,
-                }))}
+                options={manufacturerOptions}
+                onItemCreated={(item) =>
+                  setManufacturerOptions((prev) => [...prev, item])
+                }
                 placeholder="Select a manufacturer"
-                entityLabel="manufacturer"
-                createUrl="/api/manufacturer"
-                buildBody={(name) => ({ manufacturername: name })}
-                parseCreated={(data) => {
-                  const m = data as {
-                    manufacturerid: string;
-                    manufacturername: string;
-                  };
-                  return { value: m.manufacturerid, label: m.manufacturername };
-                }}
+                apiEndpoint="/api/manufacturer"
+                nameField="manufacturername"
+                idField="manufacturerid"
+                entityLabel="Manufacturer"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="supplierId">Supplier</Label>
-              <CreatableSelect
+              <SelectWithQuickCreate
                 id="supplierId"
                 value={form.supplierId}
-                onChange={(value) =>
+                onValueChange={(value) =>
                   setForm((prev) => ({ ...prev, supplierId: value }))
                 }
-                options={suppliers.map((s) => ({
-                  value: s.supplierid,
-                  label: s.suppliername,
-                }))}
+                options={supplierOptions}
+                onItemCreated={(item) =>
+                  setSupplierOptions((prev) => [...prev, item])
+                }
                 placeholder="Select a supplier"
-                entityLabel="supplier"
-                createUrl="/api/supplier"
-                buildBody={(name) => ({ suppliername: name })}
-                parseCreated={(data) => {
-                  const s = data as {
-                    supplierid: string;
-                    suppliername: string;
-                  };
-                  return { value: s.supplierid, label: s.suppliername };
-                }}
+                apiEndpoint="/api/supplier"
+                nameField="suppliername"
+                idField="supplierid"
+                entityLabel="Supplier"
               />
             </div>
             <div className="space-y-2">
