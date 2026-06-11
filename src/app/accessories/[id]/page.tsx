@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ImageOff } from "lucide-react";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +14,19 @@ import {
   getSuppliers,
   getEntityHistory,
 } from "@/lib/data";
+import prisma from "@/lib/prisma";
 import HistoryTimeline from "@/components/HistoryTimeline";
 import EntityAttachments from "@/components/EntityAttachments";
+import { LazyImage } from "@/components/LazyImage";
+import { StatTile, DetailCard, KV } from "@/components/DetailPrimitives";
+
+function asCurrency(value: number | null) {
+  if (value == null) return "-";
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+  }).format(value);
+}
 
 export const metadata = {
   title: "Asset Tracker - Accessory Details",
@@ -61,6 +73,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     models,
     suppliers,
     historyEntries,
+    primaryPhoto,
   ] = await Promise.all([
     getAccessoryCategories(),
     getStatus(),
@@ -69,6 +82,11 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     getModel(),
     getSuppliers(),
     getEntityHistory("accessory", params.id),
+    prisma.accessory_attachments.findFirst({
+      where: { accessoryId: params.id, mimeType: { startsWith: "image/" } },
+      orderBy: [{ isPrimary: "desc" }, { createdAt: "desc" }],
+      select: { filename: true, originalName: true },
+    }),
   ]);
 
   const categoryName =
@@ -124,102 +142,87 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         </div>
         <Separator className="my-4" />
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {/* Summary */}
-          <section className="border-default-200 col-span-1 rounded-lg border p-4">
-            <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
-              Summary
-            </h2>
-            <dl className="grid grid-cols-1 gap-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Category</dt>
-                <dd className="font-medium">{categoryName}</dd>
+        {/* Hero: photo + meta + key metrics */}
+        <div className="border-default-200 flex flex-col gap-5 rounded-xl border p-5 lg:flex-row">
+          <div className="bg-default-100 relative h-44 w-full shrink-0 overflow-hidden rounded-lg lg:w-60">
+            {primaryPhoto ? (
+              <LazyImage
+                src={`/api/attachments/file/${primaryPhoto.filename}?thumb=gallery`}
+                alt={primaryPhoto.originalName || accessory.accessoriename}
+                sizes="(min-width: 1024px) 240px, 100vw"
+              />
+            ) : (
+              <div className="text-foreground-300 flex h-full w-full items-center justify-center">
+                <ImageOff className="h-8 w-8" />
               </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Status</dt>
-                <dd className="font-medium">{statusName}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Location</dt>
-                <dd className="font-medium">{locationName}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Requestable</dt>
-                <dd>
-                  {accessory.requestable ? (
-                    <Badge variant="success">Yes</Badge>
-                  ) : (
-                    <Badge variant="muted">No</Badge>
-                  )}
-                </dd>
-              </div>
-            </dl>
-          </section>
+            )}
+          </div>
 
-          {/* Details */}
-          <section className="border-default-200 col-span-1 rounded-lg border p-4">
-            <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
-              Details
-            </h2>
-            <dl className="grid grid-cols-1 gap-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Manufacturer</dt>
-                <dd className="font-medium">{manufacturerName}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Model</dt>
-                <dd className="font-medium">{modelName}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Supplier</dt>
-                <dd className="font-medium">{supplierName}</dd>
-              </div>
-            </dl>
-          </section>
+          <div className="flex min-w-0 flex-1 flex-col justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <span className="text-foreground font-medium">
+                {categoryName}
+              </span>
+              <span className="text-foreground-300">·</span>
+              <span className="text-foreground-500">{locationName}</span>
+              {accessory.accessorietag ? (
+                <>
+                  <span className="text-foreground-300">·</span>
+                  <span className="text-foreground-500">
+                    Tag {accessory.accessorietag}
+                  </span>
+                </>
+              ) : null}
+            </div>
 
-          {/* Procurement */}
-          <section className="border-default-200 col-span-1 rounded-lg border p-4">
-            <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
-              Procurement
-            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatTile label="Status">{statusName}</StatTile>
+              <StatTile label="Value">
+                {asCurrency(accessory.purchaseprice)}
+              </StatTile>
+              <StatTile label="Requestable">
+                {accessory.requestable ? (
+                  <Badge variant="success">Yes</Badge>
+                ) : (
+                  <Badge variant="muted">No</Badge>
+                )}
+              </StatTile>
+            </div>
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <DetailCard title="Details">
             <dl className="grid grid-cols-1 gap-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Purchase Price</dt>
-                <dd className="font-medium">
-                  {accessory.purchaseprice != null
-                    ? new Intl.NumberFormat(undefined, {
-                        style: "currency",
-                        currency: "USD",
-                      }).format(accessory.purchaseprice)
-                    : "-"}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Purchase Date</dt>
-                <dd className="font-medium">
-                  {accessory.purchasedate
-                    ? new Date(accessory.purchasedate).toLocaleDateString()
-                    : "-"}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Created</dt>
-                <dd className="font-medium">
-                  {accessory.creation_date
-                    ? new Date(accessory.creation_date).toLocaleString()
-                    : "-"}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Updated</dt>
-                <dd className="font-medium">
-                  {accessory.change_date
-                    ? new Date(accessory.change_date).toLocaleString()
-                    : "-"}
-                </dd>
-              </div>
+              <KV label="Manufacturer">{manufacturerName}</KV>
+              <KV label="Model">{modelName}</KV>
+              <KV label="Supplier">{supplierName}</KV>
             </dl>
-          </section>
+          </DetailCard>
+
+          <DetailCard title="Procurement">
+            <dl className="grid grid-cols-1 gap-2 text-sm">
+              <KV label="Purchase Price">
+                {asCurrency(accessory.purchaseprice)}
+              </KV>
+              <KV label="Purchase Date">
+                {accessory.purchasedate
+                  ? new Date(accessory.purchasedate).toLocaleDateString()
+                  : "-"}
+              </KV>
+              <KV label="Created">
+                {accessory.creation_date
+                  ? new Date(accessory.creation_date).toLocaleDateString()
+                  : "-"}
+              </KV>
+              <KV label="Updated">
+                {accessory.change_date
+                  ? new Date(accessory.change_date).toLocaleDateString()
+                  : "-"}
+              </KV>
+            </dl>
+          </DetailCard>
         </div>
 
         <Separator className="my-6" />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ImageOff } from "lucide-react";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -14,6 +15,26 @@ import { getComponentById, getEntityHistory } from "@/lib/data";
 import HistoryTimeline from "@/components/HistoryTimeline";
 import EntityAttachments from "@/components/EntityAttachments";
 import ComponentDetailClient from "./ui/ComponentDetailClient";
+import { LazyImage } from "@/components/LazyImage";
+import { StatTile, DetailCard, KV } from "@/components/DetailPrimitives";
+
+function asCurrency(value: unknown) {
+  if (value == null) return "-";
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+  }).format(Number(value));
+}
+
+const STOCK_BADGE: Record<string, { label: string; className: string }> = {
+  out_of_stock: { label: "Out of Stock", className: "bg-red-100 text-red-700" },
+  low_stock: { label: "Low Stock", className: "bg-yellow-100 text-yellow-700" },
+  in_stock: { label: "In Stock", className: "bg-green-100 text-green-700" },
+  no_tracking: {
+    label: "Not Tracked",
+    className: "bg-default-100 text-default-700",
+  },
+};
 
 export const metadata = {
   title: "Asset Tracker - Component Details",
@@ -21,9 +42,14 @@ export const metadata = {
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const [component, historyEntries] = await Promise.all([
+  const [component, historyEntries, primaryPhoto] = await Promise.all([
     getComponentById(params.id),
     getEntityHistory("component", params.id),
+    prisma.component_attachments.findFirst({
+      where: { componentId: params.id, mimeType: { startsWith: "image/" } },
+      orderBy: [{ isPrimary: "desc" }, { createdAt: "desc" }],
+      select: { filename: true, originalName: true },
+    }),
   ]);
 
   const assets = await prisma.asset.findMany({
@@ -87,88 +113,102 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         </div>
         <Separator className="my-4" />
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <section className="border-default-200 col-span-1 rounded-lg border p-4">
-            <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
-              Details
-            </h2>
-            <dl className="grid grid-cols-1 gap-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Category</dt>
-                <dd className="font-medium">
-                  {component.category?.name ?? "-"}
-                </dd>
+        {/* Hero: photo + meta + key metrics */}
+        <div className="border-default-200 flex flex-col gap-5 rounded-xl border p-5 lg:flex-row">
+          <div className="bg-default-100 relative h-44 w-full shrink-0 overflow-hidden rounded-lg lg:w-60">
+            {primaryPhoto ? (
+              <LazyImage
+                src={`/api/attachments/file/${primaryPhoto.filename}?thumb=gallery`}
+                alt={primaryPhoto.originalName || component.name}
+                sizes="(min-width: 1024px) 240px, 100vw"
+              />
+            ) : (
+              <div className="text-foreground-300 flex h-full w-full items-center justify-center">
+                <ImageOff className="h-8 w-8" />
               </div>
-              {component.serialNumber && (
-                <div className="flex justify-between">
-                  <dt className="text-foreground-500">Serial Number</dt>
-                  <dd className="font-medium">{component.serialNumber}</dd>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Manufacturer</dt>
-                <dd className="font-medium">
-                  {component.manufacturer?.manufacturername ?? "-"}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Supplier</dt>
-                <dd className="font-medium">
-                  {component.supplier?.suppliername ?? "-"}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Location</dt>
-                <dd className="font-medium">
-                  {component.location?.locationname ?? "-"}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Purchase Price</dt>
-                <dd className="font-medium">
-                  {component.purchasePrice != null
-                    ? `$${Number(component.purchasePrice).toFixed(2)}`
-                    : "-"}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Purchase Date</dt>
-                <dd className="font-medium">
-                  {component.purchaseDate
-                    ? new Date(component.purchaseDate).toLocaleDateString()
-                    : "-"}
-                </dd>
-              </div>
-            </dl>
-          </section>
+            )}
+          </div>
 
-          <section className="border-default-200 col-span-1 rounded-lg border p-4">
-            <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
-              Stock
-            </h2>
+          <div className="flex min-w-0 flex-1 flex-col justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <span className="text-foreground font-medium">
+                {component.category?.name ?? "Uncategorized"}
+              </span>
+              {component.manufacturer ? (
+                <>
+                  <span className="text-foreground-300">·</span>
+                  <span className="text-foreground-500">
+                    {component.manufacturer.manufacturername}
+                  </span>
+                </>
+              ) : null}
+              {component.location ? (
+                <>
+                  <span className="text-foreground-300">·</span>
+                  <span className="text-foreground-500">
+                    {component.location.locationname}
+                  </span>
+                </>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatTile label="Stock">
+                <span
+                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STOCK_BADGE[stockStatus].className}`}
+                >
+                  {STOCK_BADGE[stockStatus].label}
+                </span>
+              </StatTile>
+              <StatTile label="Remaining">
+                {component.remainingQuantity} / {component.totalQuantity}
+              </StatTile>
+              <StatTile label="Min Threshold">{component.minQuantity}</StatTile>
+              <StatTile label="Value">
+                {asCurrency(component.purchasePrice)}
+              </StatTile>
+            </div>
+          </div>
+        </div>
+
+        {/* Details + stock + checkout actions */}
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <DetailCard title="Details">
             <dl className="grid grid-cols-1 gap-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Remaining Quantity</dt>
-                <dd className="text-lg font-medium">
-                  {component.remainingQuantity}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Total Quantity</dt>
-                <dd className="font-medium">{component.totalQuantity}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Minimum Threshold</dt>
-                <dd className="font-medium">{component.minQuantity}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-foreground-500">Checked Out</dt>
-                <dd className="font-medium">
-                  {component.totalQuantity - component.remainingQuantity}
-                </dd>
-              </div>
+              <KV label="Category">{component.category?.name ?? "-"}</KV>
+              {component.serialNumber && (
+                <KV label="Serial Number">{component.serialNumber}</KV>
+              )}
+              <KV label="Manufacturer">
+                {component.manufacturer?.manufacturername ?? "-"}
+              </KV>
+              <KV label="Supplier">
+                {component.supplier?.suppliername ?? "-"}
+              </KV>
+              <KV label="Location">
+                {component.location?.locationname ?? "-"}
+              </KV>
+              <KV label="Purchase Price">
+                {asCurrency(component.purchasePrice)}
+              </KV>
+              <KV label="Purchase Date">
+                {component.purchaseDate
+                  ? new Date(component.purchaseDate).toLocaleDateString()
+                  : "-"}
+              </KV>
             </dl>
-          </section>
+          </DetailCard>
+
+          <DetailCard title="Stock">
+            <dl className="grid grid-cols-1 gap-2 text-sm">
+              <KV label="Remaining">{component.remainingQuantity}</KV>
+              <KV label="Total">{component.totalQuantity}</KV>
+              <KV label="Minimum Threshold">{component.minQuantity}</KV>
+              <KV label="Checked Out">
+                {component.totalQuantity - component.remainingQuantity}
+              </KV>
+            </dl>
+          </DetailCard>
 
           <section className="col-span-1">
             <ComponentDetailClient
