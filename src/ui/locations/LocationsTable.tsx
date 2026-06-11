@@ -220,9 +220,12 @@ export default function LocationsTable({ items }) {
                   <MapPin className="text-muted-foreground/50 h-3.5 w-3.5" />
                 </span>
               )}
-              <span className={depth === 0 && hasChildren ? "font-medium" : ""}>
+              <Link
+                href={`/locations/${item.locationid}/edit`}
+                className={`hover:text-primary hover:underline ${depth === 0 && hasChildren ? "font-medium" : ""}`}
+              >
                 {item.locationname ?? "(unnamed)"}
-              </span>
+              </Link>
               {hasChildren && (
                 <span className="text-muted-foreground text-xs">
                   ({children.length})

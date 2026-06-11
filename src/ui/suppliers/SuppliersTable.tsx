@@ -152,7 +152,14 @@ export default function SuppliersTable({ items }) {
   const renderCell = (item, columnKey) => {
     switch (columnKey) {
       case "suppliername":
-        return item.suppliername;
+        return (
+          <Link
+            href={`/suppliers/${item.supplierid}/edit`}
+            className="text-primary font-medium hover:underline"
+          >
+            {item.suppliername}
+          </Link>
+        );
       case "contact":
         const fullName =
           `${item.firstname ?? ""} ${item.lastname ?? ""}`.trim();

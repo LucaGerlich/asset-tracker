@@ -283,7 +283,14 @@ export default function AccessoriesTable({
   const renderCell = (item: Record<string, unknown>, columnKey: string) => {
     switch (columnKey) {
       case "accessoriename":
-        return String(item.accessoriename ?? "-");
+        return (
+          <Link
+            href={`/accessories/${item.accessorieid}`}
+            className="text-primary font-medium hover:underline"
+          >
+            {String(item.accessoriename ?? "-")}
+          </Link>
+        );
       case "accessorietag":
         return String(item.accessorietag ?? "-");
       case "manufacturer":

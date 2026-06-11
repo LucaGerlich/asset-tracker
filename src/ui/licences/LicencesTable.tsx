@@ -286,7 +286,14 @@ export default function LicencesTable({
   const renderCell = (item, columnKey) => {
     switch (columnKey) {
       case "licencekey":
-        return item.licencekey ?? "-";
+        return (
+          <Link
+            href={`/licences/${item.licenceid}`}
+            className="text-primary font-medium hover:underline"
+          >
+            {item.licencekey ?? "-"}
+          </Link>
+        );
       case "licensedtoemail":
         return item.licensedtoemail ?? "-";
       case "category":

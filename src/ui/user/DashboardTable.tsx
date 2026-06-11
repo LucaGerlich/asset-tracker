@@ -117,9 +117,23 @@ function DashboardTable({ data, columns: propColumns }) {
 
       switch (columnKey) {
         case "firstName":
-          return <span>{String(user.firstname ?? "")}</span>;
+          return (
+            <Link
+              href={`/user/${user.userid}`}
+              className="text-primary font-medium hover:underline"
+            >
+              {String(user.firstname ?? "")}
+            </Link>
+          );
         case "lastName":
-          return <span>{String(user.lastname ?? "")}</span>;
+          return (
+            <Link
+              href={`/user/${user.userid}`}
+              className="text-primary font-medium hover:underline"
+            >
+              {String(user.lastname ?? "")}
+            </Link>
+          );
         case "email":
           return (
             <div className="flex flex-col">

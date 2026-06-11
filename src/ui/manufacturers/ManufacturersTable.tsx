@@ -133,7 +133,14 @@ export default function ManufacturersTable({ items }) {
   const renderCell = (item, columnKey) => {
     switch (columnKey) {
       case "manufacturername":
-        return item.manufacturername;
+        return (
+          <Link
+            href={`/manufacturers/${item.manufacturerid}/edit`}
+            className="text-primary font-medium hover:underline"
+          >
+            {item.manufacturername}
+          </Link>
+        );
       case "creation_date":
         return formatDate(item.creation_date);
       case "actions":
