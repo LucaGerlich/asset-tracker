@@ -143,7 +143,14 @@ function DashboardTable({ data, columns: propColumns }) {
             </div>
           );
         case "userName":
-          return <span>{String(user.username ?? "")}</span>;
+          return (
+            <Link
+              href={`/user/${user.userid}`}
+              className="text-primary font-medium hover:underline"
+            >
+              {String(user.username ?? "")}
+            </Link>
+          );
         case "role":
           return <span className="capitalize">{resolveRole(user)}</span>;
         case "actions":
