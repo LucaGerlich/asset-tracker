@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import { invalidateCache } from "@/lib/cache";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -200,8 +200,8 @@ export async function POST(req: NextRequest) {
       } as Prisma.assetUncheckedCreateInput,
     });
 
-    invalidateCache("assets_all").catch(() => {});
-    invalidateCache("asset_count").catch(() => {});
+    invalidateCacheByPrefix("assets_all").catch(() => {});
+    invalidateCacheByPrefix("asset_count").catch(() => {});
     createAuditLog({
       userId: orgCtx?.userId ?? null,
       action: AUDIT_ACTIONS.CREATE,
@@ -281,7 +281,7 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    invalidateCache("assets_all").catch(() => {});
+    invalidateCacheByPrefix("assets_all").catch(() => {});
     createAuditLogWithDiff({
       userId: orgCtx?.userId ?? null,
       action: AUDIT_ACTIONS.UPDATE,

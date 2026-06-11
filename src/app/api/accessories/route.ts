@@ -3,7 +3,7 @@ import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import { invalidateCache } from "@/lib/cache";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import { createAccessorySchema } from "@/lib/validation";
 import {
   getOrganizationContext,
@@ -196,8 +196,8 @@ export async function POST(req: NextRequest) {
       } as Prisma.accessoriesUncheckedCreateInput,
     });
 
-    invalidateCache("accessories_all").catch(() => {});
-    invalidateCache("accessory_count").catch(() => {});
+    invalidateCacheByPrefix("accessories_all").catch(() => {});
+    invalidateCacheByPrefix("accessory_count").catch(() => {});
     createAuditLog({
       userId: orgCtx?.userId ?? null,
       action: AUDIT_ACTIONS.CREATE,
@@ -289,7 +289,7 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    invalidateCache("accessories_all").catch(() => {});
+    invalidateCacheByPrefix("accessories_all").catch(() => {});
     createAuditLogWithDiff({
       userId: orgCtx?.userId ?? null,
       action: AUDIT_ACTIONS.UPDATE,

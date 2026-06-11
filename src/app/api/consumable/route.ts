@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
-import { invalidateCache } from "@/lib/cache";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   createConsumableSchema,
   updateConsumableSchema,
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
       details: { consumablename },
     });
 
-    invalidateCache("consumables_all").catch(() => {});
+    invalidateCacheByPrefix("consumables_all").catch(() => {});
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
     logger.error("POST /api/consumable error", { error: e });
@@ -260,7 +260,7 @@ export async function PUT(req: NextRequest) {
       details: { consumablename: updated.consumablename },
     });
 
-    invalidateCache("consumables_all").catch(() => {});
+    invalidateCacheByPrefix("consumables_all").catch(() => {});
     return NextResponse.json(updated, { status: 200 });
   } catch (e) {
     logger.error("PUT /api/consumable error", { error: e });
