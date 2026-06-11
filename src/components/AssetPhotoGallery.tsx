@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Star, X } from "lucide-react";
+import { LazyImage } from "@/components/LazyImage";
 
 interface GalleryImage {
   id: string;
@@ -71,14 +72,10 @@ export default function AssetPhotoGallery({
             className="border-default-200 hover:border-primary group bg-muted relative aspect-square h-auto cursor-pointer overflow-hidden rounded-lg border p-0 transition-colors"
             onClick={() => openLightbox(index)}
           >
-            <Image
+            <LazyImage
               src={`${img.path}?thumb=gallery`}
               alt={img.originalName}
-              width={200}
-              height={200}
-              className="h-full w-full object-cover"
-              loading="lazy"
-              unoptimized
+              sizes="(min-width: 1024px) 200px, 50vw"
             />
             {img.isPrimary && (
               <div className="absolute top-1 left-1 rounded-full bg-yellow-500 p-0.5 text-white">

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Wrench, ImageOff } from "lucide-react";
+import { LazyImage } from "@/components/LazyImage";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import HistoryTimeline from "@/components/HistoryTimeline";
@@ -352,12 +352,10 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         <div className="border-default-200 flex flex-col gap-5 rounded-xl border p-5 lg:flex-row">
           <div className="bg-default-100 relative h-44 w-full shrink-0 overflow-hidden rounded-lg lg:w-60">
             {primaryPhoto ? (
-              <Image
+              <LazyImage
                 src={`/api/asset/attachments/file/${primaryPhoto.filename}?thumb=gallery`}
                 alt={primaryPhoto.originalName || asset.assetname}
-                fill
-                className="object-cover"
-                unoptimized
+                sizes="(min-width: 1024px) 240px, 100vw"
               />
             ) : (
               <div className="text-foreground-300 flex h-full w-full items-center justify-center">
