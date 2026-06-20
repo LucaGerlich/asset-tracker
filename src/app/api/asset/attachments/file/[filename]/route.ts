@@ -34,11 +34,11 @@ export async function GET(
     const thumb = searchParams.get("thumb") as ThumbVariant | null;
 
     let key = attachment.filename;
-    if (
+    const isThumb =
       thumb &&
       (thumb === "gallery" || thumb === "list") &&
-      attachment.thumbnailPath
-    ) {
+      attachment.thumbnailPath;
+    if (isThumb) {
       const uuid = attachment.filename.replace(/\.[^.]+$/, "");
       key = thumbKey(uuid, thumb);
     }
@@ -50,17 +50,28 @@ export async function GET(
     }
 
     // Local storage: stream the file
-    const { buffer, contentType } = await storage.download(key);
+    const { buffer } = await storage.download(key);
 
-    // Force download for non-image types (defense-in-depth against XSS)
-    const isImage = /^image\/(png|jpe?g|gif|webp)$/.test(contentType);
-    const disposition = isImage ? "inline" : "attachment";
+    // Derive the served Content-Type from trusted DB metadata, never the bytes
+    // or headers the uploader controlled. Thumbnails are always WebP. Only a
+    // strict image allowlist is served inline; everything else downloads.
+    const safeImages = new Set([
+      "image/png",
+      "image/jpeg",
+      "image/gif",
+      "image/webp",
+    ]);
+    const storedMime = isThumb ? "image/webp" : attachment.mimeType;
+    const isSafeImage = safeImages.has(storedMime);
+    const contentType = isSafeImage ? storedMime : "application/octet-stream";
+    const disposition = isSafeImage ? "inline" : "attachment";
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": contentType,
         "Content-Disposition": `${disposition}; filename="${encodeURIComponent(attachment.originalName || key)}"`,
         "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
         "Cache-Control": "private, max-age=86400",
         "Content-Length": buffer.length.toString(),
       },
