@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
-import { requireNotDemoMode, requireSuperAdmin } from "@/lib/api-auth";
+import {
+  requireNotDemoMode,
+  requireSuperAdmin,
+  requirePlanFeature,
+} from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 
 export async function GET() {
@@ -38,7 +42,8 @@ export async function PUT(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireSuperAdmin();
+    const user = await requireSuperAdmin();
+    await requirePlanFeature(user, "ldap");
 
     const body = await req.json();
     const { settings } = body;
