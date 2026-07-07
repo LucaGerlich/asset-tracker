@@ -5,35 +5,19 @@ import {
 } from "../../../../tests/setup/test-helpers";
 
 vi.mock("@/lib/auth", () => ({
-  auth: vi.fn(),
+  auth: { api: { getSession: vi.fn() } },
 }));
 
-vi.mock("@/lib/prisma", () => ({
-  default: {
-    role: {
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      count: vi.fn(),
-    },
-    user: {
-      findUnique: vi.fn(),
-    },
-  },
-}));
+vi.mock("@/lib/prisma");
 
-vi.mock("@/lib/api-auth", () => ({
-  requireNotDemoMode: vi.fn().mockReturnValue(null),
-}));
+vi.mock("@/lib/api-auth");
 
 vi.mock("@/lib/audit-log", () => ({
   createAuditLog: vi.fn(),
   AUDIT_ACTIONS: { ROLE_CREATE: "role.create" },
 }));
 
-vi.mock("@/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-}));
+vi.mock("@/lib/logger");
 
 import { GET, POST } from "@/app/api/roles/route";
 import { auth } from "@/lib/auth";
@@ -45,7 +29,7 @@ const mockPrisma = vi.mocked(prisma);
 const adminSession = {
   user: {
     id: "admin-uuid-001",
-    isAdmin: true,
+    isadmin: true,
     organizationId: "org-uuid-001",
   },
 };
@@ -53,14 +37,14 @@ const adminSession = {
 const regularSession = {
   user: {
     id: "user-uuid-001",
-    isAdmin: false,
+    isadmin: false,
     organizationId: "org-uuid-001",
   },
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAuth.mockResolvedValue(adminSession as any);
+  mockAuth.api.getSession.mockResolvedValue(adminSession as any);
   mockPrisma.user.findUnique.mockResolvedValue({
     organizationId: "org-uuid-001",
   } as any);
@@ -84,7 +68,7 @@ describe("GET /api/roles", () => {
   });
 
   it("returns 403 for non-admin users", async () => {
-    mockAuth.mockResolvedValue(regularSession as any);
+    mockAuth.api.getSession.mockResolvedValue(regularSession as any);
 
     const req = createMockRequest("/api/roles");
     const res = await GET(req);
@@ -92,7 +76,7 @@ describe("GET /api/roles", () => {
   });
 
   it("returns 403 when not authenticated", async () => {
-    mockAuth.mockResolvedValue(null as any);
+    mockAuth.api.getSession.mockResolvedValue(null as any);
 
     const req = createMockRequest("/api/roles");
     const res = await GET(req);
@@ -160,7 +144,7 @@ describe("POST /api/roles", () => {
   });
 
   it("returns 403 for non-admin users", async () => {
-    mockAuth.mockResolvedValue(regularSession as any);
+    mockAuth.api.getSession.mockResolvedValue(regularSession as any);
 
     const req = createMockRequest("/api/roles", {
       method: "POST",

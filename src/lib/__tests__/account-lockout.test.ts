@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+// Integration tests: exercise the real Postgres-backed cache/lockout tables.
+// Skipped when no DATABASE_URL is configured (they run in CI against a test DB).
+const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
 
 vi.mock("@/lib/logger", () => ({
   logger: {
@@ -25,7 +28,7 @@ import {
   LOCKOUT_CONFIG,
 } from "@/lib/account-lockout";
 
-describe("account-lockout", () => {
+describeDb("account-lockout", () => {
   beforeEach(() => {
     recordSuccessfulLogin("test-user");
   });

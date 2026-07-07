@@ -5,26 +5,9 @@ import {
 } from "../../../../tests/setup/test-helpers";
 
 // Mock all dependencies BEFORE importing the route
-vi.mock("@/lib/prisma", () => ({
-  default: {
-    kit: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      count: vi.fn(),
-    },
-    kitItem: { createMany: vi.fn(), deleteMany: vi.fn() },
-    $transaction: vi.fn(),
-  },
-}));
+vi.mock("@/lib/prisma");
 
-vi.mock("@/lib/api-auth", () => ({
-  requireApiAuth: vi.fn(),
-  requirePermission: vi.fn(),
-  requireNotDemoMode: vi.fn().mockReturnValue(null),
-}));
+vi.mock("@/lib/api-auth");
 
 vi.mock("@/lib/organization-context", () => ({
   getOrganizationContext: vi.fn().mockResolvedValue({
@@ -48,9 +31,7 @@ vi.mock("@/lib/audit-log", () => ({
   AUDIT_ENTITIES: { KIT: "kit" },
 }));
 
-vi.mock("@/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-}));
+vi.mock("@/lib/logger");
 
 vi.mock("@/lib/pagination", () => ({
   parsePaginationParams: vi
@@ -83,7 +64,7 @@ const mockKit = {
       id: "item-1",
       kitId: "kit-uuid-001",
       entityType: "asset_category",
-      entityId: "cat-1",
+      entityId: "550e8400-e29b-41d4-a716-446655440000",
       quantity: 1,
       isRequired: true,
       notes: null,
@@ -149,7 +130,7 @@ describe("POST /api/kits", () => {
         items: [
           {
             entityType: "asset_category",
-            entityId: "cat-1",
+            entityId: "550e8400-e29b-41d4-a716-446655440000",
             quantity: 1,
             isRequired: true,
           },
@@ -175,6 +156,7 @@ describe("PUT /api/kits", () => {
       cb(mockPrisma),
     );
     const updatedKit = { ...mockKit, name: "Updated Kit" };
+    mockPrisma.kit.findFirst.mockResolvedValue(mockKit as any);
     mockPrisma.kit.update.mockResolvedValue(updatedKit as any);
     mockPrisma.kit.findUnique.mockResolvedValue(updatedKit as any);
 
@@ -210,7 +192,9 @@ describe("PUT /api/kits", () => {
 // ---------------------------------------------------------------------------
 describe("DELETE /api/kits", () => {
   it("deletes a kit and returns 200", async () => {
-    mockPrisma.kit.findUnique.mockResolvedValue({ name: "Developer Kit" } as any);
+    mockPrisma.kit.findFirst.mockResolvedValue({
+      name: "Developer Kit",
+    } as any);
     mockPrisma.kit.delete.mockResolvedValue(mockKit as any);
 
     const req = createMockRequest("/api/kits", {
@@ -228,7 +212,7 @@ describe("DELETE /api/kits", () => {
   });
 
   it("returns 404 when kit not found", async () => {
-    mockPrisma.kit.findUnique.mockResolvedValue(null);
+    mockPrisma.kit.findFirst.mockResolvedValue(null);
 
     const req = createMockRequest("/api/kits", {
       method: "DELETE",

@@ -8,7 +8,13 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-const mockFetch = vi.fn();
+// The SSRF guard does real DNS resolution; stub it valid so tests are
+// deterministic and don't depend on the webhook hosts resolving.
+vi.mock("@/lib/url-validation", () => ({
+  validateOutboundUrl: vi.fn().mockResolvedValue({ valid: true }),
+}));
+
+const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
 vi.stubGlobal("fetch", mockFetch);
 
 import prisma from "@/lib/prisma";

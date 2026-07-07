@@ -4,23 +4,13 @@ import {
   parseResponse,
 } from "../../../../tests/setup/test-helpers";
 
-vi.mock("@/lib/prisma", () => ({
-  default: {
-    user: {
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      count: vi.fn(),
-    },
-    system_settings: { findUnique: vi.fn() },
-  },
-}));
+vi.mock("@/lib/prisma");
 
 vi.mock("@/lib/scim", () => ({
   authenticateScim: vi.fn().mockResolvedValue(null),
-  scimHeaders: vi.fn().mockReturnValue({ "Content-Type": "application/scim+json" }),
+  scimHeaders: vi
+    .fn()
+    .mockReturnValue({ "Content-Type": "application/scim+json" }),
   scimError: vi.fn((detail: string, status: number) => ({
     schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
     detail,
@@ -42,18 +32,18 @@ vi.mock("@/lib/scim", () => ({
       location: `${baseUrl}/api/scim/v2/Users/${user.userid}`,
     },
   })),
-  scimListResponse: vi.fn((resources: any[], total: number, startIndex: number) => ({
-    schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-    totalResults: total,
-    itemsPerPage: resources.length,
-    startIndex,
-    Resources: resources,
-  })),
+  scimListResponse: vi.fn(
+    (resources: any[], total: number, startIndex: number) => ({
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+      totalResults: total,
+      itemsPerPage: resources.length,
+      startIndex,
+      Resources: resources,
+    }),
+  ),
 }));
 
-vi.mock("@/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-}));
+vi.mock("@/lib/logger");
 vi.mock("@/lib/audit-log", () => ({
   createAuditLog: vi.fn().mockResolvedValue(undefined),
   AUDIT_ACTIONS: { CREATE: "create", UPDATE: "update", DELETE: "delete" },
@@ -93,7 +83,7 @@ const mockUser = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAuth.mockResolvedValue(null);
+  mockAuth.mockResolvedValue({ organizationId: "org-uuid-001" } as any);
 });
 
 // ---------------------------------------------------------------------------
@@ -199,7 +189,7 @@ describe("POST /api/scim/v2/Users", () => {
 // ---------------------------------------------------------------------------
 describe("GET /api/scim/v2/Users/:id", () => {
   it("returns a single user", async () => {
-    mockPrisma.user.findUnique.mockResolvedValue(mockUser as any);
+    mockPrisma.user.findFirst.mockResolvedValue(mockUser as any);
 
     const req = createMockRequest(
       "http://localhost:3000/api/scim/v2/Users/user-001",
@@ -215,7 +205,7 @@ describe("GET /api/scim/v2/Users/:id", () => {
   });
 
   it("returns 404 when user not found", async () => {
-    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockPrisma.user.findFirst.mockResolvedValue(null);
 
     const req = createMockRequest(
       "http://localhost:3000/api/scim/v2/Users/nonexistent",
@@ -240,7 +230,7 @@ describe("PUT /api/scim/v2/Users/:id", () => {
       firstname: "Jane",
       lastname: "Smith",
     };
-    mockPrisma.user.findUnique.mockResolvedValue(mockUser as any);
+    mockPrisma.user.findFirst.mockResolvedValue(mockUser as any);
     mockPrisma.user.update.mockResolvedValue(updatedUser as any);
 
     const req = createMockRequest(
@@ -274,7 +264,7 @@ describe("PUT /api/scim/v2/Users/:id", () => {
 describe("PATCH /api/scim/v2/Users/:id", () => {
   it("applies Operations array for partial update", async () => {
     const patchedUser = { ...mockUser, isActive: false };
-    mockPrisma.user.findUnique.mockResolvedValue(mockUser as any);
+    mockPrisma.user.findFirst.mockResolvedValue(mockUser as any);
     mockPrisma.user.update.mockResolvedValue(patchedUser as any);
 
     const req = createMockRequest(
@@ -307,8 +297,11 @@ describe("PATCH /api/scim/v2/Users/:id", () => {
 // ---------------------------------------------------------------------------
 describe("DELETE /api/scim/v2/Users/:id", () => {
   it("soft-deletes user and returns 204", async () => {
-    mockPrisma.user.findUnique.mockResolvedValue(mockUser as any);
-    mockPrisma.user.update.mockResolvedValue({ ...mockUser, isActive: false } as any);
+    mockPrisma.user.findFirst.mockResolvedValue(mockUser as any);
+    mockPrisma.user.update.mockResolvedValue({
+      ...mockUser,
+      isActive: false,
+    } as any);
 
     const req = createMockRequest(
       "http://localhost:3000/api/scim/v2/Users/user-001",

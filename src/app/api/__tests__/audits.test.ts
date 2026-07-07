@@ -5,25 +5,9 @@ import {
 } from "../../../../tests/setup/test-helpers";
 
 // Mock all dependencies BEFORE importing the route
-vi.mock("@/lib/prisma", () => ({
-  default: {
-    auditCampaign: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      delete: vi.fn(),
-      count: vi.fn(),
-    },
-    auditCampaignAuditor: { createMany: vi.fn() },
-    $transaction: vi.fn(),
-  },
-}));
+vi.mock("@/lib/prisma");
 
-vi.mock("@/lib/api-auth", () => ({
-  requireApiAuth: vi.fn(),
-  requirePermission: vi.fn(),
-  requireNotDemoMode: vi.fn().mockReturnValue(null),
-}));
+vi.mock("@/lib/api-auth");
 
 vi.mock("@/lib/organization-context", () => ({
   getOrganizationContext: vi.fn().mockResolvedValue({
@@ -47,9 +31,7 @@ vi.mock("@/lib/audit-log", () => ({
   AUDIT_ENTITIES: { AUDIT_CAMPAIGN: "audit_campaign" },
 }));
 
-vi.mock("@/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-}));
+vi.mock("@/lib/logger");
 
 vi.mock("@/lib/pagination", () => ({
   parsePaginationParams: vi
@@ -136,7 +118,10 @@ describe("POST /api/audits", () => {
         name: "Q1 2026 Audit",
         description: "Quarterly audit",
         scopeType: "all",
-        auditorIds: ["auditor-1", "auditor-2"],
+        auditorIds: [
+          "550e8400-e29b-41d4-a716-446655440001",
+          "550e8400-e29b-41d4-a716-446655440002",
+        ],
       },
     });
     const res = await POST(req);
@@ -147,8 +132,14 @@ describe("POST /api/audits", () => {
     expect(mockPrisma.auditCampaign.create).toHaveBeenCalled();
     expect(mockPrisma.auditCampaignAuditor.createMany).toHaveBeenCalledWith({
       data: [
-        { campaignId: "campaign-uuid-001", userId: "auditor-1" },
-        { campaignId: "campaign-uuid-001", userId: "auditor-2" },
+        {
+          campaignId: "campaign-uuid-001",
+          userId: "550e8400-e29b-41d4-a716-446655440001",
+        },
+        {
+          campaignId: "campaign-uuid-001",
+          userId: "550e8400-e29b-41d4-a716-446655440002",
+        },
       ],
     });
   });
@@ -172,10 +163,9 @@ describe("POST /api/audits", () => {
       campaignId: "campaign-uuid-001",
       campaignName: "Q1 2026 Audit",
     });
-    expect(notifyIntegrations).toHaveBeenCalledWith(
-      "audit.campaign_created",
-      { campaignName: "Q1 2026 Audit" },
-    );
+    expect(notifyIntegrations).toHaveBeenCalledWith("audit.campaign_created", {
+      campaignName: "Q1 2026 Audit",
+    });
   });
 });
 
@@ -184,7 +174,7 @@ describe("POST /api/audits", () => {
 // ---------------------------------------------------------------------------
 describe("DELETE /api/audits", () => {
   it("deletes a campaign and returns 200", async () => {
-    mockPrisma.auditCampaign.findUnique.mockResolvedValue({
+    mockPrisma.auditCampaign.findFirst.mockResolvedValue({
       name: "Q1 2026 Audit",
     } as any);
     mockPrisma.auditCampaign.delete.mockResolvedValue(mockCampaign as any);
@@ -204,7 +194,7 @@ describe("DELETE /api/audits", () => {
   });
 
   it("returns 404 when campaign not found", async () => {
-    mockPrisma.auditCampaign.findUnique.mockResolvedValue(null);
+    mockPrisma.auditCampaign.findFirst.mockResolvedValue(null);
 
     const req = createMockRequest("/api/audits", {
       method: "DELETE",

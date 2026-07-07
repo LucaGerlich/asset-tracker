@@ -4,21 +4,9 @@ import {
   parseResponse,
 } from "../../../../tests/setup/test-helpers";
 
-vi.mock("@/lib/prisma", () => ({
-  default: {
-    user: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      update: vi.fn(),
-      count: vi.fn(),
-    },
-  },
-}));
+vi.mock("@/lib/prisma");
 
-vi.mock("@/lib/api-auth", () => ({
-  requireApiAuth: vi.fn(),
-  requireNotDemoMode: vi.fn().mockReturnValue(null),
-}));
+vi.mock("@/lib/api-auth");
 
 vi.mock("@/lib/rbac", () => ({
   hasPermission: vi.fn().mockResolvedValue(true),
@@ -42,9 +30,7 @@ vi.mock("@/lib/webhooks", () => ({
   triggerWebhook: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-}));
+vi.mock("@/lib/logger");
 
 import { GET } from "@/app/api/user/route";
 import prisma from "@/lib/prisma";
@@ -104,7 +90,7 @@ describe("GET /api/user", () => {
   });
 
   it("returns single user by id", async () => {
-    mockPrisma.user.findUnique.mockResolvedValue(mockUserData as any);
+    mockPrisma.user.findFirst.mockResolvedValue(mockUserData as any);
 
     const req = createMockRequest("/api/user?id=user-uuid-001");
     const res = await GET(req);
@@ -115,7 +101,7 @@ describe("GET /api/user", () => {
   });
 
   it("returns 404 when user not found by id", async () => {
-    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockPrisma.user.findFirst.mockResolvedValue(null);
 
     const req = createMockRequest("/api/user?id=nonexistent");
     const res = await GET(req);

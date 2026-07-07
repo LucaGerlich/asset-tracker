@@ -5,22 +5,11 @@ import {
 } from "../../../../tests/setup/test-helpers";
 
 // Mock all dependencies BEFORE importing the route
-vi.mock("@/lib/prisma", () => ({
-  default: {
-    user: { findUnique: vi.fn() },
-    location: { findUnique: vi.fn() },
-    asset: { findUnique: vi.fn(), findMany: vi.fn() },
-    assetCheckout: { create: vi.fn() },
-    $transaction: vi.fn((ops: any[]) => Promise.all(ops)),
-  },
-}));
+vi.mock("@/lib/prisma");
 
-vi.mock("@/lib/api-auth", () => ({
-  requireApiAuth: vi.fn(),
-  requireNotDemoMode: vi.fn().mockReturnValue(null),
-}));
+vi.mock("@/lib/api-auth");
 
-vi.mock("@/lib/validations", () => ({
+vi.mock("@/lib/validation", () => ({
   validateBody: vi.fn((_schema: any, body: any) => body),
   bulkCheckoutSchema: {},
 }));
@@ -39,17 +28,16 @@ vi.mock("@/lib/integrations/slack-teams", () => ({
   notifyIntegrations: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-}));
+vi.mock("@/lib/logger");
 
 // Import route handler and mocked modules AFTER mocks
 import { POST } from "@/app/api/asset/checkout/bulk/route";
 import prisma from "@/lib/prisma";
-import { requireApiAuth } from "@/lib/api-auth";
+import { requireApiAuth, requirePermission } from "@/lib/api-auth";
 
 const mockPrisma = vi.mocked(prisma);
 const mockRequireApiAuth = vi.mocked(requireApiAuth);
+const mockRequirePermission = vi.mocked(requirePermission);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -62,7 +50,7 @@ const bulkCheckoutUrl = "/api/asset/checkout/bulk";
 describe("POST /api/asset/checkout/bulk", () => {
   it("returns 201 with success array when checking out to a user", async () => {
     // Target user exists
-    mockPrisma.user.findUnique.mockResolvedValue({
+    mockPrisma.user.findFirst.mockResolvedValue({
       userid: "user-uuid-001",
       firstname: "John",
       lastname: "Doe",
@@ -77,8 +65,16 @@ describe("POST /api/asset/checkout/bulk", () => {
 
     // Each assetCheckout.create returns a checkout record
     mockPrisma.assetCheckout.create
-      .mockResolvedValueOnce({ id: "co-1", assetId: "asset-001", status: "checked_out" } as any)
-      .mockResolvedValueOnce({ id: "co-2", assetId: "asset-002", status: "checked_out" } as any);
+      .mockResolvedValueOnce({
+        id: "co-1",
+        assetId: "asset-001",
+        status: "checked_out",
+      } as any)
+      .mockResolvedValueOnce({
+        id: "co-2",
+        assetId: "asset-002",
+        status: "checked_out",
+      } as any);
 
     const req = createMockRequest(bulkCheckoutUrl, {
       method: "POST",
@@ -99,7 +95,7 @@ describe("POST /api/asset/checkout/bulk", () => {
   });
 
   it("returns 404 when target user not found", async () => {
-    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockPrisma.user.findFirst.mockResolvedValue(null);
 
     const req = createMockRequest(bulkCheckoutUrl, {
       method: "POST",
@@ -118,7 +114,7 @@ describe("POST /api/asset/checkout/bulk", () => {
   });
 
   it("returns 404 when target location not found", async () => {
-    mockPrisma.location.findUnique.mockResolvedValue(null);
+    mockPrisma.location.findFirst.mockResolvedValue(null);
 
     const req = createMockRequest(bulkCheckoutUrl, {
       method: "POST",
@@ -138,7 +134,7 @@ describe("POST /api/asset/checkout/bulk", () => {
 
   it("returns 400 when checking out an asset to itself", async () => {
     // Target asset exists
-    mockPrisma.asset.findUnique.mockResolvedValue({
+    mockPrisma.asset.findFirst.mockResolvedValue({
       assetid: "asset-001",
       assetname: "Laptop A",
       assettag: "L-001",
@@ -167,7 +163,7 @@ describe("POST /api/asset/checkout/bulk", () => {
 
   it("returns 201 with mixed success/failed when some asset IDs don't exist", async () => {
     // Target user exists
-    mockPrisma.user.findUnique.mockResolvedValue({
+    mockPrisma.user.findFirst.mockResolvedValue({
       userid: "user-uuid-001",
       firstname: "Jane",
       lastname: "Smith",
@@ -205,7 +201,7 @@ describe("POST /api/asset/checkout/bulk", () => {
   });
 
   it("returns 401 when unauthorized", async () => {
-    mockRequireApiAuth.mockRejectedValue(new Error("Unauthorized"));
+    mockRequirePermission.mockRejectedValue(new Error("Unauthorized"));
 
     const req = createMockRequest(bulkCheckoutUrl, {
       method: "POST",

@@ -20,8 +20,9 @@ import {
 describe("env-validation", () => {
   beforeEach(() => {
     vi.stubEnv("DATABASE_URL", "postgresql://localhost:5432/testdb");
-    vi.stubEnv("NEXTAUTH_URL", "http://localhost:3000");
-    vi.stubEnv("NEXTAUTH_SECRET", "a]3Kf9$mPqR7vLxW2nBtYcZeAsDgHjMk");
+    vi.stubEnv("BETTER_AUTH_URL", "http://localhost:3000");
+    vi.stubEnv("BETTER_AUTH_SECRET", "a]3Kf9$mPqR7vLxW2nBtYcZeAsDgHjMk");
+    vi.stubEnv("CRON_SECRET", "test-cron-secret-value");
   });
 
   afterEach(() => {
@@ -44,8 +45,10 @@ describe("env-validation", () => {
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors.some((e) => e.includes("DATABASE_URL"))).toBe(true);
-      expect(result.errors.some((e) => e.includes("NEXTAUTH_URL"))).toBe(true);
-      expect(result.errors.some((e) => e.includes("NEXTAUTH_SECRET"))).toBe(
+      expect(result.errors.some((e) => e.includes("BETTER_AUTH_URL"))).toBe(
+        true,
+      );
+      expect(result.errors.some((e) => e.includes("BETTER_AUTH_SECRET"))).toBe(
         true,
       );
     });

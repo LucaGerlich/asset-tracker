@@ -5,17 +5,9 @@ import {
 } from "../../../../tests/setup/test-helpers";
 
 // Mock all dependencies before imports
-vi.mock("@/lib/prisma", () => ({
-  default: {
-    user: { count: vi.fn(), create: vi.fn() },
-    organization: { create: vi.fn() },
-    accounts: { create: vi.fn() },
-  },
-}));
+vi.mock("@/lib/prisma");
 
-vi.mock("@/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-}));
+vi.mock("@/lib/logger");
 
 vi.mock("@/lib/auth-utils", () => ({
   hashPassword: vi.fn().mockResolvedValue("hashed_password"),
@@ -50,13 +42,14 @@ describe("GET /api/setup/status", () => {
     expect(body.needsSetup).toBe(false);
   });
 
-  it("returns needsSetup false on database error", async () => {
+  it("returns needsSetup true on database error", async () => {
     mockPrisma.user.count.mockRejectedValue(new Error("DB error"));
 
     const res = await GET();
     const { status, body } = await parseResponse<any>(res);
     expect(status).toBe(500);
-    expect(body.needsSetup).toBe(false);
+    // On DB failure the route assumes setup is needed rather than redirecting to login.
+    expect(body.needsSetup).toBe(true);
   });
 });
 

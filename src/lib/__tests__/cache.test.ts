@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+// Integration tests: exercise the real Postgres-backed cache/lockout tables.
+// Skipped when no DATABASE_URL is configured (they run in CI against a test DB).
+const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
 
 // Reset module for clean cache state between tests
 let cacheModule: typeof import("../cache");
@@ -11,7 +14,7 @@ beforeEach(async () => {
   cacheModule = await import("../cache");
 });
 
-describe("cached", () => {
+describeDb("cached", () => {
   it("calls fetcher on first access", async () => {
     const fetcher = vi.fn().mockResolvedValue({ data: "hello" });
     const result = await cacheModule.cached("test-key", fetcher);
@@ -75,7 +78,7 @@ describe("cached", () => {
   });
 });
 
-describe("invalidateCache", () => {
+describeDb("invalidateCache", () => {
   it("forces re-fetch after invalidation", async () => {
     const fetcher = vi
       .fn()
@@ -104,7 +107,7 @@ describe("invalidateCache", () => {
   });
 });
 
-describe("invalidateCacheByPrefix", () => {
+describeDb("invalidateCacheByPrefix", () => {
   it("invalidates all keys with given prefix", async () => {
     const fetcherA = vi.fn().mockResolvedValue("A");
     const fetcherB = vi.fn().mockResolvedValue("B");
@@ -126,7 +129,7 @@ describe("invalidateCacheByPrefix", () => {
   });
 });
 
-describe("clearCache", () => {
+describeDb("clearCache", () => {
   it("invalidates all cached keys", async () => {
     const fetcherA = vi.fn().mockResolvedValue("A");
     const fetcherB = vi.fn().mockResolvedValue("B");
@@ -144,7 +147,7 @@ describe("clearCache", () => {
   });
 });
 
-describe("cache object API", () => {
+describeDb("cache object API", () => {
   it("supports get/set/del", async () => {
     const { cache } = cacheModule;
 

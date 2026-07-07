@@ -8,18 +8,10 @@ import {
   mockAssetList,
 } from "../../../../tests/setup/fixtures/assets";
 
-// Mock all dependencies
-vi.mock("@/lib/prisma", () => ({
-  default: {
-    asset: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      count: vi.fn(),
-    },
-  },
-}));
+// Mock all dependencies. The bare vi.mock uses src/lib/__mocks__/prisma.ts,
+// which auto-generates every model/method (so routes using findFirst, audit_logs,
+// $executeRawUnsafe, etc. don't hit undefined methods).
+vi.mock("@/lib/prisma");
 
 vi.mock("@/lib/api-auth", () => ({
   requireApiAuth: vi.fn(),
@@ -47,9 +39,7 @@ vi.mock("@/lib/webhooks", () => ({
   triggerWebhook: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-}));
+vi.mock("@/lib/logger");
 
 import { GET, POST, PUT } from "@/app/api/asset/route";
 import prisma from "@/lib/prisma";
@@ -102,7 +92,7 @@ describe("GET /api/asset", () => {
   });
 
   it("returns single asset by id", async () => {
-    mockPrisma.asset.findUnique.mockResolvedValue(mockAsset as any);
+    mockPrisma.asset.findFirst.mockResolvedValue(mockAsset as any);
 
     const req = createMockRequest("/api/asset?id=asset-uuid-001");
     const res = await GET(req);
@@ -113,7 +103,7 @@ describe("GET /api/asset", () => {
   });
 
   it("returns 404 when asset not found by id", async () => {
-    mockPrisma.asset.findUnique.mockResolvedValue(null);
+    mockPrisma.asset.findFirst.mockResolvedValue(null);
 
     const req = createMockRequest("/api/asset?id=nonexistent");
     const res = await GET(req);
@@ -200,12 +190,19 @@ describe("POST /api/asset", () => {
 
 describe("PUT /api/asset", () => {
   it("updates an asset with valid data", async () => {
+    const assetUuid = "550e8400-e29b-41d4-a716-446655440000";
+    // The route verifies the asset belongs to the org via findFirst before update,
+    // then updates using the resolved record's id.
+    mockPrisma.asset.findFirst.mockResolvedValue({
+      ...mockAsset,
+      assetid: assetUuid,
+    } as any);
     mockPrisma.asset.update.mockResolvedValue({
       ...mockAsset,
+      assetid: assetUuid,
       assetname: "Updated Name",
     } as any);
 
-    const assetUuid = "550e8400-e29b-41d4-a716-446655440000";
     const req = createMockRequest("/api/asset", {
       method: "PUT",
       body: {
