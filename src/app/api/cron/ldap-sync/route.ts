@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isValidCronAuth } from "@/lib/cron-auth";
 import { getLdapSettings, syncUsers } from "@/lib/ldap";
 import { logger } from "@/lib/logger";
 
@@ -13,7 +14,7 @@ export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!isValidCronAuth(authHeader, cronSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -38,10 +39,7 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     logger.error("Cron LDAP sync error", { error });
-    return NextResponse.json(
-      { error: "LDAP sync failed" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "LDAP sync failed" }, { status: 500 });
   }
 }
 

@@ -193,10 +193,12 @@ export async function requirePlanFeature(
 }
 
 /**
- * Require admin role for API routes
+ * Require admin role for API routes.
+ * Also blocks fully locked-out organizations (past grace period) by delegating
+ * the suspension check to requireApiAuth.
  */
 export async function requireApiAdmin(): Promise<AuthUser> {
-  const user = await getAuthUser();
+  const user = await requireApiAuth();
 
   if (!user.isAdmin) {
     throw new Error("Forbidden: Admin access required");
@@ -255,6 +257,12 @@ export async function requirePermission(
 
   if (!user.id) {
     throw new Error("Unauthorized");
+  }
+
+  // Block locked-out organizations (past the grace period) from all access.
+  const orgStatus = await getOrgSuspensionStatus(user.organizationId);
+  if (requireActiveOrg(orgStatus)) {
+    throw new Error("Forbidden: Organization suspended");
   }
 
   if (user.apiKeyScopes !== undefined) {
