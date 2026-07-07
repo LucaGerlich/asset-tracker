@@ -356,18 +356,22 @@ const Sidebar = ({ initialCollapsed = false }) => {
                 <p className="text-muted-foreground text-xs">{user?.email}</p>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href={`/user/${user?.id}/settings`}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/user/${user?.id}`}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </Link>
-              </DropdownMenuItem>
+              {user?.id && (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/user/${user.id}/settings`}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/user/${user.id}`}>
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuItem asChild>
                 <Link href="/user/tickets">
                   <Bell className="mr-2 h-4 w-4" />

@@ -89,11 +89,7 @@ export default function AssetDetailActions({
 
   return (
     <div className="flex gap-2">
-      <Button
-        variant="outline"
-        onClick={() => setAssignOpen(true)}
-        disabled={!asset.requestable}
-      >
+      <Button variant="outline" onClick={() => setAssignOpen(true)}>
         Assign User
       </Button>
       <Button variant="outline" onClick={() => setQrOpen(true)}>
