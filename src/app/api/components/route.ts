@@ -239,10 +239,20 @@ export async function PUT(req: Request) {
     if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
     if (data.totalQuantity !== undefined)
       updateData.totalQuantity = data.totalQuantity;
-    if ((body as Record<string, unknown>).remainingQuantity !== undefined)
-      updateData.remainingQuantity = (
-        body as Record<string, unknown>
-      ).remainingQuantity;
+    // Keep the invariant remainingQuantity <= totalQuantity. If the caller sends
+    // an explicit remainingQuantity, use it; otherwise when totalQuantity changes
+    // reconcile remaining so the currently-checked-out amount is preserved.
+    const explicitRemaining = (body as Record<string, unknown>)
+      .remainingQuantity;
+    if (explicitRemaining !== undefined) {
+      updateData.remainingQuantity = explicitRemaining;
+    } else if (data.totalQuantity !== undefined) {
+      const checkedOut = existing.totalQuantity - existing.remainingQuantity;
+      updateData.remainingQuantity = Math.max(
+        0,
+        data.totalQuantity - checkedOut,
+      );
+    }
     if (data.purchasePrice !== undefined)
       updateData.purchasePrice = data.purchasePrice ?? null;
     if (data.purchaseDate !== undefined)

@@ -16,6 +16,7 @@ import {
 } from "@/lib/pagination";
 import { logger } from "@/lib/logger";
 import { triggerWebhook } from "@/lib/webhooks";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 
 const USER_SORT_FIELDS = ["firstname", "lastname", "email", "creation_date"];
 
@@ -234,13 +235,40 @@ export async function PUT(req: NextRequest) {
         : null;
     }
 
-    const updated = await prisma.user.update({
-      where: { userid },
-      data: {
-        ...updateData,
-        change_date: new Date(),
-      },
-    });
+    let updated;
+    if (_expectedVersion) {
+      // Atomic optimistic-lock write: only update if change_date still matches
+      // the version the client loaded, closing the read-check → write window.
+      const result = await prisma.user.updateMany({
+        where: { userid, change_date: new Date(_expectedVersion) },
+        data: {
+          ...updateData,
+          change_date: new Date(),
+        },
+      });
+      if (result.count === 0) {
+        return NextResponse.json(
+          {
+            error:
+              "This user was modified by another admin. Please refresh and try again.",
+          },
+          { status: 409 },
+        );
+      }
+      updated = await prisma.user.findUnique({ where: { userid } });
+    } else {
+      updated = await prisma.user.update({
+        where: { userid },
+        data: {
+          ...updateData,
+          change_date: new Date(),
+        },
+      });
+    }
+
+    if (!updated) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
 
     if (newPassword) {
       await setUserPassword(userid, newPassword);
@@ -253,6 +281,9 @@ export async function PUT(req: NextRequest) {
         ...(newPassword ? ["password"] : []),
       ],
     }).catch(() => {});
+
+    await invalidateCacheByPrefix("users").catch(() => {});
+    await invalidateCacheByPrefix("user_count").catch(() => {});
 
     return NextResponse.json(stripPassword(updated), { status: 200 });
   } catch (error) {

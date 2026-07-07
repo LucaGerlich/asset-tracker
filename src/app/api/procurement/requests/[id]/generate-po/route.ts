@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import {
   requirePermission,
@@ -73,46 +74,72 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       supplierGroups.set(key, group);
     }
 
-    const createdPOs = await prisma.$transaction(async (tx) => {
-      const pos = [];
+    // Serializable isolation + a small retry loop: PO numbers are generated
+    // from a max-sequence read, so concurrent generations can collide on the
+    // unique poNumber. On a serialization abort (P2034) or unique collision
+    // (P2002) we simply re-run the whole transaction with a fresh read.
+    const runGeneration = () =>
+      prisma.$transaction(
+        async (tx) => {
+          const pos = [];
 
-      for (const [supplierId, items] of supplierGroups) {
-        const poNumber = await generatePONumber(orgId);
+          for (const [supplierId, items] of supplierGroups) {
+            // Pass tx so each PO's sequence read sees the ones created earlier
+            // in this same transaction.
+            const poNumber = await generatePONumber(orgId, tx);
 
-        // Calculate total for this PO
-        const totalAmount = items.reduce((sum, item) => {
-          if (item.estimatedUnitCost != null) {
-            return sum + item.quantity * Number(item.estimatedUnitCost);
+            // Calculate total for this PO
+            const totalAmount = items.reduce((sum, item) => {
+              if (item.estimatedUnitCost != null) {
+                return sum + item.quantity * Number(item.estimatedUnitCost);
+              }
+              return sum;
+            }, 0);
+
+            const po = await tx.purchaseOrder.create({
+              data: {
+                poNumber,
+                purchaseRequestId: id,
+                supplierId: supplierId ?? null,
+                organizationId: orgId,
+                status: "draft",
+                totalAmount,
+              },
+              include: {
+                supplier: {
+                  select: { supplierid: true, suppliername: true },
+                },
+              },
+            });
+
+            pos.push(po);
           }
-          return sum;
-        }, 0);
 
-        const po = await tx.purchaseOrder.create({
-          data: {
-            poNumber,
-            purchaseRequestId: id,
-            supplierId: supplierId ?? null,
-            organizationId: orgId,
-            status: "draft",
-            totalAmount,
-          },
-          include: {
-            supplier: {
-              select: { supplierid: true, suppliername: true },
-            },
-          },
-        });
+          await tx.purchaseRequest.update({
+            where: { id },
+            data: { status: "ordered" },
+          });
 
-        pos.push(po);
+          return pos;
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+
+    let createdPOs;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        createdPOs = await runGeneration();
+        break;
+      } catch (err) {
+        const retryable =
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          (err.code === "P2002" || err.code === "P2034");
+        if (retryable && attempt < 3) {
+          continue;
+        }
+        throw err;
       }
-
-      await tx.purchaseRequest.update({
-        where: { id },
-        data: { status: "ordered" },
-      });
-
-      return pos;
-    });
+    }
 
     // Audit log for each created PO
     for (const po of createdPOs) {
