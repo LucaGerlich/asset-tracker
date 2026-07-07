@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { triggerWebhook } from "@/lib/webhooks";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -36,6 +37,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // The target user must also belong to the caller's organization.
+    const targetUser = await prisma.user.findFirst({
+      where: { userid: userId, organizationId: orgId ?? null },
+      select: { userid: true },
+    });
+    if (!targetUser) {
+      return new Response(JSON.stringify({ error: "User not found" }), {
+        status: 404,
+      });
+    }
+
     const updated = await prisma.licence.update({
       where: { licenceid: licenceId },
       data: { licenceduserid: userId, change_date: new Date() },
@@ -46,6 +58,8 @@ export async function POST(req: NextRequest) {
       userId,
       licenceKey: updated.licencekey ? "***" : null,
     }).catch(() => {});
+
+    await invalidateCacheByPrefix("licences_all").catch(() => {});
 
     return new Response(JSON.stringify(updated), { status: 200 });
   } catch (e) {

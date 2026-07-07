@@ -12,7 +12,7 @@ import {
 } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { getOrganizationContext } from "@/lib/organization-context";
-import { cached, invalidateCache } from "@/lib/cache";
+import { cached, invalidateCacheByPrefix } from "@/lib/cache";
 import {
   parsePaginationParams,
   buildPrismaArgs,
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Invalidate cached status types so subsequent reads reflect the new entry
-    await invalidateCache("status_types");
+    await invalidateCacheByPrefix("status_types");
 
     await createAuditLog({
       userId: admin.id,
@@ -221,7 +221,7 @@ export async function PUT(req: NextRequest) {
     });
 
     // Invalidate cached status types so subsequent reads reflect the update
-    await invalidateCache("status_types");
+    await invalidateCacheByPrefix("status_types");
 
     await createAuditLog({
       userId: admin.id,
@@ -325,7 +325,7 @@ export async function DELETE(req: NextRequest) {
     });
 
     // Invalidate cached status types so subsequent reads reflect the deletion
-    await invalidateCache("status_types");
+    await invalidateCacheByPrefix("status_types");
 
     await createAuditLog({
       userId: admin.id,

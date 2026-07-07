@@ -403,6 +403,8 @@ export async function DELETE(req: NextRequest) {
       details: { licencekey: licence.licencekey },
     });
 
+    await invalidateCacheByPrefix("licences_all").catch(() => {});
+
     return NextResponse.json(
       { message: "Licence deleted successfully" },
       { status: 200 },

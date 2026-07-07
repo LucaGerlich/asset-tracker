@@ -331,6 +331,8 @@ export async function DELETE(req: NextRequest) {
       details: { consumablename: consumable.consumablename },
     });
 
+    await invalidateCacheByPrefix("consumables_all").catch(() => {});
+
     return NextResponse.json(
       { message: "Consumable deleted successfully" },
       { status: 200 },
@@ -401,6 +403,8 @@ export async function PATCH(req: NextRequest) {
         restockQuantity: addQuantity,
       },
     });
+
+    await invalidateCacheByPrefix("consumables_all").catch(() => {});
 
     return NextResponse.json(updated, { status: 200 });
   } catch (e) {

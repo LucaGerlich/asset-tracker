@@ -7,6 +7,7 @@ import { getOrganizationContext } from "@/lib/organization-context";
 import { createAssetSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import { checkAssetLimit } from "@/lib/tenant-limits";
 import { logger, logCatchError } from "@/lib/logger";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
@@ -118,6 +119,10 @@ export async function POST(req: NextRequest) {
       assetName: created.assetname,
       assetTag: created.assettag,
     }).catch(logCatchError("Integration notification failed"));
+
+    await invalidateCacheByPrefix("assets_all").catch(() => {});
+    await invalidateCacheByPrefix("asset_count").catch(() => {});
+    await invalidateCacheByPrefix("asset_status_distribution").catch(() => {});
 
     return new Response(JSON.stringify(created), { status: 201 });
   } catch (error) {
