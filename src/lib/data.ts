@@ -126,10 +126,13 @@ export async function getAssetById(id: string) {
 }
 
 export async function getLocation() {
+  const where = await strictOrgWhere();
+  const key = `locations:${JSON.stringify(where)}`;
   return cached(
-    "locations",
+    key,
     () =>
       prisma.location.findMany({
+        where,
         include: {
           parent: { select: { locationid: true, locationname: true } },
           children: { select: { locationid: true, locationname: true } },
@@ -160,17 +163,21 @@ export async function getLocationById(id: string) {
 }
 
 export async function getStatus() {
+  const where = await strictOrgWhere();
+  const key = `status_types:${JSON.stringify(where)}`;
   return cached(
-    "status_types",
-    () => prisma.statusType.findMany({}),
+    key,
+    () => prisma.statusType.findMany({ where }),
     2 * 60 * 1000,
   );
 }
 
 export async function getManufacturers() {
+  const where = await strictOrgWhere();
+  const key = `manufacturers:${JSON.stringify(where)}`;
   return cached(
-    "manufacturers",
-    () => prisma.manufacturer.findMany({}),
+    key,
+    () => prisma.manufacturer.findMany({ where }),
     2 * 60 * 1000,
   );
 }
@@ -218,7 +225,9 @@ export async function getAccessoryById(id: string) {
 }
 
 export async function getSuppliers() {
-  return cached("suppliers", () => prisma.supplier.findMany({}), 2 * 60 * 1000);
+  const where = await strictOrgWhere();
+  const key = `suppliers:${JSON.stringify(where)}`;
+  return cached(key, () => prisma.supplier.findMany({ where }), 2 * 60 * 1000);
 }
 
 export async function getSupplierById(id: string) {
@@ -264,17 +273,21 @@ export async function getConsumableById(id: string) {
 }
 
 export async function getConsumableCategories() {
+  const where = await strictOrgWhere();
+  const key = `consumable_categories:${JSON.stringify(where)}`;
   return cached(
-    "consumable_categories",
-    () => prisma.consumableCategoryType.findMany({}),
+    key,
+    () => prisma.consumableCategoryType.findMany({ where }),
     2 * 60 * 1000,
   );
 }
 
 export async function getAccessoryCategories() {
+  const where = await strictOrgWhere();
+  const key = `accessory_categories:${JSON.stringify(where)}`;
   return cached(
-    "accessory_categories",
-    () => prisma.accessorieCategoryType.findMany({}),
+    key,
+    () => prisma.accessorieCategoryType.findMany({ where }),
     2 * 60 * 1000,
   );
 }
@@ -302,30 +315,40 @@ export async function getLicenceById(id: string) {
 }
 
 export async function getLicenceCategories() {
+  const where = await strictOrgWhere();
+  const key = `licence_categories:${JSON.stringify(where)}`;
   return cached(
-    "licence_categories",
-    () => prisma.licenceCategoryType.findMany({}),
+    key,
+    () => prisma.licenceCategoryType.findMany({ where }),
     2 * 60 * 1000,
   );
 }
 
 export async function getModel() {
-  return cached("models", () => prisma.model.findMany({}), 2 * 60 * 1000);
+  const where = await strictOrgWhere();
+  const key = `models:${JSON.stringify(where)}`;
+  return cached(key, () => prisma.model.findMany({ where }), 2 * 60 * 1000);
 }
 
 export async function getCategories() {
+  const where = await strictOrgWhere();
+  const key = `categories:${JSON.stringify(where)}`;
   return cached(
-    "categories",
-    () => prisma.assetCategoryType.findMany({}),
+    key,
+    () => prisma.assetCategoryType.findMany({ where }),
     2 * 60 * 1000,
   );
 }
 
 export async function getUserAssets() {
+  const { organizationId } = await strictOrgWhere();
+  const key = `user_assets_all:${organizationId}`;
   return cached(
-    "user_assets_all",
+    key,
     () =>
       prisma.userAssets.findMany({
+        // userAssets has no organizationId column; scope via the asset relation.
+        where: { asset: { organizationId } },
         select: {
           userassetsid: true,
           userid: true,
@@ -339,10 +362,14 @@ export async function getUserAssets() {
 }
 
 export async function getUserAccessoires() {
+  const { organizationId } = await strictOrgWhere();
+  const key = `user_accessoires_all:${organizationId}`;
   return cached(
-    "user_accessoires_all",
+    key,
     () =>
       prisma.userAccessoires.findMany({
+        // No organizationId column; scope via the accessories relation.
+        where: { accessories: { organizationId } },
         select: {
           useraccessoiresid: true,
           userid: true,
@@ -516,9 +543,15 @@ export async function getComponentById(id: string) {
 }
 
 export async function getComponentCategories() {
+  const where = await strictOrgWhere();
+  const key = `component_categories:${JSON.stringify(where)}`;
   return cached(
-    "component_categories",
-    () => prisma.componentCategory.findMany({ orderBy: { name: "asc" } }),
+    key,
+    () =>
+      prisma.componentCategory.findMany({
+        where,
+        orderBy: { name: "asc" },
+      }),
     2 * 60 * 1000,
   );
 }

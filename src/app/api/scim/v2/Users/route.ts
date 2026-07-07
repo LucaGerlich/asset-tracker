@@ -118,8 +118,11 @@ export async function POST(req: Request) {
       });
     }
 
+    // Scope the duplicate check to this org — usernames/emails may legitimately
+    // repeat across tenants, and cross-org checks would leak their existence.
     const existing = await prisma.user.findFirst({
       where: {
+        organizationId: organizationId ?? null,
         OR: [
           { username: userName },
           ...(email ? [{ email }] : []),

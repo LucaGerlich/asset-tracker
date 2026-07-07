@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const admin = await requireApiAdmin();
     const { userId, accessorieId } = await req.json();
     if (!userId || !accessorieId) {
       return new Response(
@@ -19,8 +19,25 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    const orgId = admin.organizationId ?? null;
     // Wrap check + create in a transaction to prevent duplicate assignments
     const { record, idempotent } = await prisma.$transaction(async (tx) => {
+      // Both the accessory and the target user must belong to the admin's org.
+      const accessory = await tx.accessories.findFirst({
+        where: { accessorieid: accessorieId, organizationId: orgId },
+        select: { accessorieid: true },
+      });
+      if (!accessory) {
+        throw new Error("ACCESSORY_NOT_FOUND");
+      }
+      const targetUser = await tx.user.findFirst({
+        where: { userid: userId, organizationId: orgId },
+        select: { userid: true },
+      });
+      if (!targetUser) {
+        throw new Error("USER_NOT_FOUND");
+      }
+
       const exists = await tx.userAccessoires.findFirst({
         where: { userid: userId, accessorieid: accessorieId },
       });
@@ -61,6 +78,15 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: e.message }), {
         status: 403,
       });
+    }
+    if (
+      e instanceof Error &&
+      (e.message === "ACCESSORY_NOT_FOUND" || e.message === "USER_NOT_FOUND")
+    ) {
+      return new Response(
+        JSON.stringify({ error: "Accessory or user not found" }),
+        { status: 404 },
+      );
     }
     return new Response(
       JSON.stringify({ error: "Failed to assign accessory" }),

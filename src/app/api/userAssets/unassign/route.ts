@@ -8,7 +8,7 @@ export async function DELETE(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const admin = await requireApiAdmin();
     const { assetId, userId } = await req.json();
 
     if (!assetId || !userId) {
@@ -20,9 +20,25 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Resolve the "Available" status id (case-insensitive)
+    const orgId = admin.organizationId ?? null;
+
+    // The asset must belong to the admin's organization.
+    const asset = await prisma.asset.findFirst({
+      where: { assetid: assetId, organizationId: orgId },
+      select: { assetid: true },
+    });
+    if (!asset) {
+      return new Response(JSON.stringify({ error: "Asset not found" }), {
+        status: 404,
+      });
+    }
+
+    // Resolve the "Available" status id (case-insensitive), scoped to the org.
     const availableStatus = await prisma.statusType.findFirst({
-      where: { statustypename: { equals: "Available", mode: "insensitive" } },
+      where: {
+        statustypename: { equals: "Available", mode: "insensitive" },
+        organizationId: orgId,
+      },
     });
     if (!availableStatus) {
       return new Response(

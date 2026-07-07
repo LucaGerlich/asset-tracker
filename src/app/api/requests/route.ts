@@ -275,10 +275,14 @@ export async function POST(req: NextRequest) {
       details: { entityName, status: initialStatus, notes: notes || null },
     }).catch(logCatchError("Audit log failed"));
 
-    // Notify all admins (in-app via notification_queue)
+    // Notify this org's admins (in-app via notification_queue)
     try {
       const admins = await prisma.user.findMany({
-        where: { isadmin: true, isActive: true },
+        where: {
+          isadmin: true,
+          isActive: true,
+          organizationId: user.organizationId ?? null,
+        },
         select: { userid: true, email: true },
       });
       const entityName = await getEntityName(entityType, entityId);

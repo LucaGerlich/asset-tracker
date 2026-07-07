@@ -78,7 +78,11 @@ export default async function DashboardPage() {
   }> = [];
   try {
     const locationsWithCoords = await prisma.location.findMany({
-      where: { latitude: { not: null }, longitude: { not: null } },
+      where: {
+        latitude: { not: null },
+        longitude: { not: null },
+        organizationId: ctx.organization?.id ?? null,
+      },
       select: {
         locationid: true,
         locationname: true,

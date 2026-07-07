@@ -19,6 +19,34 @@ interface UserNotificationData {
   userEmail: string;
 }
 
+interface OrgAdmin {
+  userid: string;
+  email: string | null;
+}
+
+/**
+ * Build a memoized resolver that returns the active admins for a given
+ * organization. Used by cron checks that iterate many entities so each org's
+ * admins are fetched at most once — and never leaked to another tenant.
+ */
+function orgAdminResolver(): (
+  organizationId: string | null,
+) => Promise<OrgAdmin[]> {
+  const cache = new Map<string | null, OrgAdmin[]>();
+  return async (organizationId: string | null) => {
+    if (!cache.has(organizationId)) {
+      cache.set(
+        organizationId,
+        await prisma.user.findMany({
+          where: { isadmin: true, organizationId },
+          select: { userid: true, email: true },
+        }),
+      );
+    }
+    return cache.get(organizationId)!;
+  };
+}
+
 /**
  * Send asset assignment notification
  */
@@ -71,7 +99,8 @@ export async function notifyAssetUnassignment(
 }
 
 /**
- * Notify all admins about a new reservation request
+ * Notify the admins of a single organization about a new reservation request.
+ * Scoped by organizationId so tenants never receive other orgs' requests.
  */
 export async function notifyReservationRequest(reservation: {
   assetName: string;
@@ -80,9 +109,13 @@ export async function notifyReservationRequest(reservation: {
   startDate: string;
   endDate: string;
   notes: string | null;
+  organizationId: string | null;
 }): Promise<void> {
   const admins = await prisma.user.findMany({
-    where: { isadmin: true },
+    where: {
+      isadmin: true,
+      organizationId: reservation.organizationId ?? null,
+    },
   });
 
   const template = emailTemplates.reservationRequest;
@@ -287,13 +320,13 @@ export async function checkLowStock(): Promise<number> {
     (item) => item.quantity <= item.minQuantity,
   );
 
-  const admins = await prisma.user.findMany({
-    where: { isadmin: true },
-  });
+  // Resolve admins lazily per-org so each org only ever hears about its own stock.
+  const getOrgAdmins = orgAdminResolver();
 
   let notified = 0;
 
   for (const item of lowStockItems) {
+    const admins = await getOrgAdmins(item.organizationId ?? null);
     for (const admin of admins) {
       if (!admin.email) continue;
 
@@ -338,9 +371,8 @@ export async function checkExpiringWarranties(): Promise<number> {
     },
   });
 
-  const admins = await prisma.user.findMany({
-    where: { isadmin: true },
-  });
+  // Resolve admins lazily per-org so warranty alerts stay within their tenant.
+  const getOrgAdmins = orgAdminResolver();
 
   let notified = 0;
 
@@ -350,6 +382,7 @@ export async function checkExpiringWarranties(): Promise<number> {
         (1000 * 60 * 60 * 24),
     );
 
+    const admins = await getOrgAdmins(asset.organizationId ?? null);
     for (const admin of admins) {
       if (!admin.email) continue;
 

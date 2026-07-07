@@ -11,15 +11,18 @@ import { logger, logCatchError } from "@/lib/logger";
 // GET /api/components/checkout?componentId=...
 export async function GET(req: Request) {
   try {
-    await requirePermission("component:view");
+    const authUser = await requirePermission("component:view");
 
     const { searchParams } = new URL(req.url);
     const componentId = searchParams.get("componentId");
 
-    const where = componentId ? { componentId } : {};
-
     const checkouts = await prisma.componentCheckout.findMany({
-      where,
+      // Scope through the component relation — ComponentCheckout has no
+      // organizationId column, so tenant isolation is enforced via component.
+      where: {
+        component: { organizationId: authUser.organizationId ?? null },
+        ...(componentId ? { componentId } : {}),
+      },
       orderBy: { checkedOutAt: "desc" },
       include: {
         component: {
@@ -71,17 +74,35 @@ export async function POST(req: Request) {
     // Use a transaction to atomically verify stock, decrement, and create checkout
     // The stock check MUST be inside the transaction to prevent race conditions
     const { checkout, component } = await prisma.$transaction(async (tx) => {
-      // Verify the component exists and has sufficient stock (inside transaction)
-      const comp = await tx.component.findUnique({
-        where: { id: componentId },
+      // Verify the component exists, belongs to the caller's org, and has
+      // sufficient stock (all inside the transaction to prevent races).
+      const comp = await tx.component.findFirst({
+        where: {
+          id: componentId,
+          organizationId: authUser.organizationId ?? null,
+        },
       });
 
       if (!comp) {
         throw new Error("COMPONENT_NOT_FOUND");
       }
 
+      // The target asset must belong to the same organization.
+      const targetAsset = await tx.asset.findFirst({
+        where: {
+          assetid: assetId,
+          organizationId: authUser.organizationId ?? null,
+        },
+        select: { assetid: true },
+      });
+      if (!targetAsset) {
+        throw new Error("ASSET_NOT_FOUND");
+      }
+
       if (comp.remainingQuantity < quantity) {
-        throw new Error(`INSUFFICIENT_STOCK:${comp.remainingQuantity}`);
+        throw new Error(
+          `INSUFFICIENT_STOCK:${comp.remainingQuantity}:${quantity}`,
+        );
       }
 
       await tx.component.update({
@@ -177,13 +198,16 @@ export async function POST(req: Request) {
         { status: 404 },
       );
     }
+    if (message === "ASSET_NOT_FOUND") {
+      return NextResponse.json({ error: "Asset not found" }, { status: 404 });
+    }
     if (message.startsWith("INSUFFICIENT_STOCK:")) {
-      const available = parseInt(message.split(":")[1], 10);
+      const [, available, requested] = message.split(":");
       return NextResponse.json(
         {
           error: "Insufficient stock",
-          available,
-          requested: 0,
+          available: parseInt(available, 10),
+          requested: parseInt(requested, 10),
         },
         { status: 400 },
       );
