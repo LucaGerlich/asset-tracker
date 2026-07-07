@@ -159,11 +159,21 @@ became org-suffixed).
 12. **Dead code**: unused `Footer.tsx` (broken/case-wrong links) and three unused
     `DashboardTable` variants (accessories/suppliers/generic). Delete when convenient.
 
-## Test harness note
+## Test harness (rehabilitated in v0.9.4)
 
-The Vitest suite is pre-broken independent of this work: the Prisma-mock pattern
-(`prisma.x.findUnique.mockResolvedValue`) does not attach to the generated client, so
-~27/60 API tests fail at baseline with zero changes. Several tests also assert the
-pre-fix (insecure/unscoped) behavior — e.g. `findUnique`-mocked lookups where routes now
-use org-scoped `findFirst`. These need updating once the mock infrastructure is repaired.
-Typecheck (non-test) and ESLint are clean.
+The Vitest suite was broken before this work (45 failing) because hand-written
+`vi.mock` factories for prisma/logger/api-auth enumerated a fixed set of methods and
+went stale as routes adopted org-scoped `findFirst`, new audit/cache calls, and new
+guards — the missing methods were `undefined`, throwing TypeErrors surfaced as 500s.
+
+Fixed by adding Vitest automocks (`src/lib/__mocks__/{prisma,logger,api-auth}.ts`) that
+auto-generate every model/method via a Proxy (so mocks can't go stale), a global
+`next/headers` mock, and per-test contract updates (findFirst, valid UUID fixtures, auth
+mock shapes). The Postgres-backed `cache` and `account-lockout` tests are integration
+tests gated on `DATABASE_URL` (run in CI with a test DB, skip locally).
+
+Current state: **423 passed, 29 skipped (integration), 0 failed**; typecheck (non-test)
+and ESLint clean.
+
+Remaining test debt: provision a Postgres service in CI (or a docker-compose for local
+runs) so the two gated integration suites execute rather than skip.
