@@ -235,6 +235,7 @@ export default function AssetAttachments({
                         variant="ghost"
                         className="text-destructive h-7 w-7"
                         onClick={() => handleDelete(att.id, att.originalName)}
+                        aria-label="Delete attachment"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -267,6 +268,7 @@ export default function AssetAttachments({
                     variant="ghost"
                     className="text-destructive h-6 w-6"
                     onClick={() => handleDelete(att.id, att.originalName)}
+                    aria-label="Delete image"
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>

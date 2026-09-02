@@ -130,7 +130,7 @@ function getOperatorLabel(
 
 export default function AdvancedSearchClient() {
   const [entity, setEntity] = useState<SearchableEntity>("asset");
-  const [filters, setFilters] = useState<FilterRow[]>([
+  const [filters, setFilters] = useState<FilterRow[]>(() => [
     { id: generateId(), field: "", op: "eq", value: "", isCustom: false },
   ]);
   const [customFields, setCustomFields] = useState<CustomFieldDef[]>([]);
