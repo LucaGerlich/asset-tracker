@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
 
     // If no `page` param, return all results for backward compatibility
     if (!searchParams.has("page")) {
-      const limit = parseInt(searchParams.get("limit") || "20");
+      // Clamp to 1..100 with a NaN guard so an absent/garbage/huge limit param
+      // can't skip pagination and force an unbounded query.
+      const rawLimit = parseInt(searchParams.get("limit") || "20");
+      const limit = Math.min(Math.max(rawLimit || 20, 1), 100);
 
       const notifications = await prisma.notification_queue.findMany({
         where,

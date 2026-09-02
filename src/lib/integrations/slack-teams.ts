@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { validateOutboundUrl } from "@/lib/url-validation";
+import { decrypt } from "@/lib/encryption";
 
 // 10 s timeout for webhook notifications — short because these are non-critical
 const WEBHOOK_TIMEOUT_MS = 10_000;
@@ -38,8 +39,11 @@ export async function getIntegrationSettings(): Promise<IntegrationSettings> {
     where: { settingKey: { startsWith: "integrations." } },
   });
 
-  const getValue = (key: string): string =>
-    rows.find((r) => r.settingKey === key)?.settingValue || "";
+  const getValue = (key: string): string => {
+    const row = rows.find((r) => r.settingKey === key);
+    if (!row?.settingValue) return "";
+    return row.isEncrypted ? decrypt(row.settingValue) : row.settingValue;
+  };
 
   return {
     slack: {

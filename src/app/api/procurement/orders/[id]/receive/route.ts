@@ -19,7 +19,7 @@ interface RouteParams {
 
 const receiveItemSchema = z.object({
   itemId: z.string().uuid(),
-  receivedQty: z.number().int().min(1),
+  receivedQty: z.number().int().min(1).max(1000),
   condition: z.string().min(1).max(50),
 });
 
@@ -83,6 +83,25 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         return NextResponse.json(
           {
             error: `Item ${receiveItem.itemId} does not belong to this purchase order's request`,
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Reject receipts that would exceed what's still outstanding on the line
+    // item — the transaction below creates one asset per received unit, so an
+    // unbounded/over-large receivedQty must be caught before it starts.
+    for (const receiveItem of validated.items) {
+      const requestItem = requestItems.find(
+        (ri) => ri.id === receiveItem.itemId,
+      );
+      const remaining =
+        (requestItem?.quantity ?? 0) - (requestItem?.receivedQuantity ?? 0);
+      if (receiveItem.receivedQty > remaining) {
+        return NextResponse.json(
+          {
+            error: `Received quantity (${receiveItem.receivedQty}) for item ${receiveItem.itemId} exceeds the remaining quantity (${remaining})`,
           },
           { status: 400 },
         );

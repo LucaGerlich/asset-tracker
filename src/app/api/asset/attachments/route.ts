@@ -218,9 +218,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     logger.error("Asset attachment upload failed", { error });
-    const detail = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: `Failed to upload attachment: ${detail}` },
+      { error: "Failed to upload attachment" },
       { status: 500 },
     );
   }

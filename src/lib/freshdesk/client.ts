@@ -40,6 +40,12 @@ export class FreshdeskClient {
     const domain = config.domain
       .replace(/\.freshdesk\.com\/?$/, "")
       .replace(/^https?:\/\//, "");
+    // The domain is interpolated directly into the request URL, so it must be
+    // re-validated here too — this constructor can be reached with a value
+    // read straight from storage, not just from the (already-validated) API.
+    if (!/^[a-z0-9-]{1,63}$/i.test(domain)) {
+      throw new Error("Invalid Freshdesk domain");
+    }
     this.baseUrl = FRESHDESK_API_BASE_TEMPLATE(domain);
     // Freshdesk uses API key as username with 'X' as password for Basic Auth
     this.authHeader = `Basic ${base64Encode(`${config.apiKey}:X`)}`;

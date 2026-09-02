@@ -22,7 +22,13 @@ const USER_SORT_FIELDS = ["firstname", "lastname", "email", "creation_date"];
 
 const stripPassword = (user) => {
   if (!user) return user;
-  const { password: _password, ...rest } = user;
+  const {
+    password: _password,
+    mfaSecret: _mfaSecret,
+    mfaBackupCodes: _mfaBackupCodes,
+    ldapDN: _ldapDN,
+    ...rest
+  } = user;
   return rest;
 };
 
@@ -95,9 +101,10 @@ export async function GET(req: NextRequest) {
     if (params.search) {
       const tsQuery = params.search.trim().split(/\s+/).join(" & ");
       const matchingIds = await prisma
-        .$queryRawUnsafe<
-          Array<{ userid: string }>
-        >(`SELECT "userid" FROM "user" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`, tsQuery)
+        .$queryRawUnsafe<Array<{ userid: string }>>(
+          `SELECT "userid" FROM "user" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`,
+          tsQuery,
+        )
         .catch(() => null);
 
       if (matchingIds && matchingIds.length > 0) {
