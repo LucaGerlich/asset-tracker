@@ -112,9 +112,10 @@ export async function getAssetById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const asset = await prisma.asset.findUnique({
+  const asset = await prisma.asset.findFirst({
     where: {
-      assetid: id, // Ensure id is converted to an integer if required
+      assetid: id,
+      ...(await strictOrgWhere()),
     },
   });
 
@@ -147,9 +148,10 @@ export async function getLocationById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const location = await prisma.location.findUnique({
+  const location = await prisma.location.findFirst({
     where: {
       locationid: id,
+      ...(await strictOrgWhere()),
     },
     include: {
       parent: { select: { locationid: true, locationname: true } },
@@ -187,8 +189,8 @@ export async function getManufacturerById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const manufacturer = await prisma.manufacturer.findUnique({
-    where: { manufacturerid: id },
+  const manufacturer = await prisma.manufacturer.findFirst({
+    where: { manufacturerid: id, ...(await strictOrgWhere()) },
   });
 
   if (!manufacturer) {
@@ -213,8 +215,8 @@ export async function getAccessoryById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const accessory = await prisma.accessories.findUnique({
-    where: { accessorieid: id },
+  const accessory = await prisma.accessories.findFirst({
+    where: { accessorieid: id, ...(await strictOrgWhere()) },
   });
 
   if (!accessory) {
@@ -235,8 +237,8 @@ export async function getSupplierById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const supplier = await prisma.supplier.findUnique({
-    where: { supplierid: id },
+  const supplier = await prisma.supplier.findFirst({
+    where: { supplierid: id, ...(await strictOrgWhere()) },
   });
 
   if (!supplier) {
@@ -261,8 +263,8 @@ export async function getConsumableById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const consumable = await prisma.consumable.findUnique({
-    where: { consumableid: id },
+  const consumable = await prisma.consumable.findFirst({
+    where: { consumableid: id, ...(await strictOrgWhere()) },
   });
 
   if (!consumable) {
@@ -303,8 +305,8 @@ export async function getLicenceById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const licence = await prisma.licence.findUnique({
-    where: { licenceid: id },
+  const licence = await prisma.licence.findFirst({
+    where: { licenceid: id, ...(await strictOrgWhere()) },
   });
 
   if (!licence) {
@@ -392,11 +394,21 @@ export async function updateUserAsset(user: string, asset: string) {
 }
 
 export async function getUserById(id: string) {
-  const user = await prisma.user.findUnique({
+  if (!id) {
+    throw new Error("Invalid ID parameter");
+  }
+
+  const user = await prisma.user.findFirst({
     where: {
       userid: id,
+      ...(await strictOrgWhere()),
     },
   });
+
+  if (!user) {
+    throw new Error(`User with ID ${id} not found`);
+  }
+
   return user;
 }
 
@@ -410,20 +422,14 @@ export async function updateUser(id: string, data: Record<string, unknown>) {
   return user;
 }
 
-export async function deleteUser(id: string) {
-  await prisma.user.delete({
-    where: { userid: id },
-  });
-}
-
 // Category Type data functions
 export async function getAssetCategoryById(id: string) {
   if (!id) {
     throw new Error("Invalid ID parameter");
   }
 
-  const category = await prisma.assetCategoryType.findUnique({
-    where: { assetcategorytypeid: id },
+  const category = await prisma.assetCategoryType.findFirst({
+    where: { assetcategorytypeid: id, ...(await strictOrgWhere()) },
   });
 
   if (!category) {
@@ -438,8 +444,8 @@ export async function getAccessoryCategoryById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const category = await prisma.accessorieCategoryType.findUnique({
-    where: { accessoriecategorytypeid: id },
+  const category = await prisma.accessorieCategoryType.findFirst({
+    where: { accessoriecategorytypeid: id, ...(await strictOrgWhere()) },
   });
 
   if (!category) {
@@ -454,8 +460,8 @@ export async function getConsumableCategoryById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const category = await prisma.consumableCategoryType.findUnique({
-    where: { consumablecategorytypeid: id },
+  const category = await prisma.consumableCategoryType.findFirst({
+    where: { consumablecategorytypeid: id, ...(await strictOrgWhere()) },
   });
 
   if (!category) {
@@ -470,8 +476,8 @@ export async function getLicenceCategoryById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const category = await prisma.licenceCategoryType.findUnique({
-    where: { licencecategorytypeid: id },
+  const category = await prisma.licenceCategoryType.findFirst({
+    where: { licencecategorytypeid: id, ...(await strictOrgWhere()) },
   });
 
   if (!category) {
@@ -486,8 +492,8 @@ export async function getModelById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const model = await prisma.model.findUnique({
-    where: { modelid: id },
+  const model = await prisma.model.findFirst({
+    where: { modelid: id, ...(await strictOrgWhere()) },
   });
 
   if (!model) {
@@ -520,8 +526,8 @@ export async function getComponents() {
 
 export async function getComponentById(id: string) {
   if (!id) throw new Error("Invalid ID parameter");
-  const component = await prisma.component.findUnique({
-    where: { id },
+  const component = await prisma.component.findFirst({
+    where: { id, ...(await strictOrgWhere()) },
     include: {
       category: true,
       manufacturer: true,
@@ -561,8 +567,8 @@ export async function getComponentCategoryById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const category = await prisma.componentCategory.findUnique({
-    where: { id },
+  const category = await prisma.componentCategory.findFirst({
+    where: { id, ...(await strictOrgWhere()) },
   });
 
   if (!category) {
@@ -574,10 +580,13 @@ export async function getComponentCategoryById(id: string) {
 
 // EULA Templates
 export async function getEulaTemplates() {
+  const where = await strictOrgWhere();
+  const key = `eula_templates:${JSON.stringify(where)}`;
   return cached(
-    "eula_templates",
+    key,
     () =>
       prisma.eulaTemplate.findMany({
+        where,
         orderBy: { createdAt: "desc" },
       }),
     2 * 60 * 1000,
@@ -586,7 +595,9 @@ export async function getEulaTemplates() {
 
 export async function getEulaTemplateById(id: string) {
   if (!id) throw new Error("Invalid ID parameter");
-  const template = await prisma.eulaTemplate.findUnique({ where: { id } });
+  const template = await prisma.eulaTemplate.findFirst({
+    where: { id, ...(await strictOrgWhere()) },
+  });
   if (!template) throw new Error(`EULA template with ID ${id} not found`);
   return template;
 }
@@ -609,8 +620,8 @@ export async function getKits() {
 
 export async function getKitById(id: string) {
   if (!id) throw new Error("Invalid ID parameter");
-  const kit = await prisma.kit.findUnique({
-    where: { id },
+  const kit = await prisma.kit.findFirst({
+    where: { id, ...(await strictOrgWhere()) },
     include: { items: true },
   });
   if (!kit) throw new Error(`Kit with ID ${id} not found`);
@@ -640,8 +651,8 @@ export async function getAuditCampaigns() {
 
 export async function getAuditCampaignById(id: string) {
   if (!id) throw new Error("Invalid ID parameter");
-  const campaign = await prisma.auditCampaign.findUnique({
-    where: { id },
+  const campaign = await prisma.auditCampaign.findFirst({
+    where: { id, ...(await strictOrgWhere()) },
     include: {
       creator: { select: { userid: true, firstname: true, lastname: true } },
       auditors: {
@@ -669,8 +680,8 @@ export async function getStatusById(id: string) {
     throw new Error("Invalid ID parameter");
   }
 
-  const status = await prisma.statusType.findUnique({
-    where: { statustypeid: id },
+  const status = await prisma.statusType.findFirst({
+    where: { statustypeid: id, ...(await strictOrgWhere()) },
   });
 
   if (!status) {
@@ -685,8 +696,10 @@ export async function getStatusById(id: string) {
  * with user info, sorted newest-first.
  */
 export async function getEntityHistory(entity: string, entityId: string) {
+  const { organizationId } = await strictOrgWhere();
   return prisma.audit_logs.findMany({
-    where: { entity, entityId },
+    // audit_logs has no organizationId column; scope via the acting user's org.
+    where: { entity, entityId, user: { organizationId } },
     orderBy: { createdAt: "desc" },
     take: 50,
     include: {

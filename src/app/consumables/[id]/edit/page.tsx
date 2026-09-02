@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import ConsumableCreateForm from "../../create/ui/ConsumableCreateForm";
 import {
   getConsumableById,
@@ -18,13 +19,17 @@ export default async function Page({
 }) {
   const { id } = await params;
 
-  const [consumableRaw, categories, manufacturers, suppliers] =
-    await Promise.all([
+  let consumableRaw, categories, manufacturers, suppliers;
+  try {
+    [consumableRaw, categories, manufacturers, suppliers] = await Promise.all([
       getConsumableById(id),
       getConsumableCategories(),
       getManufacturers(),
       getSuppliers(),
     ]);
+  } catch {
+    notFound();
+  }
 
   const consumable = {
     ...consumableRaw,

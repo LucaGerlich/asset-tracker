@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import ManufacturerCreateForm from "../../create/ui/ManufacturerCreateForm";
 import { getManufacturerById } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -12,7 +13,12 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const manufacturerRaw = await getManufacturerById(id);
+  let manufacturerRaw;
+  try {
+    manufacturerRaw = await getManufacturerById(id);
+  } catch {
+    notFound();
+  }
   const manufacturer = {
     ...manufacturerRaw,
     creation_date: manufacturerRaw.creation_date

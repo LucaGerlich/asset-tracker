@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import AccessoryCategoriesCreateForm from "../../create/ui/AccessoryCategoriesCreateForm";
 import { getAccessoryCategoryById } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -12,7 +13,12 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const category = await getAccessoryCategoryById(id);
+  let category;
+  try {
+    category = await getAccessoryCategoryById(id);
+  } catch {
+    notFound();
+  }
 
   return (
     <>

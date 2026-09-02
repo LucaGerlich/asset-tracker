@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import LicenceCategoriesCreateForm from "../../create/ui/LicenceCategoriesCreateForm";
 import { getLicenceCategoryById } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -12,7 +13,12 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const category = await getLicenceCategoryById(id);
+  let category;
+  try {
+    category = await getLicenceCategoryById(id);
+  } catch {
+    notFound();
+  }
 
   return (
     <>

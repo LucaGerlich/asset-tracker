@@ -53,7 +53,7 @@ const clientMethods: Record<string, unknown> = {
 };
 
 // Any other $-prefixed access ($extends, $use, $on, …) resolves to a cached
-// callable so wrappers like db-resilience don't blow up at import time.
+// callable so client-level wrappers don't blow up at import time.
 const dollarMethods = new Map<string, ReturnType<typeof vi.fn>>();
 
 const prismaMock: Record<string | symbol, unknown> = new Proxy(

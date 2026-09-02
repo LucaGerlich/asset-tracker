@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import LocationCreateForm from "../../create/ui/LocationCreateForm";
 import { getLocationById, getLocation } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -12,10 +13,15 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [locationRaw, allLocationsRaw] = await Promise.all([
-    getLocationById(id),
-    getLocation(),
-  ]);
+  let locationRaw, allLocationsRaw;
+  try {
+    [locationRaw, allLocationsRaw] = await Promise.all([
+      getLocationById(id),
+      getLocation(),
+    ]);
+  } catch {
+    notFound();
+  }
   const allLocations = allLocationsRaw as {
     locationid: string;
     locationname: string | null;

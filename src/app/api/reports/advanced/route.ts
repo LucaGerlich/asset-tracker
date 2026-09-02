@@ -206,7 +206,9 @@ export async function GET() {
     });
 
     const locations = await prisma.location.findMany({
+      where: orgScope,
       select: { locationid: true, locationname: true },
+      take: 1000,
     });
     const locationNameMap = new Map(
       locations.map((l) => [l.locationid, l.locationname || "Unknown"]),
@@ -220,10 +222,14 @@ export async function GET() {
     const maintenanceRaw = await prisma.maintenance_logs.findMany({
       where: {
         completedAt: { gte: twelveMonthsAgo },
+        // maintenance_logs has no organizationId column; scope via the
+        // schedule's asset relation.
+        maintenance_schedules: { asset: { organizationId: orgId ?? null } },
       },
       select: {
         completedAt: true,
       },
+      take: 1000,
     });
 
     const maintenanceMap = new Map<string, number>();

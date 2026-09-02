@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { getUserById } from "@/lib/data";
 import { requireAuth } from "@/lib/auth-guards";
 import prisma from "@/lib/prisma";
@@ -10,8 +11,15 @@ export const metadata = {
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const [user, session, allRoles, userRoles, departments] = await Promise.all([
-    getUserById(params.id),
+  // Fetched separately (not in the Promise.all below) so a scoped miss here
+  // maps to notFound() without risking swallowing requireAuth()'s redirect.
+  let user;
+  try {
+    user = await getUserById(params.id);
+  } catch {
+    notFound();
+  }
+  const [session, allRoles, userRoles, departments] = await Promise.all([
     requireAuth(),
     prisma.role.findMany({
       select: { id: true, name: true },

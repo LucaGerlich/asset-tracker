@@ -12,11 +12,17 @@ interface RouteParams {
 // GET /api/eula/[id]
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    await requirePermission("eula:view");
+    const authUser = await requirePermission("eula:view");
     const { id } = await params;
+    if (!authUser.organizationId) {
+      return NextResponse.json(
+        { error: "Forbidden: Organization context required" },
+        { status: 403 },
+      );
+    }
 
-    const template = await prisma.eulaTemplate.findUnique({
-      where: { id },
+    const template = await prisma.eulaTemplate.findFirst({
+      where: { id, organizationId: authUser.organizationId },
       include: { acceptances: { take: 10, orderBy: { acceptedAt: "desc" } } },
     });
 
@@ -50,6 +56,23 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("eula:manage");
     const { id } = await params;
+    if (!authUser.organizationId) {
+      return NextResponse.json(
+        { error: "Forbidden: Organization context required" },
+        { status: 403 },
+      );
+    }
+
+    const existing = await prisma.eulaTemplate.findFirst({
+      where: { id, organizationId: authUser.organizationId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "EULA template not found" },
+        { status: 404 },
+      );
+    }
 
     const body = await req.json();
     const validated = validateBody(updateEulaTemplateSchema, body);
@@ -104,9 +127,15 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("eula:manage");
     const { id } = await params;
+    if (!authUser.organizationId) {
+      return NextResponse.json(
+        { error: "Forbidden: Organization context required" },
+        { status: 403 },
+      );
+    }
 
-    const template = await prisma.eulaTemplate.findUnique({
-      where: { id },
+    const template = await prisma.eulaTemplate.findFirst({
+      where: { id, organizationId: authUser.organizationId },
       select: { name: true },
     });
 

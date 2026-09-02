@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import ModelCreateForm from "../../create/ui/ModelCreateForm";
 import { getModelById } from "@/lib/data";
 import Breadcrumb from "@/components/Breadcrumb";
@@ -12,7 +13,12 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const model = await getModelById(id);
+  let model;
+  try {
+    model = await getModelById(id);
+  } catch {
+    notFound();
+  }
 
   return (
     <>
