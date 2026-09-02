@@ -1633,6 +1633,10 @@ model ItemRequest {
 
   @@index([userId])
   @@index([status])
+  // NOTE: a partial unique index `item_requests_active_unique` ON (entityType, entityId)
+  // WHERE status NOT IN ('returned', 'rejected', 'cancelled') exists in SQL only
+  // (migration 20260415_request_concurrency). Prisma cannot express it; do not let a
+  // future `migrate dev` drop it.
   @@index([entityType, entityId])
   @@map("item_requests")
   @@schema("public")

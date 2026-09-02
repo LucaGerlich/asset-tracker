@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-09-02
+
+Release-readiness audit: seven review agents, seven fix agents, ~60 fixes.
+
+### Security
+
+- Organization-scope all 19 by-ID getters in the data layer (17 detail/edit pages
+  were readable cross-tenant by UUID) and the EULA template getters/routes
+- Close IDOR gaps: organizations/[id] GET (per-org isadmin bypass), asset attachment
+  file route (failed open without org), dashboard widget PUT, advanced reports
+- Verify OIDC ID token signatures against the IdP JWKS (jose); link accounts only on
+  externalId or IdP-verified email
+- HTML-escape email template variables; validate Freshdesk domain; encrypt and mask
+  Slack/Teams webhook URLs; strip mfaSecret/mfaBackupCodes/ldapDN from user responses
+- Cap procurement receivedQty and list limits; make setup guard atomic
+- Refuse to boot production with missing or weak required env vars
+- Update better-auth to 1.6.30 and all dependencies within their semver ranges
+  (0 production advisories, was 1 critical / 53 high)
+- Remove orphaned unauthenticated /api/auth/mfa/validate route
+
+### Fixed
+
+- Regenerate stale bun.lock (frozen install and every CI job were failing)
+- Docker build: bun + bun.lock, node 22, no migrate in build stage, HEALTHCHECK,
+  one-shot migrate compose service
+- set-schema.mjs normalizes the schema name per file; committed migrations consistent
+- Sentry tunnel /monitoring no longer redirected to /login; overdue-returns cron registered
+- CI runs on the development branch; dead demo-reset workflow removed
+- Type-check clean including test files; DB-gated suites run in CI with Postgres
+- Client: TCO report / role removal / maintenance loads surface errors; accessible
+  names on icon-only buttons and the photo lightbox
+
+### Removed
+
+- 14 never-imported components, db-resilience.ts, deleteUser(), tests/setup/prisma-mock.ts,
+  the NextAuth-era deployment guide
+
+### Docs
+
+- Deployment guides corrected to BETTER_AUTH_* and the bun toolchain; CHANGELOG
+  backfilled 0.5.0–0.9.4; .env.example documents every key the code reads;
+  TECHNICAL_DEBT.md rewritten with open decisions (MFA, SSO, strict mode)
+
 ## [0.9.4] - 2026-07-07
 
 ### Fixed
