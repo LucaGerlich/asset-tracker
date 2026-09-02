@@ -82,6 +82,13 @@ export async function proxy(req: NextRequest) {
   // Health check endpoints (always allow, no rate limiting)
   const isHealthRoute = pathname.startsWith("/api/health");
 
+  // Sentry error-reporting tunnel (see next.config.mjs `tunnelRoute`).
+  // Client-side error reports are POSTed here by anonymous/logged-out
+  // visitors too (e.g. errors on /login itself), so it must bypass the
+  // auth redirect just like health checks do.
+  const isMonitoringRoute =
+    pathname === "/monitoring" || pathname.startsWith("/monitoring/");
+
   // API routes (handle separately - will be protected at the API level)
   const isApiRoute = pathname.startsWith("/api");
 
@@ -98,8 +105,9 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow health endpoints without authentication or rate limiting
-  if (isHealthRoute) {
+  // Allow health endpoints and the Sentry tunnel without authentication or
+  // rate limiting
+  if (isHealthRoute || isMonitoringRoute) {
     return nextWithNonce();
   }
 

@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "assettool"."item_requests" (
+CREATE TABLE "public"."item_requests" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "entityType" VARCHAR(30) NOT NULL,
     "entityId" UUID NOT NULL,
@@ -18,10 +18,10 @@ CREATE TABLE "assettool"."item_requests" (
 );
 
 -- CreateIndex
-CREATE INDEX "item_requests_userId_idx" ON "assettool"."item_requests"("userId");
-CREATE INDEX "item_requests_status_idx" ON "assettool"."item_requests"("status");
-CREATE INDEX "item_requests_entityType_entityId_idx" ON "assettool"."item_requests"("entityType", "entityId");
+CREATE INDEX "item_requests_userId_idx" ON "public"."item_requests"("userId");
+CREATE INDEX "item_requests_status_idx" ON "public"."item_requests"("status");
+CREATE INDEX "item_requests_entityType_entityId_idx" ON "public"."item_requests"("entityType", "entityId");
 
 -- AddForeignKey
-ALTER TABLE "assettool"."item_requests" ADD CONSTRAINT "item_requests_userId_fkey" FOREIGN KEY ("userId") REFERENCES "assettool"."user"("userid") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "assettool"."item_requests" ADD CONSTRAINT "item_requests_approvedBy_fkey" FOREIGN KEY ("approvedBy") REFERENCES "assettool"."user"("userid") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."item_requests" ADD CONSTRAINT "item_requests_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."user"("userid") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."item_requests" ADD CONSTRAINT "item_requests_approvedBy_fkey" FOREIGN KEY ("approvedBy") REFERENCES "public"."user"("userid") ON DELETE SET NULL ON UPDATE CASCADE;

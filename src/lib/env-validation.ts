@@ -4,6 +4,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { isSelfHosted } from "@/lib/deployment-mode";
 
 interface EnvVarConfig {
   /** Name of the environment variable */
@@ -170,6 +171,23 @@ export const ENV_CONFIG: EnvVarConfig[] = [
     description: "Enable session timeout for inactivity",
     validate: (v) => ["true", "false"].includes(v),
     validateMessage: "Must be 'true' or 'false'",
+  },
+
+  // Billing (Stripe) — required for SaaS deployments, irrelevant when
+  // SELF_HOSTED=true disables quota/billing enforcement entirely.
+  {
+    name: "STRIPE_SECRET_KEY",
+    required: !isSelfHosted(),
+    description:
+      "Stripe secret key for billing (not required when SELF_HOSTED=true)",
+    sensitive: true,
+  },
+  {
+    name: "STRIPE_WEBHOOK_SECRET",
+    required: !isSelfHosted(),
+    description:
+      "Stripe webhook signing secret (not required when SELF_HOSTED=true)",
+    sensitive: true,
   },
 ];
 

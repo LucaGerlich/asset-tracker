@@ -1,6 +1,6 @@
 -- Add missing columns and tables that exist in Prisma schema but were never migrated
-CREATE SCHEMA IF NOT EXISTS "assettool";
-SET search_path TO "assettool";
+CREATE SCHEMA IF NOT EXISTS "public";
+SET search_path TO "public";
 
 -- ============================================================
 -- ALTER existing tables: add missing columns

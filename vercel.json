@@ -46,6 +46,10 @@
     {
       "path": "/api/cron/check-trials",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/overdue-returns",
+      "schedule": "0 9 * * *"
     }
   ]
 }

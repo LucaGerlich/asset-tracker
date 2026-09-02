@@ -1,6 +1,6 @@
 -- PostgreSQL infrastructure: cache, rate limits, and full-text search
-CREATE SCHEMA IF NOT EXISTS "assettool";
-SET search_path TO "assettool";
+CREATE SCHEMA IF NOT EXISTS "public";
+SET search_path TO "public";
 
 -- ============================================================
 -- 1. Cache table (UNLOGGED for performance)

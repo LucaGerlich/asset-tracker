@@ -1,5 +1,5 @@
-CREATE SCHEMA IF NOT EXISTS "assettool";
-SET search_path TO "assettool";
+CREATE SCHEMA IF NOT EXISTS "public";
+SET search_path TO "public";
 -- AlterTable
 ALTER TABLE "accessories" ADD COLUMN IF NOT EXISTS "organizationId" UUID;
 

@@ -212,13 +212,15 @@ class Logger {
         warn: "\x1b[33m", // Yellow
         error: "\x1b[31m", // Red
       };
-      const _reset = "\x1b[0m";
-      const _color = colorMap[level];
+      const reset = "\x1b[0m";
+      const color = colorMap[level];
 
-      const _maskedContext = context ? maskSensitiveData(context) : "";
+      const maskedContext = context ? maskSensitiveData(context) : undefined;
 
-      if (context?.error) {
-        console.error(context.error);
+      console.log(`${color}[${level}] ${message}${reset}`, maskedContext ?? "");
+
+      if (maskedContext?.error) {
+        console.error(maskedContext.error);
       }
     }
   }

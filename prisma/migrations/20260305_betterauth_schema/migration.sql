@@ -1,5 +1,5 @@
-CREATE SCHEMA IF NOT EXISTS "assettool";
-SET search_path TO "assettool";
+CREATE SCHEMA IF NOT EXISTS "public";
+SET search_path TO "public";
 -- BetterAuth Schema Migration
 -- Renames columns to match BetterAuth conventions (preserves data)
 
@@ -7,19 +7,19 @@ SET search_path TO "assettool";
 -- accounts table: rename columns (idempotent: check if old column exists)
 -- ============================================================
 DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'assettool' AND table_name = 'accounts' AND column_name = 'provider') THEN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'accounts' AND column_name = 'provider') THEN
     ALTER TABLE "accounts" RENAME COLUMN "provider" TO "providerId";
   END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'assettool' AND table_name = 'accounts' AND column_name = 'providerAccountId') THEN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'accounts' AND column_name = 'providerAccountId') THEN
     ALTER TABLE "accounts" RENAME COLUMN "providerAccountId" TO "accountId";
   END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'assettool' AND table_name = 'accounts' AND column_name = 'access_token') THEN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'accounts' AND column_name = 'access_token') THEN
     ALTER TABLE "accounts" RENAME COLUMN "access_token" TO "accessToken";
   END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'assettool' AND table_name = 'accounts' AND column_name = 'refresh_token') THEN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'accounts' AND column_name = 'refresh_token') THEN
     ALTER TABLE "accounts" RENAME COLUMN "refresh_token" TO "refreshToken";
   END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'assettool' AND table_name = 'accounts' AND column_name = 'id_token') THEN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'accounts' AND column_name = 'id_token') THEN
     ALTER TABLE "accounts" RENAME COLUMN "id_token" TO "idToken";
   END IF;
 END $$;
@@ -46,10 +46,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS "accounts_providerId_accountId_key" ON "accoun
 -- sessions table: rename columns (idempotent)
 -- ============================================================
 DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'assettool' AND table_name = 'sessions' AND column_name = 'sessionToken') THEN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sessions' AND column_name = 'sessionToken') THEN
     ALTER TABLE "sessions" RENAME COLUMN "sessionToken" TO "token";
   END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'assettool' AND table_name = 'sessions' AND column_name = 'expires') THEN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sessions' AND column_name = 'expires') THEN
     ALTER TABLE "sessions" RENAME COLUMN "expires" TO "expiresAt";
   END IF;
 END $$;

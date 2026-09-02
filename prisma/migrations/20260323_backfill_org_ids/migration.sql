@@ -2,7 +2,7 @@
 -- Assigns them to the first active organization found (by creation date).
 -- Only updates tables that actually have an organizationId column.
 
-SET search_path TO "assettool";
+SET search_path TO "public";
 
 DO $$
 DECLARE

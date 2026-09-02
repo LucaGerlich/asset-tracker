@@ -1,5 +1,5 @@
-CREATE SCHEMA IF NOT EXISTS "assettool";
-SET search_path TO "assettool";
+CREATE SCHEMA IF NOT EXISTS "public";
+SET search_path TO "public";
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "tickets" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),

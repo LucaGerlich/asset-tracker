@@ -23,6 +23,10 @@ describe("env-validation", () => {
     vi.stubEnv("BETTER_AUTH_URL", "http://localhost:3000");
     vi.stubEnv("BETTER_AUTH_SECRET", "a]3Kf9$mPqR7vLxW2nBtYcZeAsDgHjMk");
     vi.stubEnv("CRON_SECRET", "test-cron-secret-value");
+    // STRIPE_* are required unless SELF_HOSTED=true (see deployment-mode.ts);
+    // the test environment runs as a non-self-hosted deployment by default.
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_dummy_key_for_unit_tests");
+    vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_dummy_secret_for_unit_tests");
   });
 
   afterEach(() => {

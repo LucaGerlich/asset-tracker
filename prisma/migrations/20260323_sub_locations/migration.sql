@@ -1,4 +1,4 @@
-SET search_path TO "assettool";
+SET search_path TO "public";
 
 -- Add parent location reference for hierarchical locations
 ALTER TABLE "location" ADD COLUMN IF NOT EXISTS "parentId" UUID;
