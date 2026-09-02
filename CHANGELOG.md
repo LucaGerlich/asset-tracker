@@ -4,6 +4,163 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+## [0.9.4] - 2026-07-07
+
+### Fixed
+
+- **Authentication & cron authorization** — harden auth guards and cron secret enforcement
+- **Org scoping** — enforce multi-tenant scoping across all API routes and data layer
+- **UI dead-ends** — repair client-side error handling and broken navigation flows
+- **Cache invalidation** — fix list, count, and reference cache invalidation on mutations
+- **Concurrency & data integrity** — resolve races in checkout and state transitions
+- **Plan gating** — close security bypasses in feature gate validation
+
+## [0.9.3] - 2026-06-11
+
+### Added
+
+- **Clickable entity names** — make asset/accessory/consumable/licence names clickable to detail pages
+
+## [0.9.2] - 2026-06-11
+
+### Changed
+
+- **Hero + grouped redesign** — apply detail page hierarchy redesign to accessory and component pages
+
+## [0.9.1] - 2026-06-11
+
+### Added
+
+- **Lazy image loading** — add skeleton placeholders for entity images
+- **Detail page redesign** — reorganize asset detail page for clearer visual hierarchy
+
+### Changed
+
+- **Component form** — replace inline selects with reusable SelectWithQuickCreate component
+
+### Fixed
+
+- **S3 bundling** — statically import S3 provider for serverless builds
+
+## [0.9.0] - 2026-06-10
+
+### Added
+
+- **Per-org S3 storage** — route entity attachments through organization-scoped S3 buckets
+- **Entity image uploads** — add image support for accessories, consumables, and components
+- **Storage config tab** — admin settings to configure per-org storage providers and credentials
+- **Entity attachment model** — track attachments with MIME validation and per-org scoping
+
+### Fixed
+
+- **MIME type handling** — harden asset attachments against content-type confusion attacks
+- **Storage error messages** — surface real encryption key errors instead of generic messages
+- **IDOR protection** — restrict attachment routes to org membership verification
+
+## [0.8.0] - 2026-06-01
+
+### Added
+
+- **Aislop quality gate** — integrate code quality linter configuration
+
+### Changed
+
+- **BetterAuth trustedOrigins** — support all Vercel URL variants (preview, staging, production)
+
+### Fixed
+
+- **React Compiler errors** — resolve compilation errors in mobile-specific hooks
+- **Code quality** — 30+ improvements across pages, components, API routes, and libraries
+- **Type safety** — improve error handling and type annotations throughout codebase
+- **Dependencies** — update Prisma, Next.js, and patch 15 security vulnerabilities
+
+## [0.7.1] - 2026-05-19
+
+### Added
+
+- **SEO infrastructure** — sitemap, robots.txt, JSON-LD schema, OG meta tags
+- **Landing page optimization** — keyword-focused content and FAQ section
+
+## [0.7.0] - 2026-05-08
+
+### Added
+
+- **Procurement workflow** — full lifecycle from request to delivery with approval gates
+- **Trial flow** — time-limited trial periods for SaaS orgs
+- **TCO dashboard** — total cost of ownership tracking by asset category
+- **Billing management tab** — usage bars, plan comparison, and limit visualization
+- **Plan feature gating** — PlanGate component to restrict features by subscription tier
+
+### Fixed
+
+- **Build command** — read admin settings tab from URL for deep linking
+- **Admin nav flash** — prevent non-admin navigation flicker on page load
+- **Schema detection** — use actual detected schema instead of hardcoded source
+
+## [0.6.0] - 2026-05-05
+
+### Added
+
+- **Organization suspension** — disable orgs with configurable grace period
+- **Quota enforcement** — enforce per-org limits on users, assets, and data
+- **Organization defaults** — seed default categories, locations, and settings per org
+- **Shared table scoping** — scope 10+ shared tables to organization context
+
+### Changed
+
+- **Admin settings UX** — make sidebar fixed with independent scroll
+
+### Fixed
+
+- **Org access** — gate global settings behind superadmin check
+- **Org-scoped endpoints** — fix cross-tenant IDOR on org CRUD, GDPR, Freshdesk routes
+- **Sign-up blocking** — restrict user registration on self-hosted instances
+
+## [0.5.3] - 2026-05-05
+
+### Fixed
+
+- **Org scoping** — ensure shared table references use canonical schema qualification (`"assettool"."cache"`)
+
+## [0.5.2] - 2026-04-30
+
+### Security
+
+- **Org security** — prevent cross-tenant updates/deletes and GDPR access bypasses
+- **Admin endpoints** — enforce org scoping on all admin write operations
+
+### Fixed
+
+- **Type system** — cast Prisma models to unknown for dynamic model access
+- **Response types** — widen withHeaders to accept Response and NextResponse
+
+## [0.5.1] - 2026-04-28
+
+### Security
+
+- **OIDC/SCIM/CSV injection** — close authentication and import security gaps
+- **Attachment IDOR** — harden routes against cross-tenant access
+
+### Fixed
+
+- **Silent error catches** — replace with logged handlers in async operations
+- **API timeouts** — add configurable timeouts to prevent hanging requests
+- **UI quality** — improve accessibility and error handling in components
+
+## [0.5.0] - 2026-04-22
+
+### Added
+
+- **Microsoft Intune device sync** — auto-import managed devices from Graph API with conflict resolution
+- **Intune admin settings** — tenant ID, client credentials, test connection, sync controls
+- **IntuneSyncLog audit trail** — track status, device counts, errors, duration per sync
+- **Asset external tracking** — externalId and externalSource fields for MDM-synced devices
+- **Intune cron job** — daily sync at 8 AM UTC via `/api/cron/intune-sync`
+- **Help/FAQ page** — user-facing help documentation
+- **Intune webhook** — publish `intune.sync_completed` events to Slack/Teams
+
 ## [0.4.0] - 2026-04-22
 
 ### Added

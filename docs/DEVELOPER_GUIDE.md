@@ -34,11 +34,11 @@ import { requireApiAuth, requireApiAdmin } from "@/lib/api-auth";
 // Get session in a server component
 export default async function Page() {
   const session = await auth();
-  
+
   if (!session) {
     // User not logged in
   }
-  
+
   if (session.user.isAdmin) {
     // User is admin
   }
@@ -92,15 +92,15 @@ import { PERMISSIONS } from "@/lib/permissions";
 
 function MyComponent() {
   const { data: session, status } = useSession();
-  
+
   if (status === "loading") {
     return <div>Loading...</div>;
   }
-  
+
   if (!session) {
     return <button onClick={() => signIn()}>Sign In</button>;
   }
-  
+
   return (
     <div>
       <p>Welcome {session.user.name}</p>
@@ -112,15 +112,15 @@ function MyComponent() {
 // Using permission hooks
 function ProtectedButton() {
   const { hasPermission, isAdmin } = usePermissions();
-  
+
   if (isAdmin()) {
     return <button>Admin Action</button>;
   }
-  
+
   if (hasPermission(PERMISSIONS.ASSET_CREATE)) {
     return <button>Create Asset</button>;
   }
-  
+
   return null;
 }
 
@@ -131,7 +131,7 @@ function ConditionalContent() {
       <AdminGuard>
         <div>Only admins see this</div>
       </AdminGuard>
-      
+
       <PermissionGuard permission={PERMISSIONS.ASSET_EDIT}>
         <button>Edit Asset</button>
       </PermissionGuard>
@@ -168,7 +168,7 @@ import { requireAuth } from "@/lib/auth-guards";
 
 export default async function ProtectedPage() {
   await requireAuth(); // Redirects to login if not authenticated
-  
+
   return <div>Protected Content</div>;
 }
 ```
@@ -181,7 +181,7 @@ import { requireAdmin } from "@/lib/auth-guards";
 
 export default async function AdminPage() {
   await requireAdmin(); // Redirects to home if not admin
-  
+
   return <div>Admin Dashboard</div>;
 }
 ```
@@ -196,10 +196,10 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const user = await requireApiAuth();
-    
+
     // Fetch data
     const data = await fetchUserData(user.id);
-    
+
     return NextResponse.json(data);
   } catch (error) {
     if (error.message === "Unauthorized") {
@@ -218,20 +218,20 @@ import { NextResponse } from "next/server";
 
 export async function POST(request) {
   const body = await request.json();
-  
+
   // Validate input
   const result = createAssetSchema.safeParse(body);
-  
+
   if (!result.success) {
     return NextResponse.json(
-      { 
-        error: "Validation failed", 
-        details: result.error.errors 
+      {
+        error: "Validation failed",
+        details: result.error.errors,
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
-  
+
   // Use validated data
   const validatedData = result.data;
   // ...
@@ -277,32 +277,32 @@ await prisma.user.create({
 ```javascript
 import { PERMISSIONS } from "@/lib/permissions";
 
-PERMISSIONS.ASSET_VIEW
-PERMISSIONS.ASSET_CREATE
-PERMISSIONS.ASSET_EDIT
-PERMISSIONS.ASSET_DELETE
-PERMISSIONS.ASSET_ASSIGN
+PERMISSIONS.ASSET_VIEW;
+PERMISSIONS.ASSET_CREATE;
+PERMISSIONS.ASSET_EDIT;
+PERMISSIONS.ASSET_DELETE;
+PERMISSIONS.ASSET_ASSIGN;
 
-PERMISSIONS.USER_VIEW
-PERMISSIONS.USER_CREATE
-PERMISSIONS.USER_EDIT
-PERMISSIONS.USER_DELETE
+PERMISSIONS.USER_VIEW;
+PERMISSIONS.USER_CREATE;
+PERMISSIONS.USER_EDIT;
+PERMISSIONS.USER_DELETE;
 
-PERMISSIONS.ACCESSORY_VIEW
-PERMISSIONS.ACCESSORY_CREATE
-PERMISSIONS.ACCESSORY_EDIT
-PERMISSIONS.ACCESSORY_DELETE
-PERMISSIONS.ACCESSORY_REQUEST
+PERMISSIONS.ACCESSORY_VIEW;
+PERMISSIONS.ACCESSORY_CREATE;
+PERMISSIONS.ACCESSORY_EDIT;
+PERMISSIONS.ACCESSORY_DELETE;
+PERMISSIONS.ACCESSORY_REQUEST;
 
-PERMISSIONS.LICENSE_VIEW
-PERMISSIONS.LICENSE_CREATE
-PERMISSIONS.LICENSE_EDIT
-PERMISSIONS.LICENSE_DELETE
+PERMISSIONS.LICENSE_VIEW;
+PERMISSIONS.LICENSE_CREATE;
+PERMISSIONS.LICENSE_EDIT;
+PERMISSIONS.LICENSE_DELETE;
 
-PERMISSIONS.SETTINGS_VIEW
-PERMISSIONS.SETTINGS_EDIT
+PERMISSIONS.SETTINGS_VIEW;
+PERMISSIONS.SETTINGS_EDIT;
 
-PERMISSIONS.CATALOG_MANAGE
+PERMISSIONS.CATALOG_MANAGE;
 ```
 
 ## Audit Actions
@@ -310,18 +310,18 @@ PERMISSIONS.CATALOG_MANAGE
 ```javascript
 import { AUDIT_ACTIONS } from "@/lib/audit-log";
 
-AUDIT_ACTIONS.CREATE
-AUDIT_ACTIONS.UPDATE
-AUDIT_ACTIONS.DELETE
-AUDIT_ACTIONS.LOGIN
-AUDIT_ACTIONS.LOGOUT
-AUDIT_ACTIONS.LOGIN_FAILED
-AUDIT_ACTIONS.PASSWORD_CHANGE
-AUDIT_ACTIONS.ASSIGN
-AUDIT_ACTIONS.UNASSIGN
-AUDIT_ACTIONS.REQUEST
-AUDIT_ACTIONS.APPROVE
-AUDIT_ACTIONS.REJECT
+AUDIT_ACTIONS.CREATE;
+AUDIT_ACTIONS.UPDATE;
+AUDIT_ACTIONS.DELETE;
+AUDIT_ACTIONS.LOGIN;
+AUDIT_ACTIONS.LOGOUT;
+AUDIT_ACTIONS.LOGIN_FAILED;
+AUDIT_ACTIONS.PASSWORD_CHANGE;
+AUDIT_ACTIONS.ASSIGN;
+AUDIT_ACTIONS.UNASSIGN;
+AUDIT_ACTIONS.REQUEST;
+AUDIT_ACTIONS.APPROVE;
+AUDIT_ACTIONS.REJECT;
 ```
 
 ## Common Tasks
@@ -330,6 +330,7 @@ AUDIT_ACTIONS.REJECT
 
 1. Create your page component
 2. Add auth guard:
+
 ```javascript
 import { requireAuth } from "@/lib/auth-guards";
 
@@ -343,6 +344,7 @@ export default async function MyPage() {
 
 1. Create route file
 2. Add authentication:
+
 ```javascript
 import { requireApiAuth } from "@/lib/api-auth";
 
@@ -359,6 +361,7 @@ export async function POST(request) {
 ### Add Input Validation
 
 1. Define schema in `src/lib/validation.js`:
+
 ```javascript
 export const mySchema = z.object({
   field1: z.string().min(1),
@@ -367,6 +370,7 @@ export const mySchema = z.object({
 ```
 
 2. Use in API route:
+
 ```javascript
 import { mySchema } from "@/lib/validation";
 
@@ -374,7 +378,7 @@ const result = mySchema.safeParse(body);
 if (!result.success) {
   return NextResponse.json(
     { error: "Validation failed", details: result.error.errors },
-    { status: 400 }
+    { status: 400 },
   );
 }
 ```
@@ -462,9 +466,9 @@ console.log("Session:", JSON.stringify(session, null, 2));
 
 ```sql
 -- Recent activity
-SELECT 
-  al.*, 
-  u.username 
+SELECT
+  al.*,
+  u.username
 FROM audit_logs al
 LEFT JOIN "user" u ON al."userId" = u.userid
 ORDER BY al."createdAt" DESC
@@ -518,17 +522,20 @@ model Organization {
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
+| File                              | Purpose                                   |
+| --------------------------------- | ----------------------------------------- |
 | `src/lib/organization-context.ts` | Resolves org from session, scopes queries |
-| `src/lib/tenant-limits.ts` | Enforces `maxAssets` / `maxUsers` per org |
+| `src/lib/tenant-limits.ts`        | Enforces `maxAssets` / `maxUsers` per org |
 
 ### Scoping Queries
 
 Always use `scopeToOrganization()` when querying org-scoped tables:
 
 ```typescript
-import { getOrganizationContext, scopeToOrganization } from "@/lib/organization-context";
+import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
 
 const orgContext = await getOrganizationContext();
 const orgId = orgContext?.organization?.id;
@@ -546,13 +553,14 @@ import { canAccessResource } from "@/lib/organization-context";
 
 // Check if user can access a specific resource
 const allowed = await canAccessResource(
-  resource.organizationId,  // resource's org
-  user.organizationId,      // user's org
-  user.isAdmin              // admins bypass
+  resource.organizationId, // resource's org
+  user.organizationId, // user's org
+  user.isAdmin, // admins bypass
 );
 ```
 
 Rules:
+
 - Admins can access all resources
 - Resources with no `organizationId` are globally accessible
 - Otherwise, user's org must match resource's org
@@ -597,19 +605,23 @@ A `max` value of `-1` means unlimited.
 ## Common Errors
 
 ### "Cannot find module '@/auth'"
+
 - Check jsconfig.json path aliases
 - Ensure file exists at src/auth.js
 
 ### "Unauthorized" on API call
+
 - User not logged in
 - Session expired
 - Check middleware configuration
 
 ### "Forbidden" on API call
+
 - User lacks required permission
 - Check user role in database
 
 ### Login redirects to login
+
 - Check NEXTAUTH_SECRET is set
 - Verify password was hashed correctly
 - Check browser console for errors
@@ -621,7 +633,7 @@ A `max` value of `-1` means unlimited.
 - [Prisma Documentation](https://www.prisma.io/docs)
 - SECURITY.md - Security documentation
 - PENETRATION_TESTING.md - Testing guide
-- DEPLOYMENT_GUIDE.md - Deployment instructions
+- DEPLOYMENT.md - Deployment instructions
 
 ---
 

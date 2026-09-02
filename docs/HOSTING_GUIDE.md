@@ -183,6 +183,8 @@ docker compose logs -f db
 # Wait until you see "database system is ready to accept connections", then Ctrl+C
 ```
 
+**Database schema:** By default, migrations target the `assettool` PostgreSQL schema. To use the `public` schema instead, add `--build-arg DB_SCHEMA=public` to the build command above.
+
 **Using an external database instead?** (Supabase, Neon, managed Postgres)
 
 ```bash
@@ -194,7 +196,7 @@ docker compose --profile app-only up -d --build
 
 ```bash
 # Apply all migrations
-docker compose exec app npx prisma migrate deploy
+docker compose run --rm migrate
 
 # Create the first admin user (interactive)
 docker compose exec app node scripts/create-admin.mjs
@@ -288,14 +290,15 @@ In Vercel Project Settings > Domains:
 The `vercel.json` already includes cron jobs. They run automatically once deployed. Vercel sends `CRON_SECRET` as the Bearer token.
 
 Current schedule:
-| Job | Schedule | Purpose |
-|-----|----------|---------|
-| `/api/cron/demo-reset` | Daily 00:00 UTC | Demo data reset (only if `DEMO_MODE=true`) |
-| `/api/cron/sessions` | Daily 01:00 UTC | Expired session cleanup |
-| `/api/cron/notifications` | Daily 02:00 UTC | Email notifications (license expiry, low stock) |
-| `/api/cron/workflows` | Daily 03:00 UTC | Automation rule execution |
-| `/api/cron/gdpr-retention` | Daily 04:00 UTC | GDPR data retention enforcement |
-| `/api/cron/ldap-sync` | Daily 05:00 UTC | LDAP user synchronization |
+
+| Job                        | Schedule        | Purpose                                         |
+| -------------------------- | --------------- | ----------------------------------------------- |
+| `/api/cron/demo-reset`     | Daily 00:00 UTC | Demo data reset (only if `DEMO_MODE=true`)      |
+| `/api/cron/sessions`       | Daily 01:00 UTC | Expired session cleanup                         |
+| `/api/cron/notifications`  | Daily 02:00 UTC | Email notifications (license expiry, low stock) |
+| `/api/cron/workflows`      | Daily 03:00 UTC | Automation rule execution                       |
+| `/api/cron/gdpr-retention` | Daily 04:00 UTC | GDPR data retention enforcement                 |
+| `/api/cron/ldap-sync`      | Daily 05:00 UTC | LDAP user synchronization                       |
 
 ---
 
@@ -341,10 +344,10 @@ nano .env
 # Set DATABASE_URL=postgresql://assettracker:STRONG_PASSWORD@localhost:5432/assettracker
 # Set all other required env vars
 
-npm ci
-npx prisma generate
-npx prisma migrate deploy
-npm run build
+bun install --frozen-lockfile
+bunx prisma generate
+bunx prisma migrate deploy
+bun run build
 node scripts/create-admin.mjs
 ```
 
@@ -587,7 +590,7 @@ git pull origin master
 docker compose --profile with-db up -d --build
 
 # Apply any new database migrations
-docker compose exec app npx prisma migrate deploy
+docker compose run --rm migrate
 ```
 
 ### Vercel
@@ -599,10 +602,10 @@ Push to the connected branch — Vercel auto-deploys. If using the build command
 ```bash
 cd /opt/assettTracker
 git pull origin master
-npm ci
-npx prisma generate
-npx prisma migrate deploy
-npm run build
+bun install --frozen-lockfile
+bunx prisma generate
+bunx prisma migrate deploy
+bun run build
 pm2 restart assettracker
 ```
 
@@ -651,7 +654,7 @@ The app container connects to the database over the Docker network — no host p
 
 ```bash
 docker compose logs app --tail 50
-docker compose exec app npx prisma migrate status
+docker compose run --rm migrate bunx prisma migrate status
 ```
 
 ### "relation does not exist" error
@@ -659,7 +662,7 @@ docker compose exec app npx prisma migrate status
 Migrations haven't been applied:
 
 ```bash
-docker compose exec app npx prisma migrate deploy
+docker compose run --rm migrate
 ```
 
 ### "no matching decryption secret" or session errors
@@ -681,7 +684,7 @@ docker compose exec db psql -U assettracker -c "SELECT 1"
 
 ```bash
 # Regenerate the Prisma client
-docker compose exec app npx prisma generate
+docker compose run --rm migrate bunx prisma generate
 ```
 
 ### Email not sending

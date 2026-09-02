@@ -151,7 +151,7 @@ Track hardware, software licences, consumables, and accessories — with role-ba
 
 ### Prerequisites
 
-- **Node.js 18+** or [Bun](https://bun.sh/)
+- **Node.js 20.9+** or [Bun 1.x](https://bun.sh/)
 - **PostgreSQL** database
 
 ### 1. Clone and install
@@ -159,7 +159,7 @@ Track hardware, software licences, consumables, and accessories — with role-ba
 ```bash
 git clone https://github.com/luca-fitseveneleven/assetTracker.git
 cd assetTracker
-npm install
+bun install
 ```
 
 ### 2. Configure environment
@@ -194,7 +194,7 @@ npm run create-admin
 ### 5. Start the server
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 Open **http://localhost:3000** and sign in.
