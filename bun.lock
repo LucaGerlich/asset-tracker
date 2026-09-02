@@ -42,6 +42,7 @@
         "exceljs": "^4.4.0",
         "geist": "^1.7.2",
         "idb-keyval": "^6.3.0",
+        "jose": "^6.2.10",
         "jsqr": "^1.4.0",
         "ldapjs": "^3.0.7",
         "lucide-react": "^1.39.0",

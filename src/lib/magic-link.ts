@@ -1,6 +1,10 @@
 import prisma from "@/lib/prisma";
 import { sendEmail } from "@/lib/email/service";
-import { emailTemplates, renderTemplate } from "@/lib/email/templates";
+import {
+  emailTemplates,
+  renderTemplate,
+  renderTextTemplate,
+} from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { getBaseUrl } from "@/lib/url";
 
@@ -29,7 +33,7 @@ export async function sendSetPasswordLink(params: {
   const setPasswordUrl = `${baseUrl}/set-password/${token}`;
 
   try {
-    const subject = renderTemplate(emailTemplates.setPassword.subject, {});
+    const subject = renderTextTemplate(emailTemplates.setPassword.subject, {});
     const html = renderTemplate(emailTemplates.setPassword.html, {
       userName,
       organizationName: organizationName || "Asset Tracker",

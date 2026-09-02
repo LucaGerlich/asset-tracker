@@ -4,7 +4,12 @@
  */
 
 import prisma from "./prisma";
-import { queueEmail, emailTemplates, renderTemplate } from "./email";
+import {
+  queueEmail,
+  emailTemplates,
+  renderTemplate,
+  renderTextTemplate,
+} from "./email";
 
 interface AssetNotificationData {
   assetId: string;
@@ -66,7 +71,7 @@ export async function notifyAssetAssignment(
     assignedDate: new Date().toLocaleDateString(),
   });
 
-  const subject = renderTemplate(template.subject, {
+  const subject = renderTextTemplate(template.subject, {
     assetName: asset.assetName,
   });
 
@@ -91,7 +96,7 @@ export async function notifyAssetUnassignment(
     unassignedDate: new Date().toLocaleDateString(),
   });
 
-  const subject = renderTemplate(template.subject, {
+  const subject = renderTextTemplate(template.subject, {
     assetName: asset.assetName,
   });
 
@@ -119,7 +124,7 @@ export async function notifyReservationRequest(reservation: {
   });
 
   const template = emailTemplates.reservationRequest;
-  const subject = renderTemplate(template.subject, {
+  const subject = renderTextTemplate(template.subject, {
     assetName: reservation.assetName,
   });
   const html = renderTemplate(template.html, {
@@ -163,7 +168,7 @@ export async function notifyReservationDecision(decision: {
       ? emailTemplates.reservationApproved
       : emailTemplates.reservationRejected;
 
-  const subject = renderTemplate(template.subject, {
+  const subject = renderTextTemplate(template.subject, {
     assetName: decision.assetName,
   });
   const html = renderTemplate(template.html, {
@@ -231,7 +236,7 @@ export async function checkExpiringLicenses(): Promise<number> {
       daysRemaining: daysRemaining.toString(),
     });
 
-    const subject = renderTemplate(template.subject, {
+    const subject = renderTextTemplate(template.subject, {
       licenseName: license.licenceCategoryType.licencecategorytypename,
     });
 
@@ -291,7 +296,7 @@ export async function checkMaintenanceDue(): Promise<number> {
       dueDate: new Date(maintenance.nextDueDate).toLocaleDateString(),
     });
 
-    const subject = renderTemplate(template.subject, {
+    const subject = renderTextTemplate(template.subject, {
       assetName: maintenance.asset.assetname,
     });
 
@@ -340,7 +345,7 @@ export async function checkLowStock(): Promise<number> {
         minQuantity: item.minQuantity.toString(),
       });
 
-      const subject = renderTemplate(template.subject, {
+      const subject = renderTextTemplate(template.subject, {
         consumableName: item.consumablename,
       });
 
@@ -395,7 +400,7 @@ export async function checkExpiringWarranties(): Promise<number> {
         daysRemaining: daysRemaining.toString(),
       });
 
-      const subject = renderTemplate(template.subject, {
+      const subject = renderTextTemplate(template.subject, {
         assetName: asset.assetname,
       });
 
@@ -424,7 +429,7 @@ export async function notifyTicketAssigned(
   assigneeName: string,
 ): Promise<void> {
   const template = emailTemplates.ticketAssigned;
-  const subject = renderTemplate(template.subject, { ticketTitle });
+  const subject = renderTextTemplate(template.subject, { ticketTitle });
   const html = renderTemplate(template.html, {
     assigneeName,
     ticketTitle,
@@ -454,7 +459,7 @@ export async function notifyTicketComment(
   commentText: string,
 ): Promise<void> {
   const template = emailTemplates.ticketComment;
-  const subject = renderTemplate(template.subject, { ticketTitle });
+  const subject = renderTextTemplate(template.subject, { ticketTitle });
   const html = renderTemplate(template.html, {
     recipientName,
     ticketTitle,
@@ -484,7 +489,7 @@ export async function notifyTicketStatusChanged(
   newStatus: string,
 ): Promise<void> {
   const template = emailTemplates.ticketStatusChanged;
-  const subject = renderTemplate(template.subject, { ticketTitle });
+  const subject = renderTextTemplate(template.subject, { ticketTitle });
   const html = renderTemplate(template.html, {
     creatorName,
     ticketTitle,

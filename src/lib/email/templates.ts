@@ -7,7 +7,40 @@ export interface TemplateVariables {
   [key: string]: string | number | boolean | undefined;
 }
 
+/**
+ * Escape a value for safe interpolation into an HTML document body/attribute.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Render an HTML email template, HTML-escaping every substituted value.
+ * Variables come from user-controlled data (asset names, notes, user names,
+ * etc.) and must never be interpolated raw into an HTML body.
+ */
 export function renderTemplate(
+  template: string,
+  variables: TemplateVariables,
+): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    const value = variables[key];
+    if (value === undefined) return match;
+    return escapeHtml(value.toString());
+  });
+}
+
+/**
+ * Render a plain-text template (e.g. an email subject line) without
+ * HTML-escaping substituted values. Subjects are not parsed as HTML, so
+ * escaping would corrupt them (e.g. turning `&` into a literal `&amp;`).
+ */
+export function renderTextTemplate(
   template: string,
   variables: TemplateVariables,
 ): string {

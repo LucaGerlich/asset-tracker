@@ -169,15 +169,18 @@ export async function POST(request) {
     ) {
       // Send invitation email
       try {
-        const { renderTemplate, emailTemplates } =
+        const { renderTemplate, renderTextTemplate, emailTemplates } =
           await import("@/lib/email/templates");
         const { sendEmail } = await import("@/lib/email/service");
         const baseUrl = getBaseUrl();
         const inviteUrl = `${baseUrl}/invite/${inviteToken}`;
 
-        const subject = renderTemplate(emailTemplates.teamInvitation.subject, {
-          organizationName: orgContext.organization.name,
-        });
+        const subject = renderTextTemplate(
+          emailTemplates.teamInvitation.subject,
+          {
+            organizationName: orgContext.organization.name,
+          },
+        );
         const html = renderTemplate(emailTemplates.teamInvitation.html, {
           inviterName:
             `${admin.firstname || ""} ${admin.lastname || ""}`.trim() ||
