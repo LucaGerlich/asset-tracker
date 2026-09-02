@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
+import prisma from "@/lib/prisma";
 // Integration tests: exercise the real Postgres-backed cache/lockout tables.
 // Skipped when no DATABASE_URL is configured (they run in CI against a test DB).
 const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
@@ -6,12 +7,35 @@ const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
 // Reset module for clean cache state between tests
 let cacheModule: typeof import("../cache");
 
+// Keys written by the tests below, cleaned up once the whole suite finishes.
+const TEST_KEYS = [
+  "test-key",
+  "key",
+  "keyA",
+  "keyB",
+  "asset:1",
+  "user:1",
+  "user:2",
+  "foo",
+  "ref:cats",
+  "ref:dogs",
+  "other:x",
+  "ttl-test",
+];
+
 beforeEach(async () => {
   vi.resetModules();
   vi.restoreAllMocks();
-  // Ensure no REDIS_URL so tests use in-memory backend
-  delete process.env.REDIS_URL;
   cacheModule = await import("../cache");
+});
+
+afterAll(async () => {
+  if (!process.env.DATABASE_URL) return;
+  const schema = process.env.DB_SCHEMA || "assettool";
+  await prisma.$executeRawUnsafe(
+    `DELETE FROM "${schema}"."cache" WHERE "key" = ANY($1)`,
+    TEST_KEYS,
+  );
 });
 
 describeDb("cached", () => {

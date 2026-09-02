@@ -22,7 +22,7 @@ import {
 import prisma from "@/lib/prisma";
 import { hasPermission } from "@/lib/rbac";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 const mockHasPermission = vi.mocked(hasPermission);
 
 beforeEach(() => {

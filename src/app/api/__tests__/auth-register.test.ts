@@ -27,7 +27,7 @@ import { POST } from "@/app/api/auth/register/route";
 import prisma from "@/lib/prisma";
 import { checkRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 const mockCheckRateLimit = vi.mocked(checkRateLimit);
 
 beforeEach(() => {

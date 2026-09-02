@@ -37,7 +37,7 @@ import prisma from "@/lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
 import { hasPermission } from "@/lib/rbac";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 const mockRequireAuth = vi.mocked(requireApiAuth);
 
 const adminUser = {

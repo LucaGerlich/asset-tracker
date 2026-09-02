@@ -21,7 +21,7 @@ import {
 } from "../rbac";
 import prisma from "@/lib/prisma";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 
 beforeEach(() => {
   vi.clearAllMocks();

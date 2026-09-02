@@ -17,7 +17,7 @@ import { POST } from "@/app/api/setup/route";
 import { GET } from "@/app/api/setup/status/route";
 import prisma from "@/lib/prisma";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 
 beforeEach(() => {
   vi.clearAllMocks();

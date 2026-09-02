@@ -58,7 +58,7 @@ import { requirePermission } from "@/lib/api-auth";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 const mockRequirePermission = vi.mocked(requirePermission);
 
 const mockCampaign = {

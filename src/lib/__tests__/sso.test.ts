@@ -38,7 +38,7 @@ import {
   exchangeOidcCode,
 } from "@/lib/sso";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 
 function mockSsoSettings(
   overrides: Array<{ key: string; value: string; encrypted?: boolean }>,

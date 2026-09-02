@@ -66,7 +66,7 @@ import {
 import prisma from "@/lib/prisma";
 import { authenticateScim } from "@/lib/scim";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 const mockAuth = vi.mocked(authenticateScim);
 
 const mockUser = {

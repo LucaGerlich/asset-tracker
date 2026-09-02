@@ -11,7 +11,7 @@ import { getAssetById } from "@/lib/data";
 import prisma from "@/lib/prisma";
 import { getOrganizationContext } from "@/lib/organization-context";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 const mockGetOrgContext = vi.mocked(getOrganizationContext);
 
 const ORG_ID = "org-uuid-001";

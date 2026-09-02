@@ -35,7 +35,7 @@ import { POST } from "@/app/api/asset/checkout/bulk/route";
 import prisma from "@/lib/prisma";
 import { requireApiAuth, requirePermission } from "@/lib/api-auth";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 const mockRequireApiAuth = vi.mocked(requireApiAuth);
 const mockRequirePermission = vi.mocked(requirePermission);
 

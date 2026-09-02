@@ -48,7 +48,7 @@ import { GET, POST, PUT, DELETE } from "@/app/api/kits/route";
 import prisma from "@/lib/prisma";
 import { requirePermission } from "@/lib/api-auth";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 const mockRequirePermission = vi.mocked(requirePermission);
 
 const mockKit = {

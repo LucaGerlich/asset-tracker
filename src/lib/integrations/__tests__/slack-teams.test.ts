@@ -29,11 +29,13 @@ function mockSettings(overrides: Array<{ key: string; value: string }>) {
   vi.mocked(prisma.system_settings.findMany).mockResolvedValue(
     overrides.map((o, i) => ({
       id: String(i + 1),
+      description: "",
       settingKey: o.key,
       settingValue: o.value,
       settingType: "string",
       category: "integrations",
       isEncrypted: false,
+      createdAt: new Date(),
       updatedAt: new Date(),
     })),
   );

@@ -23,8 +23,8 @@ import { GET, POST } from "@/app/api/roles/route";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-const mockAuth = vi.mocked(auth);
-const mockPrisma = vi.mocked(prisma);
+const mockAuth = vi.mocked(auth, true);
+const mockPrisma = vi.mocked(prisma, true);
 
 const adminSession = {
   user: {
