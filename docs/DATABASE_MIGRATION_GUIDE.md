@@ -32,7 +32,7 @@ Asset Tracker uses **PostgreSQL** (15+) with **Prisma ORM**. The database contai
   2. `20260129151226_add_ticket_system` — IT ticket system
   3. `20260129165029_multi_tanancy` — Multi-tenancy (organizations, departments, roles, webhooks)
   4. `20260305_betterauth_schema` — BetterAuth auth tables (replaces NextAuth)
-- **Encrypted data** — Some fields (API keys, MFA secrets) are encrypted with `ENCRYPTION_KEY`. The same key must be used on the new database.
+- **Encrypted data** — Some fields (API keys, integration credentials) are encrypted with `ENCRYPTION_KEY`, and BetterAuth encrypts TOTP secrets and backup codes with `BETTER_AUTH_SECRET`. The same key must be used on the new database.
 
 **Migration strategy:** Full `pg_dump` export → import into new database → switch `DATABASE_URL`.
 

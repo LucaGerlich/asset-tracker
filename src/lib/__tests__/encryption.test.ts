@@ -88,14 +88,6 @@ describe("encryption without ENCRYPTION_KEY (passthrough)", () => {
     const { decrypt } = await freshImport();
     expect(decrypt("hello")).toBe("hello");
   });
-
-  it("encryptArray / decryptArray return the original array", async () => {
-    const { encryptArray, decryptArray } = await freshImport();
-    const input = ["a", "b", "c"];
-    const encrypted = encryptArray(input);
-    expect(encrypted).toEqual(input);
-    expect(decryptArray(encrypted)).toEqual(input);
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -129,19 +121,6 @@ describe("encryption with ENCRYPTION_KEY set", () => {
     const a = encrypt("same-value");
     const b = encrypt("same-value");
     expect(a).not.toBe(b);
-  });
-
-  it("encryptArray / decryptArray round-trip an array of strings", async () => {
-    const { encryptArray, decryptArray, isEncrypted } = await freshImport();
-    const original = ["alpha", "bravo", "charlie"];
-    const encrypted = encryptArray(original);
-
-    // Every element should look encrypted
-    for (const el of encrypted) {
-      expect(isEncrypted(el)).toBe(true);
-    }
-
-    expect(decryptArray(encrypted)).toEqual(original);
   });
 
   it("decrypt passes through a non-encrypted string without error", async () => {

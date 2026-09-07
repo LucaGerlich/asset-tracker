@@ -147,23 +147,6 @@ export function isEncrypted(value: string): boolean {
 }
 
 /**
- * Encrypt an array of strings (e.g. backup codes).
- * Each element is encrypted individually so the array structure is preserved.
- * If ENCRYPTION_KEY is not set, returns the array unchanged.
- */
-export function encryptArray(values: string[]): string[] {
-  return values.map(encrypt);
-}
-
-/**
- * Decrypt an array of strings previously encrypted with `encryptArray()`.
- * Handles mixed arrays where some elements may be unencrypted (legacy data).
- */
-export function decryptArray(values: string[]): string[] {
-  return values.map(decrypt);
-}
-
-/**
  * Produce a one-way SHA-256 hash of a value.
  *
  * Useful for indexing or comparing sensitive data without storing it in

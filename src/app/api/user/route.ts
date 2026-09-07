@@ -22,13 +22,7 @@ const USER_SORT_FIELDS = ["firstname", "lastname", "email", "creation_date"];
 
 const stripPassword = (user) => {
   if (!user) return user;
-  const {
-    password: _password,
-    mfaSecret: _mfaSecret,
-    mfaBackupCodes: _mfaBackupCodes,
-    ldapDN: _ldapDN,
-    ...rest
-  } = user;
+  const { password: _password, ldapDN: _ldapDN, ...rest } = user;
   return rest;
 };
 

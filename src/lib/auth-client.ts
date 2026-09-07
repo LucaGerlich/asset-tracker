@@ -30,7 +30,6 @@ export interface SessionUser {
   departmentId?: string;
   authProvider?: string;
   isActive?: boolean;
-  mfaEnabled?: boolean;
 }
 
 export const authClient = createAuthClient({
