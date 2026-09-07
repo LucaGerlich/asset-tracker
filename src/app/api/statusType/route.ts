@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     // If no `page` param, return all results (cached) for backward compatibility
     if (!searchParams.has("page")) {
       const items = await cached(
-        "status_types",
+        `status_types:${orgId ?? "global"}`,
         () =>
           prisma.statusType.findMany({
             where: { organizationId: orgId ?? null },
