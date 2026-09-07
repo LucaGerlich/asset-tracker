@@ -45,7 +45,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -70,15 +70,31 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: [lint, typecheck, unit-tests]
+    # The build script is the production build command (set-schema, generate,
+    # migrate deploy, next build), so it needs a reachable database.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
-      DATABASE_URL: "postgresql://fake:fake@localhost:5432/fake"
+      DATABASE_URL: "postgresql://test:test@localhost:5432/test"
+      DB_SCHEMA: public
       BETTER_AUTH_SECRET: "ci-test-secret-not-real"
       BETTER_AUTH_URL: "http://localhost:3000"
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bunx prisma generate
       - run: bun run build
 
   e2e-tests:
