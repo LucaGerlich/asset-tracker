@@ -13,6 +13,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Scope the unpaginated `GET /api/statusType` cache key by organization (one
   tenant's status names were served to every tenant for up to five minutes)
 
+### Fixed
+
+- DB-backed cache and lockout suites now pass in CI: keys are cleared before every
+  test, TTL tests use a real 1-second TTL instead of fake timers (expiry is decided by
+  Postgres `NOW()`), the lockout doubling check tolerates statement drift, and the
+  env-validation test removes the CI-injected `DATABASE_URL` explicitly
+- Fresh-database `prisma migrate deploy` verified locally and in CI (issue #86)
+
 ### Docs
 
 - TECHNICAL_DEBT.md: every deferred item re-verified against the code; strict-mode,

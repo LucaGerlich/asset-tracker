@@ -43,6 +43,10 @@ describe("env-validation", () => {
 
     it("returns errors for missing required variables", () => {
       vi.unstubAllEnvs();
+      // CI injects a real DATABASE_URL for the DB-backed suites; remove it explicitly.
+      vi.stubEnv("DATABASE_URL", undefined);
+      vi.stubEnv("BETTER_AUTH_URL", undefined);
+      vi.stubEnv("BETTER_AUTH_SECRET", undefined);
 
       const result = validateEnvironment();
 

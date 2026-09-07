@@ -357,7 +357,8 @@ schema })` and retrofit high-traffic routes first.
 
 State after v0.9.5: **460+ tests, 0 failing; `tsc --noEmit` clean including tests**;
 DB-gated `cache` and `account-lockout` suites run in CI against a Postgres service
-container (the lockout suite previously lacked every `await` and would have failed
+container (their first real run on 2026-09-07 exposed fake-timer and key-isolation
+bugs, fixed the same day; a fresh-database `migrate deploy` is part of that job) (the lockout suite previously lacked every `await` and would have failed
 the first time it ran).
 
 Remaining test debt:

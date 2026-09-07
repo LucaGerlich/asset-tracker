@@ -230,7 +230,9 @@ describeDb("account-lockout", () => {
         secondLockout.lockedUntil!.getTime() -
         secondLockout.lastAttempt!.getTime();
 
-      expect(secondDuration).toBe(firstDuration * 2);
+      // last_attempt and locked_until are written by two separate statements, each
+      // stamped with its own NOW(), so the difference carries a few ms of drift.
+      expect(secondDuration).toBeCloseTo(firstDuration * 2, -3);
     });
   });
 });
