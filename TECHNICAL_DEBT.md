@@ -18,22 +18,30 @@ with a recommended fix. Two audits have run so far:
 
 ## Summary (as of 2026-09-07)
 
-| Area                               | Status                                                                |
-| ---------------------------------- | --------------------------------------------------------------------- |
-| CI (lint, typecheck, unit, build)  | green after v0.9.5 (was red: stale lockfile, test typings)            |
-| Production dependency advisories   | 0 (was 1 critical, 53 high)                                           |
-| Cross-tenant data access           | no known open read/write path (status-type cache key fixed in v0.9.6) |
-| MFA login enforcement              | **NOT FUNCTIONAL** — decision required (D1)                           |
-| SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                           |
-| TypeScript strict mode             | off; 830 errors to clear (D3)                                         |
-| Paid plan feature enforcement      | **5 of 6 gated features unenforced server-side** (item 29, critical)  |
-| Advertised but unfinished features | 10 (items 33–42)                                                      |
-| Unit coverage of auth/tenant layer | partial (api-auth, url-validation, org-suspension now tested)         |
+| Area                               | Status                                                                                                         |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| CI (lint, typecheck, unit, build)  | green since 2026-09-07 (v0.9.5 fixed the lockfile/typings; the DB suites and the Build job first passed today) |
+| Production dependency advisories   | 0 (was 1 critical, 53 high)                                                                                    |
+| Cross-tenant data access           | no known open read/write path (status-type cache key fixed in v0.9.6)                                          |
+| MFA login enforcement              | **NOT FUNCTIONAL** — decision required (D1)                                                                    |
+| SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                                                                    |
+| TypeScript strict mode             | off; 830 errors to clear (D3)                                                                                  |
+| Paid plan feature enforcement      | **5 of 6 gated features unenforced server-side** (item 29, critical)                                           |
+| Advertised but unfinished features | 10 (items 33–42)                                                                                               |
+| Unit coverage of auth/tenant layer | partial (api-auth, url-validation, org-suspension now tested)                                                  |
 
 ---
 
 ## FIXED in v0.9.6 (2026-09-07)
 
+- **CI Build job never ran.** The build script is the Vercel build command
+  (set-schema, generate, `migrate deploy`, `next build`) and the job only had a
+  placeholder `DATABASE_URL`; the first time it was reached it failed with P1001.
+  It now gets the same Postgres service as the unit-test job and runs the real
+  command, which also proves a fresh-database migration on every push.
+- **DB-backed suites were not runnable in CI** (fake timers vs Postgres `NOW()`, key
+  leakage between tests, ms-exact timestamp comparison, CI-injected env var).
+  Fixed; 493 tests pass in CI.
 - **Cross-tenant cache key** in `api/statusType` GET (unpaginated path): the
   org-filtered query was cached under the fixed key `status_types`, so the first
   tenant to populate the shared cache table served its status names to every
@@ -339,11 +347,11 @@ schema })` and retrofit high-traffic routes first.
 
 ## Repository loose ends (2026-09-07)
 
-- **GitHub issue #86** (quick start fails with P1014 on the baseline migration, open
-  since 2026-07-21, unanswered): caused by migrations carrying
-  `SET search_path TO "assettool"` while the README URL uses `schema=public`. The
-  v0.9.5 normalization to `public` should fix it; verify `prisma migrate deploy` on a
-  fresh database, then reply and close.
+- **GitHub issue #86** (quick start fails with P1014 on the baseline migration):
+  root cause was migrations carrying `SET search_path TO "assettool"` while the README
+  URL uses `schema=public`. Fixed by the v0.9.5 normalization; verified on
+  2026-09-07 with a fresh Postgres locally (28 migrations applied) and in CI. Reply
+  posted the same day; close once the fix reaches `master`.
 - Stash `stash@{0}` on `master` is an April dependency bump superseded by v0.9.5 — drop.
 - Branch `feat/landing-page-redesign` (3 commits, May 2026, "Trackly" rebrand) was
   never merged and conflicts with the v0.7.1 landing page — merge, rework or delete.
