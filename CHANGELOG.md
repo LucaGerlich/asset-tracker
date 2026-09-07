@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-09-07
+
+### Security
+
+- Scope the unpaginated `GET /api/statusType` cache key by organization (one
+  tenant's status names were served to every tenant for up to five minutes)
+
+### Docs
+
+- TECHNICAL_DEBT.md: every deferred item re-verified against the code; strict-mode,
+  timestamp and loading.tsx figures corrected; item 29 raised to critical; items
+  33–52 added (advertised-but-unfinished features, structural debt) plus a list of
+  repository loose ends (issue #86 root cause, stale stash/branches/draft PRs)
+
 ## [0.9.5] - 2026-09-02
 
 Release-readiness audit: seven review agents, seven fix agents, ~60 fixes.

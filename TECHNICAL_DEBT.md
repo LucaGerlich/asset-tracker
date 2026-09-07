@@ -1,6 +1,6 @@
 # Technical Debt
 
-Last updated: 2026-09-02 (v0.9.5 — release-readiness audit)
+Last updated: 2026-09-07 (v0.9.6 — register re-verification and debt sweep)
 
 This document tracks issues found by whole-application audits. Items marked
 **FIXED** were resolved in the version noted; **DEFERRED** items are documented
@@ -11,20 +11,35 @@ with a recommended fix. Two audits have run so far:
 - **2026-09-02 (v0.9.5)** — seven review agents (security, API correctness,
   database, performance, frontend, DevOps/release, test quality) followed by seven
   fix agents. ~60 fixes across 122 files, net −450 lines.
+- **2026-09-07 (v0.9.6)** — three read-only agents: every deferred item below was
+  re-verified against the code (none had been fixed by accident), plus an
+  unfinished-feature sweep and a structural-debt sweep. One live bug fixed
+  (status-type cache key), four register figures corrected, items 33–52 added.
 
-## Summary (as of 2026-09-02)
+## Summary (as of 2026-09-07)
 
-| Area                               | Status                                                        |
-| ---------------------------------- | ------------------------------------------------------------- |
-| CI (lint, typecheck, unit, build)  | green after v0.9.5 (was red: stale lockfile, test typings)    |
-| Production dependency advisories   | 0 (was 1 critical, 53 high)                                   |
-| Cross-tenant data access           | no known open read/write path                                 |
-| MFA login enforcement              | **NOT FUNCTIONAL** — decision required (D1)                   |
-| SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                   |
-| TypeScript strict mode             | off; 958 errors to clear (D3)                                 |
-| Unit coverage of auth/tenant layer | partial (api-auth, url-validation, org-suspension now tested) |
+| Area                               | Status                                                                |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| CI (lint, typecheck, unit, build)  | green after v0.9.5 (was red: stale lockfile, test typings)            |
+| Production dependency advisories   | 0 (was 1 critical, 53 high)                                           |
+| Cross-tenant data access           | no known open read/write path (status-type cache key fixed in v0.9.6) |
+| MFA login enforcement              | **NOT FUNCTIONAL** — decision required (D1)                           |
+| SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                           |
+| TypeScript strict mode             | off; 830 errors to clear (D3)                                         |
+| Paid plan feature enforcement      | **5 of 6 gated features unenforced server-side** (item 29, critical)  |
+| Advertised but unfinished features | 10 (items 33–42)                                                      |
+| Unit coverage of auth/tenant layer | partial (api-auth, url-validation, org-suspension now tested)         |
 
 ---
+
+## FIXED in v0.9.6 (2026-09-07)
+
+- **Cross-tenant cache key** in `api/statusType` GET (unpaginated path): the
+  org-filtered query was cached under the fixed key `status_types`, so the first
+  tenant to populate the shared cache table served its status names to every
+  tenant for five minutes. Key is now `status_types:<orgId|global>`; a route test
+  asserts per-organization keys. The three dashboard routes that call `cached()`
+  directly were already org-keyed; `data.ts` getters are safe via `strictOrgWhere()`.
 
 ## FIXED in v0.9.5 (2026-09-02)
 
@@ -130,17 +145,20 @@ _Recommended:_ replace the custom flow with BetterAuth's `@better-auth/sso` plug
 `/api/auth/sso-login` via BetterAuth's internal adapter and assign the org from the SSO
 settings. Either way, decide which org SSO users belong to.
 
-**D3. TypeScript strict mode (user standard: strict everywhere).** 958 errors across
-102 non-test files: `noImplicitAny` ≈372, `strictNullChecks` ≈400,
-`useUnknownInCatchVariables` 139, `strictFunctionTypes` 5, `noUnusedLocals` 11,
-`noUnusedParameters` 55, `noImplicitOverride` 3, `strictPropertyInitialization` 1.
-116 explicit `any`. _Phased plan:_ (1) `useUnknownInCatchVariables` — mechanical
+**D3. TypeScript strict mode (user standard: strict everywhere).** 830 errors as of
+2026-09-07, measured with
+`tsc --noEmit -p tsconfig.json --strict --noImplicitAny --strictNullChecks --useUnknownInCatchVariables --noUnusedLocals --noUnusedParameters --noImplicitOverride`
+(767 without the unused/override flags; `--strict` alone reports only 144 because
+`tsconfig.json` sets `noImplicitAny`/`strictNullChecks` to `false` explicitly and
+those win). 116 explicit `any`. The per-flag split recorded in v0.9.5 (noImplicitAny
+≈372, strictNullChecks ≈400, useUnknownInCatchVariables 139) predates the dead-code
+removal and totals 958; re-split before starting phase 1. _Phased plan:_ (1) `useUnknownInCatchVariables` — mechanical
 `error instanceof Error ? error.message : String(error)` across 139 catch blocks;
 (2) the 20 small-flag errors; (3) `noImplicitAny` per directory (API routes first —
 the 7 category/reference routes alone account for ~80); (4) `strictNullChecks` last.
 
 **D4. `mobile/` Expo app** is SDK 52 / RN 0.76 / React 18, has no lockfile, is
-excluded from `tsconfig` and CI, and was last touched at creation. Keep-and-upgrade
+excluded from `tsconfig` and CI, and was last touched on 2026-06-01 (three commits in total). Keep-and-upgrade
 (Expo 55 per the house conventions) or delete it from this repo.
 
 ## DEFERRED — security hardening
@@ -179,7 +197,7 @@ excluded from `tsconfig` and CI, and was last touched at creation. Keep-and-upgr
     `schema.prisma` (documented with a comment there in v0.9.5). A future
     `migrate dev` could drop it — keep the comment and check `migrate diff` output.
 12. `IntuneSyncLog.organizationId` has no index or FK.
-13. **Timestamp columns without timezone** (~40 fields `@db.Timestamp(6)`) — migrate
+13. **Timestamp columns without timezone** (150 fields `@db.Timestamp(6)`, no `Timestamptz` anywhere) — migrate
     to `Timestamptz`. (carried from v0.9.4)
 14. **Global unique `asset.assettag` / `serialnumber`** — should be per-org.
     (carried from v0.9.4)
@@ -218,11 +236,122 @@ excluded from `tsconfig` and CI, and was last touched at creation. Keep-and-upgr
 26. Audit-log gaps: user UPDATE, licence assign/unassign, status change.
 27. Export coverage: components/kits; the Help page describes a non-existent button.
 28. Webhook registry advertises six events never fired.
-29. "Procurement" nav shown regardless of plan; `custom_fields`, `workflow_automation`,
-    `advanced_reports`, `tco_dashboard`, `scim` sold as paid but enforced nowhere.
+29. **(critical)** "Procurement" nav shown regardless of plan; `custom_fields`, `workflow_automation`,
+    `advanced_reports`, `tco_dashboard`, `scim` sold as paid but enforced nowhere. Verified 2026-09-07: `requirePlanFeature` is called only for `ldap`, `sso`, `api_keys` and `procurement`; the other five have no server-side check at all, so the paid tiers are a UI label.
 30. Dead code: `Footer.tsx`, three unused `DashboardTable` variants.
 31. Seven near-identical simple create forms (~890 lines) → one config-driven form.
-32. 19 route segments lack `loading.tsx` while siblings have one.
+32. 37 route segments lack `loading.tsx` while a sibling has one (83 of 103 page
+    directories have none at all).
+
+## DEFERRED — advertised but unfinished (found 2026-09-07)
+
+Each of these is visible to users or admins as a working feature and is not.
+Decide per item: finish it or remove the promise.
+
+33. **EULA at checkout never enforced.** `admin/settings/ui/EulaTab.tsx` says templates
+    are "used for asset checkouts" and `assetCategoryType.eulaTemplateId` exists, but
+    no checkout route or dialog reads it and the `EulaAcceptance` model has zero
+    readers or writers in `src/`. The whole signature subsystem exists only in the
+    schema. Effort L.
+34. **SCIM cannot be configured.** `lib/scim.ts` requires a `ScimToken` row (or a
+    legacy `system_settings` key); nothing in the codebase ever creates one, so every
+    SCIM request returns 403 "SCIM is not configured". Needs an admin UI to
+    generate/rotate a per-org token. Effort M.
+35. **Custom fields only round-trip for assets.** `CustomFieldsSection` is rendered in
+    the accessory/consumable/licence/component create forms, but none of their edit
+    forms or detail pages read `GET /api/custom-fields/values`, so values are entered
+    once and never seen again. Kits are offered as a custom-field entity
+    (`entity-registry.ts` `hasCustomFields: true`) yet render no fields anywhere.
+    Effort M.
+36. **`white_label` is vaporware.** Listed as an Enterprise perk in
+    `plan-features-shared.ts` and `docs/DEVELOPMENT_NOTES.md`; no branding feature,
+    no schema, no gate. Implement or remove from the plan matrix. Effort L / S.
+37. **Compliance dashboard hard-codes three checks**
+    (`admin/compliance/ui/ComplianceDashboard.tsx`): MFA and encryption coverage say
+    "not yet implemented", and the incident-response check ignores its input and
+    always returns "Not Configured". Effort S (remove) / M (back with settings).
+38. **`email_templates` table is loaded and discarded.** `admin/settings/page.tsx`
+    fetches it and `AdminSettingsPage.tsx` binds it to `_emailTemplates`; there is no
+    editor and no route, and all outbound mail uses the hard-coded object in
+    `lib/email/templates.ts`. Build the editor or drop the table. Effort M.
+39. **Write-only user preferences.** `theme` is saved but the app theme comes from
+    `next-themes`/localStorage; `pageSize` is saved but no table seeds its default
+    from it; `dashboardLayout` exists in schema, context and API with zero writers
+    (`updatePreferences(` has no call sites). Effort S / M / L respectively.
+40. **`userHistory` is never written.** Only read by the GDPR export (always `[]`)
+    and wiped by demo-reset. Decide whether `audit_logs` superseded it, then delete or
+    implement. Effort S / L.
+41. **Docs promise plan-tiered audit retention** (30/90/unlimited days);
+    `lib/gdpr-settings.ts` has one global `auditLogRetentionDays`. Fix the doc or
+    implement tiering. Effort S / M.
+42. **Server-side pagination plan abandoned.**
+    `docs/superpowers/plans/2026-03-20-server-side-pagination.md` has 0 of 28 tasks
+    done; the `usePaginatedFetch` hook it introduced has zero consumers. Same problem
+    as item 16 — either resume the plan or delete the hook and the plan file.
+
+## DEFERRED — structural (found 2026-09-07)
+
+Patterns that will slow every future feature. Numbers are from the tree at v0.9.6.
+
+43. **No shared API route wrapper.** 207 route files each hand-roll guard + try/catch +
+    `NextResponse.json`; guards are split across `requireApiAuth` (68 files),
+    `requirePermission` (58), `requireApiAdmin` (41), `requireSuperAdmin` (17). Only
+    58 routes return the `{ success, ... }` envelope and only 35 import the shared
+    zod module in `lib/validation.ts`. Introduce `withApiRoute(handler, { auth,
+schema })` and retrofit high-traffic routes first.
+44. **Org scoping is call-site discipline.** `strictOrgWhere()` — the only primitive
+    that throws when org context is missing — is private to `lib/data.ts` (0
+    exports). Routes hand-write `organizationId:` 210 times across 90 files, and
+    enrichment queries of the form `findMany({ where: { id: { in: ids } } })` (e.g.
+    `api/requests/route.ts`) carry no org filter — safe only while `ids` comes from
+    an already-scoped query. Export a required org-where helper, add a
+    `cacheKeyForOrg(prefix, orgId)` helper (the v0.9.6 bug was exactly this), and
+    consider a lint rule. Only 4 routes call `cached()` directly outside `data.ts`.
+45. **Client data fetching has no shared layer.** 118 `.tsx` files call
+    `fetch('/api/...')` directly; 55 hand-roll loading state and 30 hand-roll error
+    state. `public/openapi.json` is hand-maintained with no generation script and
+    will drift from the zod schemas. Generate it from `lib/validation.ts`.
+46. **Forms.** 27 `*Form.tsx` components, none use react-hook-form (not a
+    dependency) or a shared field primitive; every form duplicates error display and
+    submit state. Solve together with item 31.
+47. **Prisma schema conventions.** 80 models, 0 `enum` types — 14+ `status` columns
+    are free-text VarChar with the valid values in comments. Model names are split 42
+    snake/lowercase vs 38 PascalCase. Freeze new models to PascalCase; convert status
+    columns to enums opportunistically. `OrganizationStorageConfig.organizationId`
+    also lacks an index (like item 12).
+48. **Dead weight.** `react-qr-code` and `@aejkatappaja/phantom-ui` are dependencies
+    with zero imports (`qrcode.react` is the one in use); `components/ResponsiveTable.tsx`
+    (116 lines) has zero importers next to `components/ui/responsive-table.tsx` (15
+    importers); `hooks/usePaginatedFetch.ts` has zero consumers. `maplibre-gl` is
+    statically imported in `AssetMap.tsx`. Remove / dynamic-import.
+49. **Large files beyond item 20.** `DashboardGrid.tsx` 1295, `ApprovalsPageClient.tsx`
+    1198, `ReportsPage.tsx` 978, `AssetCreateForm.tsx` 860, `WebhooksTab.tsx` 860,
+    `WorkflowsPageClient.tsx` 810 (house limit 800); 33 more files between 500 and 800.
+50. **Test fixtures.** 34 test files; `@faker-js/faker` is installed but unused and
+    there is no Prisma-row factory, so each new route test starts from ad-hoc literals.
+    Build a factory before attempting the 195 untested routes.
+51. **Config sprawl.** 44 files (113 sites) read `process.env` directly outside
+    `lib/env-validation.ts`; feature toggles are scattered.
+52. **Component placement.** Three coexisting conventions — `src/components` (88
+    files), `src/ui/<entity>` (54 files, 16 dirs) and per-route `src/app/*/ui` (56
+    dirs) — with the same entity split across two of them. Pick colocated per-route
+    `ui/` and migrate `src/ui/*`.
+
+## Repository loose ends (2026-09-07)
+
+- **GitHub issue #86** (quick start fails with P1014 on the baseline migration, open
+  since 2026-07-21, unanswered): caused by migrations carrying
+  `SET search_path TO "assettool"` while the README URL uses `schema=public`. The
+  v0.9.5 normalization to `public` should fix it; verify `prisma migrate deploy` on a
+  fresh database, then reply and close.
+- Stash `stash@{0}` on `master` is an April dependency bump superseded by v0.9.5 — drop.
+- Branch `feat/landing-page-redesign` (3 commits, May 2026, "Trackly" rebrand) was
+  never merged and conflicts with the v0.7.1 landing page — merge, rework or delete.
+- Draft PRs #84 (five launch-strategy docs, never landed), #23 (Freshdesk — since
+  re-implemented on `development`), #17 (empty) — close or salvage.
+- Nine `origin/copilot/*` branches from Jan–Mar 2026 are unmerged and stale — delete.
+- `docs/plans/*` (BetterAuth migration, onboarding) are completed plans kept as
+  history; `docs/superpowers/plans/2026-03-20-server-side-pagination.md` is not (item 42).
 
 ## Test harness
 
@@ -233,7 +362,7 @@ the first time it ran).
 
 Remaining test debt:
 
-- Coverage threshold is 25% lines (house standard 80%). 12 of 208 route files have a
+- Coverage threshold is 25% lines (house standard 80%). 12 of 207 route files have a
   test. Untested security surface: `scim.ts` (`authenticateScim`), `webhooks.ts`
   (HMAC + SSRF call site), `organization-context.ts`, `storage/*`, `plan-features.ts`,
   `secrets.ts`, `auth-server.ts` hooks, Stripe webhook, forgot-password, api-keys.
