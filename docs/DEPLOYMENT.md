@@ -220,7 +220,7 @@ Optional email vars:
 
 ### Step 5: Preview Builds Warning
 
-**Important:** The build command runs `prisma migrate deploy` on **every** deployment, including Preview builds. Preview environments must have their own `DATABASE_URL` (never share the production database). Additionally, set `DB_SCHEMA=public` if using the public schema instead of the default `assettool` schema.
+**Important:** Since v0.10.0 the build command runs `prisma migrate deploy` only when `VERCEL_ENV=production`; Preview builds compile against whatever schema the preview database already has, so a preview of a branch that adds columns will fail on those pages until it is merged and released. Preview environments should still have their own `DATABASE_URL` (never share the production database): before v0.10.0 a preview build of a column-dropping migration was applied to production this way. Additionally, set `DB_SCHEMA=public` if using the public schema instead of the default `assettool` schema.
 
 ### Step 6: Deploy
 

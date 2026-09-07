@@ -25,6 +25,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Compliance dashboard counts (users, assets, audit logs) are scoped to the caller's
   organization; they were computed across all tenants.
+- Vercel builds run `prisma migrate deploy` only when `VERCEL_ENV=production`.
+  Preview builds used to migrate whatever database the Preview environment pointed
+  at, which on the personal deployment was production.
 
 ### Removed
 

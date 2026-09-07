@@ -195,9 +195,14 @@ excluded from `tsconfig` and CI, and was last touched on 2026-06-01 (three commi
    On Vercel prefer the platform header; self-hosted needs a trusted-proxy setting.
 6. **Sentry `beforeSend`** scrubbing absent in all three configs (relies on
    `sendDefaultPii:false` only).
-7. **Vercel preview deploys run `prisma migrate deploy`** against whatever
-   `DATABASE_URL` the preview has. Documented in `DEPLOYMENT.md`; consider gating on
-   `VERCEL_ENV === "production"` in the build command.
+7. **Vercel preview deploys ran `prisma migrate deploy`** against whatever
+   `DATABASE_URL` the preview has. _Fixed in v0.10.0_: `vercel.json` now runs the
+   migration only when `VERCEL_ENV=production`. This was found the hard way — the
+   preview build of PR #87 applied the column-dropping MFA migration to the personal
+   deployment's production database (its Preview and Production environments share
+   `DATABASE_URL`) and broke sign-in on the June build until the columns were restored.
+   Still open: give Preview its own database, and keep the production URL out of
+   local `.env` files (the checked-out `.env` pointed at production too).
 8. `.mcp.json` points at a work Sentry org from a private repo — remove before any
    open-sourcing.
 
