@@ -22,10 +22,10 @@ You need a PostgreSQL 15+ database. Options:
 Run these locally and save the output — you'll need them for env vars:
 
 ```bash
-# BETTER_AUTH_SECRET — signs JWT tokens (must be at least 32 characters)
+# BETTER_AUTH_SECRET — signs sessions and encrypts TOTP secrets (must be at least 32 characters)
 openssl rand -base64 32
 
-# ENCRYPTION_KEY — encrypts sensitive data at rest (API keys, MFA secrets)
+# ENCRYPTION_KEY — encrypts sensitive data at rest (API keys, integration credentials)
 openssl rand -hex 32
 
 # CRON_SECRET — protects cron job endpoints
@@ -325,7 +325,7 @@ docker compose exec app npx prisma migrate status  # Check migration state
 ```
 
 **"no matching decryption secret" error:**
-The `BETTER_AUTH_SECRET` changed. Users need to clear cookies / log in again.
+The `BETTER_AUTH_SECRET` changed. Users need to clear cookies / log in again. Because it also encrypts TOTP secrets and backup codes, every MFA enrolment is invalidated and users must set up MFA again.
 
 **Email not sending:**
 Check Admin Settings > Email for env config status. Send a test email. Check logs:

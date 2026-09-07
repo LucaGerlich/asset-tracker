@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-08
+
+### Changed
+
+- **MFA enrolment now runs on BetterAuth's `twoFactor` plugin end to end.** The
+  settings page enables, verifies, disables and regenerates backup codes through the
+  plugin client, so the flag the login gate checks is finally the one enrolment
+  writes. **Users who had MFA enabled must enrol again** (the previous flag was never
+  enforced at login). LDAP/SSO accounts can enrol without a local password; backup
+  codes are stored encrypted. Enrolment, removal, regeneration and TOTP/backup-code
+  logins are written to the audit log; the credentials login audit no longer fires
+  before the second factor is verified.
+- Compliance dashboard: the "User Authentication Controls" check reports real
+  two-factor coverage instead of "not yet implemented".
+
+### Security
+
+- Compliance dashboard counts (users, assets, audit logs) are scoped to the caller's
+  organization; they were computed across all tenants.
+
+### Removed
+
+- Custom `/api/auth/mfa/{setup,verify,disable}` routes, `lib/mfa.ts`, the
+  `otplib` dependency, the `user.mfaEnabled/mfaSecret/mfaBackupCodes` columns
+  (migration `20260908_betterauth_two_factor`) and the unused `encryptArray` helpers.
+
 ## [0.9.6] - 2026-09-07
 
 ### Security
