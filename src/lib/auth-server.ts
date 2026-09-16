@@ -13,7 +13,7 @@ import {
   microsoftEntraId,
 } from "better-auth/plugins/generic-oauth";
 import { nextCookies } from "better-auth/next-js";
-import { createAuthMiddleware } from "better-auth/api";
+import { createAuthMiddleware, APIError } from "better-auth/api";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { logger } from "@/lib/logger";
@@ -23,6 +23,10 @@ import {
   recordSuccessfulLogin,
 } from "@/lib/account-lockout";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import {
+  classifyTwoFactorCall,
+  auditTwoFactorEvent,
+} from "@/lib/auth-two-factor-audit";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { parseDeviceName, parseBrowser } from "@/lib/session-tracking";
 import {
@@ -112,6 +116,57 @@ const vercelOrigins = [
   .filter(Boolean)
   .map((h) => `https://${h}`);
 
+type AuthHookContext = Parameters<
+  Parameters<typeof createAuthMiddleware>[0]
+>[0];
+
+/** Stamp device info on the session that was just created for a login. */
+async function enrichLatestSession(userId: string, userAgent: string | null) {
+  const deviceName = `${parseDeviceName(userAgent)} - ${parseBrowser(userAgent)}`;
+  try {
+    const latestSession = await prisma.sessions.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    });
+    if (latestSession) {
+      await prisma.sessions.update({
+        where: { id: latestSession.id },
+        data: { deviceName, lastActive: new Date(), isCurrent: true },
+      });
+    }
+  } catch {
+    // Non-critical — don't break login
+  }
+}
+
+/**
+ * Audit two-factor enrolment, removal and logins. The plugin's verify endpoints
+ * serve both enrolment (request carries a session cookie) and login (request
+ * carries only the two-factor cookie), so the cookie decides which it was.
+ */
+async function handleTwoFactorAfterHook(ctx: AuthHookContext) {
+  const returned = ctx.context.returned as
+    { user?: { id?: string } } | APIError | undefined;
+  const failed = returned instanceof APIError;
+  const returnedUserId = !failed ? returned?.user?.id : undefined;
+  const event = classifyTwoFactorCall({
+    path: ctx.path,
+    failed,
+    hadSession: Boolean(
+      ctx.getCookie(ctx.context.authCookies.sessionToken.name),
+    ),
+    userId: ctx.context.session?.user?.id ?? returnedUserId ?? null,
+  });
+  if (!event) return;
+  await auditTwoFactorEvent(event);
+  if (event.kind === "login") {
+    await enrichLatestSession(
+      event.userId,
+      ctx.headers?.get("user-agent") || null,
+    );
+  }
+}
+
 export const auth = betterAuth({
   appName: "AssetTracker",
   baseURL: process.env.BETTER_AUTH_URL || vercelOrigins[0],
@@ -190,11 +245,6 @@ export const auth = betterAuth({
         required: false,
         defaultValue: true,
       },
-      mfaEnabled: {
-        type: "boolean",
-        required: false,
-        defaultValue: false,
-      },
       password: {
         type: "string",
         required: false,
@@ -246,6 +296,10 @@ export const auth = betterAuth({
   plugins: [
     twoFactor({
       issuer: "AssetTracker",
+      // LDAP/SSO users have no credential account; local users still confirm
+      // enrolment changes with their password.
+      allowPasswordless: true,
+      backupCodeOptions: { storeBackupCodes: "encrypted" },
     }),
     ...(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET
       ? [
@@ -339,8 +393,7 @@ export const auth = betterAuth({
       if (ctx.path !== "/sign-in/email") return;
 
       const body = ctx.body as
-        | { email?: string; password?: string }
-        | undefined;
+        { email?: string; password?: string } | undefined;
       if (!body?.email) return;
       const rawIdentifier = body.email;
 
@@ -485,11 +538,24 @@ export const auth = betterAuth({
       }
     }),
     after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path.startsWith("/two-factor/")) {
+        await handleTwoFactorAfterHook(ctx);
+        return;
+      }
       if (ctx.path !== "/sign-in/email") return;
 
       const body = ctx.body as { email?: string } | undefined;
       if (!body?.email) return;
       const identifier = body.email;
+
+      // A 2FA user has passed the password step; the login completes (and is
+      // audited) in the /two-factor/verify-* after-hook.
+      const returned = ctx.context.returned as
+        { twoFactorRedirect?: boolean } | undefined;
+      if (returned?.twoFactorRedirect) {
+        await recordSuccessfulLogin(identifier);
+        return;
+      }
 
       // Check if login succeeded (session cookie was set)
       const setCookie = ctx.context.responseHeaders?.get("set-cookie");
@@ -515,32 +581,12 @@ export const auth = betterAuth({
             },
           });
 
-          // Enrich the most recent session with device info
           const ip =
             ctx.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
             ctx.headers?.get("x-real-ip") ||
             null;
           const userAgent = ctx.headers?.get("user-agent") || null;
-          const deviceName = `${parseDeviceName(userAgent)} - ${parseBrowser(userAgent)}`;
-
-          try {
-            const latestSession = await prisma.sessions.findFirst({
-              where: { userId: user.userid },
-              orderBy: { createdAt: "desc" },
-            });
-            if (latestSession) {
-              await prisma.sessions.update({
-                where: { id: latestSession.id },
-                data: {
-                  deviceName,
-                  lastActive: new Date(),
-                  isCurrent: true,
-                },
-              });
-            }
-          } catch {
-            // Non-critical — don't break login
-          }
+          await enrichLatestSession(user.userid, userAgent);
 
           try {
             recordLoginAttempt(

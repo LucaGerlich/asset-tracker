@@ -1,6 +1,6 @@
 # Technical Debt
 
-Last updated: 2026-09-07 (v0.9.6 — register re-verification and debt sweep)
+Last updated: 2026-09-08 (v0.10.0 — MFA on BetterAuth, D1 resolved)
 
 This document tracks issues found by whole-application audits. Items marked
 **FIXED** were resolved in the version noted; **DEFERRED** items are documented
@@ -23,14 +23,30 @@ with a recommended fix. Two audits have run so far:
 | CI (lint, typecheck, unit, build)  | green since 2026-09-07 (v0.9.5 fixed the lockfile/typings; the DB suites and the Build job first passed today) |
 | Production dependency advisories   | 0 (was 1 critical, 53 high)                                                                                    |
 | Cross-tenant data access           | no known open read/write path (status-type cache key fixed in v0.9.6)                                          |
-| MFA login enforcement              | **NOT FUNCTIONAL** — decision required (D1)                                                                    |
+| MFA login enforcement              | functional since v0.10.0 (enrolment on BetterAuth twoFactor)                                                   |
 | SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                                                                    |
 | TypeScript strict mode             | off; 830 errors to clear (D3)                                                                                  |
 | Paid plan feature enforcement      | **5 of 6 gated features unenforced server-side** (item 29, critical)                                           |
-| Advertised but unfinished features | 10 (items 33–42)                                                                                               |
+| Advertised but unfinished features | 9 (items 33–36, 38–42; item 37 partly closed)                                                                  |
 | Unit coverage of auth/tenant layer | partial (api-auth, url-validation, org-suspension now tested)                                                  |
 
 ---
+
+## FIXED in v0.10.0 (2026-09-08)
+
+- **D1 resolved.** `MfaSettings.tsx` enrols through `authClient.twoFactor.enable /
+verifyTotp / disable / generateBackupCodes`; the custom routes, `lib/mfa.ts`,
+  `otplib` and the `mfa*` user columns are gone (migration
+  `20260908_betterauth_two_factor`, which also adds the plugin's `verified`,
+  `failedVerificationCount` and `lockedUntil` columns to `twoFactor`).
+  `allowPasswordless: true` lets LDAP/SSO accounts enrol; backup codes are stored
+  encrypted. Audit coverage moved to `lib/auth-two-factor-audit.ts`, driven from the
+  BetterAuth `after` hook (enrolment, removal, regeneration, TOTP and backup-code
+  logins); the credentials login audit now waits for the second factor.
+  **Existing enrolments must re-enrol** — communicate before deploying.
+- **Compliance route was cross-tenant**: every count in `api/admin/compliance` was
+  global. Now scoped to the admin's organization (403 without one). The dashboard's
+  MFA check reports real `twoFactorEnabled` coverage (part of item 37).
 
 ## FIXED in v0.9.6 (2026-09-07)
 
@@ -132,16 +148,9 @@ with a recommended fix. Two audits have run so far:
 
 ## DEFERRED — decisions required
 
-**D1. MFA is bypassable (critical).** Two disconnected implementations: the settings UI
-(`user/[id]/settings/ui/MfaSettings.tsx`) calls custom `/api/auth/mfa/{setup,verify,
-disable}` which set `user.mfaEnabled`/`mfaSecret`; the login gate is BetterAuth's
-`twoFactor` plugin, which only fires on its own `user.twoFactorEnabled` column and
-`twoFactor` table — set nowhere. Enabling MFA has no effect at login.
-_Recommended:_ rewrite `MfaSettings.tsx` against `authClient.twoFactor.enable /
-verifyTotp / disable` (the login side already uses `verifyTotp`), delete the custom
-routes, `lib/mfa.ts`, and the `mfaSecret`/`mfaBackupCodes` columns. Existing
-enrolments must re-enrol. Alternative: have the custom verify route also write
-BetterAuth's columns (couples to library internals; not recommended).
+**D1. MFA is bypassable.** _Resolved in v0.10.0 — see FIXED above._ Follow-ups left
+open: org-wide "require MFA" policy and an admin "reset MFA for user" action (neither
+existed before either).
 
 **D2. SSO login never completes (high).** SAML/OIDC callbacks create/link the user,
 mint a one-time token and redirect to `/login?sso_user=&sso_token=`; nothing reads
@@ -186,9 +195,14 @@ excluded from `tsconfig` and CI, and was last touched on 2026-06-01 (three commi
    On Vercel prefer the platform header; self-hosted needs a trusted-proxy setting.
 6. **Sentry `beforeSend`** scrubbing absent in all three configs (relies on
    `sendDefaultPii:false` only).
-7. **Vercel preview deploys run `prisma migrate deploy`** against whatever
-   `DATABASE_URL` the preview has. Documented in `DEPLOYMENT.md`; consider gating on
-   `VERCEL_ENV === "production"` in the build command.
+7. **Vercel preview deploys ran `prisma migrate deploy`** against whatever
+   `DATABASE_URL` the preview has. _Fixed in v0.10.0_: `vercel.json` now runs the
+   migration only when `VERCEL_ENV=production`. This was found the hard way — the
+   preview build of PR #87 applied the column-dropping MFA migration to the personal
+   deployment's production database (its Preview and Production environments share
+   `DATABASE_URL`) and broke sign-in on the June build until the columns were restored.
+   Still open: give Preview its own database, and keep the production URL out of
+   local `.env` files (the checked-out `.env` pointed at production too).
 8. `.mcp.json` points at a work Sentry org from a private repo — remove before any
    open-sourcing.
 
@@ -274,10 +288,11 @@ Decide per item: finish it or remove the promise.
 36. **`white_label` is vaporware.** Listed as an Enterprise perk in
     `plan-features-shared.ts` and `docs/DEVELOPMENT_NOTES.md`; no branding feature,
     no schema, no gate. Implement or remove from the plan matrix. Effort L / S.
-37. **Compliance dashboard hard-codes three checks**
-    (`admin/compliance/ui/ComplianceDashboard.tsx`): MFA and encryption coverage say
-    "not yet implemented", and the incident-response check ignores its input and
-    always returns "Not Configured". Effort S (remove) / M (back with settings).
+37. **Compliance dashboard hard-codes two checks**
+    (`admin/compliance/ui/ComplianceDashboard.tsx`): encryption coverage says "not
+    yet implemented", and the incident-response check ignores its input and always
+    returns "Not Configured". (MFA coverage is real since v0.10.0.) Effort S (remove)
+    / M (back with settings).
 38. **`email_templates` table is loaded and discarded.** `admin/settings/page.tsx`
     fetches it and `AdminSettingsPage.tsx` binds it to `_emailTemplates`; there is no
     editor and no route, and all outbound mail uses the hard-coded object in
