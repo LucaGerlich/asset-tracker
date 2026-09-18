@@ -44,6 +44,13 @@ verifyTotp / disable / generateBackupCodes`; the custom routes, `lib/mfa.ts`,
   BetterAuth `after` hook (enrolment, removal, regeneration, TOTP and backup-code
   logins); the credentials login audit now waits for the second factor.
   **Existing enrolments must re-enrol** — communicate before deploying.
+  _Follow-up 2026-09-18 (found by the end-to-end smoke test):_ BetterAuth runs the
+  app's `hooks.after` before plugin hooks, so the password step of a 2FA login was
+  still audited as a completed credentials login and its soon-deleted session
+  enriched. The sign-in hook now skips both when the user has `twoFactorEnabled`;
+  the two-factor hook resolves the caller from the session cookie for endpoints that
+  return no user, and enriches the session rotated by enable/disable. Production has
+  0 users with the old flag, so no re-enrolment notice is needed for this release.
 - **Compliance route was cross-tenant**: every count in `api/admin/compliance` was
   global. Now scoped to the admin's organization (403 without one). The dashboard's
   MFA check reports real `twoFactorEnabled` coverage (part of item 37).
@@ -207,6 +214,20 @@ excluded from `tsconfig` and CI, and was last touched on 2026-06-01 (three commi
    open-sourcing.
 
 ## DEFERRED — data layer
+
+8a. **Production database is shared with other applications** (found 2026-09-18,
+read-only inspection of the personal deployment's DB): the `postgres` database
+holds six schemas (`app` 140 tables, `andl_cms`, `control`, `web_analytics`,
+`burger`, `public`); our tables live in `public` next to a Django app's
+(`auth_*`, `core_*`, `django_*`), and two other Prisma apps record their
+migrations in the same `public._prisma_migrations` table (ten rows unknown to this
+repo). `migrate deploy` copes (it only applies pending migrations from this repo,
+proven 2026-09-07), but any `migrate reset`, `db push --force-reset` or a
+table-name collision from any of the apps would damage the others. A database named
+`asset` already exists on the same server and is empty of our tables — move this
+app there (dump/restore `public` minus the Django tables, repoint `DATABASE_URL`
+in Vercel Production/Preview and local `.env`), then Preview can get its own
+database too (item 7).
 
 9. **User cascade deletes** (`schema.prisma`): `AssetCheckout`, `tickets`,
    `PurchaseRequest`, `GoodsReceipt`, `AssetReservation` cascade on user delete,
@@ -391,6 +412,14 @@ Remaining test debt:
   (HMAC + SSRF call site), `organization-context.ts`, `storage/*`, `plan-features.ts`,
   `secrets.ts`, `auth-server.ts` hooks, Stripe webhook, forgot-password, api-keys.
 - SCIM per-user tests never assert `organizationId` in the Prisma `where`.
+- The MFA login flow (enrol → redirect → TOTP / backup code → regenerate → disable,
+  plus the audit trail and the fatal env gate) is covered only by an ad-hoc smoke
+  script run against `next start` on an embedded Postgres (2026-09-18, 27 checks).
+  Promote it to `tests/e2e` once the E2E job has a database; until then rerun it
+  before any auth release.
+- `proxy.ts` limits `/api/auth/sign-in*` to 5 requests per 15 minutes per IP
+  (`RATE_LIMITS.login`). Offices behind one NAT address will hit this with a handful
+  of users; consider 20/15 min per IP plus the existing per-account lockout.
 - E2E job is `if: false`; needs `TEST_USERNAME`/`TEST_PASSWORD` secrets (now in
   `.env.example`) and a seeded test database.
 - Coverage report omits files that are `vi.mock`ed elsewhere by alias (e.g. `rbac.ts`);

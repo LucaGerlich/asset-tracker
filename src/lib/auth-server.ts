@@ -149,17 +149,32 @@ async function handleTwoFactorAfterHook(ctx: AuthHookContext) {
     { user?: { id?: string } } | APIError | undefined;
   const failed = returned instanceof APIError;
   const returnedUserId = !failed ? returned?.user?.id : undefined;
+  // Signed cookie value is "<token>.<signature>"; disable/generate-backup-codes
+  // return no user, so resolve the caller from the session token.
+  const sessionCookie = ctx.getCookie(
+    ctx.context.authCookies.sessionToken.name,
+  );
+  const sessionToken = sessionCookie?.split(".")[0];
+  const sessionUserId =
+    ctx.context.session?.user?.id ??
+    (sessionToken
+      ? (
+          await prisma.sessions.findUnique({
+            where: { token: sessionToken },
+            select: { userId: true },
+          })
+        )?.userId
+      : undefined);
   const event = classifyTwoFactorCall({
     path: ctx.path,
     failed,
-    hadSession: Boolean(
-      ctx.getCookie(ctx.context.authCookies.sessionToken.name),
-    ),
-    userId: ctx.context.session?.user?.id ?? returnedUserId ?? null,
+    hadSession: Boolean(sessionCookie),
+    userId: sessionUserId ?? returnedUserId ?? null,
   });
   if (!event) return;
   await auditTwoFactorEvent(event);
-  if (event.kind === "login") {
+  // Logins create a session; enable and disable rotate the current one.
+  if (event.kind !== "backup_codes_regenerated") {
     await enrichLatestSession(
       event.userId,
       ctx.headers?.get("user-agent") || null,
@@ -548,15 +563,6 @@ export const auth = betterAuth({
       if (!body?.email) return;
       const identifier = body.email;
 
-      // A 2FA user has passed the password step; the login completes (and is
-      // audited) in the /two-factor/verify-* after-hook.
-      const returned = ctx.context.returned as
-        { twoFactorRedirect?: boolean } | undefined;
-      if (returned?.twoFactorRedirect) {
-        await recordSuccessfulLogin(identifier);
-        return;
-      }
-
       // Check if login succeeded (session cookie was set)
       const setCookie = ctx.context.responseHeaders?.get("set-cookie");
       if (setCookie) {
@@ -566,8 +572,14 @@ export const auth = betterAuth({
           where: {
             OR: [{ email: identifier }, { username: identifier }],
           },
-          select: { userid: true, username: true },
+          select: { userid: true, username: true, twoFactorEnabled: true },
         });
+
+        // This hook runs before the twoFactor plugin's. For a 2FA user the
+        // plugin deletes the session created here and answers with
+        // twoFactorRedirect; the completed login is audited (and the session
+        // enriched) in handleTwoFactorAfterHook once the second factor passes.
+        if (user?.twoFactorEnabled) return;
 
         if (user) {
           await createAuditLog({
