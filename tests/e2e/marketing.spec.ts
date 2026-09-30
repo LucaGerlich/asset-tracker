@@ -100,6 +100,12 @@ test.describe("marketing pages (anonymous)", () => {
       );
     });
   }
+
+  test("OG image is public and renders as PNG", async ({ request }) => {
+    const res = await request.get("/opengraph-image", { maxRedirects: 0 });
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toContain("image/png");
+  });
 });
 
 test.describe("marketing pages (signed in)", () => {

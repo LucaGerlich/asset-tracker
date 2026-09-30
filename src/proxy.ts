@@ -71,6 +71,7 @@ export async function proxy(req: NextRequest) {
     "/pricing",
     "/terms",
     "/privacy",
+    "/opengraph-image",
     "/offline",
     "/invite",
     "/suspended",
