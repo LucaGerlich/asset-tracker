@@ -49,6 +49,40 @@ test.describe("marketing pages (anonymous)", () => {
       )
       .toBe(!before.includes("dark"));
   });
+
+  test("landing shows the new hero, features and FAQ", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      /Every asset, accounted for\./,
+    );
+    await expect(page.locator("#features")).toBeVisible();
+    await expect(page.locator("#features article")).toHaveCount(6);
+    await expect(page.locator("details")).not.toHaveCount(0);
+    await expect(page.getByText("10,000+")).toHaveCount(0); // invented stats removed
+  });
+
+  test("FAQ JSON-LD is still emitted", async ({ page }) => {
+    await page.goto("/");
+    const blocks = await page
+      .locator('script[type="application/ld+json"]')
+      .allTextContents();
+    expect(blocks.some((b) => b.includes('"FAQPage"'))).toBe(true);
+  });
+
+  test("dark preference is applied before hydration (no CSP-blocked theme script)", async ({
+    page,
+  }) => {
+    const cspErrors: string[] = [];
+    page.on("console", (m) => {
+      if (m.type() === "error" && m.text().includes("Content Security Policy"))
+        cspErrors.push(m.text());
+    });
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.addInitScript(() => localStorage.setItem("theme", "system"));
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    expect(cspErrors).toEqual([]);
+    await expect(page.locator("html")).toHaveClass(/dark/);
+  });
 });
 
 test.describe("marketing pages (signed in)", () => {

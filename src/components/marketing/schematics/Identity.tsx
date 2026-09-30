@@ -13,7 +13,7 @@ export function IdentitySchematic() {
       {PROVIDERS.map((p, i) => {
         const y = 8 + i * 32;
         const active = i === 0;
-        const stroke = active ? "var(--mkt-accent)" : "var(--mkt-line)";
+        const stroke = active ? "var(--mkt-accent)" : "var(--mkt-node)";
         return (
           <g key={p}>
             <path
@@ -52,7 +52,7 @@ export function IdentitySchematic() {
       {/* isometric core */}
       <path
         d="M220 85 V120 L270 145 V110 M320 85 V120 L270 145"
-        stroke="var(--mkt-line)"
+        stroke="var(--mkt-node)"
       />
       <path
         d="M220 85 L270 60 L320 85 L270 110 Z"

@@ -240,6 +240,7 @@
   --color-mkt-accent-fill: var(--mkt-accent-fill);
   --color-mkt-accent-fill-fg: var(--mkt-accent-fill-fg);
   --color-mkt-warn: var(--mkt-warn);
+  --color-mkt-node: var(--mkt-node);
   --font-mkt-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mkt-mono:
     var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -275,6 +276,13 @@
   --mkt-accent-fill: #c6f36b;
   --mkt-accent-fill-fg: #0b0b0c;
   --mkt-warn: #ff6b7a;
+}
+
+/* Diagram strokes: hairlines are too faint for schematic boxes, so derive a
+   stronger neutral from the (theme-dependent) muted text color. */
+.mkt,
+.dark .mkt {
+  --mkt-node: color-mix(in srgb, var(--mkt-muted) 45%, transparent);
 }
 
 /* Inside the always-dark stage, remap the public tokens to the stage palette. */

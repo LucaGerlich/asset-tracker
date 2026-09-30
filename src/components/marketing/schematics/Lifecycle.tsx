@@ -15,7 +15,7 @@ const MONO = "var(--font-geist-mono)";
 function stroke(s: SampleStatus): string {
   if (s === "Active") return "var(--mkt-accent)";
   if (s === "Out for Repair") return "var(--mkt-warn)";
-  return "var(--mkt-line)";
+  return "var(--mkt-node)";
 }
 
 function fill(s: SampleStatus): string {
@@ -43,7 +43,7 @@ export function LifecycleSchematic() {
       {/* forward flow */}
       <path
         d="M108 33 H118 M222 33 H232 M284 46 V120"
-        stroke="var(--mkt-line)"
+        stroke="var(--mkt-node)"
       />
       {/* Active → Out for Repair */}
       <path

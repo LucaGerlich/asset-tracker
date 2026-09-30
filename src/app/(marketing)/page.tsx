@@ -9,7 +9,7 @@ import {
   getOrganizationSchema,
   getFaqSchema,
 } from "@/lib/structured-data";
-import LandingPage from "@/components/marketing/LandingPage";
+import { LandingPage } from "@/components/marketing/LandingPage";
 
 export const metadata = createPageMetadata({
   title: "IT Asset Management Software for Teams",

@@ -20,13 +20,13 @@ export function LicenseSeatsSchematic() {
             className={`h-3 rounded-[2px] border ${
               i < figma.seatsUsed
                 ? "bg-mkt-accent border-mkt-accent"
-                : "border-mkt-line"
+                : "border-mkt-node"
             }`}
           />
         ))}
       </div>
       <div className="relative mt-9 h-6">
-        <div className="bg-mkt-line absolute inset-x-0 top-3 h-px" />
+        <div className="bg-mkt-node absolute inset-x-0 top-3 h-px" />
         <div
           className="bg-mkt-accent absolute top-3 left-0 h-px"
           style={{ width: `${markerPct}%` }}

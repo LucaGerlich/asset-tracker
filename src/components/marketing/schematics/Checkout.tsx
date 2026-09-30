@@ -13,7 +13,7 @@ function Pill({ label, active }: { label: string; active: boolean }) {
       className={`font-mkt-mono bg-mkt-surface block truncate rounded border px-2.5 py-1.5 text-[11px] ${
         active
           ? "border-mkt-accent text-mkt-accent"
-          : "border-mkt-line text-mkt-muted"
+          : "border-mkt-node text-mkt-muted"
       }`}
     >
       • {label}
@@ -26,7 +26,7 @@ export function CheckoutSchematic() {
     <div className="grid grid-cols-[minmax(0,1fr)_48px_minmax(0,1fr)] items-center">
       <Pill label={asset.name} active={false} />
       <svg viewBox="0 0 48 120" className="h-[120px] w-12" fill="none">
-        <path d="M24 60 V100 H48 M24 60 H48" stroke="var(--mkt-line)" />
+        <path d="M24 60 V100 H48 M24 60 H48" stroke="var(--mkt-node)" />
         <path
           d="M0 60 H24 V20 H48"
           stroke="var(--mkt-accent)"
