@@ -9,6 +9,10 @@ import {
   rateLimiters,
 } from "@/lib/rate-limit";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { getSplitOrigins, resolveHostRoute } from "@/lib/host-routing";
+
+// Env is fixed per process; the config is validated at startup (instrumentation).
+const splitOrigins = getSplitOrigins();
 
 function buildCspHeader(nonce: string): string {
   const directives = [
@@ -58,6 +62,17 @@ export async function proxy(req: NextRequest) {
     return withHeaders(
       NextResponse.next({ request: { headers: requestHeaders } }),
     );
+  }
+
+  // Domain split: keep marketing and app on their own hosts (no-op when disabled).
+  const hostRoute = resolveHostRoute({
+    host: req.headers.get("host"),
+    pathname,
+    search: req.nextUrl.search,
+    origins: splitOrigins,
+  });
+  if (hostRoute.kind === "redirect") {
+    return withHeaders(NextResponse.redirect(hostRoute.url, hostRoute.status));
   }
 
   // Public routes that don't require authentication
