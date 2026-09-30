@@ -227,3 +227,100 @@
   color: hsl(0 0% 98%);
   background: hsl(220 10% 16%);
 }
+
+/* ── Marketing site tokens (scoped; the app tokens above stay untouched) ── */
+@theme inline {
+  --color-mkt-bg: var(--mkt-bg);
+  --color-mkt-surface: var(--mkt-surface);
+  --color-mkt-stage: var(--mkt-stage);
+  --color-mkt-line: var(--mkt-line);
+  --color-mkt-text: var(--mkt-text);
+  --color-mkt-muted: var(--mkt-muted);
+  --color-mkt-accent: var(--mkt-accent);
+  --color-mkt-accent-fill: var(--mkt-accent-fill);
+  --color-mkt-accent-fill-fg: var(--mkt-accent-fill-fg);
+  --color-mkt-warn: var(--mkt-warn);
+  --font-mkt-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mkt-mono:
+    var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mkt {
+  --mkt-bg: #fbfbfa;
+  --mkt-surface: #ffffff;
+  --mkt-stage: #0f0f11;
+  --mkt-line: #e7e7e4;
+  --mkt-text: #111113;
+  --mkt-muted: #5f5f67;
+  --mkt-accent: #4d7c0f;
+  --mkt-accent-fill: #111113;
+  --mkt-accent-fill-fg: #fbfbfa;
+  --mkt-warn: #c2410c;
+  /* The product stage is always dark; its inner tokens use the dark palette. */
+  --mkt-stage-line: #1f1f22;
+  --mkt-stage-text: #ededed;
+  --mkt-stage-muted: #8a8a93;
+  --mkt-stage-accent: #c6f36b;
+  --mkt-stage-warn: #ff6b7a;
+}
+
+.dark .mkt {
+  --mkt-bg: #0b0b0c;
+  --mkt-surface: #111114;
+  --mkt-stage: #111114;
+  --mkt-line: #1f1f22;
+  --mkt-text: #ededed;
+  --mkt-muted: #8a8a93;
+  --mkt-accent: #c6f36b;
+  --mkt-accent-fill: #c6f36b;
+  --mkt-accent-fill-fg: #0b0b0c;
+  --mkt-warn: #ff6b7a;
+}
+
+/* Inside the always-dark stage, remap the public tokens to the stage palette. */
+.mkt .mkt-stage-scope {
+  --mkt-line: var(--mkt-stage-line);
+  --mkt-text: var(--mkt-stage-text);
+  --mkt-muted: var(--mkt-stage-muted);
+  --mkt-accent: var(--mkt-stage-accent);
+  --mkt-warn: var(--mkt-stage-warn);
+  --mkt-surface: var(--mkt-stage);
+}
+
+@utility mkt-grid {
+  background-image:
+    linear-gradient(to right, var(--mkt-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--mkt-line) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(
+    ellipse 70% 60% at 50% 40%,
+    #000 40%,
+    transparent 100%
+  );
+}
+
+@utility mkt-dots {
+  background-image: radial-gradient(var(--mkt-line) 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+
+@utility mkt-reveal {
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      animation: mkt-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
+  }
+}
+
+@keyframes mkt-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

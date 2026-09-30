@@ -44,7 +44,7 @@ Replace the generic light, centered SaaS landing page with a **technical, engine
 | `--mkt-surface`                            | `#111114`             | `#ffffff`                             |
 | `--mkt-line` (hairlines, grid)             | `#1f1f22`             | `#e7e7e4`                             |
 | `--mkt-text`                               | `#ededed`             | `#111113`                             |
-| `--mkt-muted`                              | `#8a8a93`             | `#6b6b73`                             |
+| `--mkt-muted`                              | `#8a8a93`             | `#5f5f67` (AA fix; was `#6b6b73`)     |
 | `--mkt-accent` (text, paths, highlights)   | `#c6f36b`             | `#4d7c0f`                             |
 | `--mkt-accent-fill` (primary button bg)    | `#c6f36b` (dark text) | `#111113` (light text, lime dot)      |
 | `--mkt-warn` (coral: error/repair/reorder) | `#ff6b7a`             | `#c2410c`                             |

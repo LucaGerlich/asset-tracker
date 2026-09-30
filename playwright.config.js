@@ -18,6 +18,13 @@ export default defineConfig({
   },
   projects: [
     {
+      // Public marketing pages: anonymous, no auth setup, so it never needs a
+      // seeded database. Run with `npx playwright test --project=marketing`.
+      name: "marketing",
+      testMatch: /(marketing|accessibility)\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
       name: "setup",
       testMatch: /.*\.setup\.ts/,
     },
