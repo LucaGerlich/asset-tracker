@@ -157,8 +157,8 @@ Track hardware, software licences, consumables, and accessories — with role-ba
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/luca-fitseveneleven/assetTracker.git
-cd assetTracker
+git clone https://github.com/LucaGerlich/asset-tracker.git
+cd asset-tracker
 bun install
 ```
 
@@ -236,7 +236,7 @@ volumes:
 
 ### Vercel
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/luca-fitseveneleven/assetTracker)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/LucaGerlich/asset-tracker)
 
 Set the environment variables in the Vercel dashboard and connect your PostgreSQL database. The build command automatically runs migrations.
 
