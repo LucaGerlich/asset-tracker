@@ -121,3 +121,31 @@ test.describe("marketing pages (signed in)", () => {
     await expect(page).toHaveURL(/\/dashboard/);
   });
 });
+
+test.describe("marketing pages – layout robustness", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  for (const scheme of ["light", "dark"] as const) {
+    for (const path of PAGES) {
+      test(`${path} (${scheme}) has no horizontal overflow at 375px and no console errors`, async ({
+        page,
+      }) => {
+        const errors: string[] = [];
+        page.on("console", (m) => {
+          if (m.type() === "error") errors.push(m.text());
+        });
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.setViewportSize({ width: 375, height: 812 });
+        await page.goto(path);
+        await page.waitForLoadState("networkidle");
+        const overflow = await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+        );
+        expect(overflow).toBeLessThanOrEqual(0);
+        expect(errors).toEqual([]);
+      });
+    }
+  }
+});

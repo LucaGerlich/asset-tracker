@@ -9,6 +9,29 @@ import AxeBuilder from "@axe-core/playwright";
 test.describe("Accessibility (WCAG 2.1 AA)", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
+  for (const scheme of ["light", "dark"] as const) {
+    for (const path of ["/", "/pricing", "/terms", "/privacy"]) {
+      test(`${path} (${scheme}) has no accessibility violations`, async ({
+        page,
+      }) => {
+        await page.emulateMedia({
+          colorScheme: scheme,
+          reducedMotion: "reduce",
+        });
+        await page.goto(path);
+        await page.waitForLoadState("networkidle");
+        const results = await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+          .analyze();
+        logViolations(results.violations);
+        expect(
+          results.violations,
+          `a11y violations on ${path} (${scheme})`,
+        ).toEqual([]);
+      });
+    }
+  }
+
   test("login page has no accessibility violations", async ({ page }) => {
     await page.goto("/login");
 
