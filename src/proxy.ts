@@ -87,6 +87,8 @@ export async function proxy(req: NextRequest) {
     "/terms",
     "/privacy",
     "/opengraph-image",
+    "/robots.txt",
+    "/sitemap.xml",
     "/offline",
     "/invite",
     "/suspended",

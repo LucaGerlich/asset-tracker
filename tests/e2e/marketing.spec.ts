@@ -101,6 +101,13 @@ test.describe("marketing pages (anonymous)", () => {
     });
   }
 
+  for (const path of ["/robots.txt", "/sitemap.xml"]) {
+    test(`${path} is public`, async ({ request }) => {
+      const res = await request.get(path, { maxRedirects: 0 });
+      expect(res.status()).toBe(200);
+    });
+  }
+
   test("OG image is public and renders as PNG", async ({ request }) => {
     const res = await request.get("/opengraph-image", { maxRedirects: 0 });
     expect(res.status()).toBe(200);
