@@ -83,6 +83,14 @@ test.describe("marketing pages (anonymous)", () => {
     expect(cspErrors).toEqual([]);
     await expect(page.locator("html")).toHaveClass(/dark/);
   });
+
+  test("pricing uses the marketing style and keeps its tiers", async ({
+    page,
+  }) => {
+    await page.goto("/pricing");
+    await expect(page.getByText("[ PRICING ]", { exact: false })).toBeVisible();
+    await expect(page.locator("[data-tier]")).not.toHaveCount(0);
+  });
 });
 
 test.describe("marketing pages (signed in)", () => {

@@ -2,16 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+import { ChevronDown } from "lucide-react";
+import { Eyebrow } from "@/components/marketing/primitives/Eyebrow";
 
 const tiers = [
   {
@@ -94,27 +86,23 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border-border/60 border-b">
-      <Button
+    <div className="border-mkt-line border-b">
+      <button
         type="button"
-        variant="ghost"
-        className="flex h-auto w-full items-center justify-between rounded-none px-0 py-5 text-left hover:bg-transparent"
+        className="flex w-full items-center justify-between gap-4 py-5 text-left"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
       >
-        <span className="text-foreground text-sm font-medium">{question}</span>
+        <span className="text-sm font-medium">{question}</span>
         <ChevronDown
-          className={`text-muted-foreground h-4 w-4 shrink-0 transition-transform duration-200 ${
+          aria-hidden="true"
+          className={`text-mkt-muted h-4 w-4 shrink-0 transition-transform duration-200 ${
             open ? "rotate-180" : ""
           }`}
         />
-      </Button>
+      </button>
       {open && (
-        <div className="pb-5">
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            {answer}
-          </p>
-        </div>
+        <p className="text-mkt-muted pb-5 text-sm leading-relaxed">{answer}</p>
       )}
     </div>
   );
@@ -123,91 +111,94 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 export default function PricingPageClient() {
   return (
     <>
-      {/* Header */}
-      <section className="pt-24 pb-16 sm:pt-32 sm:pb-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <h1 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Simple, transparent pricing
-            </h1>
-            <p className="text-muted-foreground mt-4 text-lg">
-              Start free and scale as your team grows. No hidden fees, no
-              surprises.
-            </p>
-          </div>
+      <section className="border-mkt-line relative overflow-hidden border-b">
+        <div
+          aria-hidden="true"
+          className="mkt-grid pointer-events-none absolute inset-0"
+        />
+        <div className="relative mx-auto max-w-2xl px-4 pt-20 pb-16 text-center sm:px-6 sm:pt-28">
+          <Eyebrow>PRICING</Eyebrow>
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
+            Simple, transparent pricing
+          </h1>
+          <p className="text-mkt-muted mt-4 text-lg">
+            Start free and scale as your team grows. No hidden fees, no
+            surprises.
+          </p>
         </div>
       </section>
 
-      {/* Pricing Cards */}
-      <section className="pb-20">
+      <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-3">
+          <div className="border-mkt-line bg-mkt-line grid gap-px overflow-hidden rounded-xl border lg:grid-cols-3">
             {tiers.map((tier) => (
-              <Card
+              <article
                 key={tier.name}
-                className={`relative flex flex-col ${
-                  tier.highlighted
-                    ? "border-primary ring-primary shadow-lg ring-1"
-                    : ""
+                data-tier={tier.name}
+                className={`bg-mkt-surface relative flex min-w-0 flex-col p-8 ${
+                  tier.highlighted ? "ring-mkt-accent ring-1 ring-inset" : ""
                 }`}
               >
-                {tier.highlighted && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-primary text-primary-foreground rounded-full px-3 py-1 text-xs font-medium">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-lg font-semibold">{tier.name}</h2>
+                  {tier.highlighted && (
+                    <span className="font-mkt-mono text-mkt-accent text-[11px] tracking-widest uppercase">
                       Recommended
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
+                <p className="text-mkt-muted mt-2 text-sm">
+                  {tier.description}
+                </p>
+                <p className="font-mkt-mono mt-6">
+                  <span className="text-4xl">{tier.price}</span>
+                  <span className="text-mkt-muted text-sm">{tier.period}</span>
+                </p>
 
-                <CardHeader>
-                  <CardTitle className="text-lg">{tier.name}</CardTitle>
-                  <CardDescription>{tier.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-foreground text-4xl font-bold">
-                      {tier.price}
-                    </span>
-                    <span className="text-muted-foreground text-sm">
-                      {tier.period}
-                    </span>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="flex-1">
-                  <ul className="space-y-3">
-                    {tier.features.map((feature) => (
-                      <li
-                        key={feature}
-                        className="text-muted-foreground flex items-start gap-2 text-sm"
+                <ul className="mt-6 flex-1 space-y-3">
+                  {tier.features.map((feature) => (
+                    <li
+                      key={feature}
+                      className="text-mkt-muted flex items-start gap-2 text-sm"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="font-mkt-mono text-mkt-accent"
                       >
-                        <Check className="text-primary mt-0.5 h-4 w-4 shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
+                        →
+                      </span>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
 
-                <CardFooter>
-                  <Button
-                    className="w-full"
-                    variant={tier.highlighted ? "default" : "outline"}
-                    asChild
-                  >
-                    <Link href={tier.ctaHref}>{tier.cta}</Link>
-                  </Button>
-                </CardFooter>
-              </Card>
+                <Link
+                  href={tier.ctaHref}
+                  className={`mt-8 block rounded-md px-4 py-2.5 text-center text-sm font-medium ${
+                    tier.highlighted
+                      ? "bg-mkt-accent-fill text-mkt-accent-fill-fg"
+                      : "border-mkt-line hover:border-mkt-text border"
+                  }`}
+                >
+                  {tier.cta}
+                </Link>
+                <p className="font-mkt-mono text-mkt-muted mt-4 text-[11px]">
+                  limits · {tier.features[0].toLowerCase()} ·{" "}
+                  {tier.features[1].toLowerCase()}
+                </p>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="border-border/40 border-t py-20 sm:py-28">
+      <section className="border-mkt-line border-t py-20 sm:py-28">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-foreground mb-10 text-center text-2xl font-bold tracking-tight sm:text-3xl">
+          <Eyebrow>FAQ</Eyebrow>
+          <h2 className="mt-4 mb-10 text-2xl font-semibold tracking-tight sm:text-3xl">
             Frequently asked questions
           </h2>
-          <div className="divide-y-0">
+          <div className="border-mkt-line border-t">
             {faqs.map((faq) => (
               <FAQItem
                 key={faq.question}
