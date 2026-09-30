@@ -122,9 +122,14 @@ test.describe("marketing pages (anonymous)", () => {
 });
 
 test.describe("marketing pages (signed in)", () => {
-  // Needs the seeded test user from auth.setup.ts, so it only runs when a
-  // disposable database is configured (E2E_SIGNED_IN=1).
-  test.skip(!process.env.E2E_SIGNED_IN, "requires a seeded test database");
+  // Needs the seeded test user from auth.setup.ts: runs in the authenticated
+  // projects (CI has a seeded DB), skipped in the DB-less `marketing` project.
+  test.beforeEach(({}, testInfo) => {
+    test.skip(
+      testInfo.project.name === "marketing",
+      "requires the seeded test database used by auth.setup.ts",
+    );
+  });
   test.use({ storageState: "tests/e2e/.auth/user.json" });
 
   test("signed-in visitor on / is redirected to /dashboard", async ({
