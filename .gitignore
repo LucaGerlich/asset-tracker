@@ -71,3 +71,6 @@ mobile/*.orig.*
 /graphify-out/
 /.understand-anything/
 /*.png
+
+# Superpowers brainstorm companion mockups
+/.superpowers/
