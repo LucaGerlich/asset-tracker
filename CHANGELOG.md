@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-09-30
+
+### Fixed
+
+- Muted text (`--muted-foreground`, light theme) darkened from `220 5% 52%` to
+  `220 5% 44%` so secondary copy meets WCAG AA: 5.10:1 on white and 4.67:1 on
+  `--muted` surfaces (was 3.81:1 / 3.49:1). axe flagged it on `/login` and the setup
+  page. The dark-theme value already passes (5.92:1 on `--muted`) and is unchanged.
+
 ## [0.10.0] - 2026-09-08
 
 ### Changed
