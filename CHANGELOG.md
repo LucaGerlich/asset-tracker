@@ -26,6 +26,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   receives the CSP nonce instead of being blocked.
 - The OG image is served without authentication, so link previews work.
 - The theme toggle button has an accessible name.
+- Landing FAQ states the real Starter limits (100 assets, 3 users).
+- Self-host commands on the marketing site select the `with-db` compose profile
+  and run inside the cloned directory.
+- Marketing pages: the skip link works, the sample table is keyboard-scrollable
+  on narrow screens, and copied commands exclude the `$` prompt.
 
 ## [0.10.0] - 2026-09-08
 
