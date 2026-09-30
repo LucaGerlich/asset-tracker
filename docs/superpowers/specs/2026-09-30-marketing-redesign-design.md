@@ -92,7 +92,7 @@ Replace the generic light, centered SaaS landing page with a **technical, engine
 
 The route group changes no URLs. The layout wraps children in `<div class="mkt">` and renders `MarketingNav` and `MarketingFooter`.
 
-- **Nav:** mono logo mark + "Asset Tracker"; links Features (`/#features`), Pricing, GitHub. `/help` and `/api-docs` are auth-gated app routes (not in `publicRoutes`), so there is **no Docs link** until public docs exist. The GitHub URL is one constant, `MARKETING_LINKS.github`. **Open question for review:** the repo URL (the git remote is `LucaGerlich/asset-tracker`, while the README says `luca-fitseveneleven/assetTracker`) and whether the repo is public. If it's private, the GitHub link and the "Open source · MIT" eyebrow are dropped; a theme toggle (the existing `ThemeSwitcher`, restyled or wrapped); "Sign in"; primary "Start free". Mobile gets a disclosure menu using the existing pattern in `MarketingNav.tsx`.
+- **Nav:** mono logo mark + "Asset Tracker"; links Features (`/#features`), Pricing, GitHub. `/help` and `/api-docs` are auth-gated app routes (not in `publicRoutes`), so there is **no Docs link** until public docs exist. The GitHub URL is one constant, `MARKETING_LINKS.github`. It points to the canonical public repo `https://github.com/LucaGerlich/asset-tracker`. All references to the fork `luca-fitseveneleven/assetTracker` (README.md, docs/index.html) are replaced; a theme toggle (the existing `ThemeSwitcher`, restyled or wrapped); "Sign in"; primary "Start free". Mobile gets a disclosure menu using the existing pattern in `MarketingNav.tsx`.
 - **Footer:** a hairline-divided grid of mono link columns (Product, Company, Legal, Get started), the version string, and a small ASCII mark.
 
 ### Landing page (`/`), top to bottom
