@@ -16,7 +16,7 @@ export const HERO = {
   title: "Every asset, accounted for.",
   sub: "IT asset management software for teams that track hardware, licenses, consumables and maintenance. One inventory, one audit trail, no spreadsheets.",
   primaryCta: "Start free",
-  command: "docker compose up -d",
+  command: "docker compose --profile with-db up -d",
 } as const;
 
 export const FACTS = [
@@ -54,7 +54,7 @@ export const FEATURE_CELLS = {
     meta: "figma · 18/20",
     title: "License compliance",
     description:
-      "Seats, renewals and cost per license, with alerts before anything expires.",
+      "Seats, expiry dates and cost per license, with alerts before anything expires.",
     footer: "cron · notifications · daily",
   },
   lifecycle: {
@@ -105,7 +105,7 @@ export const ASCII_STATEMENT = {
 export const TCO = {
   eyebrow: "UNDERSTAND",
   title: "See what your hardware really costs.",
-  body: "Purchase price, maintenance and depreciation per category, exported as CSV or XLSX for finance.",
+  body: "Purchase price and maintenance per category on the TCO dashboard, and depreciation schedules as CSV or XLSX for finance.",
   footer: "GET /api/export?entity=depreciation",
 } as const;
 
@@ -116,7 +116,7 @@ export const DEPLOY = {
     title: "Self-host",
     body: "MIT-licensed. Run it on your own hardware with Docker and PostgreSQL.",
     command:
-      "git clone https://github.com/LucaGerlich/asset-tracker && docker compose up -d",
+      "git clone https://github.com/LucaGerlich/asset-tracker && cd asset-tracker && docker compose --profile with-db up -d --build",
   },
   cloud: {
     title: "Cloud",

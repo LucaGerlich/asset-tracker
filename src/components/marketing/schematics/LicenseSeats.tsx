@@ -4,7 +4,7 @@ const figma = SAMPLE_LICENSES[0];
 const WINDOW_DAYS = 60;
 
 export function LicenseSeatsSchematic() {
-  const markerPct = (figma.daysToRenewal / WINDOW_DAYS) * 100;
+  const markerPct = (figma.daysToExpiry / WINDOW_DAYS) * 100;
   return (
     <div className="font-mkt-mono text-[11px]">
       <div className="text-mkt-muted flex justify-between">
@@ -39,12 +39,12 @@ export function LicenseSeatsSchematic() {
           className="text-mkt-accent absolute -top-4 -translate-x-1/2 whitespace-nowrap"
           style={{ left: `${markerPct}%` }}
         >
-          renews {figma.renewsOn}
+          expires {figma.expiresOn}
         </span>
       </div>
       <div className="text-mkt-muted flex justify-between">
         <span>today</span>
-        <span>{figma.daysToRenewal}d</span>
+        <span>{figma.daysToExpiry}d</span>
         <span>+{WINDOW_DAYS}d</span>
       </div>
     </div>

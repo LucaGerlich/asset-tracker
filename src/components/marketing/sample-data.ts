@@ -26,8 +26,8 @@ export interface SampleLicense {
   name: string;
   seatsUsed: number;
   seatsTotal: number;
-  renewsOn: string;
-  daysToRenewal: number;
+  expiresOn: string;
+  daysToExpiry: number;
 }
 export interface SampleConsumable {
   name: string;
@@ -160,22 +160,22 @@ export const SAMPLE_LICENSES: readonly SampleLicense[] = [
     name: "Figma",
     seatsUsed: 18,
     seatsTotal: 20,
-    renewsOn: "2026-11-02",
-    daysToRenewal: 32,
+    expiresOn: "2026-11-02",
+    daysToExpiry: 32,
   },
   {
     name: "Microsoft 365 E3",
     seatsUsed: 41,
     seatsTotal: 45,
-    renewsOn: "2027-01-15",
-    daysToRenewal: 107,
+    expiresOn: "2027-01-15",
+    daysToExpiry: 107,
   },
   {
     name: "JetBrains All Products",
     seatsUsed: 9,
     seatsTotal: 10,
-    renewsOn: "2026-12-01",
-    daysToRenewal: 62,
+    expiresOn: "2026-12-01",
+    daysToExpiry: 62,
   },
 ];
 

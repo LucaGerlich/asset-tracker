@@ -80,7 +80,7 @@ export const LANDING_FAQ: FaqItem[] = [
   {
     question: "Is Asset Tracker free for small teams?",
     answer:
-      "Yes. The Starter plan is completely free and includes up to 250 assets, 5 users, and all core features including asset tracking, license management, and maintenance scheduling. No credit card is required to get started. As your team grows, you can upgrade to Professional or Enterprise plans for higher limits and advanced features like SSO, custom workflows, and priority support.",
+      "Yes. The Starter plan is completely free and includes up to 100 assets, 3 users, and all core features including asset tracking, license management, and maintenance scheduling. No credit card is required to get started. As your team grows, you can upgrade to Professional or Enterprise plans for higher limits and advanced features like SSO, custom workflows, and priority support.",
   },
   {
     question: "Can I self-host Asset Tracker?",
