@@ -91,6 +91,15 @@ test.describe("marketing pages (anonymous)", () => {
     await expect(page.getByText("[ PRICING ]", { exact: false })).toBeVisible();
     await expect(page.locator("[data-tier]")).not.toHaveCount(0);
   });
+
+  for (const path of ["/terms", "/privacy"]) {
+    test(`${path} uses numbered mono section headings`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.locator("h2 [data-section-no]").first()).toHaveText(
+        "01",
+      );
+    });
+  }
 });
 
 test.describe("marketing pages (signed in)", () => {

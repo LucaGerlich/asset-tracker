@@ -3,6 +3,7 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
 import { createPageMetadata } from "@/lib/seo";
 import { JsonLd } from "@/components/marketing/JsonLd";
 import { getBreadcrumbSchema } from "@/lib/structured-data";
+import { Eyebrow } from "@/components/marketing/primitives/Eyebrow";
 
 export const metadata = createPageMetadata({
   title: "Terms of Service",
@@ -24,21 +25,28 @@ export default function TermsPage() {
         ])}
       />
 
-      <div className="mx-auto max-w-3xl px-4 pt-24 pb-20 sm:px-6 sm:pt-32 lg:px-8">
-        <h1 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
+      <article className="mx-auto max-w-3xl px-4 pt-20 pb-20 sm:px-6 sm:pt-28 lg:px-8">
+        <Eyebrow>LEGAL</Eyebrow>
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight">
           Terms of Service
         </h1>
-        <p className="text-muted-foreground mt-4 text-sm">
+        <p className="font-mkt-mono text-mkt-muted mt-4 text-[12px]">
           Last updated: February 1, 2026
         </p>
 
-        <div className="mt-12 space-y-10">
+        <div className="mt-12">
           {/* Terms of Use */}
-          <section>
-            <h2 className="text-foreground text-xl font-semibold">
+          <section className="border-mkt-line mt-10 border-t pt-10 first:mt-0 first:border-t-0 first:pt-0">
+            <h2 className="text-xl font-semibold">
+              <span
+                data-section-no
+                className="font-mkt-mono text-mkt-accent mr-3 text-sm"
+              >
+                {"01"}
+              </span>
               1. Terms of Use
             </h2>
-            <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
+            <div className="text-mkt-muted mt-4 space-y-3 text-sm leading-relaxed">
               <p>
                 By accessing and using Asset Tracker (&quot;the Service&quot;),
                 you agree to be bound by these Terms of Service
@@ -61,11 +69,17 @@ export default function TermsPage() {
           </section>
 
           {/* Acceptable Use */}
-          <section>
-            <h2 className="text-foreground text-xl font-semibold">
+          <section className="border-mkt-line mt-10 border-t pt-10 first:mt-0 first:border-t-0 first:pt-0">
+            <h2 className="text-xl font-semibold">
+              <span
+                data-section-no
+                className="font-mkt-mono text-mkt-accent mr-3 text-sm"
+              >
+                {"02"}
+              </span>
               2. Acceptable Use
             </h2>
-            <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
+            <div className="text-mkt-muted mt-4 space-y-3 text-sm leading-relaxed">
               <p>
                 You agree to use the Service only for lawful purposes and in
                 accordance with these Terms. You agree not to:
@@ -100,11 +114,17 @@ export default function TermsPage() {
           </section>
 
           {/* Data Ownership */}
-          <section>
-            <h2 className="text-foreground text-xl font-semibold">
+          <section className="border-mkt-line mt-10 border-t pt-10 first:mt-0 first:border-t-0 first:pt-0">
+            <h2 className="text-xl font-semibold">
+              <span
+                data-section-no
+                className="font-mkt-mono text-mkt-accent mr-3 text-sm"
+              >
+                {"03"}
+              </span>
               3. Data Ownership
             </h2>
-            <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
+            <div className="text-mkt-muted mt-4 space-y-3 text-sm leading-relaxed">
               <p>
                 You retain all rights to the data you upload, store, or process
                 through the Service (&quot;Your Data&quot;). We do not claim
@@ -125,11 +145,17 @@ export default function TermsPage() {
           </section>
 
           {/* Limitation of Liability */}
-          <section>
-            <h2 className="text-foreground text-xl font-semibold">
+          <section className="border-mkt-line mt-10 border-t pt-10 first:mt-0 first:border-t-0 first:pt-0">
+            <h2 className="text-xl font-semibold">
+              <span
+                data-section-no
+                className="font-mkt-mono text-mkt-accent mr-3 text-sm"
+              >
+                {"04"}
+              </span>
               4. Limitation of Liability
             </h2>
-            <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
+            <div className="text-mkt-muted mt-4 space-y-3 text-sm leading-relaxed">
               <p>
                 To the fullest extent permitted by applicable law, in no event
                 shall Asset Tracker, Inc., its affiliates, officers, directors,
@@ -161,11 +187,17 @@ export default function TermsPage() {
           </section>
 
           {/* Termination */}
-          <section>
-            <h2 className="text-foreground text-xl font-semibold">
+          <section className="border-mkt-line mt-10 border-t pt-10 first:mt-0 first:border-t-0 first:pt-0">
+            <h2 className="text-xl font-semibold">
+              <span
+                data-section-no
+                className="font-mkt-mono text-mkt-accent mr-3 text-sm"
+              >
+                {"05"}
+              </span>
               5. Termination
             </h2>
-            <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
+            <div className="text-mkt-muted mt-4 space-y-3 text-sm leading-relaxed">
               <p>
                 We may terminate or suspend your access to the Service
                 immediately, without prior notice or liability, for any reason
@@ -189,11 +221,17 @@ export default function TermsPage() {
           </section>
 
           {/* Governing Law */}
-          <section>
-            <h2 className="text-foreground text-xl font-semibold">
+          <section className="border-mkt-line mt-10 border-t pt-10 first:mt-0 first:border-t-0 first:pt-0">
+            <h2 className="text-xl font-semibold">
+              <span
+                data-section-no
+                className="font-mkt-mono text-mkt-accent mr-3 text-sm"
+              >
+                {"06"}
+              </span>
               6. Governing Law
             </h2>
-            <div className="text-muted-foreground mt-4 space-y-3 text-sm leading-relaxed">
+            <div className="text-mkt-muted mt-4 space-y-3 text-sm leading-relaxed">
               <p>
                 These Terms shall be governed by and construed in accordance
                 with the laws of the State of Delaware, United States, without
@@ -214,7 +252,7 @@ export default function TermsPage() {
             </div>
           </section>
         </div>
-      </div>
+      </article>
     </>
   );
 }
