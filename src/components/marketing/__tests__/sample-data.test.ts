@@ -8,6 +8,7 @@ import {
   SAMPLE_AUDIT_EVENTS,
   LIFECYCLE,
 } from "../sample-data";
+import { RACK_LINES } from "../ascii/rack-art";
 
 const REAL_STATUSES = [
   "Active",
@@ -65,6 +66,36 @@ describe("marketing sample data", () => {
     for (const e of SAMPLE_AUDIT_EVENTS) {
       if (e.assetTag) expect(tags.has(e.assetTag)).toBe(true);
       if (e.person) expect(handles.has(e.person)).toBe(true);
+    }
+  });
+});
+
+describe("rack art", () => {
+  const strip = (l: string) => l.replace(/\[\[|\]\]|\{\{|\}\}/g, "");
+
+  it("has equal-length lines once markers are stripped", () => {
+    const widths = new Set(RACK_LINES.map((l) => strip(l).length));
+    expect(widths.size).toBe(1);
+  });
+
+  it("is pure printable ASCII", () => {
+    for (const l of RACK_LINES) expect(/^[\x20-\x7e]*$/.test(l)).toBe(true);
+  });
+
+  it("agrees with the sample data for tags it shares", () => {
+    const art = RACK_LINES.map(strip);
+    for (const asset of SAMPLE_ASSETS) {
+      // Crate labels sit under the tag; the readout also mentions AT-00421,
+      // so match the tag only where it is followed by crate padding.
+      const row = art.findIndex((l) => l.includes(`| ${asset.tag}    |`));
+      if (row === -1) continue;
+      const col = art[row].indexOf(`| ${asset.tag}`) + 2;
+      const label = art[row + 1].slice(col, col + 11).trim();
+      const expected =
+        asset.status === "Out for Repair"
+          ? "REPAIR"
+          : asset.status.toUpperCase();
+      expect(label, asset.tag).toBe(expected);
     }
   });
 });
