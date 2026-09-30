@@ -16,7 +16,7 @@ export function CopyCommand({ command }: { command: string }) {
   return (
     <div className="border-mkt-line bg-mkt-surface font-mkt-mono inline-flex max-w-full items-center gap-3 rounded-md border py-1.5 pr-1.5 pl-3 text-[13px]">
       <code className="truncate select-all">
-        <span className="text-mkt-accent" aria-hidden="true">
+        <span className="text-mkt-accent select-none" aria-hidden="true">
           ${" "}
         </span>
         {command}

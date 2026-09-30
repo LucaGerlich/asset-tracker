@@ -106,6 +106,19 @@ test.describe("marketing pages (anonymous)", () => {
     expect(res.status()).toBe(200);
     expect(res.headers()["content-type"]).toContain("image/png");
   });
+
+  test("skip link targets the marketing main landmark", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("main#main-content")).toHaveCount(1);
+  });
+
+  test("the $ prompt is not part of the selectable command", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const prompt = page.locator("code span[aria-hidden]").first();
+    await expect(prompt).toHaveCSS("user-select", "none");
+  });
 });
 
 test.describe("marketing pages (signed in)", () => {

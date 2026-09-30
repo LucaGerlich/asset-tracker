@@ -12,7 +12,13 @@ const COLUMNS = ["Tag", "Name", "Status", "Assignee", "Location"] as const;
 
 function AssetTable() {
   return (
-    <div className="overflow-x-auto">
+    // Focusable so keyboard users can scroll the table on narrow screens.
+    <div
+      className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--mkt-accent)]"
+      tabIndex={0}
+      role="region"
+      aria-label="Sample asset table"
+    >
       <table className="font-mkt-mono w-full min-w-[560px] text-left text-[12px]">
         <caption className="sr-only">
           Sample assets of a fictional company
