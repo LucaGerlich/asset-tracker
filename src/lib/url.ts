@@ -22,3 +22,11 @@ export function getBaseUrl(): string {
 
   return "http://localhost:3000";
 }
+
+/**
+ * Public origin of the marketing site. Equals the app URL unless the
+ * domain split is enabled (NEXT_PUBLIC_MARKETING_URL).
+ */
+export function getMarketingUrl(): string {
+  return process.env.NEXT_PUBLIC_MARKETING_URL || getBaseUrl();
+}

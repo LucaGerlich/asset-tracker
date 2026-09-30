@@ -5,6 +5,7 @@
 
 import { logger } from "@/lib/logger";
 import { isSelfHosted } from "@/lib/deployment-mode";
+import { validateSplitConfig } from "@/lib/host-routing";
 
 interface EnvVarConfig {
   /** Name of the environment variable */
@@ -61,6 +62,12 @@ export const ENV_CONFIG: EnvVarConfig[] = [
       }
     },
     validateMessage: "Must be a valid URL",
+  },
+  {
+    name: "NEXT_PUBLIC_MARKETING_URL",
+    required: false,
+    description:
+      "Marketing site origin; enables the marketing/app domain split (app stays at BETTER_AUTH_URL)",
   },
   {
     name: "BETTER_AUTH_SECRET",
@@ -253,6 +260,9 @@ export function validateEnvironment(): ValidationResult {
       }
     }
   }
+
+  const splitError = validateSplitConfig();
+  if (splitError) errors.push(splitError);
 
   return {
     valid: errors.length === 0,

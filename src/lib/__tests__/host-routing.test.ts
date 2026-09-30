@@ -4,6 +4,7 @@ import {
   getSplitOrigins,
   resolveHostRoute,
   type SplitOrigins,
+  validateSplitConfig,
 } from "@/lib/host-routing";
 
 const origins: SplitOrigins = {
@@ -149,5 +150,58 @@ describe("resolveHostRoute", () => {
     expect(route("asset-tracker-git-x.vercel.app", "/pricing")).toEqual({
       kind: "pass",
     });
+  });
+});
+
+describe("validateSplitConfig", () => {
+  const ok = {
+    NEXT_PUBLIC_MARKETING_URL: "https://example.com",
+    BETTER_AUTH_URL: "https://app.example.com",
+    NODE_ENV: "production",
+  };
+
+  it("accepts a valid production config", () => {
+    expect(validateSplitConfig(ok)).toBeNull();
+  });
+
+  it("is fine when the split is disabled", () => {
+    expect(validateSplitConfig({ NODE_ENV: "production" })).toBeNull();
+  });
+
+  it("requires BETTER_AUTH_URL when the marketing URL is set", () => {
+    expect(validateSplitConfig({ ...ok, BETTER_AUTH_URL: undefined })).toMatch(
+      /BETTER_AUTH_URL/,
+    );
+  });
+
+  it("rejects malformed URLs", () => {
+    expect(
+      validateSplitConfig({ ...ok, NEXT_PUBLIC_MARKETING_URL: "not a url" }),
+    ).toMatch(/valid URL/);
+  });
+
+  it("rejects identical origins", () => {
+    expect(
+      validateSplitConfig({ ...ok, BETTER_AUTH_URL: "https://example.com/" }),
+    ).toMatch(/differ/);
+  });
+
+  it("rejects http in production", () => {
+    expect(
+      validateSplitConfig({
+        ...ok,
+        NEXT_PUBLIC_MARKETING_URL: "http://example.com",
+      }),
+    ).toMatch(/https/);
+  });
+
+  it("allows http in development", () => {
+    expect(
+      validateSplitConfig({
+        NEXT_PUBLIC_MARKETING_URL: "http://localhost:3000",
+        BETTER_AUTH_URL: "http://app.localhost:3000",
+        NODE_ENV: "development",
+      }),
+    ).toBeNull();
   });
 });

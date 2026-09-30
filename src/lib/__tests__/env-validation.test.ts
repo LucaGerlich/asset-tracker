@@ -151,3 +151,16 @@ describe("env-validation", () => {
     });
   });
 });
+
+describe("domain split config", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("reports an invalid split as an error", () => {
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_URL", "https://example.com");
+    vi.stubEnv("BETTER_AUTH_URL", "https://example.com");
+    const result = validateEnvironment();
+    expect(
+      result.errors.some((e) => e.includes("NEXT_PUBLIC_MARKETING_URL")),
+    ).toBe(true);
+  });
+});

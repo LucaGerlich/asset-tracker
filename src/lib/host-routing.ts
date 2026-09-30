@@ -97,3 +97,37 @@ export function resolveHostRoute(input: {
   }
   return { kind: "pass" };
 }
+
+function parseUrl(value: string): URL | null {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
+
+// Fails fast on a split that would silently misroute (spec §2).
+export function validateSplitConfig(
+  env: EnvRecord = process.env,
+): string | null {
+  const marketingRaw = env.NEXT_PUBLIC_MARKETING_URL;
+  if (!marketingRaw) return null;
+  if (!env.BETTER_AUTH_URL) {
+    return "NEXT_PUBLIC_MARKETING_URL is set but BETTER_AUTH_URL (the app origin) is not";
+  }
+  const marketing = parseUrl(marketingRaw);
+  const app = parseUrl(env.BETTER_AUTH_URL);
+  if (!marketing || !app) {
+    return "NEXT_PUBLIC_MARKETING_URL and BETTER_AUTH_URL must each be a valid URL";
+  }
+  if (marketing.origin === app.origin) {
+    return "NEXT_PUBLIC_MARKETING_URL and BETTER_AUTH_URL must differ (marketing vs app host)";
+  }
+  if (
+    env.NODE_ENV === "production" &&
+    (marketing.protocol !== "https:" || app.protocol !== "https:")
+  ) {
+    return "NEXT_PUBLIC_MARKETING_URL and BETTER_AUTH_URL must use https in production";
+  }
+  return null;
+}
