@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-30
+
+### Changed
+
+- **Marketing site redesign.** Landing, pricing, terms and privacy use a new
+  technical design (hairline grid, mono type, lime accent) in light and dark.
+  Product visuals are coded mocks with consistent sample data; schematic feature
+  cells and an ASCII illustration replace the icon cards. The invented usage
+  statistics are removed, and every feature claim is backed by the codebase.
+- Marketing pages live in a `(marketing)` route group with scoped `.mkt` theme
+  tokens; the app's theme is unaffected. URLs are unchanged.
+- The OG image matches the new look.
+- README and docs link to the canonical repository `LucaGerlich/asset-tracker`.
+
+### Fixed
+
+- The theme no longer flashes on load: next-themes' pre-hydration script now
+  receives the CSP nonce instead of being blocked.
+- The OG image is served without authentication, so link previews work.
+- The theme toggle button has an accessible name.
+
 ## [0.10.0] - 2026-09-08
 
 ### Changed
