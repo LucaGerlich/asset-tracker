@@ -8,6 +8,10 @@ export interface SplitOrigins {
 
 export type HostKind = "marketing" | "app" | "other";
 
+// Plain record so callers/tests can pass partial envs (Next's ProcessEnv
+// augmentation makes NODE_ENV mandatory).
+export type EnvRecord = Readonly<Record<string, string | undefined>>;
+
 export type HostRoute =
   { kind: "pass" } | { kind: "redirect"; url: string; status: 308 };
 
@@ -47,7 +51,7 @@ function alwaysPasses(pathname: string): boolean {
 }
 
 export function getSplitOrigins(
-  env: NodeJS.ProcessEnv = process.env,
+  env: EnvRecord = process.env,
 ): SplitOrigins | null {
   const marketing = env.NEXT_PUBLIC_MARKETING_URL;
   const app = env.BETTER_AUTH_URL;
