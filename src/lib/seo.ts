@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getBaseUrl } from "@/lib/url";
+import { getMarketingUrl } from "@/lib/url";
 
 export const SITE_CONFIG = {
   siteName: "Asset Tracker",
@@ -11,7 +11,7 @@ export const SITE_CONFIG = {
 } as const;
 
 export function getCanonicalUrl(path: string): string {
-  const base = getBaseUrl().replace(/\/$/, "");
+  const base = getMarketingUrl().replace(/\/$/, "");
   const cleanPath = path === "/" ? "" : path.replace(/\/$/, "");
   return `${base}${cleanPath}`;
 }

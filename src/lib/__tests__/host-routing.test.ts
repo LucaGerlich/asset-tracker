@@ -132,8 +132,15 @@ describe("resolveHostRoute", () => {
     },
   );
 
+  it("sends the app host root to login with a real (non-cached) redirect", () => {
+    expect(route("app.example.com", "/", "?x=1")).toEqual({
+      kind: "redirect",
+      url: "https://app.example.com/login",
+      status: 307,
+    });
+  });
+
   it.each([
-    "/",
     "/login",
     "/dashboard",
     "/api/assets",

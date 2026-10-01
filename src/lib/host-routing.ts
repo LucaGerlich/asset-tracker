@@ -13,7 +13,7 @@ export type HostKind = "marketing" | "app" | "other";
 export type EnvRecord = Readonly<Record<string, string | undefined>>;
 
 export type HostRoute =
-  { kind: "pass" } | { kind: "redirect"; url: string; status: 308 };
+  { kind: "pass" } | { kind: "redirect"; url: string; status: 307 | 308 };
 
 export const MARKETING_PATHS: ReadonlySet<string> = new Set([
   "/",
@@ -91,6 +91,15 @@ export function resolveHostRoute(input: {
   const kind = getHostKind(host, origins);
   if (kind === "marketing" && !MARKETING_PATHS.has(pathname)) {
     return redirectTo(origins.app, pathname, search);
+  }
+  // The landing page never renders on the app host. 307 (not 308) so browsers
+  // don't cache it; the proxy then sends signed-in users on /login to /dashboard.
+  if (kind === "app" && pathname === "/") {
+    return {
+      kind: "redirect",
+      url: `${origins.app.origin}/login`,
+      status: 307,
+    };
   }
   if (kind === "app" && MARKETING_ONLY_PATHS.has(pathname)) {
     return redirectTo(origins.marketing, pathname, search);
