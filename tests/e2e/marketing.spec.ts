@@ -150,6 +150,17 @@ test.describe("marketing pages (signed in)", () => {
 test.describe("marketing pages – layout robustness", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
+  // Third-party analytics rejects CORS from localhost; stub it so the
+  // console-error check judges only our own code.
+  test.beforeEach(async ({ page }) => {
+    await page.route("https://analytics.711x.de/**", (route) =>
+      route.fulfill({
+        status: 204,
+        headers: { "access-control-allow-origin": "*" },
+      }),
+    );
+  });
+
   for (const scheme of ["light", "dark"] as const) {
     for (const path of PAGES) {
       test(`${path} (${scheme}) has no horizontal overflow at 375px and no console errors`, async ({
