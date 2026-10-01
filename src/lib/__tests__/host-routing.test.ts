@@ -102,7 +102,7 @@ describe("resolveHostRoute", () => {
     expect(route("example.com", "/login", "?callbackUrl=%2Fassets")).toEqual({
       kind: "redirect",
       url: "https://app.example.com/login?callbackUrl=%2Fassets",
-      status: 308,
+      status: 307,
     });
     expect(route("example.com", "/api/assets")).toMatchObject({
       url: "https://app.example.com/api/assets",
@@ -114,7 +114,7 @@ describe("resolveHostRoute", () => {
     expect(r).toEqual({
       kind: "redirect",
       url: "https://app.example.com//evil.com/x",
-      status: 308,
+      status: 307,
     });
     expect(r.kind === "redirect" && new URL(r.url).host).toBe(
       "app.example.com",
@@ -127,7 +127,7 @@ describe("resolveHostRoute", () => {
       expect(route("app.example.com", path, "?a=1")).toEqual({
         kind: "redirect",
         url: `https://example.com${path}?a=1`,
-        status: 308,
+        status: 307,
       });
     },
   );
@@ -208,6 +208,37 @@ describe("validateSplitConfig", () => {
         NEXT_PUBLIC_MARKETING_URL: "http://localhost:3000",
         BETTER_AUTH_URL: "http://app.localhost:3000",
         NODE_ENV: "development",
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("config edge cases", () => {
+  it("names the variable when a split URL is malformed", () => {
+    expect(() =>
+      getSplitOrigins({
+        NEXT_PUBLIC_MARKETING_URL: "not a url",
+        BETTER_AUTH_URL: "https://app.example.com",
+      }),
+    ).toThrow(/NEXT_PUBLIC_MARKETING_URL/);
+  });
+
+  it("rejects a marketing URL with a path", () => {
+    expect(
+      validateSplitConfig({
+        NEXT_PUBLIC_MARKETING_URL: "https://example.com/site",
+        BETTER_AUTH_URL: "https://app.example.com",
+        NODE_ENV: "production",
+      }),
+    ).toMatch(/origin/);
+  });
+
+  it("accepts a trailing slash", () => {
+    expect(
+      validateSplitConfig({
+        NEXT_PUBLIC_MARKETING_URL: "https://example.com/",
+        BETTER_AUTH_URL: "https://app.example.com/",
+        NODE_ENV: "production",
       }),
     ).toBeNull();
   });

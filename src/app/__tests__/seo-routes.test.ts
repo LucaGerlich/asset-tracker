@@ -5,8 +5,8 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers({ host: hostHeader.value }),
 }));
 
-import robots from "@/app/robots";
-import sitemap from "@/app/sitemap";
+import robots, { dynamic as robotsDynamic } from "@/app/robots";
+import sitemap, { dynamic as sitemapDynamic } from "@/app/sitemap";
 
 function enableSplit() {
   vi.stubEnv("NEXT_PUBLIC_MARKETING_URL", "https://example.com");
@@ -47,5 +47,22 @@ describe("robots", () => {
     hostHeader.value = "example.com";
     const r = await robots();
     expect(r.sitemap).toBe("https://example.com/sitemap.xml");
+  });
+});
+
+describe("runtime config", () => {
+  // The proxy reads the split env at runtime, so these must not be frozen at
+  // build time (e.g. a Docker image built without NEXT_PUBLIC_MARKETING_URL).
+  it("renders robots and sitemap per request", () => {
+    expect(robotsDynamic).toBe("force-dynamic");
+    expect(sitemapDynamic).toBe("force-dynamic");
+  });
+
+  it("normalises a trailing slash in the marketing URL", () => {
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_URL", "https://example.com/");
+    vi.stubEnv("BETTER_AUTH_URL", "https://app.example.com");
+    expect(sitemap().map((e) => e.url)).toContain(
+      "https://example.com/pricing",
+    );
   });
 });

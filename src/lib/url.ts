@@ -28,5 +28,7 @@ export function getBaseUrl(): string {
  * domain split is enabled (NEXT_PUBLIC_MARKETING_URL).
  */
 export function getMarketingUrl(): string {
-  return process.env.NEXT_PUBLIC_MARKETING_URL || getBaseUrl();
+  const marketing = process.env.NEXT_PUBLIC_MARKETING_URL;
+  // Origin only, so "https://example.com/" doesn't yield "//pricing" links.
+  return marketing ? new URL(marketing).origin : getBaseUrl();
 }

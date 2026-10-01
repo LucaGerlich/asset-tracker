@@ -2,6 +2,10 @@ import type { MetadataRoute } from "next";
 import { getSplitOrigins } from "@/lib/host-routing";
 import { getMarketingUrl } from "@/lib/url";
 
+// The proxy reads the split env at runtime; render per request so a build
+// without NEXT_PUBLIC_MARKETING_URL (e.g. a Docker image) still answers per host.
+export const dynamic = "force-dynamic";
+
 // /login and /register live on the app host once the domain split is enabled.
 const APP_ONLY = new Set(["/register", "/login"]);
 

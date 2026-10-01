@@ -13,7 +13,7 @@ export type HostKind = "marketing" | "app" | "other";
 export type EnvRecord = Readonly<Record<string, string | undefined>>;
 
 export type HostRoute =
-  { kind: "pass" } | { kind: "redirect"; url: string; status: 307 | 308 };
+  { kind: "pass" } | { kind: "redirect"; url: string; status: 307 };
 
 export const MARKETING_PATHS: ReadonlySet<string> = new Set([
   "/",
@@ -56,7 +56,15 @@ export function getSplitOrigins(
   const marketing = env.NEXT_PUBLIC_MARKETING_URL;
   const app = env.BETTER_AUTH_URL;
   if (!marketing || !app) return null;
-  return { marketing: new URL(marketing), app: new URL(app) };
+  const marketingUrl = parseUrl(marketing);
+  const appUrl = parseUrl(app);
+  if (!marketingUrl || !appUrl) {
+    // Same message as startup validation, instead of a bare "Invalid URL".
+    throw new Error(
+      "NEXT_PUBLIC_MARKETING_URL and BETTER_AUTH_URL must each be a valid URL",
+    );
+  }
+  return { marketing: marketingUrl, app: appUrl };
 }
 
 export function getHostKind(
@@ -69,13 +77,16 @@ export function getHostKind(
   return "other";
 }
 
+// 307 everywhere: method-preserving like 308 but not cached permanently by
+// browsers, so adding a marketing page later or rolling the split back
+// doesn't leave visitors stuck on stale redirects.
 // String concatenation (not new URL(path, base)) so a path like "//evil.com"
 // stays a path on the configured origin instead of becoming a new authority.
 function redirectTo(origin: URL, pathname: string, search: string): HostRoute {
   return {
     kind: "redirect",
     url: `${origin.origin}${pathname}${search}`,
-    status: 308,
+    status: 307,
   };
 }
 
@@ -92,8 +103,8 @@ export function resolveHostRoute(input: {
   if (kind === "marketing" && !MARKETING_PATHS.has(pathname)) {
     return redirectTo(origins.app, pathname, search);
   }
-  // The landing page never renders on the app host. 307 (not 308) so browsers
-  // don't cache it; the proxy then sends signed-in users on /login to /dashboard.
+  // The landing page never renders on the app host; the proxy then sends
+  // signed-in users on /login to /dashboard.
   if (kind === "app" && pathname === "/") {
     return {
       kind: "redirect",
@@ -128,6 +139,9 @@ export function validateSplitConfig(
   const app = parseUrl(env.BETTER_AUTH_URL);
   if (!marketing || !app) {
     return "NEXT_PUBLIC_MARKETING_URL and BETTER_AUTH_URL must each be a valid URL";
+  }
+  if (marketing.pathname !== "/" || app.pathname !== "/") {
+    return "NEXT_PUBLIC_MARKETING_URL and BETTER_AUTH_URL must be bare origins (no path)";
   }
   if (marketing.origin === app.origin) {
     return "NEXT_PUBLIC_MARKETING_URL and BETTER_AUTH_URL must differ (marketing vs app host)";

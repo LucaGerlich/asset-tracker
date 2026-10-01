@@ -16,7 +16,7 @@ test.describe("domain split", () => {
       maxRedirects: 0,
       headers: { host: MARKETING_HOST },
     });
-    expect(res.status()).toBe(308);
+    expect(res.status()).toBe(307);
     expect(res.headers().location).toBe(
       `http://${APP_HOST}/login?callbackUrl=%2Fassets`,
     );
@@ -35,7 +35,7 @@ test.describe("domain split", () => {
       maxRedirects: 0,
       headers: { host: APP_HOST },
     });
-    expect(res.status()).toBe(308);
+    expect(res.status()).toBe(307);
     expect(res.headers().location).toBe(`http://${MARKETING_HOST}/pricing`);
   });
 
@@ -46,7 +46,7 @@ test.describe("domain split", () => {
       maxRedirects: 0,
       headers: { host: APP_HOST },
     });
-    expect([307, 308]).toContain(res.status());
+    expect(res.status()).toBe(307);
     expect(res.headers().location).toMatch(/\/login$/);
   });
 
