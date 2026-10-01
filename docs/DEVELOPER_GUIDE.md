@@ -638,3 +638,26 @@ A `max` value of `-1` means unlimited.
 ---
 
 For more details, see the full documentation in SECURITY.md
+
+## Local Development: Domain Split
+
+The marketing site and the app can run on separate hosts from one deployment
+(see `docs/superpowers/specs/2026-09-30-domain-split-design.md`). It is off
+unless `NEXT_PUBLIC_MARKETING_URL` is set. To try it locally, add to `.env.local`:
+
+```
+NEXT_PUBLIC_MARKETING_URL=http://www.localhost:3000
+BETTER_AUTH_URL=http://app.localhost:3000
+```
+
+Browsers resolve `*.localhost` natively, so open `http://www.localhost:3000`
+(marketing) and `http://app.localhost:3000` (app). Don't use plain
+`localhost:3000` as the marketing origin: in dev, Next shortens redirect
+`Location`s that point at its own request host, which makes app → marketing
+redirects loop. Plain `localhost:3000` keeps working as a single host.
+
+Run the split E2E tests against that server:
+
+```
+NEXT_PUBLIC_MARKETING_URL=http://www.localhost:3000 npx playwright test tests/e2e/domain-split.spec.ts --project=marketing
+```

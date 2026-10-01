@@ -53,7 +53,7 @@ export function resolveHostRoute(input: {
 Rules (evaluated in order):
 
 1. `marketingOrigin === null` → `pass`.
-2. **Always pass on both hosts:** `/_next/*`, `/favicon*`, `/icons/*`, static file extensions (the same set as the current matcher), `/api/health`.
+2. **Always pass on both hosts:** `/_next/*`, `/__nextjs*` (dev tooling), `/favicon*`, `/icons/*`, `/sw.js`, `/manifest.json`, static file extensions (the same set as the current matcher), `/api/health`, `/monitoring` (Sentry tunnel).
 3. **Request on the marketing host:**
    - pathname ∈ `MARKETING_PATHS` (`/`, `/pricing`, `/terms`, `/privacy`, `/opengraph-image`, `/sitemap.xml`, `/robots.txt`) → `pass`;
    - anything else (including `/api/*`, `/login`, `/dashboard`) → redirect to `appOrigin + pathname + search`.
@@ -71,10 +71,10 @@ Rules (evaluated in order):
 ## 4. Page behavior changes
 
 - `src/app/(marketing)/page.tsx` (`/`):
-  - on the **app host** (split enabled), `redirect('/dashboard')` if a session exists, else `redirect('/login')`; the landing page never renders on the app host;
-  - on the **marketing host**, render the landing page without a session lookup. There is no cookie there anyway, which saves an auth call per visit;
+  - on the **app host** (split enabled), `/` is answered by the proxy with a **307** to `/login` (implemented in `resolveHostRoute`, not the page: a page-level `redirect()` streams as HTTP 200 behind the root `loading.tsx`). The existing proxy rule then sends signed-in users from `/login` to `/dashboard`;
+  - on the **marketing host**, `page.tsx` is unchanged (its session lookup finds no cookie there and falls through to the landing page).
   - with the split disabled, unchanged.
-- **Marketing CTAs:** "Sign in" → `${appOrigin}/login`, "Start free" → `${appOrigin}/register`. A `appHref(path)` helper returns a relative path when the split is disabled.
+- **Marketing CTAs stay relative** (`/login`, `/register`). On the marketing host the proxy 308-redirects them to the app host, so no client-side app URL is needed; this costs one redirect hop.
 - `robots.ts`: on the app host with the split enabled, `Disallow: /`; otherwise unchanged. It reads the host via `headers()`.
 - `seo.ts`, `sitemap.ts` and `opengraph-image` use `getMarketingUrl()` for canonical URLs.
 
@@ -87,10 +87,10 @@ Rules (evaluated in order):
 
 ## 6. Local development
 
-- `http://localhost:3000` is marketing and `http://app.localhost:3000` is the app. Browsers resolve `*.localhost` to loopback natively, so no `/etc/hosts` edits are needed.
+- `http://www.localhost:3000` is marketing and `http://app.localhost:3000` is the app. Browsers resolve `*.localhost` to loopback natively, so no `/etc/hosts` edits are needed. **Do not use plain `localhost:3000` as the marketing origin:** in dev, Next shortens a redirect `Location` whose host equals its own request URL host (`localhost:3000`) to a relative path, which loops on the app host. Plain `localhost:3000` then behaves like an unknown host (single-host).
 - `.env.local` example:
   ```
-  NEXT_PUBLIC_MARKETING_URL=http://localhost:3000
+  NEXT_PUBLIC_MARKETING_URL=http://www.localhost:3000
   BETTER_AUTH_URL=http://app.localhost:3000
   ```
 - Document this in `docs/DEVELOPER_GUIDE.md`.
@@ -99,8 +99,8 @@ Rules (evaluated in order):
 
 1. **Unit (Vitest, written first):** `host-routing.test.ts` is a table-driven test over every rule in §3: split disabled, static assets on both hosts, each marketing path on each host, `/login` on the marketing host with query string preserved, unknown host, host with port, and uppercase host.
 2. **Unit:** env validation (same origins, non-https in prod, malformed URL).
-3. **E2E (Playwright):** a project run with split env vars against `localhost` / `app.localhost`:
-   - `localhost:3000/login` → 308 → `app.localhost:3000/login`;
+3. **E2E (Playwright):** `tests/e2e/domain-split.spec.ts` (skipped unless `NEXT_PUBLIC_MARKETING_URL` is set), sending explicit Host headers for `www.localhost:3000` / `app.localhost:3000`:
+   - `www.localhost:3000/login` → 308 → `app.localhost:3000/login`;
    - `app.localhost:3000/pricing` → marketing host;
    - `app.localhost:3000/robots.txt` contains `Disallow: /`;
    - landing "Sign in" href points to the app host.
