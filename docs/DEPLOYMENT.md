@@ -340,8 +340,8 @@ Optional: serve marketing at `https://<domain>` and the app at `https://app.<dom
 from the same deployment.
 
 1. Buy the domain; add the apex and `app.` to the Vercel project (same project).
-2. Set `BETTER_AUTH_URL=https://app.<domain>` and `NEXT_PUBLIC_MARKETING_URL=https://<domain>` in Vercel production. An invalid combination (same origin, `http`, malformed URL) fails at startup.
-3. Update OAuth/SSO redirect URIs at the identity providers (Microsoft, Google, OIDC/SAML customers) and the Stripe webhook URL to the app host.
+2. Set `BETTER_AUTH_URL=https://app.<domain>` and `NEXT_PUBLIC_MARKETING_URL=https://<domain>` in Vercel production. An invalid combination (same origin, `http`, a path, malformed URL) fails at startup. Setting it only at runtime (e.g. Docker) works: the proxy, robots and sitemap read it per request.
+3. Re-point everything machine-to-machine at the app host (clients may not follow redirects): OAuth/SSO redirect URIs at the identity providers (Microsoft, Google, OIDC/SAML customers), the SCIM base URL configured at IdPs, the Stripe webhook URL, outbound webhook/API-key integrations, and Intune/MDM callbacks.
 4. Redirect any old domain to the new one (Vercel domain redirect).
 5. Search Console: add the new property and submit `https://<domain>/sitemap.xml`.
 

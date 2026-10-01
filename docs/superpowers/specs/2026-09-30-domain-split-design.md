@@ -14,7 +14,7 @@ Serve the marketing site at `https://<domain>` and the application at `https://a
 - When `NEXT_PUBLIC_MARKETING_URL` is unset, behavior is byte-for-byte what it is today (self-hosted installs and the current Vercel deploy are unaffected).
 - When it is set:
   - the marketing host serves only marketing routes;
-  - every other path gets a 308 redirect to the same path and query on the app host;
+  - every other path gets a 307 redirect to the same path and query on the app host;
   - marketing paths on the app host redirect to the marketing host;
   - `app.<domain>/` goes to `/dashboard` or `/login`;
   - the app host is not indexed (`robots.txt` → `Disallow: /`); canonicals, sitemap and OG point to the marketing host.
@@ -38,17 +38,23 @@ Serve the marketing site at `https://<domain>` and the application at `https://a
 `src/lib/host-routing.ts`:
 
 ```ts
+interface SplitOrigins {
+  marketing: URL;
+  app: URL;
+}
 type HostRoute =
-  { kind: "pass" } | { kind: "redirect"; url: string; status: 308 };
+  { kind: "pass" } | { kind: "redirect"; url: string; status: 307 };
 
+export function getSplitOrigins(env?: EnvRecord): SplitOrigins | null; // null = split disabled
 export function resolveHostRoute(input: {
-  host: string; // request Host header (lowercased, port kept)
+  host: string | null; // request Host header (compared lowercased, port kept)
   pathname: string;
   search: string;
-  marketingOrigin: string | null; // null = split disabled
-  appOrigin: string;
+  origins: SplitOrigins | null;
 }): HostRoute;
 ```
+
+Redirects use **307**: method-preserving like 308, but not cached permanently by browsers, so adding a marketing page later or rolling the split back doesn't strand visitors on stale redirects.
 
 Rules (evaluated in order):
 
@@ -60,13 +66,14 @@ Rules (evaluated in order):
 4. **Request on the app host:**
    - pathname ∈ `{ /pricing, /terms, /privacy }` → redirect to `marketingOrigin + pathname + search`;
    - `/sitemap.xml` → redirect to the marketing sitemap;
-   - everything else → `pass` (including `/`, which the existing page logic sends to `/dashboard` or `/login`, see §4).
+   - `/` → 307 to the app's `/login` (see §4);
+   - everything else → `pass`.
 5. **Unknown host** (e.g. a preview URL `*.vercel.app`) → `pass`. Preview deploys keep working as a single host.
 
 ### Integration in `proxy.ts`
 
 - Called first in `proxy()`, before rate limiting and auth checks. A redirect result is returned via the existing `withHeaders()` so it keeps CSP and correlation headers.
-- `POST` to a non-marketing path on the marketing host also gets a 308, which preserves the method and body. In practice nothing posts there because the forms live on the app host.
+- `POST` to a non-marketing path on the marketing host also gets a 307, which preserves the method and body. In practice nothing posts there because the forms live on the app host.
 
 ## 4. Page behavior changes
 
@@ -74,7 +81,7 @@ Rules (evaluated in order):
   - on the **app host** (split enabled), `/` is answered by the proxy with a **307** to `/login` (implemented in `resolveHostRoute`, not the page: a page-level `redirect()` streams as HTTP 200 behind the root `loading.tsx`). The existing proxy rule then sends signed-in users from `/login` to `/dashboard`;
   - on the **marketing host**, `page.tsx` is unchanged (its session lookup finds no cookie there and falls through to the landing page).
   - with the split disabled, unchanged.
-- **Marketing CTAs stay relative** (`/login`, `/register`). On the marketing host the proxy 308-redirects them to the app host, so no client-side app URL is needed; this costs one redirect hop.
+- **Marketing CTAs stay relative** (`/login`, `/register`). On the marketing host the proxy 307-redirects them to the app host, so no client-side app URL is needed; this costs one redirect hop.
 - `robots.ts`: on the app host with the split enabled, `Disallow: /`; otherwise unchanged. It reads the host via `headers()`.
 - `seo.ts`, `sitemap.ts` and `opengraph-image` use `getMarketingUrl()` for canonical URLs.
 
@@ -100,7 +107,7 @@ Rules (evaluated in order):
 1. **Unit (Vitest, written first):** `host-routing.test.ts` is a table-driven test over every rule in §3: split disabled, static assets on both hosts, each marketing path on each host, `/login` on the marketing host with query string preserved, unknown host, host with port, and uppercase host.
 2. **Unit:** env validation (same origins, non-https in prod, malformed URL).
 3. **E2E (Playwright):** `tests/e2e/domain-split.spec.ts` (skipped unless `NEXT_PUBLIC_MARKETING_URL` is set), sending explicit Host headers for `www.localhost:3000` / `app.localhost:3000`:
-   - `www.localhost:3000/login` → 308 → `app.localhost:3000/login`;
+   - `www.localhost:3000/login` → 307 → `app.localhost:3000/login`;
    - `app.localhost:3000/pricing` → marketing host;
    - `app.localhost:3000/robots.txt` contains `Disallow: /`;
    - landing "Sign in" href points to the app host.
@@ -110,7 +117,7 @@ Rules (evaluated in order):
 
 1. Buy the domain; add apex + `app.` to the Vercel project (same project).
 2. Set `BETTER_AUTH_URL=https://app.<domain>` and `NEXT_PUBLIC_MARKETING_URL=https://<domain>` in Vercel production.
-3. Update OAuth/SSO redirect URIs at the identity providers (Microsoft, Google, OIDC/SAML customers) and the Stripe webhook URL to the app host.
+3. Re-point everything machine-to-machine at the app host (clients may not follow redirects): OAuth/SSO redirect URIs at the identity providers (Microsoft, Google, OIDC/SAML customers), the SCIM base URL configured at IdPs, the Stripe webhook URL, outbound webhook/API-key integrations, and Intune/MDM callbacks.
 4. Redirect any old domain to the new one (Vercel domain redirect).
 5. Search Console: add the new property and submit the sitemap.
 

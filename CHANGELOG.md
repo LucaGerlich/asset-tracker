@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Optional marketing/app domain split.** Set `NEXT_PUBLIC_MARKETING_URL` to
   serve the marketing site on its own host while the app stays on
   `BETTER_AUTH_URL`, from the same deployment. Cross-host requests are
-  308-redirected, the app host root goes to login and is excluded from indexing,
+  307-redirected, the app host root goes to login and is excluded from indexing,
   and canonicals, sitemap and OG metadata use the marketing origin. Session
   cookies stay on the app host. An invalid split config fails at startup. Unset
   (the default) changes nothing.
