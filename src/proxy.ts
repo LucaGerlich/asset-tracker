@@ -9,6 +9,10 @@ import {
   rateLimiters,
 } from "@/lib/rate-limit";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { getSplitOrigins, resolveHostRoute } from "@/lib/host-routing";
+
+// Env is fixed per process; the config is validated at startup (instrumentation).
+const splitOrigins = getSplitOrigins();
 
 function buildCspHeader(nonce: string): string {
   const directives = [
@@ -60,6 +64,17 @@ export async function proxy(req: NextRequest) {
     );
   }
 
+  // Domain split: keep marketing and app on their own hosts (no-op when disabled).
+  const hostRoute = resolveHostRoute({
+    host: req.headers.get("host"),
+    pathname,
+    search: req.nextUrl.search,
+    origins: splitOrigins,
+  });
+  if (hostRoute.kind === "redirect") {
+    return withHeaders(NextResponse.redirect(hostRoute.url, hostRoute.status));
+  }
+
   // Public routes that don't require authentication
   const publicRoutes = [
     "/",
@@ -71,6 +86,9 @@ export async function proxy(req: NextRequest) {
     "/pricing",
     "/terms",
     "/privacy",
+    "/opengraph-image",
+    "/robots.txt",
+    "/sitemap.xml",
     "/offline",
     "/invite",
     "/suspended",
@@ -81,6 +99,13 @@ export async function proxy(req: NextRequest) {
 
   // Health check endpoints (always allow, no rate limiting)
   const isHealthRoute = pathname.startsWith("/api/health");
+
+  // Sentry error-reporting tunnel (see next.config.mjs `tunnelRoute`).
+  // Client-side error reports are POSTed here by anonymous/logged-out
+  // visitors too (e.g. errors on /login itself), so it must bypass the
+  // auth redirect just like health checks do.
+  const isMonitoringRoute =
+    pathname === "/monitoring" || pathname.startsWith("/monitoring/");
 
   // API routes (handle separately - will be protected at the API level)
   const isApiRoute = pathname.startsWith("/api");
@@ -98,8 +123,9 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow health endpoints without authentication or rate limiting
-  if (isHealthRoute) {
+  // Allow health endpoints and the Sentry tunnel without authentication or
+  // rate limiting
+  if (isHealthRoute || isMonitoringRoute) {
     return nextWithNonce();
   }
 

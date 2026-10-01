@@ -12,7 +12,7 @@ import {
   uuidSchema,
 } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
-import { invalidateCache } from "@/lib/cache";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   parsePaginationParams,
   buildPrismaArgs,
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       details: { locationname },
     });
 
-    invalidateCache("locations").catch(() => {});
+    invalidateCacheByPrefix("locations").catch(() => {});
 
     // After create, geocode in the background (fire-and-forget)
     geocodeAddress({
@@ -247,7 +247,7 @@ export async function PUT(req: NextRequest) {
       details: { locationname: updated.locationname },
     });
 
-    invalidateCache("locations").catch(() => {});
+    invalidateCacheByPrefix("locations").catch(() => {});
 
     // After update, geocode in the background (fire-and-forget)
     geocodeAddress({
@@ -356,7 +356,7 @@ export async function DELETE(req: NextRequest) {
       details: { locationname: location.locationname },
     });
 
-    invalidateCache("locations").catch(() => {});
+    invalidateCacheByPrefix("locations").catch(() => {});
     return NextResponse.json(
       { message: "Location deleted successfully" },
       { status: 200 },

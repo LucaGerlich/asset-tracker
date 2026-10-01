@@ -55,13 +55,19 @@ export async function GET(req: Request) {
       );
     }
 
-    // Find or create user
+    // Find or create user. Only match on externalId (our own SSO-linked
+    // identifier) or on email when the IdP cryptographically confirmed it
+    // (profile.emailVerified, derived from a signature-verified ID token).
+    // Matching on a bare/unverified email or on username would let an
+    // attacker who controls those claims at the IdP take over an existing
+    // local account.
     let user = await prisma.user.findFirst({
       where: {
         OR: [
-          ...(profile.email ? [{ email: profile.email }] : []),
-          ...(profile.username ? [{ username: profile.username }] : []),
           { externalId: profile.sub },
+          ...(profile.emailVerified && profile.email
+            ? [{ email: profile.email }]
+            : []),
         ],
       },
     });
@@ -72,10 +78,17 @@ export async function GET(req: Request) {
         10,
       );
 
+      if (profile.email && !profile.emailVerified) {
+        logger.warn(
+          "OIDC profile email is not verified by the IdP; creating user without email",
+          { sub: profile.sub },
+        );
+      }
+
       user = await prisma.user.create({
         data: {
           username: profile.username || profile.email || profile.sub,
-          email: profile.email || null,
+          email: profile.emailVerified ? profile.email || null : null,
           firstname: profile.firstName || "SSO",
           lastname: profile.lastName || "User",
           password: randomPassword,

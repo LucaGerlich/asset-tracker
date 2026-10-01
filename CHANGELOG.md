@@ -4,6 +4,300 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+## [0.12.0] - 2026-10-01
+
+### Added
+
+- **Optional marketing/app domain split.** Set `NEXT_PUBLIC_MARKETING_URL` to
+  serve the marketing site on its own host while the app stays on
+  `BETTER_AUTH_URL`, from the same deployment. Cross-host requests are
+  307-redirected, the app host root goes to login and is excluded from indexing,
+  and canonicals, sitemap and OG metadata use the marketing origin. Session
+  cookies stay on the app host. An invalid split config fails at startup. Unset
+  (the default) changes nothing.
+
+### Fixed
+
+- `robots.txt` and `sitemap.xml` are served without authentication; crawlers
+  were previously redirected to the login page.
+
+## [0.11.0] - 2026-09-30
+
+### Changed
+
+- **Marketing site redesign.** Landing, pricing, terms and privacy use a new
+  technical design (hairline grid, mono type, lime accent) in light and dark.
+  Product visuals are coded mocks with consistent sample data; schematic feature
+  cells and an ASCII illustration replace the icon cards. The invented usage
+  statistics are removed, and every feature claim is backed by the codebase.
+- Marketing pages live in a `(marketing)` route group with scoped `.mkt` theme
+  tokens; the app's theme is unaffected. URLs are unchanged.
+- The OG image matches the new look.
+- README and docs link to the canonical repository `LucaGerlich/asset-tracker`.
+
+### Fixed
+
+- The theme no longer flashes on load: next-themes' pre-hydration script now
+  receives the CSP nonce instead of being blocked.
+- The OG image is served without authentication, so link previews work.
+- The theme toggle button has an accessible name.
+- Landing FAQ states the real Starter limits (100 assets, 3 users).
+- Self-host commands on the marketing site select the `with-db` compose profile
+  and run inside the cloned directory.
+- Marketing pages: the skip link works, the sample table is keyboard-scrollable
+  on narrow screens, and copied commands exclude the `$` prompt.
+
+## [0.10.0] - 2026-09-08
+
+### Changed
+
+- **MFA enrolment now runs on BetterAuth's `twoFactor` plugin end to end.** The
+  settings page enables, verifies, disables and regenerates backup codes through the
+  plugin client, so the flag the login gate checks is finally the one enrolment
+  writes. **Users who had MFA enabled must enrol again** (the previous flag was never
+  enforced at login). LDAP/SSO accounts can enrol without a local password; backup
+  codes are stored encrypted. Enrolment, removal, regeneration and TOTP/backup-code
+  logins are written to the audit log; the credentials login audit no longer fires
+  before the second factor is verified.
+- Compliance dashboard: the "User Authentication Controls" check reports real
+  two-factor coverage instead of "not yet implemented".
+
+### Security
+
+- Compliance dashboard counts (users, assets, audit logs) are scoped to the caller's
+  organization; they were computed across all tenants.
+- Vercel builds run `prisma migrate deploy` only when `VERCEL_ENV=production`.
+  Preview builds used to migrate whatever database the Preview environment pointed
+  at, which on the personal deployment was production.
+
+### Removed
+
+- Custom `/api/auth/mfa/{setup,verify,disable}` routes, `lib/mfa.ts`, the
+  `otplib` dependency, the `user.mfaEnabled/mfaSecret/mfaBackupCodes` columns
+  (migration `20260908_betterauth_two_factor`) and the unused `encryptArray` helpers.
+
+## [0.9.6] - 2026-09-07
+
+### Security
+
+- Scope the unpaginated `GET /api/statusType` cache key by organization (one
+  tenant's status names were served to every tenant for up to five minutes)
+
+### Fixed
+
+- DB-backed cache and lockout suites now pass in CI: keys are cleared before every
+  test, TTL tests use a real 1-second TTL instead of fake timers (expiry is decided by
+  Postgres `NOW()`), the lockout doubling check tolerates statement drift, and the
+  env-validation test removes the CI-injected `DATABASE_URL` explicitly
+- Fresh-database `prisma migrate deploy` verified locally and in CI (issue #86)
+
+### Docs
+
+- TECHNICAL_DEBT.md: every deferred item re-verified against the code; strict-mode,
+  timestamp and loading.tsx figures corrected; item 29 raised to critical; items
+  33–52 added (advertised-but-unfinished features, structural debt) plus a list of
+  repository loose ends (issue #86 root cause, stale stash/branches/draft PRs)
+
+## [0.9.5] - 2026-09-02
+
+Release-readiness audit: seven review agents, seven fix agents, ~60 fixes.
+
+### Security
+
+- Organization-scope all 19 by-ID getters in the data layer (17 detail/edit pages
+  were readable cross-tenant by UUID) and the EULA template getters/routes
+- Close IDOR gaps: organizations/[id] GET (per-org isadmin bypass), asset attachment
+  file route (failed open without org), dashboard widget PUT, advanced reports
+- Verify OIDC ID token signatures against the IdP JWKS (jose); link accounts only on
+  externalId or IdP-verified email
+- HTML-escape email template variables; validate Freshdesk domain; encrypt and mask
+  Slack/Teams webhook URLs; strip mfaSecret/mfaBackupCodes/ldapDN from user responses
+- Cap procurement receivedQty and list limits; make setup guard atomic
+- Refuse to boot production with missing or weak required env vars
+- Update better-auth to 1.6.30 and all dependencies within their semver ranges
+  (0 production advisories, was 1 critical / 53 high)
+- Remove orphaned unauthenticated /api/auth/mfa/validate route
+
+### Fixed
+
+- Regenerate stale bun.lock (frozen install and every CI job were failing)
+- Docker build: bun + bun.lock, node 22, no migrate in build stage, HEALTHCHECK,
+  one-shot migrate compose service
+- set-schema.mjs normalizes the schema name per file; committed migrations consistent
+- Sentry tunnel /monitoring no longer redirected to /login; overdue-returns cron registered
+- CI runs on the development branch; dead demo-reset workflow removed
+- Type-check clean including test files; DB-gated suites run in CI with Postgres
+- Client: TCO report / role removal / maintenance loads surface errors; accessible
+  names on icon-only buttons and the photo lightbox
+
+### Removed
+
+- 14 never-imported components, db-resilience.ts, deleteUser(), tests/setup/prisma-mock.ts,
+  the NextAuth-era deployment guide
+
+### Docs
+
+- Deployment guides corrected to BETTER_AUTH_* and the bun toolchain; CHANGELOG
+  backfilled 0.5.0–0.9.4; .env.example documents every key the code reads;
+  TECHNICAL_DEBT.md rewritten with open decisions (MFA, SSO, strict mode)
+
+## [0.9.4] - 2026-07-07
+
+### Fixed
+
+- **Authentication & cron authorization** — harden auth guards and cron secret enforcement
+- **Org scoping** — enforce multi-tenant scoping across all API routes and data layer
+- **UI dead-ends** — repair client-side error handling and broken navigation flows
+- **Cache invalidation** — fix list, count, and reference cache invalidation on mutations
+- **Concurrency & data integrity** — resolve races in checkout and state transitions
+- **Plan gating** — close security bypasses in feature gate validation
+
+## [0.9.3] - 2026-06-11
+
+### Added
+
+- **Clickable entity names** — make asset/accessory/consumable/licence names clickable to detail pages
+
+## [0.9.2] - 2026-06-11
+
+### Changed
+
+- **Hero + grouped redesign** — apply detail page hierarchy redesign to accessory and component pages
+
+## [0.9.1] - 2026-06-11
+
+### Added
+
+- **Lazy image loading** — add skeleton placeholders for entity images
+- **Detail page redesign** — reorganize asset detail page for clearer visual hierarchy
+
+### Changed
+
+- **Component form** — replace inline selects with reusable SelectWithQuickCreate component
+
+### Fixed
+
+- **S3 bundling** — statically import S3 provider for serverless builds
+
+## [0.9.0] - 2026-06-10
+
+### Added
+
+- **Per-org S3 storage** — route entity attachments through organization-scoped S3 buckets
+- **Entity image uploads** — add image support for accessories, consumables, and components
+- **Storage config tab** — admin settings to configure per-org storage providers and credentials
+- **Entity attachment model** — track attachments with MIME validation and per-org scoping
+
+### Fixed
+
+- **MIME type handling** — harden asset attachments against content-type confusion attacks
+- **Storage error messages** — surface real encryption key errors instead of generic messages
+- **IDOR protection** — restrict attachment routes to org membership verification
+
+## [0.8.0] - 2026-06-01
+
+### Added
+
+- **Aislop quality gate** — integrate code quality linter configuration
+
+### Changed
+
+- **BetterAuth trustedOrigins** — support all Vercel URL variants (preview, staging, production)
+
+### Fixed
+
+- **React Compiler errors** — resolve compilation errors in mobile-specific hooks
+- **Code quality** — 30+ improvements across pages, components, API routes, and libraries
+- **Type safety** — improve error handling and type annotations throughout codebase
+- **Dependencies** — update Prisma, Next.js, and patch 15 security vulnerabilities
+
+## [0.7.1] - 2026-05-19
+
+### Added
+
+- **SEO infrastructure** — sitemap, robots.txt, JSON-LD schema, OG meta tags
+- **Landing page optimization** — keyword-focused content and FAQ section
+
+## [0.7.0] - 2026-05-08
+
+### Added
+
+- **Procurement workflow** — full lifecycle from request to delivery with approval gates
+- **Trial flow** — time-limited trial periods for SaaS orgs
+- **TCO dashboard** — total cost of ownership tracking by asset category
+- **Billing management tab** — usage bars, plan comparison, and limit visualization
+- **Plan feature gating** — PlanGate component to restrict features by subscription tier
+
+### Fixed
+
+- **Build command** — read admin settings tab from URL for deep linking
+- **Admin nav flash** — prevent non-admin navigation flicker on page load
+- **Schema detection** — use actual detected schema instead of hardcoded source
+
+## [0.6.0] - 2026-05-05
+
+### Added
+
+- **Organization suspension** — disable orgs with configurable grace period
+- **Quota enforcement** — enforce per-org limits on users, assets, and data
+- **Organization defaults** — seed default categories, locations, and settings per org
+- **Shared table scoping** — scope 10+ shared tables to organization context
+
+### Changed
+
+- **Admin settings UX** — make sidebar fixed with independent scroll
+
+### Fixed
+
+- **Org access** — gate global settings behind superadmin check
+- **Org-scoped endpoints** — fix cross-tenant IDOR on org CRUD, GDPR, Freshdesk routes
+- **Sign-up blocking** — restrict user registration on self-hosted instances
+
+## [0.5.3] - 2026-05-05
+
+### Fixed
+
+- **Org scoping** — ensure shared table references use canonical schema qualification (`"assettool"."cache"`)
+
+## [0.5.2] - 2026-04-30
+
+### Security
+
+- **Org security** — prevent cross-tenant updates/deletes and GDPR access bypasses
+- **Admin endpoints** — enforce org scoping on all admin write operations
+
+### Fixed
+
+- **Type system** — cast Prisma models to unknown for dynamic model access
+- **Response types** — widen withHeaders to accept Response and NextResponse
+
+## [0.5.1] - 2026-04-28
+
+### Security
+
+- **OIDC/SCIM/CSV injection** — close authentication and import security gaps
+- **Attachment IDOR** — harden routes against cross-tenant access
+
+### Fixed
+
+- **Silent error catches** — replace with logged handlers in async operations
+- **API timeouts** — add configurable timeouts to prevent hanging requests
+- **UI quality** — improve accessibility and error handling in components
+
+## [0.5.0] - 2026-04-22
+
+### Added
+
+- **Microsoft Intune device sync** — auto-import managed devices from Graph API with conflict resolution
+- **Intune admin settings** — tenant ID, client credentials, test connection, sync controls
+- **IntuneSyncLog audit trail** — track status, device counts, errors, duration per sync
+- **Asset external tracking** — externalId and externalSource fields for MDM-synced devices
+- **Intune cron job** — daily sync at 8 AM UTC via `/api/cron/intune-sync`
+- **Help/FAQ page** — user-facing help documentation
+- **Intune webhook** — publish `intune.sync_completed` events to Slack/Teams
+
 ## [0.4.0] - 2026-04-22
 
 ### Added

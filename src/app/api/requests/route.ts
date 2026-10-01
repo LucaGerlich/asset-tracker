@@ -41,10 +41,14 @@ export async function GET(req: NextRequest) {
       where.userId = user.id;
     }
 
+    // Clamp to 1..100 with a NaN guard so an absent/garbage/huge limit param
+    // can't skip pagination and force an unbounded query.
+    const take = limit ? Math.min(Math.max(parseInt(limit) || 50, 1), 100) : 50;
+
     const requests = await prisma.itemRequest.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      take: limit ? parseInt(limit) : 50,
+      take,
       include: {
         user: {
           select: {
@@ -275,10 +279,14 @@ export async function POST(req: NextRequest) {
       details: { entityName, status: initialStatus, notes: notes || null },
     }).catch(logCatchError("Audit log failed"));
 
-    // Notify all admins (in-app via notification_queue)
+    // Notify this org's admins (in-app via notification_queue)
     try {
       const admins = await prisma.user.findMany({
-        where: { isadmin: true, isActive: true },
+        where: {
+          isadmin: true,
+          isActive: true,
+          organizationId: user.organizationId ?? null,
+        },
         select: { userid: true, email: true },
       });
       const entityName = await getEntityName(entityType, entityId);

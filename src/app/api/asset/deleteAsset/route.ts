@@ -6,13 +6,15 @@ import {
   scopeToOrganization,
 } from "@/lib/organization-context";
 import { triggerWebhook } from "@/lib/webhooks";
+import { invalidateCacheByPrefix } from "@/lib/cache";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { logger } from "@/lib/logger";
 
 export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requirePermission("asset:delete");
+    const admin = await requirePermission("asset:delete");
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
 
@@ -47,11 +49,23 @@ export async function DELETE(req: NextRequest) {
       prisma.asset.delete({ where: { assetid: assetId } }),
     ]);
 
+    await createAuditLog({
+      userId: admin.id ?? null,
+      action: AUDIT_ACTIONS.DELETE,
+      entity: AUDIT_ENTITIES.ASSET,
+      entityId: assetId,
+      details: { assetname: asset.assetname, assettag: asset.assettag },
+    });
+
     triggerWebhook(
       "asset.deleted",
       { assetId, assetName: asset.assetname },
       orgId,
     ).catch(() => {});
+
+    await invalidateCacheByPrefix("assets_all").catch(() => {});
+    await invalidateCacheByPrefix("asset_count").catch(() => {});
+    await invalidateCacheByPrefix("asset_status_distribution").catch(() => {});
 
     return new Response(
       JSON.stringify({ message: "Asset deleted successfully" }),

@@ -191,6 +191,7 @@ export default function SuppliersTable({ items }) {
               size="icon"
               variant="ghost"
               asChild
+              aria-label="Edit supplier"
             >
               <Link href={`/suppliers/${item.supplierid}/edit`}>
                 <EditIcon />
@@ -202,6 +203,7 @@ export default function SuppliersTable({ items }) {
                   className="text-muted-foreground h-6 w-6 cursor-pointer text-lg hover:opacity-80"
                   size="icon"
                   variant="ghost"
+                  aria-label="More actions"
                 >
                   <MoreVertical />
                 </Button>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
@@ -10,7 +11,7 @@ import { logger, logCatchError } from "@/lib/logger";
 // GET /api/licence/seats?licenceId=...
 export async function GET(req: Request) {
   try {
-    await requirePermission("license:view");
+    const user = await requirePermission("license:view");
 
     const { searchParams } = new URL(req.url);
     const licenceId = searchParams.get("licenceId");
@@ -22,8 +23,11 @@ export async function GET(req: Request) {
       );
     }
 
-    const licence = await prisma.licence.findUnique({
-      where: { licenceid: licenceId },
+    const licence = await prisma.licence.findFirst({
+      where: {
+        licenceid: licenceId,
+        organizationId: user.organizationId ?? null,
+      },
       select: { licenceid: true, licencekey: true, seatCount: true },
     });
 
@@ -99,77 +103,85 @@ export async function POST(req: Request) {
 
     const { licenceId, userId, notes } = data;
 
-    // Use a transaction to ensure atomicity
-    const assignment = await prisma.$transaction(async (tx) => {
-      const licence = await tx.licence.findUnique({
-        where: { licenceid: licenceId },
-        select: { licenceid: true, licencekey: true, seatCount: true },
-      });
+    // Serializable isolation prevents two concurrent assignments from both
+    // passing the seat-count check (over-assignment) or computing the same
+    // seatNumber. On conflict PostgreSQL aborts one tx (P2034) — surfaced as 409.
+    const assignment = await prisma.$transaction(
+      async (tx) => {
+        const licence = await tx.licence.findFirst({
+          where: {
+            licenceid: licenceId,
+            organizationId: admin.organizationId ?? null,
+          },
+          select: { licenceid: true, licencekey: true, seatCount: true },
+        });
 
-      if (!licence) {
-        throw new Error("Licence not found");
-      }
+        if (!licence) {
+          throw new Error("Licence not found");
+        }
 
-      // Count active seat assignments
-      const activeCount = await tx.licenceSeatAssignment.count({
-        where: {
-          licenceId,
-          unassignedAt: null,
-        },
-      });
+        // Count active seat assignments
+        const activeCount = await tx.licenceSeatAssignment.count({
+          where: {
+            licenceId,
+            unassignedAt: null,
+          },
+        });
 
-      if (activeCount >= licence.seatCount) {
-        throw new Error("No available seats for this licence");
-      }
+        if (activeCount >= licence.seatCount) {
+          throw new Error("No available seats for this licence");
+        }
 
-      const existingAssignment = await tx.licenceSeatAssignment.findFirst({
-        where: {
-          licenceId,
-          userId,
-          unassignedAt: null,
-        },
-      });
+        const existingAssignment = await tx.licenceSeatAssignment.findFirst({
+          where: {
+            licenceId,
+            userId,
+            unassignedAt: null,
+          },
+        });
 
-      if (existingAssignment) {
-        throw new Error("User is already assigned to this licence");
-      }
+        if (existingAssignment) {
+          throw new Error("User is already assigned to this licence");
+        }
 
-      // Auto-assign next seat number
-      const maxSeat = await tx.licenceSeatAssignment.aggregate({
-        where: { licenceId },
-        _max: { seatNumber: true },
-      });
+        // Auto-assign next seat number
+        const maxSeat = await tx.licenceSeatAssignment.aggregate({
+          where: { licenceId },
+          _max: { seatNumber: true },
+        });
 
-      const nextSeatNumber = (maxSeat._max.seatNumber ?? 0) + 1;
+        const nextSeatNumber = (maxSeat._max.seatNumber ?? 0) + 1;
 
-      return tx.licenceSeatAssignment.create({
-        data: {
-          licenceId,
-          userId,
-          seatNumber: nextSeatNumber,
-          assignedBy: admin.id ?? null,
-          notes: notes ?? null,
-        },
-        include: {
-          user: {
-            select: {
-              userid: true,
-              firstname: true,
-              lastname: true,
-              email: true,
+        return tx.licenceSeatAssignment.create({
+          data: {
+            licenceId,
+            userId,
+            seatNumber: nextSeatNumber,
+            assignedBy: admin.id ?? null,
+            notes: notes ?? null,
+          },
+          include: {
+            user: {
+              select: {
+                userid: true,
+                firstname: true,
+                lastname: true,
+                email: true,
+              },
+            },
+            assignedByUser: {
+              select: {
+                userid: true,
+                firstname: true,
+                lastname: true,
+                email: true,
+              },
             },
           },
-          assignedByUser: {
-            select: {
-              userid: true,
-              firstname: true,
-              lastname: true,
-              email: true,
-            },
-          },
-        },
-      });
-    });
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
     await createAuditLog({
       userId: admin.id ?? null,
@@ -212,12 +224,25 @@ export async function POST(req: Request) {
     if (e.message?.startsWith("Forbidden")) {
       return NextResponse.json({ error: e.message }, { status: 403 });
     }
+    if (e.message === "Licence not found") {
+      return NextResponse.json({ error: e.message }, { status: 404 });
+    }
     if (
-      e.message === "Licence not found" ||
       e.message === "No available seats for this licence" ||
       e.message === "User is already assigned to this licence"
     ) {
-      return NextResponse.json({ error: e.message }, { status: 400 });
+      return NextResponse.json({ error: e.message }, { status: 409 });
+    }
+    // Unique-constraint collision on seatNumber or a serialization abort under
+    // concurrent assignment — the client should simply retry.
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      (e.code === "P2002" || e.code === "P2034")
+    ) {
+      return NextResponse.json(
+        { error: "Seat assignment conflict, please retry" },
+        { status: 409 },
+      );
     }
 
     return NextResponse.json(

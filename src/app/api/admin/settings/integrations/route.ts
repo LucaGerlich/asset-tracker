@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { encrypt } from "@/lib/encryption";
 import { requireSuperAdmin, requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
+
+// Webhook URLs are secrets in effect (possession lets you receive/spoof
+// notifications), so they're stored encrypted and masked on read, mirroring
+// the LDAP settings route.
+const ENCRYPTED_KEYS = [
+  "integrations.slack.webhookUrl",
+  "integrations.teams.webhookUrl",
+];
 
 export async function GET() {
   try {
@@ -16,7 +25,7 @@ export async function GET() {
     const result = settings.map((s) => ({
       id: s.id,
       key: s.settingKey,
-      value: s.settingValue,
+      value: s.isEncrypted ? "********" : s.settingValue,
     }));
 
     return NextResponse.json(result);
@@ -47,23 +56,31 @@ export async function PUT(req: Request) {
     }
 
     await prisma.$transaction(
-      settings.map((setting: { key: string; value: string }) =>
-        prisma.system_settings.upsert({
+      settings.map((setting: { key: string; value: string }) => {
+        const isSensitive = ENCRYPTED_KEYS.includes(setting.key);
+        const isUnchanged = setting.value === "********";
+        const storedValue = isUnchanged
+          ? setting.value
+          : isSensitive
+            ? encrypt(setting.value)
+            : setting.value;
+
+        return prisma.system_settings.upsert({
           where: { settingKey: setting.key },
           update: {
-            settingValue: setting.value,
+            settingValue: isUnchanged ? undefined : storedValue,
             updatedAt: new Date(),
           },
           create: {
             settingKey: setting.key,
-            settingValue: setting.value,
+            settingValue: storedValue,
             settingType: "string",
             category: "integrations",
-            isEncrypted: false,
+            isEncrypted: isSensitive,
             updatedAt: new Date(),
           },
-        }),
-      ),
+        });
+      }),
     );
 
     return NextResponse.json({ success: true });

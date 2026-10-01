@@ -40,30 +40,50 @@ if (!process.env.DB_SCHEMA) {
 
 const TARGET = process.env.DB_SCHEMA || "assettool";
 
+// Schema names we know how to detect/rewrite. Any of these may appear as the
+// "current" name in a given file — we don't assume every file shares one
+// single SOURCE, we detect it per file so a partially-normalized tree (or a
+// tree using a different historical schema name than schema.prisma) is still
+// normalized correctly.
+const KNOWN_SCHEMA_NAMES = ["assettool", "public"];
+
+function detectSourceSchema(content, patternFor) {
+  for (const name of KNOWN_SCHEMA_NAMES) {
+    if (name !== TARGET && patternFor(name).test(content)) {
+      return name;
+    }
+  }
+  return null;
+}
+
 const schemaPath = join(__dirname, "schema.prisma");
-let schema = readFileSync(schemaPath, "utf-8");
+const originalSchema = readFileSync(schemaPath, "utf-8");
+let schema = originalSchema;
 
 // Extract the current schema name from: schemas = ["<name>"]
 const schemasMatch = schema.match(/schemas\s*=\s*\["([^"]+)"\]/);
-const SOURCE = schemasMatch ? schemasMatch[1] : "assettool";
+const SOURCE = schemasMatch ? schemasMatch[1] : detectSourceSchema(
+  schema,
+  (name) => new RegExp(`@@schema\\("${name}"\\)`),
+);
 
-if (TARGET === SOURCE) {
-  process.exit(0);
+if (SOURCE && SOURCE !== TARGET) {
+  // schemas = ["<source>"]  →  schemas = ["<target>"]
+  schema = schema.replace(
+    new RegExp(`schemas\\s*=\\s*\\["${SOURCE}"\\]`, "g"),
+    `schemas  = ["${TARGET}"]`,
+  );
+
+  // @@schema("<source>")  →  @@schema("<target>")
+  schema = schema.replace(
+    new RegExp(`@@schema\\("${SOURCE}"\\)`, "g"),
+    `@@schema("${TARGET}")`,
+  );
 }
 
-// schemas = ["<source>"]  →  schemas = ["<target>"]
-schema = schema.replace(
-  new RegExp(`schemas\\s*=\\s*\\["${SOURCE}"\\]`, "g"),
-  `schemas  = ["${TARGET}"]`,
-);
-
-// @@schema("<source>")  →  @@schema("<target>")
-schema = schema.replace(
-  new RegExp(`@@schema\\("${SOURCE}"\\)`, "g"),
-  `@@schema("${TARGET}")`,
-);
-
-writeFileSync(schemaPath, schema);
+if (schema !== originalSchema) {
+  writeFileSync(schemaPath, schema);
+}
 
 const migrationsDir = join(__dirname, "migrations");
 if (existsSync(migrationsDir)) {
@@ -78,29 +98,38 @@ if (existsSync(migrationsDir)) {
     const original = readFileSync(sqlPath, "utf-8");
     let sql = original;
 
-    // CREATE SCHEMA IF NOT EXISTS "<source>"  →  "<target>"
-    sql = sql.replace(
-      new RegExp(`CREATE SCHEMA IF NOT EXISTS "${SOURCE}"`, "g"),
-      `CREATE SCHEMA IF NOT EXISTS "${TARGET}"`,
+    // Detect which known schema name this specific file currently uses —
+    // migrations may lag behind schema.prisma or use a different name.
+    const fileSource = detectSourceSchema(
+      sql,
+      (name) => new RegExp(`"${name}"`),
     );
 
-    // SET search_path TO "<source>"  →  "<target>"
-    sql = sql.replace(
-      new RegExp(`SET search_path TO "${SOURCE}"`, "g"),
-      `SET search_path TO "${TARGET}"`,
-    );
+    if (fileSource && fileSource !== TARGET) {
+      // CREATE SCHEMA IF NOT EXISTS "<source>"  →  "<target>"
+      sql = sql.replace(
+        new RegExp(`CREATE SCHEMA IF NOT EXISTS "${fileSource}"`, "g"),
+        `CREATE SCHEMA IF NOT EXISTS "${TARGET}"`,
+      );
 
-    // table_schema = '<source>'  →  '<target>'
-    sql = sql.replace(
-      new RegExp(`table_schema = '${SOURCE}'`, "g"),
-      `table_schema = '${TARGET}'`,
-    );
+      // SET search_path TO "<source>"  →  "<target>"
+      sql = sql.replace(
+        new RegExp(`SET search_path TO "${fileSource}"`, "g"),
+        `SET search_path TO "${TARGET}"`,
+      );
 
-    // "<source>"."table_name"  →  "<target>"."table_name"
-    sql = sql.replace(
-      new RegExp(`"${SOURCE}"\\."`, "g"),
-      `"${TARGET}"."`,
-    );
+      // table_schema = '<source>'  →  '<target>'
+      sql = sql.replace(
+        new RegExp(`table_schema = '${fileSource}'`, "g"),
+        `table_schema = '${TARGET}'`,
+      );
+
+      // "<source>"."table_name"  →  "<target>"."table_name"
+      sql = sql.replace(
+        new RegExp(`"${fileSource}"\\."`, "g"),
+        `"${TARGET}"."`,
+      );
+    }
 
     if (sql !== original) {
       writeFileSync(sqlPath, sql);

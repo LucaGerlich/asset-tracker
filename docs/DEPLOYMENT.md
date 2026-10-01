@@ -10,22 +10,22 @@ Two deployment options: **VPS with Docker** (recommended for client deployments)
 
 You need a PostgreSQL 15+ database. Options:
 
-| Provider | Free Tier | Notes |
-|----------|-----------|-------|
-| [Supabase](https://supabase.com) | 500 MB | Easiest, includes connection pooling |
-| [Neon](https://neon.tech) | 512 MB | Serverless Postgres, good for Vercel |
-| [Railway](https://railway.app) | $5 credit | Simple setup |
-| Self-hosted (VPS) | Unlimited | Included in Docker Compose setup |
+| Provider                         | Free Tier | Notes                                |
+| -------------------------------- | --------- | ------------------------------------ |
+| [Supabase](https://supabase.com) | 500 MB    | Easiest, includes connection pooling |
+| [Neon](https://neon.tech)        | 512 MB    | Serverless Postgres, good for Vercel |
+| [Railway](https://railway.app)   | $5 credit | Simple setup                         |
+| Self-hosted (VPS)                | Unlimited | Included in Docker Compose setup     |
 
 ### 2. Generate Secrets
 
 Run these locally and save the output — you'll need them for env vars:
 
 ```bash
-# NEXTAUTH_SECRET — signs JWT tokens
+# BETTER_AUTH_SECRET — signs sessions and encrypts TOTP secrets (must be at least 32 characters)
 openssl rand -base64 32
 
-# ENCRYPTION_KEY — encrypts sensitive data at rest (API keys, MFA secrets)
+# ENCRYPTION_KEY — encrypts sensitive data at rest (API keys, integration credentials)
 openssl rand -hex 32
 
 # CRON_SECRET — protects cron job endpoints
@@ -83,8 +83,8 @@ POSTGRES_PASSWORD=STRONG_PASSWORD_HERE
 POSTGRES_DB=assettracker
 
 # Auth — CRITICAL: set these
-NEXTAUTH_URL=https://assets.yourclient.com
-NEXTAUTH_SECRET=<output from openssl rand -base64 32>
+BETTER_AUTH_URL=https://assets.yourclient.com
+BETTER_AUTH_SECRET=<output from openssl rand -base64 32>
 
 # Encryption — REQUIRED in production
 ENCRYPTION_KEY=<output from openssl rand -hex 32>
@@ -184,6 +184,7 @@ Create a separate Vercel account for the client (or use a Vercel Team). Do NOT d
 Create a PostgreSQL database (Supabase or Neon recommended for Vercel):
 
 **Supabase:**
+
 1. Go to [supabase.com](https://supabase.com), create a project
 2. Go to Settings > Database > Connection string > URI
 3. Copy the connection string (use the "Transaction" pooler URL for Vercel)
@@ -199,24 +200,29 @@ Create a PostgreSQL database (Supabase or Neon recommended for Vercel):
 
 In Vercel Project Settings > Environment Variables, add:
 
-| Variable | Value | Environment |
-|----------|-------|-------------|
-| `DATABASE_URL` | `postgresql://...` (from Supabase/Neon) | Production |
-| `NEXTAUTH_URL` | `https://assets.yourclient.com` | Production |
-| `NEXTAUTH_SECRET` | `<openssl rand -base64 32>` | Production |
-| `ENCRYPTION_KEY` | `<openssl rand -hex 32>` | Production |
-| `CRON_SECRET` | `<openssl rand -hex 16>` | Production |
-| `SELF_HOSTED` | `true` | Production |
+| Variable             | Value                                   | Environment |
+| -------------------- | --------------------------------------- | ----------- |
+| `DATABASE_URL`       | `postgresql://...` (from Supabase/Neon) | Production  |
+| `BETTER_AUTH_URL`    | `https://assets.yourclient.com`         | Production  |
+| `BETTER_AUTH_SECRET` | `<openssl rand -base64 32>`             | Production  |
+| `ENCRYPTION_KEY`     | `<openssl rand -hex 32>`                | Production  |
+| `CRON_SECRET`        | `<openssl rand -hex 16>`                | Production  |
+| `SELF_HOSTED`        | `true`                                  | Production  |
 
 Optional email vars:
-| Variable | Value | Environment |
-|----------|-------|-------------|
-| `EMAIL_PROVIDER` | `brevo` | Production |
-| `BREVO_API_KEY` | `your_key` | Production |
-| `EMAIL_FROM` | `noreply@yourclient.com` | Production |
-| `EMAIL_FROM_NAME` | `Asset Tracker` | Production |
 
-### Step 5: Deploy
+| Variable          | Value                    | Environment |
+| ----------------- | ------------------------ | ----------- |
+| `EMAIL_PROVIDER`  | `brevo`                  | Production  |
+| `BREVO_API_KEY`   | `your_key`               | Production  |
+| `EMAIL_FROM`      | `noreply@yourclient.com` | Production  |
+| `EMAIL_FROM_NAME` | `Asset Tracker`          | Production  |
+
+### Step 5: Preview Builds Warning
+
+**Important:** Since v0.10.0 the build command runs `prisma migrate deploy` only when `VERCEL_ENV=production`; Preview builds compile against whatever schema the preview database already has, so a preview of a branch that adds columns will fail on those pages until it is merged and released. Preview environments should still have their own `DATABASE_URL` (never share the production database): before v0.10.0 a preview build of a column-dropping migration was applied to production this way. Additionally, set `DB_SCHEMA=public` if using the public schema instead of the default `assettool` schema.
+
+### Step 6: Deploy
 
 Click "Deploy". After the first deployment:
 
@@ -234,14 +240,15 @@ Or use Vercel's build command override to run migrations automatically. In Verce
 npx prisma migrate deploy && next build
 ```
 
-### Step 6: Custom Domain
+### Step 7: Custom Domain
 
 In Vercel Project Settings > Domains:
+
 1. Add `assets.yourclient.com`
 2. Add the DNS records Vercel shows you (CNAME or A record)
 3. HTTPS is automatic
 
-### Step 7: Cron Jobs (Optional)
+### Step 8: Cron Jobs (Optional)
 
 For automated notifications (license expiry, maintenance due, low stock alerts), add to `vercel.json`:
 
@@ -310,6 +317,7 @@ docker compose exec db pg_dump -U assettracker assettracker > backup_$(date +%Y%
 ## Troubleshooting
 
 **App won't start:**
+
 ```bash
 docker compose logs app          # Check app logs
 docker compose logs db           # Check database logs
@@ -317,10 +325,24 @@ docker compose exec app npx prisma migrate status  # Check migration state
 ```
 
 **"no matching decryption secret" error:**
-The `NEXTAUTH_SECRET` changed. Users need to clear cookies / log in again.
+The `BETTER_AUTH_SECRET` changed. Users need to clear cookies / log in again. Because it also encrypts TOTP secrets and backup codes, every MFA enrolment is invalidated and users must set up MFA again.
 
 **Email not sending:**
 Check Admin Settings > Email for env config status. Send a test email. Check logs:
+
 ```bash
 docker compose logs app | grep "email"
 ```
+
+## Domain split rollout
+
+Optional: serve marketing at `https://<domain>` and the app at `https://app.<domain>`
+from the same deployment.
+
+1. Buy the domain; add the apex and `app.` to the Vercel project (same project).
+2. Set `BETTER_AUTH_URL=https://app.<domain>` and `NEXT_PUBLIC_MARKETING_URL=https://<domain>` in Vercel production. An invalid combination (same origin, `http`, a path, malformed URL) fails at startup. Setting it only at runtime (e.g. Docker) works: the proxy, robots and sitemap read it per request.
+3. Re-point everything machine-to-machine at the app host (clients may not follow redirects): OAuth/SSO redirect URIs at the identity providers (Microsoft, Google, OIDC/SAML customers), the SCIM base URL configured at IdPs, the Stripe webhook URL, outbound webhook/API-key integrations, and Intune/MDM callbacks.
+4. Redirect any old domain to the new one (Vercel domain redirect).
+5. Search Console: add the new property and submit `https://<domain>/sitemap.xml`.
+
+Session cookies stay on the app host; the marketing host never receives them.

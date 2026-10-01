@@ -8,6 +8,7 @@ import {
 } from "@/lib/organization-context";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import { checkVersion, CONFLICT_MESSAGE } from "@/lib/concurrency";
 
 // PUT /api/asset/updateStatus
@@ -146,6 +147,9 @@ export async function PUT(req: NextRequest) {
       assetName: updated.assetname,
       assetTag: updated.assettag,
     }).catch(logCatchError("Integration notification failed"));
+
+    await invalidateCacheByPrefix("assets_all").catch(() => {});
+    await invalidateCacheByPrefix("asset_status_distribution").catch(() => {});
 
     const duration = Date.now() - startTime;
     logger.apiResponse("PUT", "/api/asset/updateStatus", 200, duration, {

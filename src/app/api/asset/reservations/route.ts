@@ -1,26 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 import {
   notifyReservationRequest,
   notifyReservationDecision,
 } from "@/lib/notifications";
 
+/** Map auth errors to their HTTP status; everything else is a 500. */
+function handleReservationError(
+  error: unknown,
+  fallbackMessage: string,
+): NextResponse {
+  const message = error instanceof Error ? error.message : "";
+  if (message === "Unauthorized") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (message.startsWith("Forbidden")) {
+    return NextResponse.json({ error: message }, { status: 403 });
+  }
+  logger.error(fallbackMessage, { error });
+  return NextResponse.json({ error: fallbackMessage }, { status: 500 });
+}
+
 // GET: List reservations, optionally filtered by assetId and/or status
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireApiAuth();
 
     const assetId = req.nextUrl.searchParams.get("assetId");
     const status = req.nextUrl.searchParams.get("status");
 
-    const where: { assetId?: string; status?: string } = {};
+    // Tenant isolation: AssetReservation has no organizationId column, so scope
+    // through the asset relation.
+    const where: {
+      assetId?: string;
+      status?: string;
+      asset: { organizationId: string | null };
+    } = {
+      asset: { organizationId: user.organizationId ?? null },
+    };
     if (assetId) {
       where.assetId = assetId;
     }
@@ -43,11 +62,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(reservations);
   } catch (error) {
-    logger.error("Error fetching reservations", { error });
-    return NextResponse.json(
-      { error: "Failed to fetch reservations" },
-      { status: 500 },
-    );
+    return handleReservationError(error, "Failed to fetch reservations");
   }
 }
 
@@ -56,10 +71,7 @@ export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireApiAuth();
 
     const body = await req.json();
     const { assetId, startDate, endDate, notes } = body;
@@ -88,9 +100,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify asset exists
-    const asset = await prisma.asset.findUnique({
-      where: { assetid: assetId },
+    // Verify the asset exists and belongs to the caller's organization.
+    const asset = await prisma.asset.findFirst({
+      where: { assetid: assetId, organizationId: user.organizationId ?? null },
+      select: { assetid: true },
     });
 
     if (!asset) {
@@ -119,7 +132,7 @@ export async function POST(req: NextRequest) {
       return tx.assetReservation.create({
         data: {
           assetId,
-          userId: session.user.id!,
+          userId: user.id!,
           startDate: start,
           endDate: end,
           notes: notes || null,
@@ -151,17 +164,14 @@ export async function POST(req: NextRequest) {
       startDate: start.toLocaleDateString(),
       endDate: end.toLocaleDateString(),
       notes: notes || null,
+      organizationId: user.organizationId ?? null,
     }).catch((e) =>
       logger.error("Failed to send reservation notification", { error: e }),
     );
 
     return NextResponse.json(reservation, { status: 201 });
   } catch (error) {
-    logger.error("Error creating reservation", { error });
-    return NextResponse.json(
-      { error: "Failed to create reservation" },
-      { status: 500 },
-    );
+    return handleReservationError(error, "Failed to create reservation");
   }
 }
 
@@ -170,10 +180,7 @@ export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireApiAuth();
 
     const body = await req.json();
     const { id, status, notes } = body;
@@ -197,17 +204,19 @@ export async function PUT(req: NextRequest) {
 
     const existing = await prisma.assetReservation.findUnique({
       where: { id },
+      include: { asset: { select: { organizationId: true } } },
     });
 
-    if (!existing) {
+    // Cross-org protection: treat foreign-org reservations as not found.
+    if (!existing || existing.asset.organizationId !== user.organizationId) {
       return NextResponse.json(
         { error: "Reservation not found" },
         { status: 404 },
       );
     }
 
-    const isAdmin = session.user.isadmin;
-    const isOwner = existing.userId === session.user.id;
+    const isAdmin = user.isAdmin;
+    const isOwner = existing.userId === user.id;
 
     // Only admins can approve or reject
     if (status === "approved" || status === "rejected") {
@@ -242,7 +251,7 @@ export async function PUT(req: NextRequest) {
 
     // Set approval metadata when approving/rejecting
     if (status === "approved" || status === "rejected") {
-      updateData.approvedBy = session.user.id!;
+      updateData.approvedBy = user.id!;
       updateData.approvedAt = new Date();
     }
 
@@ -301,7 +310,10 @@ export async function PUT(req: NextRequest) {
             });
 
             const activeStatus = await tx.statusType.findFirst({
-              where: { statustypename: "Active" },
+              where: {
+                statustypename: "Active",
+                organizationId: user.organizationId ?? null,
+              },
             });
 
             if (activeStatus) {
@@ -339,7 +351,7 @@ export async function PUT(req: NextRequest) {
 
     // Notify the requester about approval/rejection (fire-and-forget)
     if (status === "approved" || status === "rejected") {
-      const approverName = session.user.name || session.user.email || "Admin";
+      const approverName = user.name || user.email || "Admin";
       notifyReservationDecision({
         assetName: reservation.asset.assetname,
         assetTag: reservation.asset.assettag,
@@ -377,11 +389,7 @@ export async function PUT(req: NextRequest) {
         );
       }
     }
-    logger.error("Error updating reservation", { error });
-    return NextResponse.json(
-      { error: "Failed to update reservation" },
-      { status: 500 },
-    );
+    return handleReservationError(error, "Failed to update reservation");
   }
 }
 

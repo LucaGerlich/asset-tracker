@@ -16,11 +16,12 @@ import {
   hasAllPermissions,
   getAllPermissions,
   PERMISSIONS,
+  DEFAULT_ROLES,
   createPermissionGuard,
 } from "../rbac";
 import prisma from "@/lib/prisma";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -83,13 +84,17 @@ describe("getUserPermissions", () => {
     expect(perms.size).toBe(3);
   });
 
-  it("returns empty set for non-admin user with no roles", async () => {
+  it("falls back to default user permissions for non-admin user with no roles", async () => {
     mockPrisma.user.findUnique.mockResolvedValue({
       isadmin: false,
       roles: [],
     } as any);
     const perms = await getUserPermissions("user-id");
-    expect(perms.size).toBe(0);
+    // A user with no explicit roles inherits the default "user" role permissions.
+    expect(perms.size).toBe(DEFAULT_ROLES.user.permissions.length);
+    DEFAULT_ROLES.user.permissions.forEach((p) => {
+      expect(perms.has(p)).toBe(true);
+    });
   });
 });
 

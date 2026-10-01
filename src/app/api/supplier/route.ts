@@ -18,7 +18,7 @@ import {
   buildPaginatedResponse,
 } from "@/lib/pagination";
 import { logger } from "@/lib/logger";
-import { invalidateCache } from "@/lib/cache";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import { getOrganizationContext } from "@/lib/organization-context";
 
 const SUPPLIER_SORT_FIELDS = ["suppliername", "email", "creation_date"];
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
       details: { suppliername },
     });
 
-    invalidateCache("suppliers").catch(() => {});
+    invalidateCacheByPrefix("suppliers").catch(() => {});
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
     logger.error("POST /api/supplier error", { error: e });
@@ -233,7 +233,7 @@ export async function PUT(req: NextRequest) {
       details: { suppliername: updated.suppliername },
     });
 
-    invalidateCache("suppliers").catch(() => {});
+    invalidateCacheByPrefix("suppliers").catch(() => {});
     return NextResponse.json(updated, { status: 200 });
   } catch (e) {
     logger.error("PUT /api/supplier error", { error: e });
@@ -340,7 +340,7 @@ export async function DELETE(req: NextRequest) {
       details: { suppliername: supplier.suppliername },
     });
 
-    invalidateCache("suppliers").catch(() => {});
+    invalidateCacheByPrefix("suppliers").catch(() => {});
     return NextResponse.json(
       { message: "Supplier deleted successfully" },
       { status: 200 },

@@ -6,6 +6,8 @@ import {
   getOrganizationContext,
   scopeToOrganization,
 } from "@/lib/organization-context";
+import { invalidateCacheByPrefix } from "@/lib/cache";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 
 export async function DELETE(req: NextRequest) {
   const startTime = Date.now();
@@ -13,7 +15,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requirePermission("accessory:delete");
+    const admin = await requirePermission("accessory:delete");
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
     const { accessoryId } = await req.json();
@@ -57,6 +59,19 @@ export async function DELETE(req: NextRequest) {
       }),
       prisma.accessories.delete({ where: { accessorieid: accessoryId } }),
     ]);
+
+    await createAuditLog({
+      userId: admin.id ?? null,
+      action: AUDIT_ACTIONS.DELETE,
+      entity: AUDIT_ENTITIES.ACCESSORY,
+      entityId: accessoryId,
+    });
+
+    await invalidateCacheByPrefix("accessories_all").catch(() => {});
+    await invalidateCacheByPrefix("accessory_count").catch(() => {});
+    await invalidateCacheByPrefix("accessory_status_distribution").catch(
+      () => {},
+    );
 
     const duration = Date.now() - startTime;
     logger.apiResponse(

@@ -7,7 +7,7 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
     exclude: ["node_modules", ".next", "tests/e2e"],
-    setupFiles: [],
+    setupFiles: ["tests/setup/vitest.setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],

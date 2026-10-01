@@ -9,13 +9,26 @@ export async function DELETE(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const admin = await requireApiAdmin();
     const { userId, accessorieId } = await req.json();
     if (!userId || !accessorieId) {
       return new Response(
         JSON.stringify({ error: "userId and accessorieId are required" }),
         { status: 400 },
       );
+    }
+    // The accessory must belong to the admin's organization.
+    const accessory = await prisma.accessories.findFirst({
+      where: {
+        accessorieid: accessorieId,
+        organizationId: admin.organizationId ?? null,
+      },
+      select: { accessorieid: true },
+    });
+    if (!accessory) {
+      return new Response(JSON.stringify({ error: "Accessory not found" }), {
+        status: 404,
+      });
     }
     const result = await prisma.userAccessoires.deleteMany({
       where: { userid: userId, accessorieid: accessorieId },

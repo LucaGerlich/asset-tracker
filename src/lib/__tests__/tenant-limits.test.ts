@@ -16,7 +16,7 @@ import { checkAssetLimit, checkUserLimit } from "../tenant-limits";
 import prisma from "@/lib/prisma";
 import { getOrganizationContext } from "@/lib/organization-context";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 const mockGetOrgContext = vi.mocked(getOrganizationContext);
 
 beforeEach(() => {

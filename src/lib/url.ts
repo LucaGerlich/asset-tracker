@@ -22,3 +22,13 @@ export function getBaseUrl(): string {
 
   return "http://localhost:3000";
 }
+
+/**
+ * Public origin of the marketing site. Equals the app URL unless the
+ * domain split is enabled (NEXT_PUBLIC_MARKETING_URL).
+ */
+export function getMarketingUrl(): string {
+  const marketing = process.env.NEXT_PUBLIC_MARKETING_URL;
+  // Origin only, so "https://example.com/" doesn't yield "//pricing" links.
+  return marketing ? new URL(marketing).origin : getBaseUrl();
+}

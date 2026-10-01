@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const admin = await requireApiAdmin();
     const { assetId, userId } = await req.json();
 
     if (!assetId || !userId) {
@@ -21,10 +21,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const orgId = admin.organizationId ?? null;
+
     const result = await prisma.$transaction(async (tx) => {
-      // Resolve the "Active" status id (case-insensitive)
+      // Both the asset and the target user must belong to the admin's org.
+      const asset = await tx.asset.findFirst({
+        where: { assetid: assetId, organizationId: orgId },
+        select: { assetid: true },
+      });
+      if (!asset) {
+        throw new Error("ASSET_NOT_FOUND");
+      }
+      const targetUser = await tx.user.findFirst({
+        where: { userid: userId, organizationId: orgId },
+        select: { userid: true },
+      });
+      if (!targetUser) {
+        throw new Error("USER_NOT_FOUND");
+      }
+
+      // Resolve the "Active" status id (case-insensitive), scoped to the org.
       const activeStatus = await tx.statusType.findFirst({
-        where: { statustypename: { equals: "Active", mode: "insensitive" } },
+        where: {
+          statustypename: { equals: "Active", mode: "insensitive" },
+          organizationId: orgId,
+        },
       });
       if (!activeStatus) {
         throw new Error("Status 'Active' not found in statusType");
@@ -87,6 +108,16 @@ export async function POST(req: NextRequest) {
       return new Response(JSON.stringify({ error: error.message }), {
         status: 403,
       });
+    }
+    if (
+      error instanceof Error &&
+      (error.message === "ASSET_NOT_FOUND" ||
+        error.message === "USER_NOT_FOUND")
+    ) {
+      return new Response(
+        JSON.stringify({ error: "Asset or user not found" }),
+        { status: 404 },
+      );
     }
     if (
       error instanceof Error &&

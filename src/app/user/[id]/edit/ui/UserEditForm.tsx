@@ -116,6 +116,9 @@ export default function UserEditForm({
       if (res.ok) {
         toast.success("Role removed");
         refreshRoles();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to remove role");
       }
     } catch (err) {
       console.error("Failed to remove role", err);

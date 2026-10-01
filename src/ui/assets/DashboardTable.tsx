@@ -354,6 +354,10 @@ export default function App({
         }
       } catch (error) {
         console.error("Error:", error);
+        toast.error("Failed to assign asset", {
+          description:
+            error instanceof Error ? error.message : "Please try again.",
+        });
       }
     },
     [setAssetsData, setUserAssetsData, status],
@@ -393,6 +397,10 @@ export default function App({
         }
       } catch (error) {
         console.error("Error:", error);
+        toast.error("Failed to unassign asset", {
+          description:
+            error instanceof Error ? error.message : "Please try again.",
+        });
       }
     },
     [setAssetsData, setUserAssetsData, status],
@@ -403,23 +411,36 @@ export default function App({
     setBulkUpdating(true);
     try {
       const ids = Array.from(selectedKeys);
-      await Promise.all(
-        ids.map((assetId) =>
-          fetch("/api/asset/updateStatus", {
+      const results = await Promise.all(
+        ids.map(async (assetId) => {
+          const res = await fetch("/api/asset/updateStatus", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ assetId, statusTypeId: bulkStatusId }),
-          }),
-        ),
+          });
+          return { assetId, ok: res.ok };
+        }),
       );
+      const succeededIds = new Set(
+        results.filter((r) => r.ok).map((r) => r.assetId),
+      );
+      const failedCount = results.length - succeededIds.size;
+
+      // Only reflect the assets that actually changed on the server.
       setAssetsData((prev) =>
         prev.map((a) =>
-          selectedKeys.has(a.assetid)
+          succeededIds.has(a.assetid)
             ? { ...a, statustypeid: bulkStatusId }
             : a,
         ),
       );
-      toast.success(`Status updated for ${ids.length} asset(s)`);
+      if (failedCount === 0) {
+        toast.success(`Status updated for ${succeededIds.size} asset(s)`);
+      } else {
+        toast.warning(
+          `Updated ${succeededIds.size} of ${results.length} asset(s); ${failedCount} failed`,
+        );
+      }
       setIsBulkStatusModalOpen(false);
       setBulkStatusId("");
       setSelectedKeys(new Set([]));
@@ -435,26 +456,38 @@ export default function App({
     setBulkUpdating(true);
     try {
       const ids = Array.from(selectedKeys);
-      await Promise.all(
-        ids.map((assetId) =>
-          fetch("/api/asset", {
+      const results = await Promise.all(
+        ids.map(async (assetId) => {
+          const res = await fetch("/api/asset", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               assetid: assetId,
               locationid: bulkLocationId,
             }),
-          }),
-        ),
+          });
+          return { assetId, ok: res.ok };
+        }),
       );
+      const succeededIds = new Set(
+        results.filter((r) => r.ok).map((r) => r.assetId),
+      );
+      const failedCount = results.length - succeededIds.size;
+
       setAssetsData((prev) =>
         prev.map((a) =>
-          selectedKeys.has(a.assetid)
+          succeededIds.has(a.assetid)
             ? { ...a, locationid: bulkLocationId }
             : a,
         ),
       );
-      toast.success(`Location updated for ${ids.length} asset(s)`);
+      if (failedCount === 0) {
+        toast.success(`Location updated for ${succeededIds.size} asset(s)`);
+      } else {
+        toast.warning(
+          `Updated ${succeededIds.size} of ${results.length} asset(s); ${failedCount} failed`,
+        );
+      }
       setIsBulkLocationModalOpen(false);
       setBulkLocationId("");
       setSelectedKeys(new Set([]));
@@ -547,11 +580,12 @@ export default function App({
     let filteredAssets = [...assetsData];
 
     if (hasSearchFilter) {
+      const needle = filterValue.toLowerCase();
       filteredAssets = filteredAssets.filter(
         (data) =>
-          data.assetname.toLowerCase().includes(filterValue.toLowerCase()) ||
-          data.assettag.toLowerCase().includes(filterValue.toLowerCase()) ||
-          data.serialnumber.toLowerCase().includes(filterValue.toLowerCase()),
+          data.assetname?.toLowerCase().includes(needle) ||
+          data.assettag?.toLowerCase().includes(needle) ||
+          data.serialnumber?.toLowerCase().includes(needle),
       );
     }
     if (statusFilter.size !== statusOptions.length) {
@@ -1857,7 +1891,7 @@ export default function App({
                       ? `Update User for ${selectedAsset?.assetname} from ${
                           user.find(
                             (user) => user.userid === assignedUser.userid,
-                          ).firstname
+                          )?.firstname ?? "Unknown"
                         }`
                       : `Assign User to ${selectedAsset?.assetname}`}
                   </DialogTitle>

@@ -11,6 +11,7 @@ interface ComplianceData {
     totalUsers: number;
     adminUsers: number;
     regularUsers: number;
+    mfaEnabledUsers: number;
   };
   auditCoverage: {
     totalEntities: number;
@@ -35,10 +36,7 @@ interface ComplianceData {
 }
 
 type ComplianceStatus =
-  | "Compliant"
-  | "Needs Review"
-  | "Not Configured"
-  | "Not Yet Available";
+  "Compliant" | "Needs Review" | "Not Configured" | "Not Yet Available";
 
 interface ComplianceCheckItem {
   id: string;
@@ -101,11 +99,12 @@ const complianceChecklist: ComplianceCheckItem[] = [
   {
     id: "user-authentication",
     label: "User Authentication Controls",
-    description:
-      "Multi-factor authentication is not yet implemented. Coming in a future update.",
+    description: "Users protect their accounts with two-factor authentication.",
     framework: "HIPAA",
-    getStatus: () => {
-      return "Not Yet Available";
+    getStatus: (data) => {
+      const { totalUsers, mfaEnabledUsers } = data.accessControl;
+      if (totalUsers === 0 || mfaEnabledUsers === 0) return "Not Configured";
+      return mfaEnabledUsers === totalUsers ? "Compliant" : "Needs Review";
     },
   },
   {

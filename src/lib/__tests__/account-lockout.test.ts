@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+// Integration tests: exercise the real Postgres-backed cache/lockout tables.
+// Skipped when no DATABASE_URL is configured (they run in CI against a test DB).
+const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
 
 vi.mock("@/lib/logger", () => ({
   logger: {
@@ -14,6 +17,7 @@ vi.mock("@/lib/feature-flags", () => ({
   isFeatureEnabled: () => true,
 }));
 
+import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import {
   isAccountLocked,
@@ -25,26 +29,37 @@ import {
   LOCKOUT_CONFIG,
 } from "@/lib/account-lockout";
 
-describe("account-lockout", () => {
-  beforeEach(() => {
-    recordSuccessfulLogin("test-user");
+const TEST_IDENTIFIERS = ["test-user", "unknown-user", "totally-unknown-user"];
+
+describeDb("account-lockout", () => {
+  beforeEach(async () => {
+    await recordSuccessfulLogin("test-user");
+  });
+
+  afterAll(async () => {
+    if (!process.env.DATABASE_URL) return;
+    const schema = process.env.DB_SCHEMA || "assettool";
+    await prisma.$executeRawUnsafe(
+      `DELETE FROM "${schema}"."account_lockouts" WHERE "key" = ANY($1)`,
+      TEST_IDENTIFIERS,
+    );
   });
 
   describe("isAccountLocked", () => {
-    it("returns false for an unknown user with no history", () => {
-      const result = isAccountLocked("unknown-user");
+    it("returns false for an unknown user with no history", async () => {
+      const result = await isAccountLocked("unknown-user");
 
       expect(result.locked).toBe(false);
       expect(result.remainingMs).toBeUndefined();
       expect(result.unlockTime).toBeUndefined();
     });
 
-    it("returns true with remaining time for a locked user", () => {
+    it("returns true with remaining time for a locked user", async () => {
       for (let i = 0; i < LOCKOUT_CONFIG.maxAttempts; i++) {
-        recordFailedAttempt("test-user");
+        await recordFailedAttempt("test-user");
       }
 
-      const result = isAccountLocked("test-user");
+      const result = await isAccountLocked("test-user");
 
       expect(result.locked).toBe(true);
       expect(result.remainingMs).toBeGreaterThan(0);
@@ -53,23 +68,23 @@ describe("account-lockout", () => {
   });
 
   describe("recordFailedAttempt", () => {
-    it("increments attempts and returns correct attemptsRemaining", () => {
-      const first = recordFailedAttempt("test-user");
+    it("increments attempts and returns correct attemptsRemaining", async () => {
+      const first = await recordFailedAttempt("test-user");
       expect(first.locked).toBe(false);
       expect(first.attemptsRemaining).toBe(LOCKOUT_CONFIG.maxAttempts - 1);
 
-      const second = recordFailedAttempt("test-user");
+      const second = await recordFailedAttempt("test-user");
       expect(second.locked).toBe(false);
       expect(second.attemptsRemaining).toBe(LOCKOUT_CONFIG.maxAttempts - 2);
     });
 
-    it("locks the account after reaching maxAttempts", () => {
+    it("locks the account after reaching maxAttempts", async () => {
       for (let i = 0; i < LOCKOUT_CONFIG.maxAttempts - 1; i++) {
-        const result = recordFailedAttempt("test-user");
+        const result = await recordFailedAttempt("test-user");
         expect(result.locked).toBe(false);
       }
 
-      const lockResult = recordFailedAttempt("test-user");
+      const lockResult = await recordFailedAttempt("test-user");
 
       expect(lockResult.locked).toBe(true);
       expect(lockResult.attemptsRemaining).toBe(0);
@@ -77,8 +92,8 @@ describe("account-lockout", () => {
       expect(lockResult.unlockTime).toBeInstanceOf(Date);
     });
 
-    it("passes context through to the logger", () => {
-      recordFailedAttempt("test-user", {
+    it("passes context through to the logger", async () => {
+      await recordFailedAttempt("test-user", {
         ipAddress: "192.168.1.1",
         userAgent: "TestAgent",
       });
@@ -95,40 +110,42 @@ describe("account-lockout", () => {
   });
 
   describe("recordSuccessfulLogin", () => {
-    it("resets the lockout counter so subsequent checks show unlocked", () => {
+    it("resets the lockout counter so subsequent checks show unlocked", async () => {
       for (let i = 0; i < LOCKOUT_CONFIG.maxAttempts; i++) {
-        recordFailedAttempt("test-user");
+        await recordFailedAttempt("test-user");
       }
-      expect(isAccountLocked("test-user").locked).toBe(true);
+      expect((await isAccountLocked("test-user")).locked).toBe(true);
 
-      recordSuccessfulLogin("test-user");
+      await recordSuccessfulLogin("test-user");
 
-      expect(isAccountLocked("test-user").locked).toBe(false);
+      expect((await isAccountLocked("test-user")).locked).toBe(false);
 
-      const status = getLockoutStatus("test-user");
+      const status = await getLockoutStatus("test-user");
       expect(status.failedAttempts).toBe(0);
     });
 
-    it("is a no-op for users with no lockout history", () => {
-      expect(() => recordSuccessfulLogin("nonexistent-user")).not.toThrow();
+    it("is a no-op for users with no lockout history", async () => {
+      await expect(
+        recordSuccessfulLogin("nonexistent-user"),
+      ).resolves.not.toThrow();
     });
   });
 
   describe("unlockAccount", () => {
-    it("manually unlocks a locked account and returns true", () => {
+    it("manually unlocks a locked account and returns true", async () => {
       for (let i = 0; i < LOCKOUT_CONFIG.maxAttempts; i++) {
-        recordFailedAttempt("test-user");
+        await recordFailedAttempt("test-user");
       }
-      expect(isAccountLocked("test-user").locked).toBe(true);
+      expect((await isAccountLocked("test-user")).locked).toBe(true);
 
-      const result = unlockAccount("test-user", "admin-1");
+      const result = await unlockAccount("test-user", "admin-1");
 
       expect(result).toBe(true);
-      expect(isAccountLocked("test-user").locked).toBe(false);
+      expect((await isAccountLocked("test-user")).locked).toBe(false);
     });
 
-    it("returns false for an unknown user with no entry", () => {
-      const result = unlockAccount("totally-unknown-user");
+    it("returns false for an unknown user with no entry", async () => {
+      const result = await unlockAccount("totally-unknown-user");
 
       expect(result).toBe(false);
     });
@@ -167,8 +184,8 @@ describe("account-lockout", () => {
   });
 
   describe("getLockoutStatus", () => {
-    it("returns zeroed-out state for a user with no history", () => {
-      const status = getLockoutStatus("fresh-user");
+    it("returns zeroed-out state for a user with no history", async () => {
+      const status = await getLockoutStatus("fresh-user");
 
       expect(status.failedAttempts).toBe(0);
       expect(status.lockedUntil).toBeNull();
@@ -176,12 +193,12 @@ describe("account-lockout", () => {
       expect(status.isLocked).toBe(false);
     });
 
-    it("returns accurate state after failed attempts and lockout", () => {
+    it("returns accurate state after failed attempts and lockout", async () => {
       for (let i = 0; i < LOCKOUT_CONFIG.maxAttempts; i++) {
-        recordFailedAttempt("test-user");
+        await recordFailedAttempt("test-user");
       }
 
-      const status = getLockoutStatus("test-user");
+      const status = await getLockoutStatus("test-user");
 
       expect(status.failedAttempts).toBe(LOCKOUT_CONFIG.maxAttempts);
       expect(status.lockedUntil).toBeInstanceOf(Date);
@@ -191,13 +208,13 @@ describe("account-lockout", () => {
   });
 
   describe("progressive lockout", () => {
-    it("doubles the lockout duration on repeated lockouts", () => {
+    it("doubles the lockout duration on repeated lockouts", async () => {
       // First lockout: trigger maxAttempts failures
       for (let i = 0; i < LOCKOUT_CONFIG.maxAttempts; i++) {
-        recordFailedAttempt("test-user");
+        await recordFailedAttempt("test-user");
       }
 
-      const firstLockout = getLockoutStatus("test-user");
+      const firstLockout = await getLockoutStatus("test-user");
       const firstDuration =
         firstLockout.lockedUntil!.getTime() -
         firstLockout.lastAttempt!.getTime();
@@ -205,15 +222,17 @@ describe("account-lockout", () => {
       // Continue failing to trigger a second lockout cycle
       // The account is already locked but attempts still accumulate
       for (let i = 0; i < LOCKOUT_CONFIG.maxAttempts; i++) {
-        recordFailedAttempt("test-user");
+        await recordFailedAttempt("test-user");
       }
 
-      const secondLockout = getLockoutStatus("test-user");
+      const secondLockout = await getLockoutStatus("test-user");
       const secondDuration =
         secondLockout.lockedUntil!.getTime() -
         secondLockout.lastAttempt!.getTime();
 
-      expect(secondDuration).toBe(firstDuration * 2);
+      // last_attempt and locked_until are written by two separate statements, each
+      // stamped with its own NOW(), so the difference carries a few ms of drift.
+      expect(secondDuration).toBeCloseTo(firstDuration * 2, -3);
     });
   });
 });

@@ -20,8 +20,13 @@ import {
 describe("env-validation", () => {
   beforeEach(() => {
     vi.stubEnv("DATABASE_URL", "postgresql://localhost:5432/testdb");
-    vi.stubEnv("NEXTAUTH_URL", "http://localhost:3000");
-    vi.stubEnv("NEXTAUTH_SECRET", "a]3Kf9$mPqR7vLxW2nBtYcZeAsDgHjMk");
+    vi.stubEnv("BETTER_AUTH_URL", "http://localhost:3000");
+    vi.stubEnv("BETTER_AUTH_SECRET", "a]3Kf9$mPqR7vLxW2nBtYcZeAsDgHjMk");
+    vi.stubEnv("CRON_SECRET", "test-cron-secret-value");
+    // STRIPE_* are required unless SELF_HOSTED=true (see deployment-mode.ts);
+    // the test environment runs as a non-self-hosted deployment by default.
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_dummy_key_for_unit_tests");
+    vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_dummy_secret_for_unit_tests");
   });
 
   afterEach(() => {
@@ -38,14 +43,20 @@ describe("env-validation", () => {
 
     it("returns errors for missing required variables", () => {
       vi.unstubAllEnvs();
+      // CI injects a real DATABASE_URL for the DB-backed suites; remove it explicitly.
+      vi.stubEnv("DATABASE_URL", undefined);
+      vi.stubEnv("BETTER_AUTH_URL", undefined);
+      vi.stubEnv("BETTER_AUTH_SECRET", undefined);
 
       const result = validateEnvironment();
 
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors.some((e) => e.includes("DATABASE_URL"))).toBe(true);
-      expect(result.errors.some((e) => e.includes("NEXTAUTH_URL"))).toBe(true);
-      expect(result.errors.some((e) => e.includes("NEXTAUTH_SECRET"))).toBe(
+      expect(result.errors.some((e) => e.includes("BETTER_AUTH_URL"))).toBe(
+        true,
+      );
+      expect(result.errors.some((e) => e.includes("BETTER_AUTH_SECRET"))).toBe(
         true,
       );
     });
@@ -138,5 +149,18 @@ describe("env-validation", () => {
         "Environment variable INT_VAR is not a valid integer",
       );
     });
+  });
+});
+
+describe("domain split config", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("reports an invalid split as an error", () => {
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_URL", "https://example.com");
+    vi.stubEnv("BETTER_AUTH_URL", "https://example.com");
+    const result = validateEnvironment();
+    expect(
+      result.errors.some((e) => e.includes("NEXT_PUBLIC_MARKETING_URL")),
+    ).toBe(true);
   });
 });

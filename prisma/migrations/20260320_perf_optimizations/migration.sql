@@ -2,7 +2,7 @@
 -- Based on analysis of query patterns and "You Just Need Postgres" principles
 
 -- Set search_path to match the application schema
-SET search_path TO "assettool";
+SET search_path TO "public";
 
 -- ============================================================
 -- 0. Ensure cache table exists (may have been lost if the

@@ -23,7 +23,12 @@ const ThemeSwitcher = () => {
 
   return (
     <div>
-      <Button onClick={toggleTheme} variant="ghost" size="icon">
+      <Button
+        onClick={toggleTheme}
+        variant="ghost"
+        size="icon"
+        aria-label="Toggle theme"
+      >
         {theme === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
       </Button>
     </div>

@@ -8,6 +8,7 @@
  */
 
 import { SAML, type SamlConfig, type Profile } from "@node-saml/node-saml";
+import { jwtVerify, createRemoteJWKSet } from "jose";
 import prisma from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 import { logger } from "@/lib/logger";
@@ -148,10 +149,33 @@ export async function validateSamlResponse(body: {
 export interface OidcUserProfile {
   sub: string;
   email?: string;
+  /**
+   * Whether the IdP asserted `email_verified: true` on a signature-verified
+   * ID token. Only claims backed by a verified JWT signature set this to
+   * true — callers must not treat `email` as trustworthy for account
+   * linking unless this is true.
+   */
+  emailVerified: boolean;
   firstName?: string;
   lastName?: string;
   username?: string;
   groups?: string[];
+}
+
+/**
+ * Cache of remote JWKS getters, keyed by jwks_uri. `createRemoteJWKSet`
+ * already caches fetched keys internally, but caching the getter itself
+ * avoids re-creating (and re-fetching) it on every login.
+ */
+const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+
+function getRemoteJwks(jwksUri: string): ReturnType<typeof createRemoteJWKSet> {
+  let jwks = jwksCache.get(jwksUri);
+  if (!jwks) {
+    jwks = createRemoteJWKSet(new URL(jwksUri));
+    jwksCache.set(jwksUri, jwks);
+  }
+  return jwks;
 }
 
 /**
@@ -200,12 +224,14 @@ export async function exchangeOidcCode(code: string): Promise<OidcUserProfile> {
   let tokenEndpoint = settings.tokenUrl;
   let userinfoEndpoint: string | undefined;
   let expectedIssuer: string | undefined;
+  let jwksUri: string | undefined;
 
   if (settings.discoveryUrl) {
     const disco = await fetchOidcDiscovery(settings.discoveryUrl);
     tokenEndpoint = tokenEndpoint || disco.token_endpoint;
     userinfoEndpoint = disco.userinfo_endpoint;
     expectedIssuer = disco.issuer;
+    jwksUri = disco.jwks_uri;
   }
 
   if (!tokenEndpoint) {
@@ -234,36 +260,29 @@ export async function exchangeOidcCode(code: string): Promise<OidcUserProfile> {
 
   const tokens = await tokenRes.json();
 
-  // Decode and validate ID token claims
+  // Verify the ID token's signature against the IdP's published JWKS, and
+  // validate issuer/audience/expiry as part of that same check. A payload
+  // that hasn't been signature-verified must never be trusted (CWE-347).
   let claims: Record<string, unknown> = {};
+  let emailVerified = false;
   if (tokens.id_token) {
-    const parts = tokens.id_token.split(".");
-    if (parts.length === 3) {
-      claims = JSON.parse(Buffer.from(parts[1], "base64url").toString());
-    }
-
-    if (claims.iss && expectedIssuer && claims.iss !== expectedIssuer) {
+    if (!jwksUri) {
       throw new Error(
-        `ID token issuer mismatch: expected ${expectedIssuer}, got ${claims.iss}`,
+        "Cannot verify ID token signature: OIDC discovery is not configured or does not provide a jwks_uri",
       );
     }
 
-    const aud = claims.aud;
-    const audMatch = Array.isArray(aud)
-      ? aud.includes(settings.clientId)
-      : aud === settings.clientId;
-    if (aud && !audMatch) {
-      throw new Error(
-        `ID token audience mismatch: expected ${settings.clientId}, got ${aud}`,
-      );
-    }
+    const { payload } = await jwtVerify(
+      tokens.id_token,
+      getRemoteJwks(jwksUri),
+      {
+        issuer: expectedIssuer,
+        audience: settings.clientId,
+      },
+    );
 
-    if (
-      typeof claims.exp === "number" &&
-      claims.exp < Math.floor(Date.now() / 1000)
-    ) {
-      throw new Error("ID token has expired");
-    }
+    claims = payload as Record<string, unknown>;
+    emailVerified = claims.email_verified === true;
   }
 
   // Optionally fetch userinfo for more claims
@@ -286,6 +305,7 @@ export async function exchangeOidcCode(code: string): Promise<OidcUserProfile> {
   return {
     sub: str(claims.sub) || str(claims.oid) || "",
     email: str(claims[settings.attrEmail]) || str(claims.email),
+    emailVerified,
     firstName:
       str(claims[settings.attrFirstName]) || str(claims.given_name) || "",
     lastName:

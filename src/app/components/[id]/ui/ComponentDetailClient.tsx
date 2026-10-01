@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ export default function ComponentDetailClient({
   const [checkoutQty, setCheckoutQty] = useState("1");
   const [checkoutNotes, setCheckoutNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
 
   const handleCheckout = async () => {
     if (!checkoutAssetId) {
@@ -70,7 +72,7 @@ export default function ComponentDetailClient({
       }
 
       toast.success("Component checked out to asset");
-      window.location.reload();
+      router.refresh();
     } catch (err: any) {
       toast.error("Checkout failed", { description: err.message });
     } finally {
@@ -88,7 +90,7 @@ export default function ComponentDetailClient({
       });
       if (!res.ok) throw new Error("Check-in failed");
       toast.success("Component returned");
-      window.location.reload();
+      router.refresh();
     } catch (err) {
       console.error("Check-in failed", err);
       toast.error("Check-in failed");

@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, componentCheckinSchema } from "@/lib/validation";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger, logCatchError } from "@/lib/logger";
@@ -14,12 +15,15 @@ interface RouteParams {
 // GET /api/components/checkout/[id]
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    await requirePermission("component:view");
+    const authUser = await requirePermission("component:view");
 
     const { id } = await params;
 
-    const checkout = await prisma.componentCheckout.findUnique({
-      where: { id },
+    const checkout = await prisma.componentCheckout.findFirst({
+      where: {
+        id,
+        component: { organizationId: authUser.organizationId ?? null },
+      },
       include: {
         component: {
           select: { id: true, name: true },
@@ -67,9 +71,13 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const validated = validateBody(componentCheckinSchema, body);
     if (validated instanceof NextResponse) return validated;
 
-    // Verify the checkout exists and hasn't already been returned
-    const existing = await prisma.componentCheckout.findUnique({
-      where: { id },
+    // Verify the checkout exists, belongs to the caller's org, and hasn't
+    // already been returned.
+    const existing = await prisma.componentCheckout.findFirst({
+      where: {
+        id,
+        component: { organizationId: authUser.organizationId ?? null },
+      },
       include: {
         component: {
           select: { id: true, name: true },
@@ -144,6 +152,9 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       componentName: existing.component.name,
       quantity: existing.quantity,
     }).catch(logCatchError("Integration notification failed"));
+
+    // Stock changed — bust the cached component list so quantities are current.
+    await invalidateCacheByPrefix("components_all");
 
     return NextResponse.json(checkin, { status: 200 });
   } catch (e: any) {

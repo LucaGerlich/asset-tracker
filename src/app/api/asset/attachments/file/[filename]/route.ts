@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
 import prisma from "@/lib/prisma";
 import { getOrganizationContext } from "@/lib/organization-context";
-import { getStorage, getOrgStorage } from "@/lib/storage";
+import { getOrgStorage } from "@/lib/storage";
 import { thumbKey, type ThumbVariant } from "@/lib/storage/thumbnails";
 
 export async function GET(
@@ -14,13 +14,18 @@ export async function GET(
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
+    // Fail closed: a concrete org is required before any tenant-scoped query.
+    if (!orgId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { filename } = await params;
 
     // Find attachment and verify org access
     const attachment = await prisma.asset_attachments.findFirst({
       where: {
         filename,
-        ...(orgId ? { asset: { organizationId: orgId } } : {}),
+        asset: { organizationId: orgId },
       },
     });
 
@@ -28,7 +33,7 @@ export async function GET(
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    const storage = orgId ? await getOrgStorage(orgId) : await getStorage();
+    const storage = await getOrgStorage(orgId);
 
     const { searchParams } = new URL(req.url);
     const thumb = searchParams.get("thumb") as ThumbVariant | null;

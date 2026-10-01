@@ -16,8 +16,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const user = await requirePermission("reservation:view");
 
-    const approval = await prisma.approvalRequest.findUnique({
-      where: { id },
+    const approval = await prisma.approvalRequest.findFirst({
+      where: {
+        id,
+        requester: { organizationId: user.organizationId ?? null },
+      },
       include: {
         requester: {
           select: {
@@ -87,8 +90,11 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     const { action, notes } = validated;
 
-    const existing = await prisma.approvalRequest.findUnique({
-      where: { id },
+    const existing = await prisma.approvalRequest.findFirst({
+      where: {
+        id,
+        requester: { organizationId: admin.organizationId ?? null },
+      },
     });
 
     if (!existing) {

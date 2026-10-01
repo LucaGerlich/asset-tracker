@@ -239,11 +239,23 @@ function TCOReport() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/dashboard/tco")
-      .then((r) => r.json())
-      .then((d) => setData(d))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
+    async function fetchData() {
+      try {
+        const res = await fetch("/api/dashboard/tco");
+        if (!res.ok) {
+          throw new Error(`Failed to fetch TCO data (${res.status})`);
+        }
+        const json: TCOData = await res.json();
+        setData(json);
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load TCO data";
+        toast.error(message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
   if (loading) {

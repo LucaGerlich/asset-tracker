@@ -1,4 +1,4 @@
-SET search_path TO "assettool";
+SET search_path TO "public";
 
 CREATE TABLE IF NOT EXISTS "asset_templates" (
   "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),

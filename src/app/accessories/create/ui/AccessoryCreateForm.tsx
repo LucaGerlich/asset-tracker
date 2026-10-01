@@ -164,7 +164,7 @@ export default function AccessoryCreateForm({
 
       const created = await res.json();
       if (mode === "create" && Object.keys(customFieldValues).length > 0) {
-        await fetch("/api/custom-fields/values", {
+        const cfRes = await fetch("/api/custom-fields/values", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -173,6 +173,11 @@ export default function AccessoryCreateForm({
             values: customFieldValues,
           }),
         });
+        if (!cfRes.ok) {
+          toast.warning("Saved, but custom fields could not be saved", {
+            description: "Open the item to re-enter them.",
+          });
+        }
       }
       toast.success(
         mode === "edit" ? "Accessory updated" : "Accessory created",

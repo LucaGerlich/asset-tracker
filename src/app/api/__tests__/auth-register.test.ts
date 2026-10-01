@@ -5,12 +5,7 @@ import {
 } from "../../../../tests/setup/test-helpers";
 
 // Mock all dependencies before imports
-vi.mock("@/lib/prisma", () => ({
-  default: {
-    user: { findFirst: vi.fn(), create: vi.fn() },
-    organization: { create: vi.fn() },
-  },
-}));
+vi.mock("@/lib/prisma");
 
 vi.mock("@/lib/api-auth", () => ({
   requireNotDemoMode: vi.fn().mockReturnValue(null),
@@ -22,9 +17,7 @@ vi.mock("@/lib/rate-limit", () => ({
   createRateLimitResponse: vi.fn(),
 }));
 
-vi.mock("@/lib/logger", () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
-}));
+vi.mock("@/lib/logger");
 
 vi.mock("@/lib/auth-utils", () => ({
   hashPassword: vi.fn().mockResolvedValue("hashed_password"),
@@ -34,7 +27,7 @@ import { POST } from "@/app/api/auth/register/route";
 import prisma from "@/lib/prisma";
 import { checkRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 
-const mockPrisma = vi.mocked(prisma);
+const mockPrisma = vi.mocked(prisma, true);
 const mockCheckRateLimit = vi.mocked(checkRateLimit);
 
 beforeEach(() => {

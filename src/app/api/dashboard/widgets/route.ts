@@ -91,12 +91,13 @@ export async function PUT(req: NextRequest) {
 
       await Promise.all(createPromises);
 
-      // Also update any real widgets
+      // Also update any real widgets. updateMany scoped to the caller so a
+      // foreign widget id is a silent no-op rather than an IDOR write.
       const updatePromises = widgets
         .filter((w) => !w.id.startsWith("default-"))
         .map((w) =>
-          prisma.dashboardWidget.update({
-            where: { id: w.id },
+          prisma.dashboardWidget.updateMany({
+            where: { id: w.id, userId: user.id },
             data: { position: w.position, visible: w.visible },
           }),
         );
@@ -104,8 +105,8 @@ export async function PUT(req: NextRequest) {
       await Promise.all(updatePromises);
     } else {
       const updatePromises = widgets.map((w) =>
-        prisma.dashboardWidget.update({
-          where: { id: w.id },
+        prisma.dashboardWidget.updateMany({
+          where: { id: w.id, userId: user.id },
           data: { position: w.position, visible: w.visible },
         }),
       );

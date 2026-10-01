@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requirePermission,
+  requireNotDemoMode,
+} from "@/lib/api-auth";
 import { validateBody, assetCheckoutSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -77,7 +81,8 @@ export async function POST(req: Request) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    const user = await requireApiAuth();
+    // Checkout requires the asset:assign permission (matches the bulk route).
+    const user = await requirePermission("asset:assign");
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
@@ -107,7 +112,7 @@ export async function POST(req: Request) {
 
     if (checkedOutToType === "user") {
       const targetUser = await prisma.user.findFirst({
-        where: { userid: checkedOutTo!, organizationId: orgId ?? undefined },
+        where: { userid: checkedOutTo!, organizationId: orgId ?? null },
       });
       if (!targetUser) {
         return NextResponse.json(
@@ -117,8 +122,11 @@ export async function POST(req: Request) {
       }
       targetLabel = `${targetUser.firstname} ${targetUser.lastname}`;
     } else if (checkedOutToType === "location") {
-      const targetLocation = await prisma.location.findUnique({
-        where: { locationid: checkedOutToLocationId! },
+      const targetLocation = await prisma.location.findFirst({
+        where: {
+          locationid: checkedOutToLocationId!,
+          organizationId: orgId ?? null,
+        },
       });
       if (!targetLocation) {
         return NextResponse.json(
@@ -134,8 +142,8 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
-      const targetAsset = await prisma.asset.findUnique({
-        where: { assetid: checkedOutToAssetId! },
+      const targetAsset = await prisma.asset.findFirst({
+        where: { assetid: checkedOutToAssetId!, organizationId: orgId ?? null },
       });
       if (!targetAsset) {
         return NextResponse.json(

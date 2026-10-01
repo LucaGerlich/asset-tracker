@@ -16,6 +16,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("kit:checkout");
+    const orgId = authUser.organizationId ?? null;
     const { id } = await params;
 
     const body = await req.json();
@@ -28,9 +29,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Verify kit exists and is active
-    const kit = await prisma.kit.findUnique({
-      where: { id },
+    // Verify kit exists, belongs to the caller's org, and is active
+    const kit = await prisma.kit.findFirst({
+      where: { id, organizationId: orgId },
       include: { items: true },
     });
 
@@ -42,9 +43,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Kit is inactive" }, { status: 400 });
     }
 
-    // Verify target user exists
-    const targetUser = await prisma.user.findUnique({
-      where: { userid: userId },
+    // Verify target user exists and belongs to the caller's org
+    const targetUser = await prisma.user.findFirst({
+      where: { userid: userId, organizationId: orgId },
     });
 
     if (!targetUser) {
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           const asset = await tx.asset.findFirst({
             where: {
               assetcategorytypeid: item.entityId,
+              organizationId: orgId,
               checkouts: { none: { status: "checked_out" } },
             },
           });
@@ -98,23 +100,43 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
             });
           }
         } else if (item.entityType === "accessory") {
-          // Assign accessory to user
-          await tx.userAccessoires.create({
-            data: {
-              userid: userId,
-              accessorieid: item.entityId,
-              creation_date: new Date(),
-            },
+          // Verify the accessory belongs to the org before assigning.
+          const accessory = await tx.accessories.findFirst({
+            where: { accessorieid: item.entityId, organizationId: orgId },
+            select: { accessorieid: true },
           });
+          if (!accessory) {
+            results.push({
+              entityType: item.entityType,
+              entityId: item.entityId,
+              status: "unavailable",
+              detail: "Accessory not found",
+            });
+            continue;
+          }
+          // Idempotent assign — don't create a duplicate row.
+          const existing = await tx.userAccessoires.findFirst({
+            where: { userid: userId, accessorieid: item.entityId },
+            select: { useraccessoiresid: true },
+          });
+          if (!existing) {
+            await tx.userAccessoires.create({
+              data: {
+                userid: userId,
+                accessorieid: item.entityId,
+                creation_date: new Date(),
+              },
+            });
+          }
           results.push({
             entityType: item.entityType,
             entityId: item.entityId,
-            status: "assigned",
+            status: existing ? "already_assigned" : "assigned",
           });
         } else if (item.entityType === "licence") {
           // Assign a licence seat
-          const licence = await tx.licence.findUnique({
-            where: { licenceid: item.entityId },
+          const licence = await tx.licence.findFirst({
+            where: { licenceid: item.entityId, organizationId: orgId },
             include: {
               seatAssignments: { where: { unassignedAt: null } },
             },

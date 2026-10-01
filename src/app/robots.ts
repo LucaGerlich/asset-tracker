@@ -1,8 +1,23 @@
 import type { MetadataRoute } from "next";
-import { getBaseUrl } from "@/lib/url";
+import { headers } from "next/headers";
+import { getHostKind, getSplitOrigins } from "@/lib/host-routing";
+import { getMarketingUrl } from "@/lib/url";
 
-export default function robots(): MetadataRoute.Robots {
-  const baseUrl = getBaseUrl();
+// The proxy reads the split env at runtime; render per request so a build
+// without NEXT_PUBLIC_MARKETING_URL (e.g. a Docker image) still answers per host.
+export const dynamic = "force-dynamic";
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  // With the domain split, the app host must not be indexed at all.
+  const origins = getSplitOrigins();
+  if (
+    origins &&
+    getHostKind((await headers()).get("host"), origins) === "app"
+  ) {
+    return { rules: [{ userAgent: "*", disallow: "/" }] };
+  }
+
+  const baseUrl = getMarketingUrl();
 
   return {
     rules: [

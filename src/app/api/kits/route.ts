@@ -8,6 +8,7 @@ import {
   updateKitSchema,
 } from "@/lib/validation";
 import { logger } from "@/lib/logger";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -141,6 +142,8 @@ export async function POST(req: Request) {
       details: { name },
     });
 
+    await invalidateCacheByPrefix("kits_all").catch(() => {});
+
     return NextResponse.json(kit, { status: 201 });
   } catch (e: any) {
     logger.error("POST /api/kits error", { error: e });
@@ -181,7 +184,19 @@ export async function PUT(req: Request) {
 
     const { name, description, isActive, items } = validated;
 
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+
     const kit = await prisma.$transaction(async (tx) => {
+      // Verify the kit belongs to the caller's organization before mutating.
+      const existing = await tx.kit.findFirst({
+        where: scopeToOrganization({ id }, orgId),
+        select: { id: true },
+      });
+      if (!existing) {
+        throw new Error("KIT_NOT_FOUND");
+      }
+
       const updateData: Record<string, unknown> = {};
       if (name !== undefined) updateData.name = name;
       if (description !== undefined) updateData.description = description;
@@ -232,6 +247,8 @@ export async function PUT(req: Request) {
       details: { name: kit?.name, changes: Object.keys(validated) },
     });
 
+    await invalidateCacheByPrefix("kits_all").catch(() => {});
+
     return NextResponse.json(kit, { status: 200 });
   } catch (e: any) {
     logger.error("PUT /api/kits error", { error: e });
@@ -242,7 +259,7 @@ export async function PUT(req: Request) {
     if (e.message?.startsWith("Forbidden")) {
       return NextResponse.json({ error: e.message }, { status: 403 });
     }
-    if (e.code === "P2025") {
+    if (e.message === "KIT_NOT_FOUND" || e.code === "P2025") {
       return NextResponse.json({ error: "Kit not found" }, { status: 404 });
     }
 
@@ -258,6 +275,8 @@ export async function DELETE(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("kit:delete");
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
 
     const body = await req.json();
     const { id } = body;
@@ -269,8 +288,9 @@ export async function DELETE(req: Request) {
       );
     }
 
-    const kit = await prisma.kit.findUnique({
-      where: { id },
+    // Scope the lookup to the caller's org so foreign kits read as "not found".
+    const kit = await prisma.kit.findFirst({
+      where: scopeToOrganization({ id }, orgId),
       select: { name: true },
     });
 
@@ -289,6 +309,8 @@ export async function DELETE(req: Request) {
       entityId: id,
       details: { name: kit.name },
     });
+
+    await invalidateCacheByPrefix("kits_all").catch(() => {});
 
     return NextResponse.json(
       { message: "Kit deleted successfully" },

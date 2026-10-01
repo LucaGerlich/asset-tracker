@@ -139,6 +139,7 @@ export default function MaintenancePageClient() {
       setAssets(data.data || data);
     } catch (err) {
       console.error("Error fetching assets:", err);
+      toast.error("Failed to load assets");
     }
   }, []);
 
@@ -150,6 +151,7 @@ export default function MaintenancePageClient() {
       setUsers(data.data || data);
     } catch (err) {
       console.error("Error fetching users:", err);
+      toast.error("Failed to load users");
     }
   }, []);
 

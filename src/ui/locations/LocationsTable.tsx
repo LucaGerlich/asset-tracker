@@ -162,6 +162,7 @@ export default function LocationsTable({ items }) {
         size="icon"
         variant="ghost"
         asChild
+        aria-label="Edit location"
       >
         <Link href={`/locations/${item.locationid}/edit`}>
           <EditIcon className="h-4 w-4" />
@@ -173,6 +174,7 @@ export default function LocationsTable({ items }) {
             className="text-muted-foreground h-7 w-7 cursor-pointer hover:opacity-80"
             size="icon"
             variant="ghost"
+            aria-label="More actions"
           >
             <MoreVertical className="h-4 w-4" />
           </Button>

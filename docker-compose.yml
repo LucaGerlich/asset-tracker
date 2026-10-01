@@ -21,6 +21,27 @@ services:
     profiles:
       - with-db
 
+  # One-shot migration runner. Applies pending Prisma migrations against the
+  # real database before the app starts — the app image's `builder` stage
+  # (see Dockerfile) has no DB connection at build time, so `prisma migrate
+  # deploy` can't run there; it has to run here, against a live database.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: assettracker-migrate
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://assettracker:assettracker@db:5432/assettracker}
+    command: ["bunx", "prisma", "migrate", "deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
+    profiles:
+      - with-db
+      - app-only
+
   # Asset Tracker Application
   app:
     build:
@@ -37,6 +58,8 @@ services:
       db:
         condition: service_healthy
         required: false
+      migrate:
+        condition: service_completed_successfully
     profiles:
       - with-db
       - app-only

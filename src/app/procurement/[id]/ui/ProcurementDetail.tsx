@@ -36,7 +36,6 @@ import {
   CheckCircle,
   XCircle,
   Send,
-  Pencil,
   Trash2,
   ShoppingCart,
   FileText,
@@ -378,12 +377,6 @@ export default function ProcurementDetail() {
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href={`/procurement/${requestId}/edit`}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
               </Button>
               <Button onClick={handleSubmitForApproval} disabled={isActioning}>
                 {isActioning ? (

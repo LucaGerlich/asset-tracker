@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requirePlanFeature,
+} from "@/lib/api-auth";
 import { generateApiKey } from "@/lib/api-keys";
 import { logger } from "@/lib/logger";
 import { PERMISSIONS } from "@/lib/rbac";
@@ -15,6 +19,7 @@ export async function POST(req: Request) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAdmin();
+    await requirePlanFeature(user, "api_keys");
 
     const body = await req.json();
     const { name, scopes, expiresAt } = body;

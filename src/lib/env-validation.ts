@@ -4,6 +4,8 @@
  */
 
 import { logger } from "@/lib/logger";
+import { isSelfHosted } from "@/lib/deployment-mode";
+import { validateSplitConfig } from "@/lib/host-routing";
 
 interface EnvVarConfig {
   /** Name of the environment variable */
@@ -60,6 +62,12 @@ export const ENV_CONFIG: EnvVarConfig[] = [
       }
     },
     validateMessage: "Must be a valid URL",
+  },
+  {
+    name: "NEXT_PUBLIC_MARKETING_URL",
+    required: false,
+    description:
+      "Marketing site origin; enables the marketing/app domain split (app stays at BETTER_AUTH_URL)",
   },
   {
     name: "BETTER_AUTH_SECRET",
@@ -171,6 +179,23 @@ export const ENV_CONFIG: EnvVarConfig[] = [
     validate: (v) => ["true", "false"].includes(v),
     validateMessage: "Must be 'true' or 'false'",
   },
+
+  // Billing (Stripe) — required for SaaS deployments, irrelevant when
+  // SELF_HOSTED=true disables quota/billing enforcement entirely.
+  {
+    name: "STRIPE_SECRET_KEY",
+    required: !isSelfHosted(),
+    description:
+      "Stripe secret key for billing (not required when SELF_HOSTED=true)",
+    sensitive: true,
+  },
+  {
+    name: "STRIPE_WEBHOOK_SECRET",
+    required: !isSelfHosted(),
+    description:
+      "Stripe webhook signing secret (not required when SELF_HOSTED=true)",
+    sensitive: true,
+  },
 ];
 
 interface ValidationResult {
@@ -235,6 +260,9 @@ export function validateEnvironment(): ValidationResult {
       }
     }
   }
+
+  const splitError = validateSplitConfig();
+  if (splitError) errors.push(splitError);
 
   return {
     valid: errors.length === 0,

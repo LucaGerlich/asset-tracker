@@ -62,6 +62,15 @@ export async function POST(req: Request) {
       );
     }
 
+    // The domain is interpolated directly into https://${domain}.freshdesk.com,
+    // so it must be restricted to a safe subdomain shape before it's stored.
+    if (!/^[a-z0-9-]{1,63}$/i.test(domain)) {
+      return NextResponse.json(
+        { error: "Invalid Freshdesk domain" },
+        { status: 400 },
+      );
+    }
+
     // Upsert Freshdesk settings
     const settingsToUpsert = [
       {

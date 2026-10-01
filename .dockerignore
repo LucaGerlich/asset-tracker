@@ -12,6 +12,7 @@ build
 .env
 .env.local
 .env.*.local
+.env.bak*
 
 # Git
 .git
@@ -34,6 +35,22 @@ docs/
 
 # Testing
 coverage
+tests/
+postman/
+
+# Other apps / tooling not needed in the Next.js image
+mobile/
+.github/
+.serena/
+.aislop/
+.claude/
+graphify-out
+.understand-anything
+
+# Ad-hoc local screenshots (not part of public/ assets)
+/current-landing.png
+/vite-landing.png
+/viteplus-landing.png
 
 # Misc
 *.log

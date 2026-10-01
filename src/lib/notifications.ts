@@ -4,7 +4,12 @@
  */
 
 import prisma from "./prisma";
-import { queueEmail, emailTemplates, renderTemplate } from "./email";
+import {
+  queueEmail,
+  emailTemplates,
+  renderTemplate,
+  renderTextTemplate,
+} from "./email";
 
 interface AssetNotificationData {
   assetId: string;
@@ -17,6 +22,34 @@ interface UserNotificationData {
   userId: string;
   userName: string;
   userEmail: string;
+}
+
+interface OrgAdmin {
+  userid: string;
+  email: string | null;
+}
+
+/**
+ * Build a memoized resolver that returns the active admins for a given
+ * organization. Used by cron checks that iterate many entities so each org's
+ * admins are fetched at most once — and never leaked to another tenant.
+ */
+function orgAdminResolver(): (
+  organizationId: string | null,
+) => Promise<OrgAdmin[]> {
+  const cache = new Map<string | null, OrgAdmin[]>();
+  return async (organizationId: string | null) => {
+    if (!cache.has(organizationId)) {
+      cache.set(
+        organizationId,
+        await prisma.user.findMany({
+          where: { isadmin: true, organizationId },
+          select: { userid: true, email: true },
+        }),
+      );
+    }
+    return cache.get(organizationId)!;
+  };
 }
 
 /**
@@ -38,7 +71,7 @@ export async function notifyAssetAssignment(
     assignedDate: new Date().toLocaleDateString(),
   });
 
-  const subject = renderTemplate(template.subject, {
+  const subject = renderTextTemplate(template.subject, {
     assetName: asset.assetName,
   });
 
@@ -63,7 +96,7 @@ export async function notifyAssetUnassignment(
     unassignedDate: new Date().toLocaleDateString(),
   });
 
-  const subject = renderTemplate(template.subject, {
+  const subject = renderTextTemplate(template.subject, {
     assetName: asset.assetName,
   });
 
@@ -71,7 +104,8 @@ export async function notifyAssetUnassignment(
 }
 
 /**
- * Notify all admins about a new reservation request
+ * Notify the admins of a single organization about a new reservation request.
+ * Scoped by organizationId so tenants never receive other orgs' requests.
  */
 export async function notifyReservationRequest(reservation: {
   assetName: string;
@@ -80,13 +114,17 @@ export async function notifyReservationRequest(reservation: {
   startDate: string;
   endDate: string;
   notes: string | null;
+  organizationId: string | null;
 }): Promise<void> {
   const admins = await prisma.user.findMany({
-    where: { isadmin: true },
+    where: {
+      isadmin: true,
+      organizationId: reservation.organizationId ?? null,
+    },
   });
 
   const template = emailTemplates.reservationRequest;
-  const subject = renderTemplate(template.subject, {
+  const subject = renderTextTemplate(template.subject, {
     assetName: reservation.assetName,
   });
   const html = renderTemplate(template.html, {
@@ -130,7 +168,7 @@ export async function notifyReservationDecision(decision: {
       ? emailTemplates.reservationApproved
       : emailTemplates.reservationRejected;
 
-  const subject = renderTemplate(template.subject, {
+  const subject = renderTextTemplate(template.subject, {
     assetName: decision.assetName,
   });
   const html = renderTemplate(template.html, {
@@ -198,7 +236,7 @@ export async function checkExpiringLicenses(): Promise<number> {
       daysRemaining: daysRemaining.toString(),
     });
 
-    const subject = renderTemplate(template.subject, {
+    const subject = renderTextTemplate(template.subject, {
       licenseName: license.licenceCategoryType.licencecategorytypename,
     });
 
@@ -258,7 +296,7 @@ export async function checkMaintenanceDue(): Promise<number> {
       dueDate: new Date(maintenance.nextDueDate).toLocaleDateString(),
     });
 
-    const subject = renderTemplate(template.subject, {
+    const subject = renderTextTemplate(template.subject, {
       assetName: maintenance.asset.assetname,
     });
 
@@ -287,13 +325,13 @@ export async function checkLowStock(): Promise<number> {
     (item) => item.quantity <= item.minQuantity,
   );
 
-  const admins = await prisma.user.findMany({
-    where: { isadmin: true },
-  });
+  // Resolve admins lazily per-org so each org only ever hears about its own stock.
+  const getOrgAdmins = orgAdminResolver();
 
   let notified = 0;
 
   for (const item of lowStockItems) {
+    const admins = await getOrgAdmins(item.organizationId ?? null);
     for (const admin of admins) {
       if (!admin.email) continue;
 
@@ -307,7 +345,7 @@ export async function checkLowStock(): Promise<number> {
         minQuantity: item.minQuantity.toString(),
       });
 
-      const subject = renderTemplate(template.subject, {
+      const subject = renderTextTemplate(template.subject, {
         consumableName: item.consumablename,
       });
 
@@ -338,9 +376,8 @@ export async function checkExpiringWarranties(): Promise<number> {
     },
   });
 
-  const admins = await prisma.user.findMany({
-    where: { isadmin: true },
-  });
+  // Resolve admins lazily per-org so warranty alerts stay within their tenant.
+  const getOrgAdmins = orgAdminResolver();
 
   let notified = 0;
 
@@ -350,6 +387,7 @@ export async function checkExpiringWarranties(): Promise<number> {
         (1000 * 60 * 60 * 24),
     );
 
+    const admins = await getOrgAdmins(asset.organizationId ?? null);
     for (const admin of admins) {
       if (!admin.email) continue;
 
@@ -362,7 +400,7 @@ export async function checkExpiringWarranties(): Promise<number> {
         daysRemaining: daysRemaining.toString(),
       });
 
-      const subject = renderTemplate(template.subject, {
+      const subject = renderTextTemplate(template.subject, {
         assetName: asset.assetname,
       });
 
@@ -391,7 +429,7 @@ export async function notifyTicketAssigned(
   assigneeName: string,
 ): Promise<void> {
   const template = emailTemplates.ticketAssigned;
-  const subject = renderTemplate(template.subject, { ticketTitle });
+  const subject = renderTextTemplate(template.subject, { ticketTitle });
   const html = renderTemplate(template.html, {
     assigneeName,
     ticketTitle,
@@ -421,7 +459,7 @@ export async function notifyTicketComment(
   commentText: string,
 ): Promise<void> {
   const template = emailTemplates.ticketComment;
-  const subject = renderTemplate(template.subject, { ticketTitle });
+  const subject = renderTextTemplate(template.subject, { ticketTitle });
   const html = renderTemplate(template.html, {
     recipientName,
     ticketTitle,
@@ -451,7 +489,7 @@ export async function notifyTicketStatusChanged(
   newStatus: string,
 ): Promise<void> {
   const template = emailTemplates.ticketStatusChanged;
-  const subject = renderTemplate(template.subject, { ticketTitle });
+  const subject = renderTextTemplate(template.subject, { ticketTitle });
   const html = renderTemplate(template.html, {
     creatorName,
     ticketTitle,

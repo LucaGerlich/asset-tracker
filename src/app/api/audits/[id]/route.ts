@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, updateAuditCampaignSchema } from "@/lib/validation";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import { logger } from "@/lib/logger";
 import {
   getOrganizationContext,
@@ -130,6 +131,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       details: { name: updated.name },
     });
 
+    await invalidateCacheByPrefix("audit_campaigns_all").catch(() => {});
+
     return NextResponse.json(updated, { status: 200 });
   } catch (e: any) {
     logger.error("PUT /api/audits/[id] error", { error: e });
@@ -184,6 +187,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       entityId: id,
       details: { name: campaign.name },
     });
+
+    await invalidateCacheByPrefix("audit_campaigns_all").catch(() => {});
 
     return NextResponse.json(
       { message: "Audit campaign deleted successfully" },

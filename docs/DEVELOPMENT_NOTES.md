@@ -29,7 +29,7 @@ Shared database with `organizationId` column on all tenant-scoped tables. `scope
 - **Auth flow:** BetterAuth credential login with optional TOTP/backup code MFA step, SSO via OAuth2 (Microsoft, Google), LDAP/SAML
 - **Rate limiting:** IP-based (10 attempts/15 min) with progressive account lockout
 - **Session tracking:** IP + user-agent recorded, hourly JWT revalidation
-- **Encryption:** AES-256-GCM at rest for MFA secrets, webhook secrets, API keys, SSO/LDAP creds
+- **Encryption:** AES-256-GCM at rest for webhook secrets, API keys, SSO/LDAP creds; TOTP secrets and backup codes are encrypted by BetterAuth with `BETTER_AUTH_SECRET`
 - **Security headers:** Full CSP, HSTS, X-Frame-Options, X-Content-Type-Options
 - **RBAC:** 35 granular permissions via `requirePermission()` on 30+ routes
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import { requireNotDemoMode, requireSuperAdmin } from "@/lib/api-auth";
 import prisma from "@/lib/prisma";
 import { updateOrganizationSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
@@ -21,11 +21,27 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Prevent IDOR — users may only view their own organization
-    const userOrgId = (session.user as { organizationId?: string })
-      .organizationId;
-    if (userOrgId !== id && !session.user.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    // Prevent IDOR — users may only view their own organization unless they
+    // are a real platform super-admin. `isadmin` is per-org, not platform-wide,
+    // so it must never be used to bypass this check on its own.
+    const callerUser = await prisma.user.findUnique({
+      where: { userid: session.user.id },
+      select: { organizationId: true },
+    });
+
+    if (!callerUser?.organizationId || callerUser.organizationId !== id) {
+      let isSuperAdmin = true;
+      try {
+        await requireSuperAdmin();
+      } catch {
+        isSuperAdmin = false;
+      }
+      if (!isSuperAdmin) {
+        return NextResponse.json(
+          { error: "Organization not found" },
+          { status: 404 },
+        );
+      }
     }
 
     const organization = await prisma.organization.findUnique({

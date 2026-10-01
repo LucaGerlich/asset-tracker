@@ -71,7 +71,7 @@ export default function CreatePurchaseRequest() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<LineItem[]>([createEmptyItem()]);
+  const [items, setItems] = useState<LineItem[]>(() => [createEmptyItem()]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const runningTotal = items.reduce(

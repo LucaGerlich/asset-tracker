@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getBaseUrl } from "@/lib/url";
+import { getMarketingUrl } from "@/lib/url";
 
 export const SITE_CONFIG = {
   siteName: "Asset Tracker",
@@ -11,7 +11,7 @@ export const SITE_CONFIG = {
 } as const;
 
 export function getCanonicalUrl(path: string): string {
-  const base = getBaseUrl().replace(/\/$/, "");
+  const base = getMarketingUrl().replace(/\/$/, "");
   const cleanPath = path === "/" ? "" : path.replace(/\/$/, "");
   return `${base}${cleanPath}`;
 }
@@ -80,7 +80,7 @@ export const LANDING_FAQ: FaqItem[] = [
   {
     question: "Is Asset Tracker free for small teams?",
     answer:
-      "Yes. The Starter plan is completely free and includes up to 250 assets, 5 users, and all core features including asset tracking, license management, and maintenance scheduling. No credit card is required to get started. As your team grows, you can upgrade to Professional or Enterprise plans for higher limits and advanced features like SSO, custom workflows, and priority support.",
+      "Yes. The Starter plan is completely free and includes up to 100 assets, 3 users, and all core features including asset tracking, license management, and maintenance scheduling. No credit card is required to get started. As your team grows, you can upgrade to Professional or Enterprise plans for higher limits and advanced features like SSO, custom workflows, and priority support.",
   },
   {
     question: "Can I self-host Asset Tracker?",

@@ -1,117 +1,71 @@
 import Link from "next/link";
-import { Box } from "lucide-react";
+import packageJson from "../../../package.json";
+import { MARKETING_LINKS } from "./content";
 
-export default function MarketingFooter() {
+const COLUMNS = [
+  {
+    title: "Product",
+    links: [
+      { href: MARKETING_LINKS.features, label: "Features" },
+      { href: MARKETING_LINKS.pricing, label: "Pricing" },
+      { href: MARKETING_LINKS.github, label: "GitHub" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { href: MARKETING_LINKS.terms, label: "Terms" },
+      { href: MARKETING_LINKS.privacy, label: "Privacy" },
+    ],
+  },
+  {
+    title: "Get started",
+    links: [
+      { href: MARKETING_LINKS.register, label: "Create account" },
+      { href: MARKETING_LINKS.login, label: "Sign in" },
+    ],
+  },
+] as const;
+
+export function MarketingFooter() {
   return (
-    <>
-      <footer className="border-border/40 bg-muted/30 border-t">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
-            {/* Brand */}
-            <div className="md:col-span-1">
-              <div className="flex items-center gap-2.5">
-                <Box className="text-foreground h-5 w-5" />
-                <span className="text-foreground text-base font-semibold tracking-tight">
-                  Asset Tracker
-                </span>
-              </div>
-              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-                Modern asset management platform for teams of all sizes.
-              </p>
-            </div>
-
-            {/* Product */}
-            <div>
-              <h3 className="text-foreground text-xs font-semibold tracking-wider uppercase">
-                Product
-              </h3>
-              <ul className="mt-4 space-y-3">
-                <li>
-                  <Link
-                    href="/#features"
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-                  >
-                    Features
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/pricing"
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-                  >
-                    Pricing
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/#how-it-works"
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-                  >
-                    How it works
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Company */}
-            <div>
-              <h3 className="text-foreground text-xs font-semibold tracking-wider uppercase">
-                Company
-              </h3>
-              <ul className="mt-4 space-y-3">
-                <li>
-                  <Link
-                    href="/terms"
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-                  >
-                    Terms of Service
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/privacy"
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-                  >
-                    Privacy Policy
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Get started */}
-            <div>
-              <h3 className="text-foreground text-xs font-semibold tracking-wider uppercase">
-                Get Started
-              </h3>
-              <ul className="mt-4 space-y-3">
-                <li>
-                  <Link
-                    href="/register"
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-                  >
-                    Create Account
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/login"
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors"
-                  >
-                    Sign In
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-border/40 mt-12 border-t pt-8">
-            <p className="text-muted-foreground text-center text-xs">
-              &copy; {new Date().getFullYear()} Asset Tracker. All rights
-              reserved.
-            </p>
-          </div>
+    <footer className="border-mkt-line border-t">
+      <div className="border-mkt-line mx-auto grid max-w-7xl grid-cols-2 md:grid-cols-4 xl:border-x">
+        <div className="border-mkt-line col-span-2 border-b p-6 md:col-span-1 md:border-r md:border-b-0">
+          <p className="font-mkt-mono text-sm font-medium">Asset Tracker</p>
+          <p className="text-mkt-muted mt-3 text-sm">
+            Open-source IT asset management. MIT licensed.
+          </p>
         </div>
-      </footer>
-    </>
+        {COLUMNS.map((col, i) => (
+          <div
+            key={col.title}
+            className={`border-mkt-line p-6 ${i === 0 ? "border-r" : ""} ${i === 1 ? "md:border-r" : ""} ${i === 2 ? "col-span-2 border-t md:col-span-1 md:border-t-0" : ""}`}
+          >
+            <p className="font-mkt-mono text-mkt-muted text-[11px] tracking-widest uppercase">
+              {col.title}
+            </p>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              {col.links.map((l) => (
+                <li key={l.label}>
+                  <Link
+                    href={l.href}
+                    className="text-mkt-muted hover:text-mkt-text transition-colors"
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      <div className="border-mkt-line font-mkt-mono text-mkt-muted border-t">
+        <div className="mx-auto flex max-w-7xl justify-between px-6 py-4 text-[11px]">
+          <span>© {new Date().getFullYear()} Asset Tracker</span>
+          <span>v{packageJson.version}</span>
+        </div>
+      </div>
+    </footer>
   );
 }

@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { EditIcon, DeleteIcon, EyeIcon, PlusIcon, SearchIcon } from "../Icons";
+import { EditIcon, EyeIcon, PlusIcon, SearchIcon } from "../Icons";
 
 const ROWS_PER_PAGE_OPTIONS = ["10", "20", "50", "100"];
 const roleOptions = [
@@ -172,13 +172,6 @@ function DashboardTable({ data, columns: propColumns }) {
                   <EditIcon />
                 </span>
               </Link>
-              <button
-                type="button"
-                className="text-danger cursor-pointer text-lg active:opacity-50"
-                aria-label="Delete user"
-              >
-                <DeleteIcon />
-              </button>
             </div>
           );
         default:

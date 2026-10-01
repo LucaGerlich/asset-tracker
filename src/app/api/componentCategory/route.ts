@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import prisma from "@/lib/prisma";
 import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
@@ -7,6 +8,7 @@ import {
   createComponentCategorySchema,
   updateComponentCategorySchema,
 } from "@/lib/validation";
+import { getOrganizationContext } from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
 export async function GET() {
@@ -59,6 +61,8 @@ export async function POST(req: Request) {
       entityId: created.id,
       details: { name },
     });
+
+    await invalidateCacheByPrefix("component_categories").catch(() => {});
 
     return NextResponse.json(created, { status: 201 });
   } catch (e: any) {
@@ -115,6 +119,8 @@ export async function PUT(req: Request) {
       details: { name: updated.name },
     });
 
+    await invalidateCacheByPrefix("component_categories").catch(() => {});
+
     return NextResponse.json(updated, { status: 200 });
   } catch (e: any) {
     logger.error("PUT /api/componentCategory error", { error: e });
@@ -144,6 +150,8 @@ export async function DELETE(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("component:delete");
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
 
     const body = await req.json();
     const { id } = body;
@@ -155,8 +163,9 @@ export async function DELETE(req: Request) {
       );
     }
 
-    const category = await prisma.componentCategory.findUnique({
-      where: { id },
+    // Scope the lookup so foreign-org categories read as "not found".
+    const category = await prisma.componentCategory.findFirst({
+      where: { id, organizationId: orgId ?? null },
       select: { name: true },
     });
 
@@ -178,6 +187,8 @@ export async function DELETE(req: Request) {
       entityId: id,
       details: { name: category.name },
     });
+
+    await invalidateCacheByPrefix("component_categories").catch(() => {});
 
     return NextResponse.json(
       { message: "Component category deleted successfully" },

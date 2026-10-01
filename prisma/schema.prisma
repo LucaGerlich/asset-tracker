@@ -1039,9 +1039,6 @@ model user {
   departmentId                     String?                   @db.Uuid
   creation_date                    DateTime                  @db.Timestamp(6)
   change_date                      DateTime?                 @db.Timestamp(6)
-  mfaEnabled                       Boolean                   @default(false)
-  mfaSecret                        String?                   @db.VarChar(255)
-  mfaBackupCodes                   String[]
   // Phase 4A: LDAP/SSO fields
   authProvider                     String                    @default("local") @db.VarChar(20)
   externalId                       String?                   @db.VarChar(255)
@@ -1255,6 +1252,10 @@ model twoFactor {
   secret      String
   backupCodes String
   userId      String @db.Uuid
+  // Plugin-managed: enrolment confirmation and verification lockout
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime? @db.Timestamptz(6)
   user        user   @relation(fields: [userId], references: [userid], onDelete: Cascade)
 
   @@map("twoFactor")
@@ -1633,6 +1634,10 @@ model ItemRequest {
 
   @@index([userId])
   @@index([status])
+  // NOTE: a partial unique index `item_requests_active_unique` ON (entityType, entityId)
+  // WHERE status NOT IN ('returned', 'rejected', 'cancelled') exists in SQL only
+  // (migration 20260415_request_concurrency). Prisma cannot express it; do not let a
+  // future `migrate dev` drop it.
   @@index([entityType, entityId])
   @@map("item_requests")
   @@schema("public")

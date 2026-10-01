@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import UserResources from "./ui/UserResources";
 import Breadcrumb from "@/components/Breadcrumb";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +31,12 @@ export const metadata = {
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const user = await getUserById(params.id);
+  let user;
+  try {
+    user = await getUserById(params.id);
+  } catch {
+    notFound();
+  }
   const [
     allAssets,
     links,

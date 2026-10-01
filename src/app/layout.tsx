@@ -77,7 +77,7 @@ export default async function RootLayout({ children }) {
         <OfflineBanner />
         <ServiceWorkerRegistration />
         <UserPreferencesProvider>
-          <Providers>
+          <Providers nonce={nonce}>
             <AppShell
               initialSidebarCollapsed={initialSidebarCollapsed}
               isDemo={isDemo}

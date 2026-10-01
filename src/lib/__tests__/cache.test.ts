@@ -1,17 +1,53 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
+import prisma from "@/lib/prisma";
+// Integration tests: exercise the real Postgres-backed cache table.
+// Skipped when no DATABASE_URL is configured (they run in CI against a test DB).
+const describeDb = process.env.DATABASE_URL ? describe : describe.skip;
+
+const SCHEMA = process.env.DB_SCHEMA || "assettool";
+const CACHE_TABLE = `"${SCHEMA}"."cache"`;
 
 // Reset module for clean cache state between tests
 let cacheModule: typeof import("../cache");
 
+// Keys written by the tests below, cleaned before every test and after the suite.
+const TEST_KEYS = [
+  "test-key",
+  "key",
+  "keyA",
+  "keyB",
+  "asset:1",
+  "user:1",
+  "user:2",
+  "foo",
+  "ref:cats",
+  "ref:dogs",
+  "other:x",
+  "ttl-test",
+];
+
+async function clearTestKeys(): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  await prisma.$executeRawUnsafe(
+    `DELETE FROM ${CACHE_TABLE} WHERE "key" = ANY($1)`,
+    TEST_KEYS,
+  );
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 beforeEach(async () => {
   vi.resetModules();
   vi.restoreAllMocks();
-  // Ensure no REDIS_URL so tests use in-memory backend
-  delete process.env.REDIS_URL;
   cacheModule = await import("../cache");
+  await clearTestKeys();
 });
 
-describe("cached", () => {
+afterAll(clearTestKeys);
+
+// ponytail: expiry is decided by Postgres NOW(), so fake timers cannot move it.
+// TTL tests use a real 1-second TTL (the minimum `cached()` stores) and sleep past it.
+describeDb("cached", () => {
   it("calls fetcher on first access", async () => {
     const fetcher = vi.fn().mockResolvedValue({ data: "hello" });
     const result = await cacheModule.cached("test-key", fetcher);
@@ -28,7 +64,6 @@ describe("cached", () => {
   });
 
   it("re-fetches after TTL expires", async () => {
-    vi.useFakeTimers();
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce("old")
@@ -37,45 +72,37 @@ describe("cached", () => {
     await cacheModule.cached("key", fetcher, 1000);
     expect(fetcher).toHaveBeenCalledTimes(1);
 
-    vi.advanceTimersByTime(1001);
+    await sleep(1100);
 
     const result = await cacheModule.cached("key", fetcher, 1000);
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(result).toBe("new");
-
-    vi.useRealTimers();
   });
 
   it("does not re-fetch before TTL expires", async () => {
-    vi.useFakeTimers();
     const fetcher = vi.fn().mockResolvedValue("value");
 
     await cacheModule.cached("key", fetcher, 5000);
-    vi.advanceTimersByTime(4999);
     await cacheModule.cached("key", fetcher, 5000);
     expect(fetcher).toHaveBeenCalledOnce();
-
-    vi.useRealTimers();
   });
 
   it("uses default TTL of 5 minutes", async () => {
-    vi.useFakeTimers();
     const fetcher = vi.fn().mockResolvedValue("value");
-
     await cacheModule.cached("key", fetcher);
-    vi.advanceTimersByTime(4 * 60 * 1000); // 4 minutes
-    await cacheModule.cached("key", fetcher);
-    expect(fetcher).toHaveBeenCalledOnce(); // Still cached
 
-    vi.advanceTimersByTime(2 * 60 * 1000); // 6 minutes total
-    await cacheModule.cached("key", fetcher);
-    expect(fetcher).toHaveBeenCalledTimes(2); // Re-fetched
-
-    vi.useRealTimers();
+    const rows = await prisma.$queryRawUnsafe<{ secs: number }[]>(
+      `SELECT EXTRACT(EPOCH FROM ("expires_at" - NOW()))::float8 AS secs
+			 FROM ${CACHE_TABLE} WHERE "key" = $1`,
+      "key",
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].secs).toBeGreaterThan(290);
+    expect(rows[0].secs).toBeLessThanOrEqual(300);
   });
 });
 
-describe("invalidateCache", () => {
+describeDb("invalidateCache", () => {
   it("forces re-fetch after invalidation", async () => {
     const fetcher = vi
       .fn()
@@ -104,7 +131,7 @@ describe("invalidateCache", () => {
   });
 });
 
-describe("invalidateCacheByPrefix", () => {
+describeDb("invalidateCacheByPrefix", () => {
   it("invalidates all keys with given prefix", async () => {
     const fetcherA = vi.fn().mockResolvedValue("A");
     const fetcherB = vi.fn().mockResolvedValue("B");
@@ -126,7 +153,7 @@ describe("invalidateCacheByPrefix", () => {
   });
 });
 
-describe("clearCache", () => {
+describeDb("clearCache", () => {
   it("invalidates all cached keys", async () => {
     const fetcherA = vi.fn().mockResolvedValue("A");
     const fetcherB = vi.fn().mockResolvedValue("B");
@@ -144,7 +171,7 @@ describe("clearCache", () => {
   });
 });
 
-describe("cache object API", () => {
+describeDb("cache object API", () => {
   it("supports get/set/del", async () => {
     const { cache } = cacheModule;
 
@@ -175,15 +202,12 @@ describe("cache object API", () => {
   });
 
   it("respects TTL expiration", async () => {
-    vi.useFakeTimers();
     const { cache } = cacheModule;
 
-    await cache.set("ttl-test", "value", 10); // 10 seconds
+    await cache.set("ttl-test", "value", 1); // 1 second
     expect(await cache.get("ttl-test")).toBe("value");
 
-    vi.advanceTimersByTime(11_000); // 11 seconds
+    await sleep(1100);
     expect(await cache.get("ttl-test")).toBeNull();
-
-    vi.useRealTimers();
   });
 });

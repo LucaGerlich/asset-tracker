@@ -7,7 +7,11 @@
 
 import prisma from "@/lib/prisma";
 import { queueEmail } from "@/lib/email";
-import { renderTemplate, emailTemplates } from "@/lib/email/templates";
+import {
+  renderTemplate,
+  renderTextTemplate,
+  emailTemplates,
+} from "@/lib/email/templates";
 import { generateReportBuffer, type ReportType } from "@/lib/report-generator";
 import { logger } from "@/lib/logger";
 
@@ -69,9 +73,12 @@ export async function processScheduledReports(): Promise<ProcessResult> {
         generatedAt: now.toLocaleString(),
       });
 
-      const subject = renderTemplate(emailTemplates.scheduledReport.subject, {
-        reportType: reportTypeLabel,
-      });
+      const subject = renderTextTemplate(
+        emailTemplates.scheduledReport.subject,
+        {
+          reportType: reportTypeLabel,
+        },
+      );
 
       // Embed the report as a base64 data URI link in the email body
       const base64Data = reportBuffer.buffer.toString("base64");

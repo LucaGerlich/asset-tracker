@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import {
@@ -121,6 +122,8 @@ export async function POST(req: NextRequest) {
       details: { licencecategorytypename },
     });
 
+    await invalidateCacheByPrefix("licence_categories").catch(() => {});
+
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
     logger.error("POST /api/licenceCategory error", { error: e });
@@ -198,6 +201,8 @@ export async function PUT(req: NextRequest) {
       entityId: updated.licencecategorytypeid,
       details: { licencecategorytypename },
     });
+
+    await invalidateCacheByPrefix("licence_categories").catch(() => {});
 
     return NextResponse.json(updated, { status: 200 });
   } catch (e) {

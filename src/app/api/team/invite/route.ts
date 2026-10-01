@@ -3,7 +3,11 @@ import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
 import { sendEmail } from "@/lib/email/service";
-import { emailTemplates, renderTemplate } from "@/lib/email/templates";
+import {
+  emailTemplates,
+  renderTemplate,
+  renderTextTemplate,
+} from "@/lib/email/templates";
 import { checkUserLimit } from "@/lib/tenant-limits";
 import { logger } from "@/lib/logger";
 import { getBaseUrl } from "@/lib/url";
@@ -85,9 +89,12 @@ export async function POST(request: NextRequest) {
       const inviterName =
         `${invitation.inviter.firstname} ${invitation.inviter.lastname}`.trim();
 
-      const subject = renderTemplate(emailTemplates.teamInvitation.subject, {
-        organizationName: invitation.organization.name,
-      });
+      const subject = renderTextTemplate(
+        emailTemplates.teamInvitation.subject,
+        {
+          organizationName: invitation.organization.name,
+        },
+      );
       const html = renderTemplate(emailTemplates.teamInvitation.html, {
         inviterName,
         organizationName: invitation.organization.name,
