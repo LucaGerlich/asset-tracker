@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-04
+
+### Changed
+
+- **License changed from MIT to the Functional Source License 1.1, MIT Future
+  License (FSL-1.1-MIT).** Self-hosting for your own organisation stays free
+  with every feature. Offering Asset Tracker to others as a competing
+  commercial product or hosted service is no longer permitted. Each release
+  becomes MIT two years after it is published. v0.12.0 and earlier remain
+  available under MIT. Marketing, docs, SEO and OpenAPI metadata now say
+  "source-available" instead of "open source".
+
 ## [0.12.0] - 2026-10-01
 
 ### Added

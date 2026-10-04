@@ -12,7 +12,7 @@ export const MARKETING_LINKS = {
 } as const;
 
 export const HERO = {
-  eyebrow: "OPEN SOURCE · MIT · SELF-HOSTABLE",
+  eyebrow: "SOURCE-AVAILABLE · SELF-HOST FREE",
   title: "Every asset, accounted for.",
   sub: "IT asset management software for teams that track hardware, licenses, consumables and maintenance. One inventory, one audit trail, no spreadsheets.",
   primaryCta: "Start free",
@@ -114,7 +114,7 @@ export const DEPLOY = {
   title: "Your server or ours.",
   selfHost: {
     title: "Self-host",
-    body: "MIT-licensed. Run it on your own hardware with Docker and PostgreSQL.",
+    body: "Free with every feature. Run it on your own hardware with Docker and PostgreSQL.",
     command:
       "git clone https://github.com/LucaGerlich/asset-tracker && cd asset-tracker && docker compose --profile with-db up -d --build",
   },

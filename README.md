@@ -2,11 +2,11 @@
 
 # Asset Tracker
 
-**Open-source IT asset management for teams of any size.**
+**Source-available IT asset management for teams of any size. Free to self-host.**
 
 Track hardware, software licences, consumables, and accessories — with role-based access, audit logging, SSO, and integrations built in.
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-FSL--1.1--MIT-blue.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma)](https://www.prisma.io/)
@@ -338,6 +338,12 @@ This project uses [Husky](https://typicode.github.io/husky/) pre-commit hooks wi
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+[Functional Source License 1.1, MIT Future License](LICENSE) (FSL-1.1-MIT).
 
-Copyright (c) 2026 Luca Gerlich
+- **Self-hosting is free, with every feature.** Run, modify and use Asset Tracker for your own organisation, for education or research, or as part of professional services for a client.
+- **Not allowed:** offering Asset Tracker (or a substantially similar product built from it) to others as a competing commercial product or hosted service.
+- **Every release becomes MIT two years after it is published.**
+
+Releases up to and including v0.12.0 were published under the MIT license and remain available under it.
+
+Copyright 2026 Luca Gerlich

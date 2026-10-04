@@ -85,7 +85,7 @@ export const LANDING_FAQ: FaqItem[] = [
   {
     question: "Can I self-host Asset Tracker?",
     answer:
-      "Yes. Asset Tracker is open source under the MIT license and designed for self-hosting. You can deploy it on your own infrastructure using Docker, with full control over your data. Self-hosting is ideal for organizations with strict data residency requirements or those who prefer to manage their own infrastructure.",
+      "Yes. Self-hosting is free with every feature included. Asset Tracker is source-available under the Functional Source License (FSL-1.1-MIT) and designed for self-hosting. You can deploy it on your own infrastructure using Docker, with full control over your data. Self-hosting is ideal for organizations with strict data residency requirements or those who prefer to manage their own infrastructure.",
   },
   {
     question: "What types of assets can I track?",

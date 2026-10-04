@@ -8,7 +8,8 @@
       "name": "API Support"
     },
     "license": {
-      "name": "MIT"
+      "name": "FSL-1.1-MIT",
+      "url": "https://github.com/LucaGerlich/asset-tracker/blob/master/LICENSE"
     }
   },
   "servers": [

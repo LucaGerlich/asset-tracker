@@ -34,7 +34,7 @@ export function MarketingFooter() {
         <div className="border-mkt-line col-span-2 border-b p-6 md:col-span-1 md:border-r md:border-b-0">
           <p className="font-mkt-mono text-sm font-medium">Asset Tracker</p>
           <p className="text-mkt-muted mt-3 text-sm">
-            Open-source IT asset management. MIT licensed.
+            Source-available IT asset management. Free to self-host.
           </p>
         </div>
         {COLUMNS.map((col, i) => (

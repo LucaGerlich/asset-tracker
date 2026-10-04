@@ -1,8 +1,8 @@
 {
   "name": "asset-tracker",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "private": true,
-  "license": "MIT",
+  "license": "FSL-1.1-MIT",
   "scripts": {
     "dev": "NODE_OPTIONS='--inspect' next dev --turbopack",
     "build": "node prisma/set-schema.mjs && prisma generate && prisma migrate deploy && next build",

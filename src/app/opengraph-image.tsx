@@ -42,7 +42,7 @@ export default async function OGImage() {
           letterSpacing: 3,
         }}
       >
-        [ OPEN SOURCE · MIT · SELF-HOSTABLE ]
+        [ SOURCE-AVAILABLE · SELF-HOST FREE ]
       </div>
 
       <div
