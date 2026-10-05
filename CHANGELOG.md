@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-10-05
+
+### Fixed
+
+- **Microsoft sign-in users now appear in the app.** Users created by an OAuth
+  sign-in had no organization, so every org-scoped page hid them. They are now
+  assigned to `SSO_DEFAULT_ORGANIZATION_ID`, but only when `MICROSOFT_TENANT_ID`
+  is pinned to a single tenant and the org has free user seats. Otherwise the
+  sign-up is refused. Run `sql/upgrade/2026-10-05-sso-users-org-backfill.sql`
+  once to fix users created before this release.
+
 ## [0.13.0] - 2026-10-04
 
 ### Changed

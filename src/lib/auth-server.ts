@@ -28,6 +28,7 @@ import {
   auditTwoFactorEvent,
 } from "@/lib/auth-two-factor-audit";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { resolveSsoUserData } from "@/lib/sso-provisioning";
 import { parseDeviceName, parseBrowser } from "@/lib/session-tracking";
 import {
   recordLoginAttempt,
@@ -394,6 +395,20 @@ export const auth = betterAuth({
   advanced: {
     database: {
       generateId: () => crypto.randomUUID(),
+    },
+  },
+
+  databaseHooks: {
+    user: {
+      create: {
+        // OAuth sign-ups bypass /api/auth/register, so assign their org here.
+        async before(user, ctx) {
+          if (!ctx?.path.startsWith("/oauth2/callback/")) return;
+          const providerId = String(ctx.params?.providerId ?? "");
+          const data = await resolveSsoUserData(user, providerId);
+          return data ? { data } : false;
+        },
+      },
     },
   },
 
