@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.13.2] - 2026-10-06
+
+### Security
+
+- **Users can no longer change their own admin flag, organization or account
+  status.** BetterAuth's `POST /api/auth/update-user` accepted the app's custom
+  user fields (`isadmin`, `canrequest`, `organizationId`, `departmentId`,
+  `authProvider`, `isActive`, `password`) from any signed-in user, so a user
+  could make themselves an admin or move into another organization. These
+  fields are now marked `input: false` and are written only by the app's own
+  routes and sign-in hooks. Users can still update their own username and last
+  name.
+
 ## [0.13.1] - 2026-10-05
 
 ### Fixed
