@@ -11,8 +11,7 @@ import { isSelfHosted } from "@/lib/deployment-mode";
 import {
   getOrgStatus,
   getOrgSuspensionStatus,
-  requireActiveOrg,
-  requireWriteAccess,
+  resolveOrgStatus,
 } from "@/lib/org-suspension";
 
 const mockPrisma = vi.mocked(prisma, true);
@@ -43,9 +42,25 @@ describe("getOrgStatus", () => {
     expect(status).toBe("locked_out");
   });
 
-  it("is read_only when suspended 13 days ago (within the grace period)", () => {
+  it("is locked_out when isActive is false, even inside the grace period", () => {
     const status = getOrgStatus({
       isActive: false,
+      suspendedAt: new Date(NOW.getTime() - 2 * DAY_MS),
+    });
+    expect(status).toBe("locked_out");
+  });
+
+  it("is read_only when suspended within 14 days and still active", () => {
+    const status = getOrgStatus({
+      isActive: true,
+      suspendedAt: new Date(NOW.getTime() - 2 * DAY_MS),
+    });
+    expect(status).toBe("read_only");
+  });
+
+  it("is read_only when suspended 13 days ago (within the grace period)", () => {
+    const status = getOrgStatus({
+      isActive: true,
       suspendedAt: new Date(NOW.getTime() - 13 * DAY_MS),
     });
     expect(status).toBe("read_only");
@@ -53,7 +68,7 @@ describe("getOrgStatus", () => {
 
   it("is read_only at exactly the 14-day grace period boundary", () => {
     const status = getOrgStatus({
-      isActive: false,
+      isActive: true,
       suspendedAt: new Date(NOW.getTime() - 14 * DAY_MS),
     });
     expect(status).toBe("read_only");
@@ -61,10 +76,29 @@ describe("getOrgStatus", () => {
 
   it("is locked_out once 15 days have passed (past the grace period)", () => {
     const status = getOrgStatus({
-      isActive: false,
+      isActive: true,
       suspendedAt: new Date(NOW.getTime() - 15 * DAY_MS),
     });
     expect(status).toBe("locked_out");
+  });
+});
+
+describe("resolveOrgStatus", () => {
+  it("is active for a missing org", () => {
+    expect(resolveOrgStatus(null)).toBe("active");
+  });
+
+  it("is active in self-hosted mode regardless of the row", () => {
+    mockIsSelfHosted.mockReturnValue(true);
+    expect(resolveOrgStatus({ isActive: false, suspendedAt: null })).toBe(
+      "active",
+    );
+  });
+
+  it("derives the status otherwise", () => {
+    expect(resolveOrgStatus({ isActive: false, suspendedAt: null })).toBe(
+      "locked_out",
+    );
   });
 });
 
@@ -96,36 +130,5 @@ describe("getOrgSuspensionStatus", () => {
 
     const status = await getOrgSuspensionStatus("org-1");
     expect(status).toBe("locked_out");
-  });
-});
-
-describe("requireActiveOrg", () => {
-  it("allows active and read_only orgs through", () => {
-    expect(requireActiveOrg("active")).toBeNull();
-    expect(requireActiveOrg("read_only")).toBeNull();
-  });
-
-  it("returns a 403 response for a locked_out org", () => {
-    const result = requireActiveOrg("locked_out");
-    expect(result).not.toBeNull();
-    expect(result?.status).toBe(403);
-  });
-});
-
-describe("requireWriteAccess", () => {
-  it("allows writes only for a fully active org", () => {
-    expect(requireWriteAccess("active")).toBeNull();
-  });
-
-  it("returns a 403 response for read_only orgs", () => {
-    const result = requireWriteAccess("read_only");
-    expect(result).not.toBeNull();
-    expect(result?.status).toBe(403);
-  });
-
-  it("returns a 403 response for locked_out orgs", () => {
-    const result = requireWriteAccess("locked_out");
-    expect(result).not.toBeNull();
-    expect(result?.status).toBe(403);
   });
 });

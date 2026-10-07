@@ -4,11 +4,8 @@ import { NextResponse } from "next/server";
 import { hasPermission, hasAnyPermission, type Permission } from "./rbac";
 import prisma from "./prisma";
 import { validateApiKey } from "./api-keys";
-import {
-  getOrgSuspensionStatus,
-  requireActiveOrg,
-  requireWriteAccess,
-} from "./org-suspension";
+import { resolveOrgStatus, type OrgStatus } from "./org-suspension";
+import { ForbiddenError, UnauthorizedError } from "./errors";
 import {
   isPlanFeatureEnabled,
   getRequiredPlan,
@@ -45,6 +42,8 @@ export interface AuthUser {
   apiKeyId?: string;
   /** Scopes granted to the API key (undefined for session auth) */
   apiKeyScopes?: string[];
+  /** Suspension state of the user's organization, loaded with the user */
+  orgStatus: OrgStatus;
 }
 
 /**
@@ -82,6 +81,7 @@ async function authenticateWithApiKey(
     isAdmin: dbUser.isadmin,
     canRequest: dbUser.canrequest,
     organizationId: dbUser.organizationId || undefined,
+    orgStatus: resolveOrgStatus(dbUser.organization ?? null),
     apiKeyId: record.id,
     apiKeyScopes: record.scopes,
   };
@@ -98,7 +98,7 @@ export async function getAuthUser(): Promise<AuthUser> {
   if (apiKey) {
     const user = await authenticateWithApiKey(apiKey);
     if (!user) {
-      throw new Error("Unauthorized");
+      throw new UnauthorizedError();
     }
     return user;
   }
@@ -109,7 +109,7 @@ export async function getAuthUser(): Promise<AuthUser> {
   });
 
   if (!session || !session.user) {
-    throw new Error("Unauthorized");
+    throw new UnauthorizedError();
   }
 
   const dbUser = await prisma.user.findUnique({
@@ -125,11 +125,12 @@ export async function getAuthUser(): Promise<AuthUser> {
       organizationId: true,
       departmentId: true,
       isActive: true,
+      organization: { select: { isActive: true, suspendedAt: true } },
     },
   });
 
   if (!dbUser || !dbUser.isActive) {
-    throw new Error("Unauthorized");
+    throw new UnauthorizedError();
   }
 
   return {
@@ -143,7 +144,15 @@ export async function getAuthUser(): Promise<AuthUser> {
     canRequest: dbUser.canrequest,
     organizationId: dbUser.organizationId || undefined,
     departmentId: dbUser.departmentId,
+    orgStatus: resolveOrgStatus(dbUser.organization ?? null),
   };
+}
+
+/** Block every access for a locked-out org (past grace, or deactivated). */
+export function assertOrgNotLocked(user: AuthUser): void {
+  if (user.orgStatus === "locked_out") {
+    throw new ForbiddenError("org_locked", "Organization suspended");
+  }
 }
 
 /**
@@ -152,26 +161,21 @@ export async function getAuthUser(): Promise<AuthUser> {
  */
 export async function requireApiAuth(): Promise<AuthUser> {
   const user = await getAuthUser();
-
-  // Check org suspension (block locked-out orgs from all access)
-  const orgStatus = await getOrgSuspensionStatus(user.organizationId);
-  const blocked = requireActiveOrg(orgStatus);
-  if (blocked) {
-    throw new Error("Forbidden: Organization suspended");
-  }
-
+  assertOrgNotLocked(user);
   return user;
 }
 
 /**
- * Require that the user's org is fully active (not suspended or in grace period).
- * Call this in write endpoints (POST/PUT/PATCH/DELETE) after requireApiAuth/requireApiAdmin.
+ * Block writes while the org is read-only (grace period) or locked out.
+ * Call in every mutating handler, next to requireNotDemoMode().
  */
 export async function requireWritableOrg(user: AuthUser): Promise<void> {
-  const orgStatus = await getOrgSuspensionStatus(user.organizationId);
-  const blocked = requireWriteAccess(orgStatus);
-  if (blocked) {
-    throw new Error("Forbidden: Organization is in read-only mode");
+  assertOrgNotLocked(user);
+  if (user.orgStatus === "read_only") {
+    throw new ForbiddenError(
+      "org_read_only",
+      "Organization is in read-only mode",
+    );
   }
 }
 
@@ -186,8 +190,9 @@ export async function requirePlanFeature(
   const enabled = await isPlanFeatureEnabled(user.organizationId, feature);
   if (!enabled) {
     const required = getRequiredPlan(feature);
-    throw new Error(
-      `Forbidden: This feature requires the ${required} plan. Please upgrade.`,
+    throw new ForbiddenError(
+      "feature_not_entitled",
+      `This feature requires the ${required} plan. Please upgrade.`,
     );
   }
 }
@@ -201,7 +206,7 @@ export async function requireApiAdmin(): Promise<AuthUser> {
   const user = await requireApiAuth();
 
   if (!user.isAdmin) {
-    throw new Error("Forbidden: Admin access required");
+    throw new ForbiddenError("not_admin", "Admin access required");
   }
 
   return user;
@@ -227,7 +232,7 @@ export async function requireSuperAdmin(): Promise<AuthUser> {
     .split(",")
     .map((e) => e.trim().toLowerCase());
   if (!user.email || !allowed.includes(user.email.toLowerCase())) {
-    throw new Error("Forbidden: Super-admin access required");
+    throw new ForbiddenError("not_super_admin", "Super-admin access required");
   }
 
   return user;
@@ -238,9 +243,13 @@ export async function requireSuperAdmin(): Promise<AuthUser> {
  */
 export async function requireApiCanRequest(): Promise<AuthUser> {
   const user = await getAuthUser();
+  assertOrgNotLocked(user);
 
   if (!user.canRequest && !user.isAdmin) {
-    throw new Error("Forbidden: Request permission required");
+    throw new ForbiddenError(
+      "request_permission",
+      "Request permission required",
+    );
   }
 
   return user;
@@ -256,19 +265,15 @@ export async function requirePermission(
   const user = await getAuthUser();
 
   if (!user.id) {
-    throw new Error("Unauthorized");
+    throw new UnauthorizedError();
   }
 
-  // Block locked-out organizations (past the grace period) from all access.
-  const orgStatus = await getOrgSuspensionStatus(user.organizationId);
-  if (requireActiveOrg(orgStatus)) {
-    throw new Error("Forbidden: Organization suspended");
-  }
+  assertOrgNotLocked(user);
 
   if (user.apiKeyScopes !== undefined) {
     const hasScope = permissions.some((p) => user.apiKeyScopes!.includes(p));
     if (!hasScope) {
-      throw new Error("Forbidden: API key lacks required scope");
+      throw new ForbiddenError("api_key_scope", "API key lacks required scope");
     }
     return user;
   }
@@ -284,7 +289,10 @@ export async function requirePermission(
       : await hasAnyPermission(user.id, permissions);
 
   if (!hasAccess) {
-    throw new Error("Forbidden: Insufficient permissions");
+    throw new ForbiddenError(
+      "insufficient_permission",
+      "Insufficient permissions",
+    );
   }
 
   return user;

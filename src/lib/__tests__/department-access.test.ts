@@ -111,7 +111,11 @@ describe("getDepartmentAndDescendants", () => {
 // ---------------------------------------------------------------------------
 describe("getVisibleDepartmentIds", () => {
   it("returns null for admin users (cross-department access)", async () => {
-    const result = await getVisibleDepartmentIds({ id: "u1", isAdmin: true });
+    const result = await getVisibleDepartmentIds({
+      id: "u1",
+      isAdmin: true,
+      orgStatus: "active",
+    });
     expect(result).toBeNull();
   });
 
@@ -120,6 +124,7 @@ describe("getVisibleDepartmentIds", () => {
     const result = await getVisibleDepartmentIds({
       id: "u1",
       isAdmin: false,
+      orgStatus: "active",
       departmentId: "dept-1",
     });
     expect(result).toBeNull();
@@ -131,6 +136,7 @@ describe("getVisibleDepartmentIds", () => {
     const result = await getVisibleDepartmentIds({
       id: "u1",
       isAdmin: false,
+      orgStatus: "active",
       departmentId: null,
     });
     expect(result).toEqual([]);
@@ -145,6 +151,7 @@ describe("getVisibleDepartmentIds", () => {
     const result = await getVisibleDepartmentIds({
       id: "u1",
       isAdmin: false,
+      orgStatus: "active",
       departmentId: "dept-1",
       organizationId: "org-1",
     });
@@ -154,7 +161,11 @@ describe("getVisibleDepartmentIds", () => {
   });
 
   it("does not call hasPermission for admin users", async () => {
-    await getVisibleDepartmentIds({ id: "u1", isAdmin: true });
+    await getVisibleDepartmentIds({
+      id: "u1",
+      isAdmin: true,
+      orgStatus: "active",
+    });
     expect(mockHasPermission).not.toHaveBeenCalled();
   });
 });
@@ -168,6 +179,7 @@ describe("applyDepartmentScopeToUsers", () => {
     const result = await applyDepartmentScopeToUsers(where, {
       id: "u1",
       isAdmin: true,
+      orgStatus: "active",
     });
     expect(result).toEqual(where);
   });
@@ -176,7 +188,12 @@ describe("applyDepartmentScopeToUsers", () => {
     mockHasPermission.mockResolvedValue(false);
     const result = await applyDepartmentScopeToUsers(
       { organizationId: "org-1" },
-      { id: "u1", isAdmin: false, departmentId: null },
+      {
+        id: "u1",
+        isAdmin: false,
+        orgStatus: "active",
+        departmentId: null,
+      },
     );
     expect(result).toMatchObject({ userid: "u1" });
   });
@@ -190,6 +207,7 @@ describe("applyDepartmentScopeToUsers", () => {
       {
         id: "u1",
         isAdmin: false,
+        orgStatus: "active",
         departmentId: "dept-1",
         organizationId: "org-1",
       },
@@ -207,7 +225,12 @@ describe("applyDepartmentScopeToUsers", () => {
 
     const result = await applyDepartmentScopeToUsers(
       {},
-      { id: "u1", isAdmin: false, departmentId: "dept-1" },
+      {
+        id: "u1",
+        isAdmin: false,
+        orgStatus: "active",
+        departmentId: "dept-1",
+      },
     );
     expect(result).toMatchObject({
       departmentId: { in: expect.arrayContaining(["dept-1", "dept-2"]) },
@@ -220,6 +243,7 @@ describe("applyDepartmentScopeToUsers", () => {
     const result = await applyDepartmentScopeToUsers(where, {
       id: "u1",
       isAdmin: false,
+      orgStatus: "active",
       departmentId: "dept-1",
     });
     expect(result).toEqual(where);
@@ -231,7 +255,12 @@ describe("applyDepartmentScopeToUsers", () => {
 
     const result = await applyDepartmentScopeToUsers(
       { organizationId: "org-1", isActive: true },
-      { id: "u1", isAdmin: false, departmentId: "dept-1" },
+      {
+        id: "u1",
+        isAdmin: false,
+        orgStatus: "active",
+        departmentId: "dept-1",
+      },
     );
     expect(result).toMatchObject({ organizationId: "org-1", isActive: true });
     expect(result).toHaveProperty("departmentId");

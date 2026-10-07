@@ -22,6 +22,7 @@ const defaultAuthUser = {
   lastname: "User",
   organizationId: "org-uuid-001",
   departmentId: null,
+  orgStatus: "active" as const,
 };
 
 // Mutations are not blocked in tests by default.
@@ -34,5 +35,6 @@ export const requireSuperAdmin = vi.fn().mockResolvedValue(defaultAuthUser);
 export const requireApiCanRequest = vi.fn().mockResolvedValue(defaultAuthUser);
 export const requirePermission = vi.fn().mockResolvedValue(defaultAuthUser);
 
+export const assertOrgNotLocked = vi.fn();
 export const requireWritableOrg = vi.fn().mockResolvedValue(undefined);
 export const requirePlanFeature = vi.fn().mockResolvedValue(undefined);
