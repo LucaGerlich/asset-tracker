@@ -25,14 +25,16 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
 
-    const where: Record<string, unknown> = user?.organizationId
+    // Own org's roles plus global (system) roles. An admin without an org
+    // sees global roles only, never another org's roles.
+    const where: Record<string, unknown> = user.organizationId
       ? {
           OR: [
             { organizationId: user.organizationId },
             { organizationId: null }, // System roles
           ],
         }
-      : {};
+      : { organizationId: null };
 
     const include = {
       organization: {

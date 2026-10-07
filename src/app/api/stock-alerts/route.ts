@@ -7,10 +7,7 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
-import {
-  getOrganizationContext,
-  scopeToOrganization,
-} from "@/lib/organization-context";
+import { scopeToOrganization } from "@/lib/organization-context";
 import { stockAlertSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -20,10 +17,7 @@ import { logger, logCatchError } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
-    await requireApiAuth();
-
-    const orgCtx = await getOrganizationContext();
-    const orgId = orgCtx?.organization?.id;
+    const user = await requireApiAuth();
 
     const lowStockOnly =
       req.nextUrl.searchParams.get("lowStockOnly") === "true";
@@ -31,7 +25,7 @@ export async function GET(req: NextRequest) {
 
     const alerts = await prisma.stockAlert.findMany({
       where: {
-        consumable: scopeToOrganization({}, orgId),
+        consumable: scopeToOrganization({}, user.organizationId),
       },
       include: {
         consumable: {
@@ -82,9 +76,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = stockAlertSchema.parse(body);
 
-    // Verify consumable exists
-    const consumable = await prisma.consumable.findUnique({
-      where: { consumableid: validated.consumableId },
+    // The consumable must belong to the caller's org (404 otherwise, so the
+    // existence of another org's consumables is not revealed).
+    const consumable = await prisma.consumable.findFirst({
+      where: scopeToOrganization(
+        { consumableid: validated.consumableId },
+        user.organizationId,
+      ),
     });
 
     if (!consumable) {
@@ -164,7 +162,10 @@ export async function PUT() {
     const user = await requireApiAdmin();
     await requireWritableOrg(user);
 
+    // Only the caller's org: this check updates lastAlertSentAt and fires
+    // webhooks / integrations for every alert it covers.
     const alerts = await prisma.stockAlert.findMany({
+      where: { consumable: scopeToOrganization({}, user.organizationId) },
       include: {
         consumable: {
           select: {

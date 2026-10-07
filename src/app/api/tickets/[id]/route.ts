@@ -8,7 +8,6 @@ import {
 import { apiErrorResponse } from "@/lib/errors";
 import { createFreshdeskClient } from "@/lib/freshdesk";
 import { logger } from "@/lib/logger";
-import { getOrganizationContext } from "@/lib/organization-context";
 import { decrypt } from "@/lib/encryption";
 import {
   notifyTicketAssigned,
@@ -94,16 +93,15 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
     const { status, priority, assignedTo } = body || {};
 
-    // Fetch the existing ticket and verify it belongs to admin's org
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
-
+    // Fetch the existing ticket and verify it belongs to admin's org. A user
+    // without an org owns no tickets: never widen the filter to every org.
+    if (!user.organizationId) {
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    }
     const existingTicket = await prisma.tickets.findFirst({
       where: {
         id,
-        ...(orgId
-          ? { user_tickets_createdByTouser: { organizationId: orgId } }
-          : {}),
+        user_tickets_createdByTouser: { organizationId: user.organizationId },
       },
       select: { status: true, assignedTo: true, title: true },
     });

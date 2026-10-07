@@ -57,23 +57,42 @@ export const roleSchema = z.object({
   organizationId: z.string().uuid().optional().nullable(),
 });
 
-export const updateRoleSchema = roleSchema.partial();
+/**
+ * Update payload for a role. `organizationId` is not accepted: a role belongs
+ * to the org that created it and can never be moved to another org or made
+ * global through an update (z.object strips the unknown key).
+ */
+export const updateRoleSchema = roleSchema
+  .partial()
+  .omit({ organizationId: true });
 
 export type RoleInput = z.infer<typeof roleSchema>;
 
 /**
  * Webhook validation schemas
  */
-export const webhookSchema = z.object({
+const webhookRetryAttempts = z.number().int().min(0).max(5);
+
+/**
+ * Webhook fields without create defaults. zod 4's `.partial()` re-applies
+ * `.default()`, so update schemas must be derived from a default-free base:
+ * otherwise a PUT with only `{ name }` would silently re-enable the webhook.
+ */
+const webhookFields = z.object({
   name: z.string().min(1, "Name is required").max(100),
   url: z.string().url("Must be a valid URL").max(500),
   secret: z.string().max(255).optional().nullable(),
   events: z.array(z.string()).min(1, "At least one event is required"),
-  isActive: z.boolean().default(true),
-  retryAttempts: z.number().int().min(0).max(5).default(3),
+  isActive: z.boolean(),
+  retryAttempts: webhookRetryAttempts,
 });
 
-export const updateWebhookSchema = webhookSchema.partial();
+export const webhookSchema = webhookFields.extend({
+  isActive: z.boolean().default(true),
+  retryAttempts: webhookRetryAttempts.default(3),
+});
+
+export const updateWebhookSchema = webhookFields.partial();
 
 export type WebhookInput = z.infer<typeof webhookSchema>;
 
@@ -99,15 +118,25 @@ export type AssetReservationInput = z.infer<typeof assetReservationSchema>;
 /**
  * Stock Alert validation schemas
  */
-export const stockAlertSchema = z.object({
+const stockThreshold = z.number().int().min(0);
+
+/** Default-free base for the update schema, see `webhookFields`. */
+const stockAlertFields = z.object({
   consumableId: z.string().uuid(),
-  minThreshold: z.number().int().min(0).default(10),
-  criticalThreshold: z.number().int().min(0).default(5),
+  minThreshold: stockThreshold,
+  criticalThreshold: stockThreshold,
+  emailNotify: z.boolean(),
+  webhookNotify: z.boolean(),
+});
+
+export const stockAlertSchema = stockAlertFields.extend({
+  minThreshold: stockThreshold.default(10),
+  criticalThreshold: stockThreshold.default(5),
   emailNotify: z.boolean().default(true),
   webhookNotify: z.boolean().default(false),
 });
 
-export const updateStockAlertSchema = stockAlertSchema
+export const updateStockAlertSchema = stockAlertFields
   .partial()
   .omit({ consumableId: true });
 

@@ -17,14 +17,20 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+function webhookNotFound() {
+  return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
+}
+
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const user = await requireApiAdmin();
 
-    // Scope to user's organization to prevent cross-tenant access
+    // Scope to user's organization to prevent cross-tenant access. A user
+    // without an org owns no webhooks, so the filter can never widen.
+    if (!user.organizationId) return webhookNotFound();
     const webhook = await prisma.webhook.findFirst({
-      where: { id, organizationId: user.organizationId ?? null },
+      where: { id, organizationId: user.organizationId },
       include: {
         organization: {
           select: { id: true, name: true },
@@ -36,9 +42,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       },
     });
 
-    if (!webhook) {
-      return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
-    }
+    if (!webhook) return webhookNotFound();
 
     return NextResponse.json(webhook);
   } catch (error) {
@@ -60,6 +64,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const user = await requireApiAdmin();
     await requireWritableOrg(user);
+    if (!user.organizationId) return webhookNotFound();
 
     const body = await req.json();
     const validated = updateWebhookSchema.parse(body);
@@ -91,12 +96,10 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     // Verify webhook belongs to user's organization
     const existing = await prisma.webhook.findFirst({
-      where: { id, organizationId: user.organizationId ?? null },
+      where: { id, organizationId: user.organizationId },
       select: { id: true },
     });
-    if (!existing) {
-      return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
-    }
+    if (!existing) return webhookNotFound();
 
     const webhook = await prisma.webhook.update({
       where: { id },
@@ -134,15 +137,14 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const user = await requireApiAdmin();
     await requireWritableOrg(user);
+    if (!user.organizationId) return webhookNotFound();
 
     // Verify webhook belongs to user's organization
     const webhook = await prisma.webhook.findFirst({
-      where: { id, organizationId: user.organizationId ?? null },
+      where: { id, organizationId: user.organizationId },
     });
 
-    if (!webhook) {
-      return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
-    }
+    if (!webhook) return webhookNotFound();
 
     await prisma.webhook.delete({
       where: { id },

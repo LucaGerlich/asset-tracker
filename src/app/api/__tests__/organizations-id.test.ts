@@ -21,6 +21,7 @@ import {
 } from "@/lib/api-auth";
 import { createAuditLog } from "@/lib/audit-log";
 import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
+import { updateOrganizationSchema } from "@/lib/validation-organization";
 
 const mockPrisma = vi.mocked(prisma, true);
 const params = { params: Promise.resolve({ id: "org-uuid-001" }) };
@@ -200,6 +201,24 @@ describe("PUT /api/organizations/[id]", () => {
         details: { name: "Acme" },
       }),
     );
+  });
+
+  it("never writes isActive on the tenant path, even if the schema let it through", async () => {
+    const parse = vi
+      .spyOn(updateOrganizationSchema, "parse")
+      .mockReturnValue({ name: "Acme", isActive: true } as never);
+    try {
+      const req = createMockRequest("/api/organizations/org-uuid-001", {
+        method: "PUT",
+        body: { name: "Acme", isActive: true },
+      });
+      const res = await PUT(req, params);
+      expect(res.status).toBe(200);
+    } finally {
+      parse.mockRestore();
+    }
+    const data = mockPrisma.organization.update.mock.calls[0][0].data;
+    expect(data).not.toHaveProperty("isActive");
   });
 
   it("returns 500 for an unexpected failure of the super-admin check", async () => {

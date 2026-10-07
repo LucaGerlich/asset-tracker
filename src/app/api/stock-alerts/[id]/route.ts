@@ -7,6 +7,7 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import { scopeToOrganization } from "@/lib/organization-context";
 import { updateStockAlertSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { logger } from "@/lib/logger";
@@ -16,13 +17,25 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * An alert is reachable only through its consumable's organization. Callers
+ * look alerts up with this filter and answer 404 on a miss, so an alert of
+ * another org can be neither read nor changed nor deleted by ID.
+ */
+function ownAlertWhere(id: string, organizationId: string | undefined) {
+  return {
+    id,
+    consumable: scopeToOrganization({}, organizationId),
+  };
+}
+
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    await requireApiAuth();
+    const user = await requireApiAuth();
 
-    const alert = await prisma.stockAlert.findUnique({
-      where: { id },
+    const alert = await prisma.stockAlert.findFirst({
+      where: ownAlertWhere(id, user.organizationId),
       include: {
         consumable: {
           select: {
@@ -66,8 +79,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const body = await req.json();
     const validated = updateStockAlertSchema.parse(body);
 
-    const existingAlert = await prisma.stockAlert.findUnique({
-      where: { id },
+    const existingAlert = await prisma.stockAlert.findFirst({
+      where: ownAlertWhere(id, user.organizationId),
     });
 
     if (!existingAlert) {
@@ -131,8 +144,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const user = await requireApiAdmin();
     await requireWritableOrg(user);
 
-    const alert = await prisma.stockAlert.findUnique({
-      where: { id },
+    const alert = await prisma.stockAlert.findFirst({
+      where: ownAlertWhere(id, user.organizationId),
       include: {
         consumable: { select: { consumablename: true } },
       },

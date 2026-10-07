@@ -156,8 +156,11 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
         ? (validated.settings as Prisma.InputJsonValue)
         : Prisma.JsonNull;
     }
-    if (validated.isActive !== undefined)
+    // Read only for a super-admin, so the tenant path cannot write it even if
+    // a schema change ever let the key through.
+    if (superAdmin && validated.isActive !== undefined) {
       updateData.isActive = validated.isActive;
+    }
 
     const organization = await prisma.organization.update({
       where: { id },

@@ -10,12 +10,16 @@ vi.mock("@/lib/api-auth");
 
 vi.mock("@/lib/audit-log", () => ({
   createAuditLog: vi.fn(),
-  AUDIT_ACTIONS: { ROLE_CREATE: "role.create" },
+  AUDIT_ACTIONS: { CREATE: "CREATE", UPDATE: "UPDATE", DELETE: "DELETE" },
 }));
 
 vi.mock("@/lib/logger");
 
 import { GET, POST } from "@/app/api/roles/route";
+import {
+  DELETE as DELETE_ROLE,
+  PUT as PUT_ROLE,
+} from "@/app/api/roles/[id]/route";
 import prisma from "@/lib/prisma";
 import { requireApiAdmin, requireWritableOrg } from "@/lib/api-auth";
 import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
@@ -59,6 +63,35 @@ describe("GET /api/roles", () => {
 
     expect(mockPrisma.role.findMany.mock.calls[0][0]?.where).toEqual({
       OR: [{ organizationId: "org-uuid-001" }, { organizationId: null }],
+    });
+  });
+
+  it("lists only global roles for an admin without an organization", async () => {
+    vi.mocked(requireApiAdmin).mockResolvedValue({
+      ...adminUser,
+      organizationId: undefined,
+    } as any);
+    mockPrisma.role.findMany.mockResolvedValue([]);
+
+    await GET(createMockRequest("/api/roles"));
+
+    expect(mockPrisma.role.findMany.mock.calls[0][0]?.where).toEqual({
+      organizationId: null,
+    });
+  });
+
+  it("keeps the org scope when a search term is paginated", async () => {
+    mockPrisma.role.findMany.mockResolvedValue([]);
+    mockPrisma.role.count.mockResolvedValue(0);
+
+    await GET(createMockRequest("/api/roles?page=1&search=ops"));
+
+    const where = mockPrisma.role.findMany.mock.calls[0][0]?.where;
+    expect(where).toMatchObject({
+      AND: [
+        { OR: [{ organizationId: "org-uuid-001" }, { organizationId: null }] },
+        { OR: [{ name: { contains: "ops", mode: "insensitive" } }] },
+      ],
     });
   });
 
@@ -198,5 +231,173 @@ describe("POST /api/roles", () => {
     expect(status).toBe(403);
     expect(body.code).toBe("org_read_only");
     expect(mockPrisma.role.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("PUT /api/roles/[id]", () => {
+  const roleParams = { params: Promise.resolve({ id: "role-1" }) };
+  const ownRole = {
+    id: "role-1",
+    name: "Custom",
+    description: null,
+    isSystem: false,
+    organizationId: "org-uuid-001",
+    permissions: ["asset:view"],
+  };
+
+  const putRole = (body: Record<string, unknown>) =>
+    PUT_ROLE(
+      createMockRequest("/api/roles/role-1", { method: "PUT", body }),
+      roleParams,
+    );
+
+  beforeEach(() => {
+    mockPrisma.role.findUnique.mockResolvedValue(ownRole as any);
+    mockPrisma.role.update.mockImplementation((async ({
+      data,
+    }: {
+      data: Record<string, unknown>;
+    }) => ({ ...ownRole, ...data })) as never);
+  });
+
+  it.each([
+    ["a non-uuid string", "other-org"],
+    ["another org's uuid", "00000000-0000-4000-8000-000000000999"],
+    ["null (make the role global)", null],
+  ])("never writes an organizationId from the body: %s", async (_, orgId) => {
+    const res = await putRole({ name: "Renamed", organizationId: orgId });
+
+    expect(res.status).toBe(200);
+    const data = mockPrisma.role.update.mock.calls[0][0].data;
+    expect(data).not.toHaveProperty("organizationId");
+    expect(data).toMatchObject({ name: "Renamed" });
+  });
+
+  it("answers 404 for a role of another org", async () => {
+    mockPrisma.role.findUnique.mockResolvedValue({
+      ...ownRole,
+      organizationId: "other-org",
+    } as any);
+
+    const res = await putRole({ name: "Hijacked" });
+
+    expect(res.status).toBe(404);
+    expect(mockPrisma.role.update).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 for a global custom role the caller's org does not own", async () => {
+    mockPrisma.role.findUnique.mockResolvedValue({
+      ...ownRole,
+      organizationId: null,
+    } as any);
+
+    const res = await putRole({ name: "Hijacked" });
+
+    expect(res.status).toBe(404);
+    expect(mockPrisma.role.update).not.toHaveBeenCalled();
+  });
+
+  it("still rejects a global system role with 400", async () => {
+    mockPrisma.role.findUnique.mockResolvedValue({
+      ...ownRole,
+      organizationId: null,
+      isSystem: true,
+    } as any);
+
+    const res = await putRole({ name: "Hijacked" });
+
+    expect(res.status).toBe(400);
+    expect(mockPrisma.role.update).not.toHaveBeenCalled();
+  });
+
+  it("lets an admin without an organization edit a global custom role", async () => {
+    vi.mocked(requireApiAdmin).mockResolvedValue({
+      ...adminUser,
+      organizationId: undefined,
+    } as any);
+    mockPrisma.role.findUnique.mockResolvedValue({
+      ...ownRole,
+      organizationId: null,
+    } as any);
+
+    const res = await putRole({ name: "Renamed" });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 403 and updates nothing when the org is read-only", async () => {
+    vi.mocked(requireWritableOrg).mockRejectedValue(
+      new ForbiddenError("org_read_only", "Organization is in read-only mode"),
+    );
+
+    const res = await putRole({ name: "Renamed" });
+
+    expect(res.status).toBe(403);
+    expect(mockPrisma.role.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("DELETE /api/roles/[id]", () => {
+  const roleParams = { params: Promise.resolve({ id: "role-1" }) };
+  const ownRole = {
+    id: "role-1",
+    name: "Custom",
+    isSystem: false,
+    organizationId: "org-uuid-001",
+    _count: { userRoles: 0 },
+  };
+
+  const deleteRole = () =>
+    DELETE_ROLE(
+      createMockRequest("/api/roles/role-1", { method: "DELETE" }),
+      roleParams,
+    );
+
+  it("deletes an unused role of the caller's org", async () => {
+    mockPrisma.role.findUnique.mockResolvedValue(ownRole as any);
+
+    const res = await deleteRole();
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.role.delete).toHaveBeenCalledWith({
+      where: { id: "role-1" },
+    });
+  });
+
+  it("answers 404 for a role of another org", async () => {
+    mockPrisma.role.findUnique.mockResolvedValue({
+      ...ownRole,
+      organizationId: "other-org",
+    } as any);
+
+    const res = await deleteRole();
+
+    expect(res.status).toBe(404);
+    expect(mockPrisma.role.delete).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 for a global custom role the caller's org does not own", async () => {
+    mockPrisma.role.findUnique.mockResolvedValue({
+      ...ownRole,
+      organizationId: null,
+    } as any);
+
+    const res = await deleteRole();
+
+    expect(res.status).toBe(404);
+    expect(mockPrisma.role.delete).not.toHaveBeenCalled();
+  });
+
+  it("still rejects a global system role with 400", async () => {
+    mockPrisma.role.findUnique.mockResolvedValue({
+      ...ownRole,
+      organizationId: null,
+      isSystem: true,
+    } as any);
+
+    const res = await deleteRole();
+
+    expect(res.status).toBe(400);
+    expect(mockPrisma.role.delete).not.toHaveBeenCalled();
   });
 });

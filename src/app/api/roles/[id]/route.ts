@@ -16,6 +16,19 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * Whether a role is off limits for changes by this admin: it belongs to
+ * another org, or it is a global role the admin's org does not own. Global
+ * system roles are not foreign; they are rejected separately with a 400.
+ */
+function isForeignRole(
+  role: { organizationId: string | null; isSystem: boolean },
+  user: { organizationId?: string },
+): boolean {
+  if (role.organizationId === null && role.isSystem) return false;
+  return role.organizationId !== (user.organizationId ?? null);
+}
+
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
@@ -81,10 +94,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     }
 
     // Verify role belongs to admin's org
-    if (
-      existingRole.organizationId &&
-      existingRole.organizationId !== user.organizationId
-    ) {
+    if (isForeignRole(existingRole, user)) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
@@ -186,7 +196,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     }
 
     // Verify role belongs to admin's org
-    if (role.organizationId && role.organizationId !== user.organizationId) {
+    if (isForeignRole(role, user)) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
