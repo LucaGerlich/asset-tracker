@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
-import { apiErrorResponse } from "@/lib/errors";
+import { getAuthUser, requireNotDemoMode } from "@/lib/api-auth";
+import { apiErrorResponse, ForbiddenError } from "@/lib/errors";
 import { getStripe, PLANS, PlanKey } from "@/lib/stripe";
 import prisma from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/url";
@@ -11,9 +11,11 @@ export async function POST(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const user = await requireApiAuth();
+    // getAuthUser (not requireApiAuth) on purpose: admins of a read-only or
+    // locked-out organization must still be able to pay to reactivate it.
+    const user = await getAuthUser();
     if (!user.isAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      throw new ForbiddenError("not_admin", "Admin access required");
     }
 
     const { plan } = (await req.json()) as { plan: PlanKey };

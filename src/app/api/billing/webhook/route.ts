@@ -62,8 +62,8 @@ export async function POST(req: Request) {
               plan: planKey,
               maxAssets: planCfg.maxAssets === -1 ? 999999 : planCfg.maxAssets,
               maxUsers: planCfg.maxUsers === -1 ? 999999 : planCfg.maxUsers,
-              // Clear any suspension on reactivation
-              isActive: true,
+              // Clear the billing suspension. isActive is the operator's lock
+              // and is deliberately left untouched here.
               suspendedAt: null,
             },
           });
@@ -80,7 +80,8 @@ export async function POST(req: Request) {
           stripeSubscriptionId: null,
           maxAssets: PLANS.starter.maxAssets,
           maxUsers: PLANS.starter.maxUsers,
-          isActive: false,
+          // Start the read-only grace period; the org locks out by time (see
+          // getOrgStatus). isActive stays untouched: it is the operator's lock.
           suspendedAt: new Date(),
         },
       });

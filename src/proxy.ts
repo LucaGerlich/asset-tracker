@@ -10,6 +10,7 @@ import {
 } from "@/lib/rate-limit";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { getSplitOrigins, resolveHostRoute } from "@/lib/host-routing";
+import { getLockedRedirect, shouldCheckOrgLock } from "@/lib/org-lock-redirect";
 
 // Env is fixed per process; the config is validated at startup (instrumentation).
 const splitOrigins = getSplitOrigins();
@@ -26,7 +27,9 @@ function buildCspHeader(nonce: string): string {
     "frame-src 'self' https://*.stripe.com https://challenges.cloudflare.com",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    // Stripe: the /suspended "Manage subscription" form POST is answered with a
+    // 303 to the billing portal, and Chrome applies form-action to that redirect.
+    "form-action 'self' https://billing.stripe.com",
     "frame-ancestors 'none'",
   ];
   return directives.join("; ");
@@ -173,6 +176,13 @@ export async function proxy(req: NextRequest) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return withHeaders(NextResponse.redirect(loginUrl));
+  }
+
+  // Send members of a locked-out organization to /suspended (page requests only;
+  // API routes enforce the lock in their own guards).
+  if (isLoggedIn && shouldCheckOrgLock(pathname, isPublicRoute)) {
+    const lockedUrl = await getLockedRedirect(req);
+    if (lockedUrl) return withHeaders(NextResponse.redirect(lockedUrl));
   }
 
   return nextWithNonce();

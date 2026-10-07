@@ -1,10 +1,17 @@
-import Link from "next/link";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import SignOutButton from "./SignOutButton";
 
 export const metadata = {
   title: "Organization Suspended",
 };
 
-export default function SuspendedPage() {
+export default async function SuspendedPage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  const canManageBilling =
+    !!session?.user?.isadmin && !!process.env.STRIPE_SECRET_KEY;
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-900">
       <div className="w-full max-w-md text-center">
@@ -16,6 +23,7 @@ export default function SuspendedPage() {
               viewBox="0 0 24 24"
               strokeWidth={1.5}
               stroke="currentColor"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -30,24 +38,25 @@ export default function SuspendedPage() {
           </h1>
 
           <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
-            Your organization&apos;s subscription has expired or been cancelled.
-            Access has been restricted until the subscription is reactivated.
+            Access to your organization is currently restricted. It stays
+            restricted until the subscription is reactivated.
           </p>
 
           <div className="space-y-3">
-            <Link
-              href="/api/billing/portal"
-              className="block w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-            >
-              Manage Subscription
-            </Link>
+            {canManageBilling ? (
+              <form method="post" action="/api/billing/portal">
+                <Button type="submit" className="w-full">
+                  Manage subscription
+                </Button>
+              </form>
+            ) : (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Contact your administrator or support to reactivate this
+                organization.
+              </p>
+            )}
 
-            <Link
-              href="/login"
-              className="block w-full rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-            >
-              Back to Login
-            </Link>
+            <SignOutButton />
           </div>
 
           <p className="mt-6 text-xs text-gray-500 dark:text-gray-500">
