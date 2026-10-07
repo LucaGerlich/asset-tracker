@@ -11,9 +11,14 @@ vi.mock("@/lib/notifications", () => ({
   notifyTicketStatusChanged: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { PATCH } from "@/app/api/tickets/[id]/route";
+import { GET, PATCH } from "@/app/api/tickets/[id]/route";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireWritableOrg } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireSuperAdmin,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { createFreshdeskClient } from "@/lib/freshdesk";
 import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 
 const mockPrisma = vi.mocked(prisma, true);
@@ -106,5 +111,47 @@ describe("PATCH /api/tickets/[id]", () => {
     const res = await patch("ticket-own", { status: "open" });
 
     expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /api/tickets/[id] (Freshdesk)", () => {
+  const get = (id: string) =>
+    GET(createMockRequest(`/api/tickets/${id}`), {
+      params: Promise.resolve({ id }),
+    });
+
+  beforeEach(() => {
+    vi.mocked(requireSuperAdmin).mockResolvedValue(admin as never);
+  });
+
+  it("answers 403 and never touches Freshdesk for an admin who is not a super-admin", async () => {
+    vi.mocked(requireSuperAdmin).mockRejectedValue(
+      new ForbiddenError("not_super_admin", "Super-admin access required"),
+    );
+
+    const res = await get("42");
+
+    expect(res.status).toBe(403);
+    expect(mockPrisma.system_settings.findUnique).not.toHaveBeenCalled();
+    expect(createFreshdeskClient).not.toHaveBeenCalled();
+  });
+
+  it("answers 401 for an unauthenticated caller", async () => {
+    vi.mocked(requireSuperAdmin).mockRejectedValue(new UnauthorizedError());
+
+    const res = await get("42");
+
+    expect(res.status).toBe(401);
+    expect(createFreshdeskClient).not.toHaveBeenCalled();
+  });
+
+  it("reads the shared Freshdesk settings for a super-admin", async () => {
+    const res = await get("42");
+
+    // No Freshdesk credentials are stored in this test, so the handler stops
+    // right after the settings lookup, proving the guard let the caller in.
+    expect(res.status).toBe(400);
+    expect(mockPrisma.system_settings.findUnique).toHaveBeenCalledTimes(2);
+    expect(requireApiAdmin).not.toHaveBeenCalled();
   });
 });

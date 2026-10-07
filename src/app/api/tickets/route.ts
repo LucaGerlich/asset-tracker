@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import {
-  requireApiAdmin,
   requireApiAuth,
   requireNotDemoMode,
+  requireSuperAdmin,
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
@@ -146,10 +146,11 @@ async function getLocalTickets(url: URL) {
   }
 }
 
-// Fetch tickets from Freshdesk API (admin-only)
+// Fetch tickets from Freshdesk API. The Freshdesk account is one shared,
+// platform-level integration, so only super-admins may read through it.
 async function getFreshdeskTickets(req: Request, url: URL) {
   try {
-    await requireApiAdmin();
+    await requireSuperAdmin();
 
     const [domainSetting, apiKeySetting] = await Promise.all([
       prisma.system_settings.findUnique({

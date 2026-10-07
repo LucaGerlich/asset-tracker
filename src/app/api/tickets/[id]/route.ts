@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import {
   requireApiAdmin,
   requireNotDemoMode,
+  requireSuperAdmin,
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
@@ -20,11 +21,12 @@ interface RouteParams {
 
 /**
  * GET /api/tickets/[id]
- * Fetch a single ticket from Freshdesk
+ * Fetch a single ticket from Freshdesk. The Freshdesk account is one shared,
+ * platform-level integration, so only super-admins may read through it.
  */
 export async function GET(req: Request, { params }: RouteParams) {
   try {
-    await requireApiAdmin();
+    await requireSuperAdmin();
 
     const { id } = await params;
     const ticketId = parseInt(id, 10);

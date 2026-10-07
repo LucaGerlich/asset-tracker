@@ -5,29 +5,38 @@ import AdminSettingsPage from "./ui/AdminSettingsPage";
 import Breadcrumb from "@/components/Breadcrumb";
 import prisma from "@/lib/prisma";
 import { isSuperAdmin } from "@/lib/super-admin";
+import { MASKED_VALUE } from "@/lib/settings-keys";
 
 export const metadata = {
   title: "Admin Settings - Asset Tracker",
   description: "Configure system settings and preferences",
 };
 
-async function getSystemSettings() {
+type GroupedSettings = Record<
+  string,
+  Array<{
+    id: string;
+    key: string;
+    value: string | null;
+    type: string;
+    description: string | null;
+    isEncrypted: boolean;
+  }>
+>;
+
+/**
+ * Platform-wide system settings, grouped by category. The table is shared by
+ * every tenant: call this only for a super-admin. Short-lived sso.token.*
+ * login rows are never part of the configuration and never leave the server.
+ */
+async function getSystemSettings(): Promise<GroupedSettings> {
   const settings = await prisma.system_settings.findMany({
+    where: { NOT: { settingKey: { startsWith: "sso.token." } } },
     orderBy: [{ category: "asc" }, { settingKey: "asc" }],
   });
 
   // Group settings by category
-  const grouped: Record<
-    string,
-    Array<{
-      id: string;
-      key: string;
-      value: string | null;
-      type: string;
-      description: string | null;
-      isEncrypted: boolean;
-    }>
-  > = {};
+  const grouped: GroupedSettings = {};
 
   for (const setting of settings) {
     if (!grouped[setting.category]) {
@@ -36,7 +45,7 @@ async function getSystemSettings() {
     grouped[setting.category].push({
       id: setting.id,
       key: setting.settingKey,
-      value: setting.isEncrypted ? "********" : setting.settingValue,
+      value: setting.isEncrypted ? MASKED_VALUE : setting.settingValue,
       type: setting.settingType,
       description: setting.description,
       isEncrypted: setting.isEncrypted,
@@ -75,6 +84,13 @@ async function getLabelTemplates() {
   });
 }
 
+async function getStatusTypes(organizationId: string | null) {
+  return await prisma.statusType.findMany({
+    where: { organizationId },
+    orderBy: { statustypename: "asc" },
+  });
+}
+
 async function getCustomFields() {
   return await prisma.custom_field_definitions.findMany({
     orderBy: [{ entityType: "asc" }, { displayOrder: "asc" }],
@@ -101,6 +117,13 @@ export default async function Page() {
     select: { organizationId: true, email: true },
   });
 
+  // Determine if current admin is a platform super-admin. The email comes from
+  // the database row, never from the session.
+  const isSuperAdminUser = await isSuperAdmin({
+    id: session.user.id,
+    email: adminUser?.email,
+  });
+
   const orgPlan = adminUser?.organizationId
     ? ((
         await prisma.organization.findUnique({
@@ -119,21 +142,17 @@ export default async function Page() {
     depreciationSettings,
     statuses,
   ] = await Promise.all([
-    getSystemSettings(),
+    // Only super-admins see platform settings; everyone else gets none.
+    isSuperAdminUser
+      ? getSystemSettings()
+      : Promise.resolve<GroupedSettings>({}),
     getUsers(adminUser?.organizationId ?? null),
     getEmailTemplates(),
     getLabelTemplates(),
     getCustomFields(),
     getDepreciationSettings(),
-    prisma.statusType.findMany({ orderBy: { statustypename: "asc" } }),
+    getStatusTypes(adminUser?.organizationId ?? null),
   ]);
-
-  // Determine if current admin is a platform super-admin. The email comes from
-  // the database row, never from the session.
-  const isSuperAdminUser = await isSuperAdmin({
-    id: session.user.id,
-    email: adminUser?.email,
-  });
 
   // Detect if email is configured via environment variables
   const envEmailConfig = process.env.EMAIL_PROVIDER
