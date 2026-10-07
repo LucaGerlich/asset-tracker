@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/prisma");
 
@@ -23,6 +23,10 @@ vi.mock("@/lib/rbac", () => ({
   hasAnyPermission: vi.fn(),
 }));
 
+vi.mock("@/lib/super-admin", () => ({
+  isSuperAdmin: vi.fn(),
+}));
+
 import { headers } from "next/headers";
 import {
   requireApiAuth,
@@ -37,12 +41,14 @@ import { auth } from "@/lib/auth";
 import { resolveOrgStatus } from "@/lib/org-suspension";
 import { validateApiKey } from "@/lib/api-keys";
 import { hasPermission } from "@/lib/rbac";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 
 const mockPrisma = vi.mocked(prisma, true);
 const mockAuth = vi.mocked(auth, true);
 const mockResolveOrgStatus = vi.mocked(resolveOrgStatus);
 const mockHasPermission = vi.mocked(hasPermission);
+const mockIsSuperAdmin = vi.mocked(isSuperAdmin);
 
 const activeSession = { user: { id: "user-1" } };
 
@@ -269,41 +275,51 @@ describe("requireApiAdmin", () => {
 });
 
 describe("requireSuperAdmin", () => {
-  const originalEnv = process.env.SUPER_ADMIN_EMAILS;
-
   beforeEach(() => {
-    process.env.SUPER_ADMIN_EMAILS = "super@example.com";
     mockPrisma.user.findUnique.mockResolvedValue({
       ...activeDbUser,
       isadmin: true,
     } as any);
+    mockIsSuperAdmin.mockResolvedValue(false);
   });
 
-  afterEach(() => {
-    if (originalEnv === undefined) {
-      delete process.env.SUPER_ADMIN_EMAILS;
-    } else {
-      process.env.SUPER_ADMIN_EMAILS = originalEnv;
-    }
-  });
-
-  it("throws Forbidden when the admin's email is not in SUPER_ADMIN_EMAILS", async () => {
-    await expect(requireSuperAdmin()).rejects.toThrow(
-      "Forbidden: Super-admin access required",
-    );
+  it("throws ForbiddenError not_super_admin when isSuperAdmin denies", async () => {
+    await expect(requireSuperAdmin()).rejects.toBeInstanceOf(ForbiddenError);
     await expect(requireSuperAdmin()).rejects.toMatchObject({
       code: "not_super_admin",
     });
+    await expect(requireSuperAdmin()).rejects.toThrow(
+      "Forbidden: Super-admin access required",
+    );
   });
 
-  it("returns the user when the admin's email is in SUPER_ADMIN_EMAILS", async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({
-      ...activeDbUser,
-      isadmin: true,
-      email: "super@example.com",
-    } as any);
+  it("asks isSuperAdmin about the authenticated user", async () => {
+    await expect(requireSuperAdmin()).rejects.toThrow();
+
+    expect(mockIsSuperAdmin).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "user-1",
+        email: "jane@example.com",
+      }),
+    );
+  });
+
+  it("returns the user when isSuperAdmin allows", async () => {
+    mockIsSuperAdmin.mockResolvedValue(true);
 
     const user = await requireSuperAdmin();
-    expect(user.email).toBe("super@example.com");
+
+    expect(user.id).toBe("user-1");
+    expect(user.isAdmin).toBe(true);
+  });
+
+  it("rejects a non-admin before consulting isSuperAdmin", async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(activeDbUser as any);
+    mockIsSuperAdmin.mockResolvedValue(true);
+
+    await expect(requireSuperAdmin()).rejects.toMatchObject({
+      code: "not_admin",
+    });
+    expect(mockIsSuperAdmin).not.toHaveBeenCalled();
   });
 });

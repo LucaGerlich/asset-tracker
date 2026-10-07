@@ -7,10 +7,35 @@ import {
   userToScim,
 } from "@/lib/scim";
 import { logger } from "@/lib/logger";
+import {
+  assertEmailAssignable,
+  EmailConflictError,
+} from "@/lib/email-ownership";
+import { ForbiddenError } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
+}
+
+/**
+ * Map an email-ownership rejection to a SCIM error response. Returns null for
+ * anything else so the caller keeps its generic 500 handling.
+ */
+function emailRejectionResponse(error: unknown): NextResponse | null {
+  if (error instanceof EmailConflictError) {
+    return NextResponse.json(scimError(error.message, 409), {
+      status: 409,
+      headers: scimHeaders(),
+    });
+  }
+  if (error instanceof ForbiddenError) {
+    return NextResponse.json(scimError(error.message, 403), {
+      status: 403,
+      headers: scimHeaders(),
+    });
+  }
+  return null;
 }
 
 const USER_SELECT = {
@@ -90,13 +115,23 @@ export async function PUT(req: Request, { params }: RouteParams) {
       });
     }
 
+    // IdPs can never assign a reserved (super-admin) or already-used address.
+    const requestedEmail: unknown = body.emails?.[0]?.value;
+    const email =
+      typeof requestedEmail === "string" && requestedEmail.trim()
+        ? await assertEmailAssignable(requestedEmail, {
+            excludeUserId: id,
+            callerIsSuperAdmin: false,
+          })
+        : undefined;
+
     const user = await prisma.user.update({
       where: { userid: id },
       data: {
         username: body.userName || undefined,
         firstname: body.name?.givenName || undefined,
         lastname: body.name?.familyName || undefined,
-        email: body.emails?.[0]?.value || undefined,
+        email,
         isActive: body.active !== undefined ? body.active : undefined,
         externalId: body.externalId || undefined,
         scimLastSync: new Date(),
@@ -117,6 +152,8 @@ export async function PUT(req: Request, { params }: RouteParams) {
       headers: scimHeaders(),
     });
   } catch (error) {
+    const rejection = emailRejectionResponse(error);
+    if (rejection) return rejection;
     logger.error("SCIM PUT /Users/:id error", { error });
     return NextResponse.json(scimError("Internal server error", 500), {
       status: 500,
@@ -213,6 +250,17 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       if (ALLOWED_SCIM_FIELDS.has(key)) sanitized[key] = value;
     }
 
+    // IdPs can never assign a reserved (super-admin) or already-used address.
+    if (sanitized.email !== undefined) {
+      sanitized.email =
+        typeof sanitized.email === "string" && sanitized.email.trim()
+          ? await assertEmailAssignable(sanitized.email, {
+              excludeUserId: id,
+              callerIsSuperAdmin: false,
+            })
+          : undefined;
+    }
+
     const user = await prisma.user.update({
       where: { userid: id },
       data: {
@@ -235,6 +283,8 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       headers: scimHeaders(),
     });
   } catch (error) {
+    const rejection = emailRejectionResponse(error);
+    if (rejection) return rejection;
     logger.error("SCIM PATCH /Users/:id error", { error });
     return NextResponse.json(scimError("Internal server error", 500), {
       status: 500,

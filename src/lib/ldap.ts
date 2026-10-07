@@ -13,6 +13,11 @@ import { decrypt } from "@/lib/encryption";
 import bcrypt from "bcryptjs";
 import { logger } from "@/lib/logger";
 import crypto from "crypto";
+import {
+  assertEmailAssignable,
+  EmailConflictError,
+} from "@/lib/email-ownership";
+import { ForbiddenError } from "@/lib/errors";
 
 export interface LdapSettings {
   enabled: boolean;
@@ -264,13 +269,38 @@ export async function syncUsers(
           },
         });
 
+        // A directory entry can never take a reserved (super-admin) address or
+        // one another user already holds. Skip that entry, keep syncing.
+        let assignableEmail: string | null = null;
+        if (email && (existingUser || cfg.autoCreateUsers)) {
+          try {
+            assignableEmail = await assertEmailAssignable(email, {
+              excludeUserId: existingUser?.userid,
+              callerIsSuperAdmin: false,
+            });
+          } catch (emailError) {
+            if (
+              emailError instanceof EmailConflictError ||
+              emailError instanceof ForbiddenError
+            ) {
+              logger.warn("LDAP sync skipped user: email not assignable", {
+                dn,
+                reason: emailError.message,
+              });
+              errors.push(`Entry ${dn}: ${emailError.message}`);
+              continue;
+            }
+            throw emailError;
+          }
+        }
+
         if (existingUser) {
           await prisma.user.update({
             where: { userid: existingUser.userid },
             data: {
               firstname: firstName,
               lastname: lastName,
-              email: email || existingUser.email,
+              email: assignableEmail ?? existingUser.email,
               ldapDN: dn,
               externalId,
               authProvider: "ldap",
@@ -290,7 +320,7 @@ export async function syncUsers(
           await prisma.user.create({
             data: {
               username,
-              email: email || null,
+              email: assignableEmail,
               firstname: firstName,
               lastname: lastName,
               password: randomPassword,

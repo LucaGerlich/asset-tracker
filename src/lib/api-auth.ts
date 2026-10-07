@@ -6,6 +6,7 @@ import prisma from "./prisma";
 import { validateApiKey } from "./api-keys";
 import { resolveOrgStatus, type OrgStatus } from "./org-suspension";
 import { ForbiddenError, UnauthorizedError } from "./errors";
+import { isSuperAdmin } from "./super-admin";
 import {
   isPlanFeatureEnabled,
   getRequiredPlan,
@@ -215,23 +216,14 @@ export async function requireApiAdmin(): Promise<AuthUser> {
 /**
  * Require platform super-admin access for global settings.
  *
- * Super-admins are identified by email via the SUPER_ADMIN_EMAILS env var
- * (comma-separated). This gates access to platform-wide configuration
- * (SSO, LDAP, Freshdesk, integrations) that affects all tenants.
+ * Gates platform-wide configuration (SSO, LDAP, Freshdesk, integrations,
+ * organization management) that affects all tenants. Fails closed: see
+ * isSuperAdmin for the exact rules.
  */
 export async function requireSuperAdmin(): Promise<AuthUser> {
   const user = await requireApiAdmin();
 
-  const superAdminEmails = process.env.SUPER_ADMIN_EMAILS;
-  if (!superAdminEmails) {
-    // If no super-admin list is configured, all admins have access (single-tenant mode)
-    return user;
-  }
-
-  const allowed = superAdminEmails
-    .split(",")
-    .map((e) => e.trim().toLowerCase());
-  if (!user.email || !allowed.includes(user.email.toLowerCase())) {
+  if (!(await isSuperAdmin(user))) {
     throw new ForbiddenError("not_super_admin", "Super-admin access required");
   }
 

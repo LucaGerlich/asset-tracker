@@ -3,6 +3,11 @@ import prisma from "@/lib/prisma";
 import { requireNotDemoMode } from "@/lib/api-auth";
 import { setUserPassword } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
+import { apiErrorResponse } from "@/lib/errors";
+import {
+  assertEmailAssignable,
+  EmailConflictError,
+} from "@/lib/email-ownership";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
@@ -156,14 +161,20 @@ export async function POST(
         );
       }
 
+      // Accepting an invite must never claim a reserved (super-admin) address
+      // or one that only differs from an existing user's by case.
+      const email = await assertEmailAssignable(invitation.email, {
+        callerIsSuperAdmin: false,
+      });
+
       // Create new user without a password column write — setUserPassword handles
       // both user.password and accounts.password atomically right after creation.
       const newUser = await prisma.user.create({
         data: {
           firstname,
           lastname,
-          email: invitation.email,
-          username: invitation.email,
+          email,
+          username: email,
           isadmin: false,
           canrequest: true,
           organizationId: invitation.organization.id,
@@ -200,6 +211,11 @@ export async function POST(
       message: "Invitation accepted successfully",
     });
   } catch (err) {
+    const denied = apiErrorResponse(err);
+    if (denied) return denied;
+    if (err instanceof EmailConflictError) {
+      return NextResponse.json({ error: err.message }, { status: 409 });
+    }
     logger.error("Error accepting invitation", { error: err });
     return NextResponse.json(
       { error: "Internal server error" },

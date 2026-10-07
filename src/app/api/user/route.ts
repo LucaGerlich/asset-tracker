@@ -6,6 +6,11 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  assertEmailAssignable,
+  EmailConflictError,
+} from "@/lib/email-ownership";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { hasPermission } from "@/lib/rbac";
 import {
   getOrganizationContext,
@@ -234,6 +239,14 @@ export async function PUT(req: NextRequest) {
     const newPassword = updateData.password as string | undefined;
     delete updateData.password;
 
+    // Only an email that is actually being set needs an ownership check.
+    if (typeof updateData.email === "string") {
+      updateData.email = await assertEmailAssignable(updateData.email, {
+        excludeUserId: userid,
+        callerIsSuperAdmin: await isSuperAdmin(authUser),
+      });
+    }
+
     // Convert accessExpiresAt string to Date or null
     if ("accessExpiresAt" in updateData) {
       updateData.accessExpiresAt = updateData.accessExpiresAt
@@ -295,6 +308,9 @@ export async function PUT(req: NextRequest) {
   } catch (error) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
+    if (error instanceof EmailConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     logger.error("PUT /api/user error", { error });
     return NextResponse.json(
       { error: "Failed to update user" },

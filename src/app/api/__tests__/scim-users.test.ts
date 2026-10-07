@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   createMockRequest,
   parseResponse,
@@ -241,7 +241,10 @@ describe("PUT /api/scim/v2/Users/:id", () => {
       firstname: "Jane",
       lastname: "Smith",
     };
-    mockPrisma.user.findFirst.mockResolvedValue(mockUser as any);
+    // 1st lookup: the org-scoped user; 2nd: the email ownership check.
+    mockPrisma.user.findFirst
+      .mockResolvedValueOnce(mockUser as any)
+      .mockResolvedValueOnce(null);
     mockPrisma.user.update.mockResolvedValue(updatedUser as any);
 
     const req = createMockRequest(
@@ -300,6 +303,216 @@ describe("PATCH /api/scim/v2/Users/:id", () => {
         data: expect.objectContaining({ isActive: false }),
       }),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Email ownership (global uniqueness + reserved super-admin addresses)
+// ---------------------------------------------------------------------------
+describe("SCIM email ownership", () => {
+  const usersUrl = "http://localhost:3000/api/scim/v2/Users";
+  const userUrl = `${usersUrl}/user-001`;
+  const otherUser = { userid: "someone-else" };
+  const params = { params: Promise.resolve({ id: "user-001" }) };
+
+  beforeEach(() => {
+    mockPrisma.user.findFirst.mockReset();
+    mockPrisma.user.findFirst.mockResolvedValue(null);
+    mockPrisma.user.create.mockResolvedValue(mockUser as any);
+    mockPrisma.user.update.mockResolvedValue(mockUser as any);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("POST returns 409 when another user already holds the email", async () => {
+    // 1st lookup: org-scoped duplicate check; 2nd: global email ownership.
+    mockPrisma.user.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(otherUser as any);
+
+    const res = await createUser(
+      createMockRequest(usersUrl, {
+        method: "POST",
+        body: { userName: "new", emails: [{ value: "Taken@Example.com" }] },
+      }),
+    );
+    const { status, body } = await parseResponse<any>(res);
+
+    expect(status).toBe(409);
+    expect(body.detail).toBe("Email is already in use");
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it("POST stores the normalised email", async () => {
+    await createUser(
+      createMockRequest(usersUrl, {
+        method: "POST",
+        body: { userName: "new", emails: [{ value: " New@Example.com " }] },
+      }),
+    );
+
+    expect(mockPrisma.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ email: "new@example.com" }),
+      }),
+    );
+  });
+
+  it("POST refuses a reserved super-admin address with 403", async () => {
+    vi.stubEnv("SUPER_ADMIN_EMAILS", "root@example.com");
+
+    const res = await createUser(
+      createMockRequest(usersUrl, {
+        method: "POST",
+        body: { userName: "new", emails: [{ value: "Root@Example.com" }] },
+      }),
+    );
+    const { status, body } = await parseResponse<any>(res);
+
+    expect(status).toBe(403);
+    expect(body.detail).toContain("This email address is reserved");
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it("POST without an email skips the ownership check", async () => {
+    await createUser(
+      createMockRequest(usersUrl, {
+        method: "POST",
+        body: { userName: "new" },
+      }),
+    );
+
+    // Only the org-scoped duplicate lookup runs.
+    expect(mockPrisma.user.findFirst).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.user.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("PUT returns 409 when another user already holds the email", async () => {
+    mockPrisma.user.findFirst
+      .mockResolvedValueOnce(mockUser as any)
+      .mockResolvedValueOnce(otherUser as any);
+
+    const res = await replaceUser(
+      createMockRequest(userUrl, {
+        method: "PUT",
+        body: { userName: "jdoe", emails: [{ value: "taken@example.com" }] },
+      }),
+      params,
+    );
+    const { status, body } = await parseResponse<any>(res);
+
+    expect(status).toBe(409);
+    expect(body.detail).toBe("Email is already in use");
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("PUT excludes the user itself and stores the normalised email", async () => {
+    mockPrisma.user.findFirst
+      .mockResolvedValueOnce(mockUser as any)
+      .mockResolvedValueOnce(null);
+
+    const res = await replaceUser(
+      createMockRequest(userUrl, {
+        method: "PUT",
+        body: { userName: "jdoe", emails: [{ value: "JDoe@Example.com" }] },
+      }),
+      params,
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.user.findFirst).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ NOT: { userid: "user-001" } }),
+      }),
+    );
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ email: "jdoe@example.com" }),
+      }),
+    );
+  });
+
+  it("PUT refuses a reserved super-admin address with 403", async () => {
+    vi.stubEnv("SUPER_ADMIN_EMAILS", "root@example.com");
+    mockPrisma.user.findFirst.mockResolvedValueOnce(mockUser as any);
+
+    const res = await replaceUser(
+      createMockRequest(userUrl, {
+        method: "PUT",
+        body: { userName: "jdoe", emails: [{ value: "root@example.com" }] },
+      }),
+      params,
+    );
+
+    expect(res.status).toBe(403);
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("PATCH returns 409 when another user already holds the email", async () => {
+    mockPrisma.user.findFirst
+      .mockResolvedValueOnce(mockUser as any)
+      .mockResolvedValueOnce(otherUser as any);
+
+    const res = await patchUser(
+      createMockRequest(userUrl, {
+        method: "PATCH",
+        body: {
+          Operations: [
+            {
+              op: "replace",
+              path: 'emails[type eq "work"].value',
+              value: "taken@example.com",
+            },
+          ],
+        },
+      }),
+      params,
+    );
+    const { status, body } = await parseResponse<any>(res);
+
+    expect(status).toBe(409);
+    expect(body.detail).toBe("Email is already in use");
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("PATCH refuses a reserved super-admin address delivered as a value object", async () => {
+    vi.stubEnv("SUPER_ADMIN_EMAILS", "root@example.com");
+    mockPrisma.user.findFirst.mockResolvedValueOnce(mockUser as any);
+
+    const res = await patchUser(
+      createMockRequest(userUrl, {
+        method: "PATCH",
+        body: {
+          Operations: [
+            {
+              op: "replace",
+              value: { emails: [{ value: "root@example.com" }] },
+            },
+          ],
+        },
+      }),
+      params,
+    );
+
+    expect(res.status).toBe(403);
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("PATCH without an email leaves the ownership check out", async () => {
+    mockPrisma.user.findFirst.mockResolvedValueOnce(mockUser as any);
+
+    const res = await patchUser(
+      createMockRequest(userUrl, {
+        method: "PATCH",
+        body: { Operations: [{ op: "replace", path: "active", value: false }] },
+      }),
+      params,
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.user.findFirst).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -6,6 +6,8 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import { assertEmailAssignable } from "@/lib/email-ownership";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { importJobSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -266,6 +268,13 @@ export async function POST(req: NextRequest) {
       licencecategorytypeid: defaultLicenceCategory?.licencecategorytypeid,
     };
 
+    // Imported users may only claim a reserved (super-admin) address when the
+    // importer is a super-admin themselves. Resolved once, not per row.
+    const callerIsSuperAdmin =
+      validatedInput.entityType === "user"
+        ? await isSuperAdmin(authUser)
+        : false;
+
     // Process rows (in a real app, this would be done asynchronously)
     const errors: { row: number; error: string }[] = [];
     let successCount = 0;
@@ -283,6 +292,7 @@ export async function POST(req: NextRequest) {
           authUser.id!,
           importOrgId,
           defaultRefs,
+          callerIsSuperAdmin,
         );
         successCount++;
       } catch (err) {
@@ -469,6 +479,7 @@ async function createEntity(
   userId: string,
   organizationId: string | null,
   defaultRefs: Record<string, string | undefined>,
+  callerIsSuperAdmin: boolean,
 ): Promise<void> {
   const now = new Date();
 
@@ -601,6 +612,10 @@ async function createEntity(
     }
 
     case "user": {
+      // A rejected address fails only this row; the import job records it.
+      const email = data.email
+        ? await assertEmailAssignable(data.email, { callerIsSuperAdmin })
+        : null;
       const randomPassword = await bcrypt.hash(
         crypto.randomBytes(32).toString("hex"),
         10,
@@ -608,7 +623,7 @@ async function createEntity(
       const newUser = await prisma.user.create({
         data: {
           username: data.username || null,
-          email: data.email || null,
+          email,
           firstname: data.firstname,
           lastname: data.lastname,
           password: randomPassword,

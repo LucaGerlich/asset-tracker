@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import AdminSettingsPage from "./ui/AdminSettingsPage";
 import Breadcrumb from "@/components/Breadcrumb";
 import prisma from "@/lib/prisma";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 export const metadata = {
   title: "Admin Settings - Asset Tracker",
@@ -97,7 +98,7 @@ export default async function Page() {
 
   const adminUser = await prisma.user.findUnique({
     where: { userid: session.user.id },
-    select: { organizationId: true },
+    select: { organizationId: true, email: true },
   });
 
   const orgPlan = adminUser?.organizationId
@@ -127,15 +128,12 @@ export default async function Page() {
     prisma.statusType.findMany({ orderBy: { statustypename: "asc" } }),
   ]);
 
-  // Determine if current admin is a platform super-admin
-  const superAdminEmails = process.env.SUPER_ADMIN_EMAILS;
-  const isSuperAdmin = !superAdminEmails
-    ? true // No list configured = single-tenant, all admins are super
-    : !!session.user.email &&
-      superAdminEmails
-        .split(",")
-        .map((e) => e.trim().toLowerCase())
-        .includes(session.user.email.toLowerCase());
+  // Determine if current admin is a platform super-admin. The email comes from
+  // the database row, never from the session.
+  const isSuperAdminUser = await isSuperAdmin({
+    id: session.user.id,
+    email: adminUser?.email,
+  });
 
   // Detect if email is configured via environment variables
   const envEmailConfig = process.env.EMAIL_PROVIDER
@@ -169,7 +167,7 @@ export default async function Page() {
         depreciationSettings={depreciationSettings}
         envEmailConfig={envEmailConfig}
         statuses={statuses}
-        isSuperAdmin={isSuperAdmin}
+        isSuperAdmin={isSuperAdminUser}
         orgPlan={orgPlan as "starter" | "professional" | "enterprise"}
         isSelfHostedMode={process.env.SELF_HOSTED === "true"}
       />
