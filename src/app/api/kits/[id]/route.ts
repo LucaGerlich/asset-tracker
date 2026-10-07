@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, updateKitSchema } from "@/lib/validation";
 import { logger } from "@/lib/logger";
@@ -32,13 +37,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(kit, { status: 200 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/kits/[id] error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     return NextResponse.json({ error: "Failed to fetch kit" }, { status: 500 });
   }
 }
@@ -49,6 +50,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("kit:edit");
+    await requireWritableOrg(authUser);
     const { id } = await params;
 
     const orgCtx = await getOrganizationContext();
@@ -106,13 +108,9 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(kit, { status: 200 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("PUT /api/kits/[id] error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json({ error: "Kit not found" }, { status: 404 });
     }
@@ -129,6 +127,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("kit:delete");
+    await requireWritableOrg(authUser);
     const { id } = await params;
 
     const orgCtx = await getOrganizationContext();
@@ -158,13 +157,9 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       { status: 200 },
     );
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("DELETE /api/kits/[id] error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to delete kit" },
       { status: 500 },

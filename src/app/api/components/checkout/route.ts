@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { invalidateCacheByPrefix } from "@/lib/cache";
 import { validateBody, componentCheckoutSchema } from "@/lib/validation";
@@ -42,14 +47,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json(checkouts, { status: 200 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/components/checkout error", { error: e });
-
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to fetch component checkouts" },
@@ -64,6 +64,7 @@ export async function POST(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("component:edit");
+    await requireWritableOrg(authUser);
 
     const body = await req.json();
     const validated = validateBody(componentCheckoutSchema, body);
@@ -183,15 +184,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json(checkout, { status: 201 });
   } catch (e: unknown) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     const message = e instanceof Error ? e.message : "";
     logger.error("POST /api/components/checkout error", { error: e });
 
-    if (message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: message }, { status: 403 });
-    }
     if (message === "COMPONENT_NOT_FOUND") {
       return NextResponse.json(
         { error: "Component not found" },

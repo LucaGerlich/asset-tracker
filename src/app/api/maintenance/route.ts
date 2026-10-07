@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -85,9 +90,8 @@ export async function GET(req: NextRequest) {
       status: 200,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching maintenance schedules", { error });
     return NextResponse.json(
       { error: "Failed to fetch maintenance schedules" },
@@ -102,7 +106,8 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAuth();
+    const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
 
@@ -205,9 +210,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(schedule, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error creating maintenance schedule", { error });
     return NextResponse.json(
       { error: "Failed to create maintenance schedule" },

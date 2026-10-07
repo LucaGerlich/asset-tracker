@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { getStripe } from "@/lib/stripe";
 import prisma from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/url";
@@ -31,10 +32,9 @@ export async function POST() {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Billing portal error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to create portal session" },
       { status: 500 },

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import {
   validateBody,
@@ -26,13 +31,9 @@ export async function GET() {
 
     return NextResponse.json(templates, { status: 200 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/eula error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch EULA templates" },
       { status: 500 },
@@ -46,6 +47,7 @@ export async function POST(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("eula:manage");
+    await requireWritableOrg(authUser);
     if (!authUser.organizationId) {
       return NextResponse.json(
         { error: "Forbidden: Organization context required" },
@@ -79,13 +81,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(created, { status: 201 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("POST /api/eula error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to create EULA template" },
       { status: 500 },
@@ -99,6 +97,7 @@ export async function PUT(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("eula:manage");
+    await requireWritableOrg(authUser);
     if (!authUser.organizationId) {
       return NextResponse.json(
         { error: "Forbidden: Organization context required" },
@@ -152,13 +151,9 @@ export async function PUT(req: Request) {
 
     return NextResponse.json(updated, { status: 200 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("PUT /api/eula error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json(
         { error: "EULA template not found" },
@@ -177,6 +172,7 @@ export async function DELETE(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("eula:manage");
+    await requireWritableOrg(authUser);
     if (!authUser.organizationId) {
       return NextResponse.json(
         { error: "Forbidden: Organization context required" },
@@ -221,13 +217,9 @@ export async function DELETE(req: Request) {
       { status: 200 },
     );
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("DELETE /api/eula error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to delete EULA template" },
       { status: 500 },

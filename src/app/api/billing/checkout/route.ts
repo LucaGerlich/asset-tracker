@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { getStripe, PLANS, PlanKey } from "@/lib/stripe";
 import prisma from "@/lib/prisma";
 import { getBaseUrl } from "@/lib/url";
@@ -57,10 +58,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Billing checkout error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to create checkout" },
       { status: 500 },

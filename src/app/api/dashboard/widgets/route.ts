@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   WIDGET_DEFINITIONS,
   DEFAULT_WIDGETS,
@@ -35,9 +40,8 @@ export async function GET() {
 
     return NextResponse.json(widgets);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/dashboard/widgets error", { error });
     return NextResponse.json(
       { error: "Failed to fetch dashboard widgets" },
@@ -53,6 +57,7 @@ export async function PUT(req: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const body = await req.json();
     const { widgets } = body as {
       widgets: Array<{ id: string; position: number; visible: boolean }>;
@@ -121,9 +126,8 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(updated);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/dashboard/widgets error", { error });
     return NextResponse.json(
       { error: "Failed to update dashboard widgets" },
@@ -139,6 +143,7 @@ export async function POST(req: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const body = await req.json();
     const { widgetType } = body as { widgetType: string };
 
@@ -205,9 +210,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(widget, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/dashboard/widgets error", { error });
     return NextResponse.json(
       { error: "Failed to add dashboard widget" },
@@ -223,6 +227,7 @@ export async function DELETE(req: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
@@ -253,9 +258,8 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("DELETE /api/dashboard/widgets error", { error });
     return NextResponse.json(
       { error: "Failed to delete dashboard widget" },

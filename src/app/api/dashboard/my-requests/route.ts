@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireApiAuth, type AuthUser } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +29,8 @@ export async function GET() {
 
     return NextResponse.json(items);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/dashboard/my-requests error", { error });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
