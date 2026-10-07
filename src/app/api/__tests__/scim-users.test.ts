@@ -44,6 +44,10 @@ vi.mock("@/lib/scim", () => ({
 }));
 
 vi.mock("@/lib/logger");
+vi.mock("@/lib/org-suspension", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/org-suspension")>()),
+  getOrgSuspensionStatus: vi.fn(),
+}));
 vi.mock("@/lib/audit-log", () => ({
   createAuditLog: vi.fn().mockResolvedValue(undefined),
   AUDIT_ACTIONS: { CREATE: "create", UPDATE: "update", DELETE: "delete" },
@@ -65,9 +69,16 @@ import {
 } from "@/app/api/scim/v2/Users/[id]/route";
 import prisma from "@/lib/prisma";
 import { authenticateScim } from "@/lib/scim";
+import { getOrgSuspensionStatus } from "@/lib/org-suspension";
+
+// The route tests above mock authenticateScim; the suspension tests at the end
+// route through the real implementation.
+const { authenticateScim: realAuthenticateScim } =
+  await vi.importActual<typeof import("@/lib/scim")>("@/lib/scim");
 
 const mockPrisma = vi.mocked(prisma, true);
 const mockAuth = vi.mocked(authenticateScim);
+const mockOrgStatus = vi.mocked(getOrgSuspensionStatus);
 
 const mockUser = {
   userid: "user-001",
@@ -343,5 +354,140 @@ describe("SCIM auth failure", () => {
     expect(res.status).toBe(401);
     const { body } = await parseResponse<any>(res);
     expect(body.detail).toBe("Unauthorized");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Organization suspension (real authenticateScim)
+// ---------------------------------------------------------------------------
+describe("SCIM org suspension", () => {
+  const authHeaders = { Authorization: "Bearer org-scim-token" };
+  const usersUrl = "http://localhost:3000/api/scim/v2/Users";
+  const userUrl = `${usersUrl}/user-001`;
+
+  beforeEach(() => {
+    mockAuth.mockImplementation(realAuthenticateScim);
+    mockPrisma.scimToken.findMany.mockResolvedValue([
+      { token: "org-scim-token", organizationId: "org-uuid-001" },
+    ] as never);
+    mockOrgStatus.mockResolvedValue("active");
+    // Earlier tests leave resolved values behind; start from "no such user".
+    mockPrisma.user.findFirst.mockResolvedValue(null);
+  });
+
+  it("checks the status of the organization the token belongs to", async () => {
+    mockPrisma.user.findMany.mockResolvedValue([mockUser] as never);
+    mockPrisma.user.count.mockResolvedValue(1);
+
+    const res = await listUsers(
+      createMockRequest(usersUrl, { headers: authHeaders }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockOrgStatus).toHaveBeenCalledWith("org-uuid-001");
+  });
+
+  it("rejects POST with 403 and a SCIM error body when the org is read-only", async () => {
+    mockOrgStatus.mockResolvedValue("read_only");
+
+    const res = await createUser(
+      createMockRequest(usersUrl, {
+        method: "POST",
+        headers: authHeaders,
+        body: { userName: "jdoe", name: { givenName: "J", familyName: "D" } },
+      }),
+    );
+    const { status, body } = await parseResponse<any>(res);
+
+    expect(status).toBe(403);
+    expect(res.headers.get("content-type")).toBe("application/scim+json");
+    expect(body).toEqual({
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
+      detail: "Organization suspended",
+      status: 403,
+    });
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects DELETE with 403 when the org is read-only", async () => {
+    mockOrgStatus.mockResolvedValue("read_only");
+
+    const res = await deleteUser(
+      createMockRequest(userUrl, { method: "DELETE", headers: authHeaders }),
+      { params: Promise.resolve({ id: "user-001" }) },
+    );
+
+    expect(res.status).toBe(403);
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("allows GET with 200 when the org is read-only", async () => {
+    mockOrgStatus.mockResolvedValue("read_only");
+    mockPrisma.user.findMany.mockResolvedValue([mockUser] as never);
+    mockPrisma.user.count.mockResolvedValue(1);
+
+    const res = await listUsers(
+      createMockRequest(usersUrl, { headers: authHeaders }),
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects GET with 403 when the org is locked out", async () => {
+    mockOrgStatus.mockResolvedValue("locked_out");
+
+    const res = await listUsers(
+      createMockRequest(usersUrl, { headers: authHeaders }),
+    );
+    const { status, body } = await parseResponse<any>(res);
+
+    expect(status).toBe(403);
+    expect(body.detail).toBe("Organization suspended");
+    expect(mockPrisma.user.findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects POST with 403 when the org is locked out", async () => {
+    mockOrgStatus.mockResolvedValue("locked_out");
+
+    const res = await createUser(
+      createMockRequest(usersUrl, {
+        method: "POST",
+        headers: authHeaders,
+        body: { userName: "jdoe" },
+      }),
+    );
+
+    expect(res.status).toBe(403);
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it("applies the same check to the legacy global token", async () => {
+    mockPrisma.scimToken.findMany.mockResolvedValue([]);
+    mockPrisma.system_settings.findUnique.mockResolvedValue({
+      settingValue: "org-scim-token",
+      isEncrypted: false,
+    } as never);
+    mockPrisma.organization.findFirst.mockResolvedValue({
+      id: "org-legacy",
+    } as never);
+    mockOrgStatus.mockResolvedValue("locked_out");
+
+    const res = await listUsers(
+      createMockRequest(usersUrl, { headers: authHeaders }),
+    );
+
+    expect(res.status).toBe(403);
+    expect(mockOrgStatus).toHaveBeenCalledWith("org-legacy");
+  });
+
+  it("does not look up suspension status for an invalid token", async () => {
+    const res = await listUsers(
+      createMockRequest(usersUrl, {
+        headers: { Authorization: "Bearer wrong-token" },
+      }),
+    );
+
+    expect(res.status).toBe(401);
+    expect(mockOrgStatus).not.toHaveBeenCalled();
   });
 });
