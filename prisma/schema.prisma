@@ -61,6 +61,10 @@ model Organization {
   purchaseOrders       PurchaseOrder[]
   storageConfig        OrganizationStorageConfig?
 
+  // Workflow automation and custom fields (org-scoped)
+  automationRules        AutomationRule[]
+  customFieldDefinitions custom_field_definitions[]
+
   @@map("organizations")
   @@schema("public")
 }
@@ -283,8 +287,13 @@ model AutomationRule {
   createdAt   DateTime  @default(now()) @db.Timestamp(6)
   updatedAt   DateTime  @updatedAt @db.Timestamp(6)
 
+  // Multi-tenancy: rules only run for, and are only editable by, their own organization
+  organizationId String?       @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@index([trigger])
   @@index([isActive])
+  @@index([organizationId])
   @@map("automation_rules")
   @@schema("public")
 }
@@ -640,8 +649,13 @@ model custom_field_definitions {
   updatedAt           DateTime              @db.Timestamp(6)
   custom_field_values custom_field_values[]
 
+  // Multi-tenancy: definitions (and through them their values) belong to one organization
+  organizationId String?       @db.Uuid
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@index([entityType])
   @@index([isActive])
+  @@index([organizationId])
   @@schema("public")
 }
 
