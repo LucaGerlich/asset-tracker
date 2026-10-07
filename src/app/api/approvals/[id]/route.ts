@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { hasPermission } from "@/lib/rbac";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { validateBody, resolveApprovalSchema } from "@/lib/validation";
@@ -58,15 +63,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(approval);
   } catch (e: unknown) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     const error = e as Error;
     logger.error("GET /api/approvals/[id] error", { error });
-
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to fetch approval" },
@@ -83,6 +83,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const admin = await requirePermission("reservation:approve");
+    await requireWritableOrg(admin);
 
     const body = await req.json();
     const validated = validateBody(resolveApprovalSchema, body);
@@ -159,15 +160,10 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(approval);
   } catch (e: unknown) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     const error = e as Error;
     logger.error("PUT /api/approvals/[id] error", { error });
-
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to update approval" },

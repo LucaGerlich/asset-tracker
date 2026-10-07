@@ -34,6 +34,7 @@ vi.mock("@/lib/logger");
 import { POST } from "@/app/api/asset/checkout/bulk/route";
 import prisma from "@/lib/prisma";
 import { requireApiAuth, requirePermission } from "@/lib/api-auth";
+import { UnauthorizedError } from "@/lib/errors";
 
 const mockPrisma = vi.mocked(prisma, true);
 const mockRequireApiAuth = vi.mocked(requireApiAuth);
@@ -201,7 +202,7 @@ describe("POST /api/asset/checkout/bulk", () => {
   });
 
   it("returns 401 when unauthorized", async () => {
-    mockRequirePermission.mockRejectedValue(new Error("Unauthorized"));
+    mockRequirePermission.mockRejectedValue(new UnauthorizedError());
 
     const req = createMockRequest(bulkCheckoutUrl, {
       method: "POST",

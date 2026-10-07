@@ -2,7 +2,12 @@ import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { createAssetSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -40,7 +45,8 @@ export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requirePermission("asset:create");
+    const user = await requirePermission("asset:create");
+    await requireWritableOrg(user);
 
     const limitCheck = await checkAssetLimit();
     if (!limitCheck.allowed) {
@@ -126,17 +132,9 @@ export async function POST(req: NextRequest) {
 
     return new Response(JSON.stringify(created), { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error creating asset", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-      });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 403,
-      });
-    }
     return new Response(JSON.stringify({ error: "Error creating asset" }), {
       status: 500,
     });

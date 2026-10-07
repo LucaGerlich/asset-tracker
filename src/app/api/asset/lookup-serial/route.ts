@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 interface ManufacturerDetection {
@@ -185,10 +186,9 @@ export async function GET(req: NextRequest) {
       { status: 200 },
     );
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/asset/lookup-serial error", { error: e });
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Serial lookup failed" },
       { status: 500 },

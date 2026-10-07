@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import {
   notifyReservationRequest,
@@ -12,13 +17,8 @@ function handleReservationError(
   error: unknown,
   fallbackMessage: string,
 ): NextResponse {
-  const message = error instanceof Error ? error.message : "";
-  if (message === "Unauthorized") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (message.startsWith("Forbidden")) {
-    return NextResponse.json({ error: message }, { status: 403 });
-  }
+  const denied = apiErrorResponse(error);
+  if (denied) return denied;
   logger.error(fallbackMessage, { error });
   return NextResponse.json({ error: fallbackMessage }, { status: 500 });
 }
@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const body = await req.json();
     const { assetId, startDate, endDate, notes } = body;
@@ -181,6 +182,7 @@ export async function PUT(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const body = await req.json();
     const { id, status, notes } = body;

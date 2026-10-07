@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import QRCode from "qrcode";
 import { getBaseUrl } from "@/lib/url";
 import { logger } from "@/lib/logger";
@@ -49,9 +50,8 @@ export async function GET(
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/asset/qrcode/[id] error", { error });
     return NextResponse.json(
       { error: "Failed to generate QR code" },

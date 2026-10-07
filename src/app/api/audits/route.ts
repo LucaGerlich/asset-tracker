@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, createAuditCampaignSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -68,13 +73,9 @@ export async function GET(req: Request) {
       status: 200,
     });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/audits error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch audit campaigns" },
       { status: 500 },
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("audit_campaign:create");
+    await requireWritableOrg(authUser);
 
     const body = await req.json();
     const validated = validateBody(createAuditCampaignSchema, body);
@@ -144,13 +146,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(campaign, { status: 201 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("POST /api/audits error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to create audit campaign" },
       { status: 500 },
@@ -163,6 +161,7 @@ export async function DELETE(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("audit_campaign:edit");
+    await requireWritableOrg(authUser);
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
@@ -206,13 +205,9 @@ export async function DELETE(req: Request) {
       { status: 200 },
     );
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("DELETE /api/audits error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to delete audit campaign" },
       { status: 500 },

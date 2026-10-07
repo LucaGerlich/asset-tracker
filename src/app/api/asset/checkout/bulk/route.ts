@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireNotDemoMode, requirePermission } from "@/lib/api-auth";
+import {
+  requireNotDemoMode,
+  requirePermission,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { validateBody, bulkCheckoutSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -18,6 +23,7 @@ export async function POST(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const user = await requirePermission("asset:assign");
+    await requireWritableOrg(user);
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
@@ -152,14 +158,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: checkouts, failed }, { status: 201 });
   } catch (error: unknown) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     const message = error instanceof Error ? error.message : "Unknown error";
     logger.error("POST /api/asset/checkout/bulk error", { error: message });
-    if (message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (message.includes("Forbidden")) {
-      return NextResponse.json({ error: message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to create bulk checkout" },
       { status: 500 },

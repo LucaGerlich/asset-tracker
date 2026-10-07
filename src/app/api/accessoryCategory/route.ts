@@ -6,7 +6,9 @@ import {
   requireApiAuth,
   requireApiAdmin,
   requireNotDemoMode,
+  requireWritableOrg,
 } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   createAccessoryCategoryTypeSchema,
   updateAccessoryCategoryTypeSchema,
@@ -68,11 +70,9 @@ export async function GET(req: NextRequest) {
       status: 200,
     });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/accessoryCategory error", { error: e });
-
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     return NextResponse.json(
       { error: "Failed to fetch accessory categories" },
@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
     if (demoBlock) return demoBlock;
     // Only admins can create accessory categories
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
 
     const body = await req.json();
 
@@ -126,14 +127,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("POST /api/accessoryCategory error", { error: e });
-
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to create accessory category" },
@@ -149,6 +145,7 @@ export async function PUT(req: NextRequest) {
     if (demoBlock) return demoBlock;
     // Only admins can update accessory categories
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
 
     const body = await req.json();
 
@@ -206,14 +203,10 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(updated, { status: 200 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("PUT /api/accessoryCategory error", { error: e });
 
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json(
         { error: "Accessory category not found" },

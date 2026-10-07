@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { getStorage, getOrgStorage } from "@/lib/storage";
@@ -12,7 +17,8 @@ export async function DELETE(
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requireApiAuth();
+    const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
@@ -49,9 +55,8 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return NextResponse.json(
       { error: "Failed to delete attachment" },
       { status: 500 },
@@ -66,7 +71,8 @@ export async function PATCH(
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requireApiAuth();
+    const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const orgCtx2 = await getOrganizationContext();
     const orgId2 = orgCtx2?.organization?.id;
 
@@ -102,9 +108,8 @@ export async function PATCH(
 
     return NextResponse.json(updated);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return NextResponse.json(
       { error: "Failed to update attachment" },
       { status: 500 },

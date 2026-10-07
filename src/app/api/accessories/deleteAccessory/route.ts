@@ -1,7 +1,12 @@
 import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { logger } from "@/lib/logger";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -16,6 +21,7 @@ export async function DELETE(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const admin = await requirePermission("accessory:delete");
+    await requireWritableOrg(admin);
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
     const { accessoryId } = await req.json();
@@ -92,23 +98,12 @@ export async function DELETE(req: NextRequest) {
       },
     );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     const duration = Date.now() - startTime;
     logger.apiError("DELETE", "/api/accessories/deleteAccessory", error, {
       duration,
     });
-
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
 
     return new Response(JSON.stringify({ error: "Error deleting accessory" }), {
       status: 500,

@@ -1,7 +1,12 @@
 import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { logger, logCatchError } from "@/lib/logger";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -19,7 +24,8 @@ export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requirePermission("asset:edit");
+    const user = await requirePermission("asset:edit");
+    await requireWritableOrg(user);
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
 
@@ -162,21 +168,10 @@ export async function PUT(req: NextRequest) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     const duration = Date.now() - startTime;
     logger.apiError("PUT", "/api/asset/updateStatus", error, { duration });
-
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
 
     let errorMessage = "Failed to update status";
     let statusCode = 500;
