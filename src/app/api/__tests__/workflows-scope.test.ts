@@ -223,6 +223,19 @@ describe("POST /api/admin/workflows", () => {
     expect(mockPrisma.automationRule.create).not.toHaveBeenCalled();
   });
 
+  it("rejects a rule name longer than the 200 character column with 400", async () => {
+    const res = await post({ ...uiBody, name: "x".repeat(201) });
+
+    expect(res.status).toBe(400);
+    expect(mockPrisma.automationRule.create).not.toHaveBeenCalled();
+  });
+
+  it("accepts a rule name of exactly 200 characters", async () => {
+    const res = await post({ ...uiBody, name: "x".repeat(200) });
+
+    expect(res.status).toBe(201);
+  });
+
   it("rejects the request when the caller has no organization", async () => {
     orgless();
 

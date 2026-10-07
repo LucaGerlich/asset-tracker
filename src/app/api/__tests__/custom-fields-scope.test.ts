@@ -655,6 +655,27 @@ describe("createCustomFieldDefinitionSchema", () => {
     },
   );
 
+  it("caps options: 200 entries, 200 characters each, 20000 as text", () => {
+    const parse = (options: unknown) =>
+      createCustomFieldDefinitionSchema.safeParse({ ...valid, options })
+        .success;
+
+    expect(parse(Array.from({ length: 200 }, (_, i) => `o${i}`))).toBe(true);
+    expect(parse(Array.from({ length: 201 }, (_, i) => `o${i}`))).toBe(false);
+    expect(parse(["x".repeat(201)])).toBe(false);
+    expect(parse("x".repeat(20_000))).toBe(true);
+    expect(parse("x".repeat(20_001))).toBe(false);
+  });
+
+  it("stores array options as a JSON string", () => {
+    const parsed = createCustomFieldDefinitionSchema.parse({
+      ...valid,
+      options: ["A", "B"],
+    });
+
+    expect(parsed.options).toBe('["A","B"]');
+  });
+
   it("rejects unknown field and entity types and blank names", () => {
     for (const bad of [
       { fieldType: "script" },

@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { parseCustomFieldOptions } from "@/lib/custom-field-options";
 
 interface CustomField {
   id: string;
@@ -166,14 +167,7 @@ function renderFieldInput(
         />
       );
     case "select": {
-      let options: string[] = [];
-      try {
-        options = field.options ? JSON.parse(field.options) : [];
-      } catch {
-        options = field.options
-          ? field.options.split(",").map((o) => o.trim())
-          : [];
-      }
+      const options = parseCustomFieldOptions(field.options);
       return (
         <Select value={value} onValueChange={(v) => handleChange(field.id, v)}>
           <SelectTrigger id={`cf-${field.id}`}>
@@ -190,14 +184,7 @@ function renderFieldInput(
       );
     }
     case "multiselect": {
-      let options: string[] = [];
-      try {
-        options = field.options ? JSON.parse(field.options) : [];
-      } catch {
-        options = field.options
-          ? field.options.split(",").map((o) => o.trim())
-          : [];
-      }
+      const options = parseCustomFieldOptions(field.options);
       const selectedValues = value ? value.split(",").map((v) => v.trim()) : [];
       return (
         <div className="mt-1 space-y-1.5">

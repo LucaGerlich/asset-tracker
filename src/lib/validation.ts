@@ -306,7 +306,7 @@ export const createTransferSchema = z.object({
 });
 
 export const createAutomationRuleSchema = z.object({
-  name: trimmedString,
+  name: trimmedString.max(200, "Too long"),
   description: optionalString,
   trigger: z.enum([
     "warranty_expiring",
@@ -350,7 +350,10 @@ const customFieldEntityTypes = getEntitiesWithCustomFields().map((e) => e.key);
  * (a JSON array that CustomFieldsSection parses, or a comma-separated list).
  */
 const customFieldOptions = z
-  .union([z.string(), z.array(z.string().trim().min(1).max(200)).max(200)])
+  .union([
+    z.string().max(20_000),
+    z.array(z.string().trim().min(1).max(200)).max(200),
+  ])
   .transform((value) =>
     typeof value === "string" ? value : JSON.stringify(value),
   )
