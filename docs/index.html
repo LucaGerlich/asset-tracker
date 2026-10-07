@@ -781,7 +781,8 @@ pm2 startup   # follow printed command to enable on boot</code></pre>
       <table>
         <thead><tr><th>Variable</th><th>Description</th><th>Default</th></tr></thead>
         <tbody>
-          <tr><td><code>SELF_HOSTED</code></td><td>Disables landing page, pricing, registration</td><td><code>false</code></td></tr>
+          <tr><td><code>SELF_HOSTED</code></td><td>Disables landing page and pricing</td><td><code>false</code></td></tr>
+          <tr><td><code>ALLOW_PUBLIC_SIGNUP</code></td><td>Opens public sign-up at <code>/register</code> (SaaS). Leave unset to keep registration closed.</td><td><code>false</code></td></tr>
           <tr><td><code>CRON_SECRET</code></td><td><strong>Required in production.</strong> Protects all 7 cron endpoints. Min 16 chars.</td><td>&mdash;</td></tr>
           <tr><td><code>NODE_ENV</code></td><td>Runtime environment</td><td><code>production</code></td></tr>
         </tbody>
@@ -1035,7 +1036,8 @@ pm2 logs assettracker</code></pre>
       <ul class="checklist">
         <li><code>NODE_ENV=production</code> is set</li>
         <li>All secrets are unique, generated with <code>openssl rand</code></li>
-        <li><code>SELF_HOSTED=true</code> (disables public landing page and registration)</li>
+        <li><code>SELF_HOSTED=true</code> (disables public landing page)</li>
+        <li><code>ALLOW_PUBLIC_SIGNUP</code> is unset (public sign-up at <code>/register</code> stays closed)</li>
         <li>HTTPS is enforced via reverse proxy</li>
         <li>Database is not exposed publicly (Docker internal network or localhost only)</li>
         <li>Firewall allows only ports 80, 443, and 22 (SSH)</li>

@@ -9,9 +9,20 @@ import {
   EmailConflictError,
 } from "@/lib/email-ownership";
 import { auth } from "@/lib/auth";
+import { checkUserLimit } from "@/lib/tenant-limits";
 import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
+
+const USER_LIMIT_MESSAGE =
+  "This organization has reached its user limit. Ask an administrator to upgrade the plan.";
+
+/** Why a non-pending invitation cannot be used (anything else: generic). */
+const UNAVAILABLE_MESSAGES: Record<string, string> = {
+  accepted: "Invitation has already been accepted",
+  revoked: "Invitation was revoked",
+  cancelled: "Invitation was cancelled",
+};
 
 async function findAndValidateInvitation(token: string) {
   const invitation = await prisma.teamInvitation.findUnique({
@@ -27,16 +38,16 @@ async function findAndValidateInvitation(token: string) {
     return { error: "Invitation not found", status: 404, invitation: null };
   }
 
-  if (invitation.status === "accepted") {
+  // Only a pending invitation can be used; accepted, revoked, cancelled and
+  // any other status are dead links.
+  if (invitation.status !== "pending") {
     return {
-      error: "Invitation has already been accepted",
+      error:
+        UNAVAILABLE_MESSAGES[invitation.status] ??
+        "Invitation is no longer available",
       status: 410,
       invitation: null,
     };
-  }
-
-  if (invitation.status === "revoked") {
-    return { error: "Invitation was revoked", status: 410, invitation: null };
   }
 
   if (new Date() > new Date(invitation.expiresAt)) {
@@ -120,29 +131,63 @@ export async function POST(
         );
       }
 
-      // Link existing user to the organization
-      await prisma.user.update({
-        where: { userid: existingUser.userid },
-        data: { organizationId: invitation.organization.id },
-      });
+      const joinsNewOrganization =
+        existingUser.organizationId !== invitation.organization.id;
 
-      // Assign role if specified
-      if (invitation.role) {
-        await prisma.userRole.upsert({
-          where: {
-            userId_roleId: {
+      if (joinsNewOrganization) {
+        const limitCheck = await checkUserLimit(invitation.organization.id);
+        if (!limitCheck.allowed) {
+          return NextResponse.json(
+            { error: USER_LIMIT_MESSAGE },
+            { status: 403 },
+          );
+        }
+      }
+
+      await prisma.$transaction(async (tx) => {
+        if (joinsNewOrganization) {
+          // Switching organizations must not carry rights over: admin status
+          // and roles of the previous org do not apply to the new one (global
+          // roles with no organization are kept).
+          await tx.user.update({
+            where: { userid: existingUser.userid },
+            data: {
+              organizationId: invitation.organization.id,
+              isadmin: false,
+              departmentId: null,
+            },
+          });
+          await tx.userRole.deleteMany({
+            where: {
+              userId: existingUser.userid,
+              role: {
+                AND: [
+                  { organizationId: { not: null } },
+                  { organizationId: { not: invitation.organization.id } },
+                ],
+              },
+            },
+          });
+        }
+
+        // Assign role if specified
+        if (invitation.role) {
+          await tx.userRole.upsert({
+            where: {
+              userId_roleId: {
+                userId: existingUser.userid,
+                roleId: invitation.role.id,
+              },
+            },
+            create: {
               userId: existingUser.userid,
               roleId: invitation.role.id,
+              grantedBy: invitation.invitedBy,
             },
-          },
-          create: {
-            userId: existingUser.userid,
-            roleId: invitation.role.id,
-            grantedBy: invitation.invitedBy,
-          },
-          update: {},
-        });
-      }
+            update: {},
+          });
+        }
+      });
     } else {
       if (!firstname || !lastname || !password) {
         return NextResponse.json(
@@ -166,6 +211,14 @@ export async function POST(
       const email = await assertEmailAssignable(invitation.email, {
         callerIsSuperAdmin: false,
       });
+
+      const limitCheck = await checkUserLimit(invitation.organization.id);
+      if (!limitCheck.allowed) {
+        return NextResponse.json(
+          { error: USER_LIMIT_MESSAGE },
+          { status: 403 },
+        );
+      }
 
       // Create new user without a password column write — setUserPassword handles
       // both user.password and accounts.password atomically right after creation.

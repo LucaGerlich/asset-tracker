@@ -266,7 +266,8 @@ All configuration is via environment variables. Copy `.env.example` for the full
 | **Billing**       | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                            |        No        |
 | **Redis**         | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`                    |        No        |
 | **CAPTCHA**       | `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`                |        No        |
-| **Self-hosted**   | `SELF_HOSTED=true` — disables landing page, pricing, registration       |        No        |
+| **Self-hosted**   | `SELF_HOSTED=true` — disables landing page and pricing                  |        No        |
+| **Sign-up**       | `ALLOW_PUBLIC_SIGNUP=true` — opens `/register` (default: closed)        |        No        |
 
 ---
 

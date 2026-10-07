@@ -105,6 +105,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();
   vi.stubEnv("SUPER_ADMIN_EMAILS", RESERVED);
+  vi.stubEnv("ALLOW_PUBLIC_SIGNUP", "true");
   asAdmin("admin@example.com");
   stubEmailHolder(null, null);
   mockPrisma.user.count.mockResolvedValue(0);

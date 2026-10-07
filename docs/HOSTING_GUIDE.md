@@ -51,11 +51,12 @@ Complete guide for deploying Asset Tracker to production. Covers VPS (Docker), V
 
 ### Recommended
 
-| Variable      | Description                                               | Example      |
-| ------------- | --------------------------------------------------------- | ------------ |
-| `CRON_SECRET` | Protects cron endpoints. Generate: `openssl rand -hex 16` | `b4e2...`    |
-| `SELF_HOSTED` | Skip SaaS landing page, go straight to login              | `true`       |
-| `NODE_ENV`    | Runtime environment                                       | `production` |
+| Variable              | Description                                                                                      | Example        |
+| --------------------- | ------------------------------------------------------------------------------------------------ | -------------- |
+| `CRON_SECRET`         | Protects cron endpoints. Generate: `openssl rand -hex 16`                                        | `b4e2...`      |
+| `SELF_HOSTED`         | Skip SaaS landing page, go straight to login                                                     | `true`         |
+| `ALLOW_PUBLIC_SIGNUP` | Open `/register` so anyone can create an organization (SaaS). Leave unset to keep sign-up closed | unset (closed) |
+| `NODE_ENV`            | Runtime environment                                                                              | `production`   |
 
 ### Database (Docker Compose only)
 
@@ -618,6 +619,7 @@ pm2 restart assettracker
 - [ ] `NODE_ENV=production` is set
 - [ ] All secrets are unique, generated with `openssl rand`
 - [ ] `SELF_HOSTED=true` (skips public landing page)
+- [ ] `ALLOW_PUBLIC_SIGNUP` is unset (public sign-up at `/register` stays closed)
 - [ ] HTTPS is enforced via reverse proxy
 - [ ] Database is not exposed publicly (port 5432 bound to localhost or Docker internal network)
 - [ ] Firewall allows only ports 80, 443, and SSH (22)

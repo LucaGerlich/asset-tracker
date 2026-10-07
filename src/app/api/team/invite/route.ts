@@ -41,6 +41,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
+    // An invitation can only grant a role that belongs to the inviter's own
+    // organization; otherwise an admin could hand out another tenant's role.
+    if (roleId) {
+      const role =
+        typeof roleId === "string"
+          ? await prisma.role.findFirst({
+              where: { id: roleId, organizationId: user.organizationId },
+            })
+          : null;
+      if (!role) {
+        return NextResponse.json(
+          { error: "Role not found in your organization" },
+          { status: 400 },
+        );
+      }
+    }
+
     const existingInvitation = await prisma.teamInvitation.findFirst({
       where: {
         email: email.toLowerCase(),
@@ -56,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const limitCheck = await checkUserLimit();
+    const limitCheck = await checkUserLimit(user.organizationId);
     if (!limitCheck.allowed) {
       return NextResponse.json(
         {

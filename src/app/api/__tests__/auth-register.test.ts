@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   createMockRequest,
   parseResponse,
@@ -32,7 +32,12 @@ const mockCheckRateLimit = vi.mocked(checkRateLimit);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  process.env.ALLOW_PUBLIC_SIGNUP = "true";
   mockCheckRateLimit.mockResolvedValue({ success: true } as any);
+});
+
+afterEach(() => {
+  delete process.env.ALLOW_PUBLIC_SIGNUP;
 });
 
 describe("POST /api/auth/register", () => {
@@ -44,6 +49,34 @@ describe("POST /api/auth/register", () => {
     username: "testuser",
     password: "SecurePass123!",
   };
+
+  it("returns 404 and skips rate limiting when public signup is closed", async () => {
+    delete process.env.ALLOW_PUBLIC_SIGNUP;
+
+    const req = createMockRequest("/api/auth/register", {
+      method: "POST",
+      body: validBody,
+    });
+    const res = await POST(req);
+    const { status, body } = await parseResponse<any>(res);
+    expect(status).toBe(404);
+    expect(body.error).toBe("Not found");
+    expect(mockCheckRateLimit).not.toHaveBeenCalled();
+    expect(mockPrisma.user.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.organization.create).not.toHaveBeenCalled();
+  });
+
+  it("stays closed for any value other than the string true", async () => {
+    process.env.ALLOW_PUBLIC_SIGNUP = "1";
+
+    const req = createMockRequest("/api/auth/register", {
+      method: "POST",
+      body: validBody,
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(404);
+    expect(mockCheckRateLimit).not.toHaveBeenCalled();
+  });
 
   it("returns 201 on successful registration", async () => {
     mockPrisma.user.findFirst.mockResolvedValue(null);

@@ -11,6 +11,7 @@ import {
 import { requireNotDemoMode } from "@/lib/api-auth";
 import { seedOrgDefaults } from "@/lib/org-defaults";
 import { isSelfHosted } from "@/lib/deployment-mode";
+import { isPublicSignupEnabled } from "@/lib/signup";
 import { logger } from "@/lib/logger";
 import { ForbiddenError } from "@/lib/errors";
 import {
@@ -43,6 +44,13 @@ function generateSlug(name: string): string {
 }
 
 export async function POST(req: Request) {
+  // Public sign-up is closed unless explicitly enabled. Answer before anything
+  // else (no rate-limit bookkeeping, no body parsing) as if the route did not
+  // exist.
+  if (!isPublicSignupEnabled()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;

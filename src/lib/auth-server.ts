@@ -197,6 +197,10 @@ export const auth = betterAuth({
 
   emailAndPassword: {
     enabled: true,
+    // Sign-up goes through /api/auth/register (org creation, rate limiting,
+    // ALLOW_PUBLIC_SIGNUP); BetterAuth's own endpoint stays off. The
+    // /sign-up/email hook below remains as defence in depth.
+    disableSignUp: true,
     minPasswordLength: 12,
     password: {
       async hash(password: string) {

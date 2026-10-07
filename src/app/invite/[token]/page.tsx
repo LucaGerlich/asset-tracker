@@ -45,13 +45,19 @@ export default async function InvitePage({ params }: InvitePageProps) {
   }
 
   const isExpired = new Date() > new Date(invitation.expiresAt);
-  const isAccepted = invitation.status === "accepted";
-  const isRevoked = invitation.status === "revoked";
+  const isPending = invitation.status === "pending";
 
-  if (isExpired || isAccepted || isRevoked) {
+  // Only a pending, unexpired invitation can be accepted.
+  if (isExpired || !isPending) {
     let message = "This invitation has expired.";
-    if (isAccepted) message = "This invitation has already been accepted.";
-    if (isRevoked) message = "This invitation was revoked.";
+    if (invitation.status === "accepted") {
+      message = "This invitation has already been accepted.";
+    } else if (
+      invitation.status === "revoked" ||
+      invitation.status === "cancelled"
+    ) {
+      message = "This invitation was revoked.";
+    }
 
     return (
       <div className="bg-background flex min-h-screen items-center justify-center">
