@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 export async function GET() {
@@ -13,13 +18,9 @@ export async function GET() {
 
     return NextResponse.json(templates, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/admin/labels error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch label templates" },
       { status: 500 },
@@ -33,7 +34,8 @@ export async function POST(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
     const body = await req.json();
     const {
       name,
@@ -75,10 +77,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(template, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/admin/labels error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to create label template" },
       { status: 500 },

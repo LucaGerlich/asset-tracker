@@ -5,7 +5,9 @@ import {
   requireNotDemoMode,
   requireSuperAdmin,
   requirePlanFeature,
+  requireWritableOrg,
 } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 /**
@@ -35,6 +37,8 @@ export async function GET() {
 
     return NextResponse.json(result);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/admin/settings/sso error", { error });
     return NextResponse.json(
       { error: "Failed to get SSO settings" },
@@ -53,6 +57,7 @@ export async function PUT(req: Request) {
     if (demoBlock) return demoBlock;
 
     const user = await requireSuperAdmin();
+    await requireWritableOrg(user);
     await requirePlanFeature(user, "sso");
 
     const body = await req.json();
@@ -97,6 +102,8 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/admin/settings/sso error", { error });
     return NextResponse.json(
       { error: "Failed to save SSO settings" },

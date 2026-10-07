@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import {
   getOrganizationContext,
@@ -18,7 +23,8 @@ export async function PATCH(
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
     const { id } = await params;
     const body = await req.json();
     const { isadmin, canrequest } = body;
@@ -105,17 +111,13 @@ export async function PATCH(
 
     return NextResponse.json(updatedUser, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     const duration = Date.now() - startTime;
     logger.apiError("PATCH", "/api/admin/users/[id]/permissions", error, {
       duration,
     });
 
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     if (error.code === "P2025") {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }

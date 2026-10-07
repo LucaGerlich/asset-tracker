@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 
@@ -36,13 +41,9 @@ export async function GET(req: Request, { params }: RouteParams) {
 
     return NextResponse.json(rule, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/admin/workflows/[id] error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch automation rule" },
       { status: 500 },
@@ -57,6 +58,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAdmin();
+    await requireWritableOrg(user);
     const { id } = await params;
     const body = await req.json();
     const { name, description, trigger, conditions, actions, isActive } = body;
@@ -104,13 +106,9 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
     return NextResponse.json(rule, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/admin/workflows/[id] error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to update automation rule" },
       { status: 500 },
@@ -125,6 +123,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAdmin();
+    await requireWritableOrg(user);
     const { id } = await params;
 
     const rule = await prisma.automationRule.findUnique({ where: { id } });
@@ -151,13 +150,9 @@ export async function DELETE(req: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("DELETE /api/admin/workflows/[id] error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to delete automation rule" },
       { status: 500 },

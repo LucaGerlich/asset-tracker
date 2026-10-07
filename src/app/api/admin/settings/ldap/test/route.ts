@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { testConnection, getLdapSettings } from "@/lib/ldap";
 import { requireNotDemoMode, requireSuperAdmin } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 /**
@@ -31,6 +32,8 @@ export async function POST() {
 
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/admin/settings/ldap/test error", { error });
     return NextResponse.json(
       { success: false, message: "Test connection failed unexpectedly" },

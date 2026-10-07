@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
-import { requireNotDemoMode, requireSuperAdmin } from "@/lib/api-auth";
+import {
+  requireNotDemoMode,
+  requireSuperAdmin,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 export async function GET() {
@@ -23,6 +28,8 @@ export async function GET() {
 
     return NextResponse.json(result);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/admin/settings/intune error", { error });
     return NextResponse.json(
       { error: "Failed to get Intune settings" },
@@ -36,7 +43,8 @@ export async function PUT(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireSuperAdmin();
+    const user = await requireSuperAdmin();
+    await requireWritableOrg(user);
 
     const body = await req.json();
     const { settings } = body;
@@ -80,6 +88,8 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/admin/settings/intune error", { error });
     return NextResponse.json(
       { error: "Failed to save Intune settings" },

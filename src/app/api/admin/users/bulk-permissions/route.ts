@@ -1,6 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getOrganizationContext } from "@/lib/organization-context";
 
@@ -10,7 +15,8 @@ export async function PATCH(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
     const body = await req.json();
     const { userIds, isadmin, canrequest } = body;
 
@@ -65,20 +71,9 @@ export async function PATCH(req: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PATCH /api/admin/users/bulk-permissions error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
-
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to update bulk permissions" },

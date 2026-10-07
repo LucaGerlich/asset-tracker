@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     const { id } = await params;
     const body = await request.json();
@@ -35,25 +41,25 @@ export async function PUT(
 
     return NextResponse.json(definition);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return NextResponse.json(
       { error: "Failed to update custom field definition" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     const { id } = await params;
     const body = await request.json();
@@ -69,25 +75,25 @@ export async function PATCH(
 
     return NextResponse.json(definition);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return NextResponse.json(
       { error: "Failed to toggle custom field status" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     const { id } = await params;
 
@@ -97,12 +103,11 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return NextResponse.json(
       { error: "Failed to delete custom field definition" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

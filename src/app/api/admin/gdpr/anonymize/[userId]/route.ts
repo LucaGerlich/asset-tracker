@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { randomUUID } from "crypto";
 import { logger } from "@/lib/logger";
@@ -21,6 +26,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const adminUser = await requireApiAdmin();
+    await requireWritableOrg(adminUser);
     const { userId } = await params;
 
     // Verify the user exists
@@ -154,13 +160,9 @@ export async function POST(req: Request, { params }: RouteParams) {
       message: `User ${userId} has been anonymized.`,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/admin/gdpr/anonymize/[userId] error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to anonymize user data" },
       { status: 500 },

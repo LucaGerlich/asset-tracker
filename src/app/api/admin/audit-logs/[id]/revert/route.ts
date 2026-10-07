@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin } from "@/lib/api-auth";
+import { requireApiAdmin, requireWritableOrg } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog } from "@/lib/audit-log";
 import { getOrganizationContext } from "@/lib/organization-context";
 
@@ -100,6 +101,7 @@ export async function POST(
 ) {
   try {
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
     const { id } = await params;
 
     // 1. Fetch the audit log entry, scoped to the caller's organization
@@ -249,13 +251,9 @@ export async function POST(
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     console.error("POST /api/admin/audit-logs/[id]/revert error", error);
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to revert change" },
       { status: 500 },

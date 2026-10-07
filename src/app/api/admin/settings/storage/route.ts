@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { maskSecret } from "@/lib/secrets";
 import { logger } from "@/lib/logger";
@@ -15,11 +20,6 @@ function storageErrorResponse(action: string, error: unknown): NextResponse {
   logger.error(`Storage config ${action} failed`, { error });
 
   const message = error instanceof Error ? error.message : String(error);
-
-  // Forbidden (non-admin)
-  if (message.startsWith("Forbidden")) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   // Encryption key absent at runtime — Vercel isn't injecting it (not set for
   // this environment/scope, or the deployment predates the variable).
@@ -99,6 +99,8 @@ export async function GET() {
       isEnabled: config.isEnabled,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return storageErrorResponse("load", error);
   }
 }
@@ -108,7 +110,8 @@ export async function PUT(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
     if (!orgId) {
@@ -184,6 +187,8 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return storageErrorResponse("save", error);
   }
 }
@@ -193,7 +198,8 @@ export async function DELETE() {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
     if (!orgId) {
@@ -209,6 +215,8 @@ export async function DELETE() {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return storageErrorResponse("remove", error);
   }
 }

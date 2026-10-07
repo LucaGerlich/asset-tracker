@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 
 export async function GET() {
@@ -12,12 +17,11 @@ export async function GET() {
 
     return NextResponse.json(definitions);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return NextResponse.json(
       { error: "Failed to fetch custom field definitions" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -27,7 +31,8 @@ export async function POST(request: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     const body = await request.json();
     const { name, fieldType, entityType, isRequired, options, displayOrder } =
@@ -36,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!name || !fieldType) {
       return NextResponse.json(
         { error: "Name and fieldType are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -54,12 +59,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(definition, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return NextResponse.json(
       { error: "Failed to create custom field definition" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

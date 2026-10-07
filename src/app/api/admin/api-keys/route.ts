@@ -4,7 +4,9 @@ import {
   requireApiAdmin,
   requireNotDemoMode,
   requirePlanFeature,
+  requireWritableOrg,
 } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { generateApiKey } from "@/lib/api-keys";
 import { logger } from "@/lib/logger";
 import { PERMISSIONS } from "@/lib/rbac";
@@ -19,6 +21,7 @@ export async function POST(req: Request) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAdmin();
+    await requireWritableOrg(user);
     await requirePlanFeature(user, "api_keys");
 
     const body = await req.json();
@@ -93,13 +96,9 @@ export async function POST(req: Request) {
       { status: 201 },
     );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/admin/api-keys error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to create API key" },
       { status: 500 },
@@ -129,13 +128,9 @@ export async function GET() {
 
     return NextResponse.json({ keys }, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/admin/api-keys error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch API keys" },
       { status: 500 },

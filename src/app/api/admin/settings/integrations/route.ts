@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
-import { requireSuperAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireSuperAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 // Webhook URLs are secrets in effect (possession lets you receive/spoof
@@ -30,6 +35,8 @@ export async function GET() {
 
     return NextResponse.json(result);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/admin/settings/integrations error", { error });
     return NextResponse.json(
       { error: "Failed to get integration settings" },
@@ -43,7 +50,8 @@ export async function PUT(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireSuperAdmin();
+    const user = await requireSuperAdmin();
+    await requireWritableOrg(user);
 
     const body = await req.json();
     const { settings } = body;
@@ -85,6 +93,8 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/admin/settings/integrations error", { error });
     return NextResponse.json(
       { error: "Failed to save integration settings" },

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { S3StorageProvider } from "@/lib/storage/s3";
 import { decrypt } from "@/lib/encryption";
@@ -71,14 +72,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     const message =
       error instanceof Error ? error.message : "Connection failed";
-    if (message.startsWith("Forbidden")) {
-      return NextResponse.json(
-        { success: false, error: "Forbidden" },
-        { status: 403 },
-      );
-    }
     return NextResponse.json({ success: false, error: message });
   }
 }

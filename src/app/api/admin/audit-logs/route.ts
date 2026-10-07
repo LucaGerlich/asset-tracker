@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   parsePaginationParams,
   buildPrismaArgs,
@@ -111,13 +112,9 @@ export async function GET(req: Request) {
       status: 200,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/admin/audit-logs error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch audit logs" },
       { status: 500 },
