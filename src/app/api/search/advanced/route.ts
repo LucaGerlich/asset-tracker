@@ -11,6 +11,7 @@ import {
   buildPaginatedResponse,
 } from "@/lib/pagination";
 import { logger } from "@/lib/logger";
+import { isGuid } from "@/lib/validation";
 import {
   SEARCHABLE_FIELDS,
   ENTITY_ID_FIELD,
@@ -146,6 +147,27 @@ function getPrismaDelegate(entity: SearchableEntity) {
   }
 }
 
+/**
+ * The subset of the requested custom field ids that are definitions of the
+ * organization. A user without an organization owns none: the lookup is
+ * skipped so an undefined organizationId can never reach Prisma, where it would
+ * drop the filter and match every org.
+ */
+async function getOrgCustomFieldIds(
+  orgId: string | undefined,
+  requestedFieldIds: unknown[],
+): Promise<Set<string>> {
+  if (!orgId) return new Set();
+  const wellFormed = requestedFieldIds.filter(isGuid);
+  if (wellFormed.length === 0) return new Set();
+
+  const definitions = await prisma.custom_field_definitions.findMany({
+    where: { id: { in: wellFormed }, organizationId: orgId },
+    select: { id: true },
+  });
+  return new Set(definitions.map((d) => d.id));
+}
+
 // GET /api/search/advanced?entity=asset&filters=[...]&page=1&pageSize=25
 export async function GET(req: NextRequest) {
   try {
@@ -257,7 +279,19 @@ export async function GET(req: NextRequest) {
       const idField = ENTITY_ID_FIELD[entity];
       let matchingEntityIds: string[] | null = null;
 
+      // Only the organization's own definitions may be searched. A filter on
+      // any other field matches nothing, and its values are never read.
+      const allowedFieldIds = await getOrgCustomFieldIds(
+        orgId,
+        customFilters.map((f) => f.field),
+      );
+
       for (const f of customFilters) {
+        if (!allowedFieldIds.has(f.field)) {
+          matchingEntityIds = [];
+          break;
+        }
+
         // For each custom field filter, query custom_field_values
         const cfWhere: Record<string, unknown> = {
           fieldId: f.field,

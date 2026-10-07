@@ -130,10 +130,19 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       orderBy: { nextDueDate: "asc" },
       take: 5,
     }),
-    prisma.custom_field_definitions.findMany({
-      where: { entityType: "asset", isActive: true },
-      orderBy: { displayOrder: "asc" },
-    }),
+    // A viewer without an organization gets no definitions. Never pass an
+    // undefined organizationId to Prisma: it would drop the filter and return
+    // every organization's definitions.
+    ctx?.organization?.id
+      ? prisma.custom_field_definitions.findMany({
+          where: {
+            entityType: "asset",
+            isActive: true,
+            organizationId: ctx.organization.id,
+          },
+          orderBy: { displayOrder: "asc" },
+        })
+      : [],
     prisma.custom_field_values.findMany({
       where: { entityId: params.id },
     }),

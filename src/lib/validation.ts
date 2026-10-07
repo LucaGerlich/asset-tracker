@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
+import { getEntitiesWithCustomFields } from "@/lib/entity-registry";
 
 /**
  * Validate request body against a Zod schema.
@@ -326,6 +327,68 @@ export const createAutomationRuleSchema = z.object({
     .optional(),
   isActive: z.boolean().optional(),
 });
+
+export const updateAutomationRuleSchema = createAutomationRuleSchema.partial();
+
+/**
+ * Field types the admin UI offers (FIELD_TYPES in CustomFieldsAdminTab).
+ * Keep both lists in sync.
+ */
+export const CUSTOM_FIELD_TYPES = [
+  "text",
+  "number",
+  "date",
+  "checkbox",
+  "select",
+  "textarea",
+] as const;
+
+const customFieldEntityTypes = getEntitiesWithCustomFields().map((e) => e.key);
+
+/**
+ * Select options: the admin UI sends a string array, the column stores text
+ * (a JSON array that CustomFieldsSection parses, or a comma-separated list).
+ */
+const customFieldOptions = z
+  .union([z.string(), z.array(z.string().trim().min(1).max(200)).max(200)])
+  .transform((value) =>
+    typeof value === "string" ? value : JSON.stringify(value),
+  )
+  .optional()
+  .nullable();
+
+export const createCustomFieldDefinitionSchema = z.object({
+  name: z.string().trim().min(1, "Required").max(100, "Too long"),
+  fieldType: z.enum(CUSTOM_FIELD_TYPES, {
+    message: `Must be one of: ${CUSTOM_FIELD_TYPES.join(", ")}`,
+  }),
+  entityType: z.enum(customFieldEntityTypes, {
+    message: `Must be one of: ${customFieldEntityTypes.join(", ")}`,
+  }),
+  isRequired: z.boolean().optional(),
+  displayOrder: z.number().int().min(-1_000_000).max(1_000_000).optional(),
+  options: customFieldOptions,
+});
+
+export const updateCustomFieldDefinitionSchema =
+  createCustomFieldDefinitionSchema
+    .partial()
+    .extend({ isActive: z.boolean().optional() });
+
+export const toggleCustomFieldDefinitionSchema = z.object({
+  isActive: z.boolean(),
+});
+
+const guid = z.guid();
+
+/**
+ * True for any 8-4-4-4-12 hex identifier, which is what a Postgres uuid column
+ * accepts. Use it before putting a client-supplied id into a uuid `in` filter,
+ * where a malformed value would otherwise surface as a database error.
+ */
+export function isGuid(value: unknown): value is string {
+  return guid.safeParse(value).success;
+}
 
 export const createComponentSchema = z.object({
   name: trimmedString,

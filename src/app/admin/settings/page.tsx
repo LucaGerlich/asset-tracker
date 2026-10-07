@@ -95,8 +95,13 @@ async function getStatusTypes(organizationId: string | null) {
   });
 }
 
-async function getCustomFields() {
+// A user without an organization owns no definitions. Skip the query rather
+// than pass a missing organizationId to Prisma, which would drop the filter and
+// return every organization's definitions.
+async function getCustomFields(organizationId: string | null) {
+  if (!organizationId) return [];
   return await prisma.custom_field_definitions.findMany({
+    where: { organizationId },
     orderBy: [{ entityType: "asc" }, { displayOrder: "asc" }],
   });
 }
@@ -155,7 +160,7 @@ export default async function Page() {
       ? getEmailTemplates()
       : Promise.resolve<EmailTemplates>([]),
     getLabelTemplates(),
-    getCustomFields(),
+    getCustomFields(adminUser?.organizationId ?? null),
     getDepreciationSettings(),
     getStatusTypes(adminUser?.organizationId ?? null),
   ]);

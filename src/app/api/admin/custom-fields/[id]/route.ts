@@ -6,11 +6,42 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
+import {
+  toggleCustomFieldDefinitionSchema,
+  updateCustomFieldDefinitionSchema,
+  validateBody,
+} from "@/lib/validation";
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+function definitionNotFound() {
+  return NextResponse.json(
+    { error: "Custom field definition not found" },
+    { status: 404 },
+  );
+}
+
+/**
+ * True when the definition exists in the caller's organization. A user
+ * without an organization owns no definitions; the check short-circuits so an
+ * undefined organizationId can never reach Prisma, where it would drop the
+ * filter and match any org.
+ */
+async function ownsDefinition(
+  id: string,
+  organizationId: string | undefined,
+): Promise<boolean> {
+  if (!organizationId) return false;
+  const definition = await prisma.custom_field_definitions.findFirst({
+    where: { id, organizationId },
+    select: { id: true },
+  });
+  return definition !== null;
+}
+
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -19,24 +50,17 @@ export async function PUT(
     await requireWritableOrg(user);
 
     const { id } = await params;
+    if (!(await ownsDefinition(id, user.organizationId))) {
+      return definitionNotFound();
+    }
+
     const body = await request.json();
-
-    const updateData: Record<string, unknown> = {};
-
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.fieldType !== undefined) updateData.fieldType = body.fieldType;
-    if (body.entityType !== undefined) updateData.entityType = body.entityType;
-    if (body.isRequired !== undefined) updateData.isRequired = body.isRequired;
-    if (body.options !== undefined) updateData.options = body.options;
-    if (body.displayOrder !== undefined)
-      updateData.displayOrder = body.displayOrder;
-    if (body.isActive !== undefined) updateData.isActive = body.isActive;
-
-    updateData.updatedAt = new Date();
+    const validated = validateBody(updateCustomFieldDefinitionSchema, body);
+    if (validated instanceof NextResponse) return validated;
 
     const definition = await prisma.custom_field_definitions.update({
       where: { id },
-      data: updateData,
+      data: { ...validated, updatedAt: new Date() },
     });
 
     return NextResponse.json(definition);
@@ -50,10 +74,7 @@ export async function PUT(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -62,13 +83,18 @@ export async function PATCH(
     await requireWritableOrg(user);
 
     const { id } = await params;
+    if (!(await ownsDefinition(id, user.organizationId))) {
+      return definitionNotFound();
+    }
+
     const body = await request.json();
-    const { isActive } = body;
+    const validated = validateBody(toggleCustomFieldDefinitionSchema, body);
+    if (validated instanceof NextResponse) return validated;
 
     const definition = await prisma.custom_field_definitions.update({
       where: { id },
       data: {
-        isActive,
+        isActive: validated.isActive,
         updatedAt: new Date(),
       },
     });
@@ -84,10 +110,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -96,6 +119,9 @@ export async function DELETE(
     await requireWritableOrg(user);
 
     const { id } = await params;
+    if (!(await ownsDefinition(id, user.organizationId))) {
+      return definitionNotFound();
+    }
 
     await prisma.custom_field_definitions.delete({
       where: { id },

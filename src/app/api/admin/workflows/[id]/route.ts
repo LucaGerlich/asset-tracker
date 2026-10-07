@@ -8,19 +8,32 @@ import {
 import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { updateAutomationRuleSchema, validateBody } from "@/lib/validation";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+function ruleNotFound() {
+  return NextResponse.json(
+    { error: "Automation rule not found" },
+    { status: 404 },
+  );
+}
+
 // GET /api/admin/workflows/[id] - Get single automation rule
 export async function GET(req: Request, { params }: RouteParams) {
   try {
-    await requireApiAdmin();
+    const user = await requireApiAdmin();
     const { id } = await params;
 
-    const rule = await prisma.automationRule.findUnique({
-      where: { id },
+    // A user without an organization owns no rules. Never pass an undefined
+    // organizationId to Prisma: it would drop the filter and match any org.
+    const orgId = user.organizationId;
+    if (!orgId) return ruleNotFound();
+
+    const rule = await prisma.automationRule.findFirst({
+      where: { id, organizationId: orgId },
       include: {
         creator: {
           select: {
@@ -32,12 +45,7 @@ export async function GET(req: Request, { params }: RouteParams) {
       },
     });
 
-    if (!rule) {
-      return NextResponse.json(
-        { error: "Automation rule not found" },
-        { status: 404 },
-      );
-    }
+    if (!rule) return ruleNotFound();
 
     return NextResponse.json(rule, { status: 200 });
   } catch (error) {
@@ -60,8 +68,21 @@ export async function PUT(req: Request, { params }: RouteParams) {
     const user = await requireApiAdmin();
     await requireWritableOrg(user);
     const { id } = await params;
+
+    const orgId = user.organizationId;
+    if (!orgId) return ruleNotFound();
+
+    const existing = await prisma.automationRule.findFirst({
+      where: { id, organizationId: orgId },
+      select: { id: true },
+    });
+    if (!existing) return ruleNotFound();
+
     const body = await req.json();
-    const { name, description, trigger, conditions, actions, isActive } = body;
+    const validated = validateBody(updateAutomationRuleSchema, body);
+    if (validated instanceof NextResponse) return validated;
+    const { name, description, trigger, conditions, actions, isActive } =
+      validated;
 
     const rule = await prisma.automationRule.update({
       where: { id },
@@ -100,7 +121,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
       details: {
         type: "automation_rule",
         name: rule.name,
-        changes: body,
+        changes: validated,
       },
     });
 
@@ -126,14 +147,13 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     await requireWritableOrg(user);
     const { id } = await params;
 
-    const rule = await prisma.automationRule.findUnique({ where: { id } });
+    const orgId = user.organizationId;
+    if (!orgId) return ruleNotFound();
 
-    if (!rule) {
-      return NextResponse.json(
-        { error: "Automation rule not found" },
-        { status: 404 },
-      );
-    }
+    const rule = await prisma.automationRule.findFirst({
+      where: { id, organizationId: orgId },
+    });
+    if (!rule) return ruleNotFound();
 
     await prisma.automationRule.delete({ where: { id } });
 

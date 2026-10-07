@@ -7,12 +7,19 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { createAutomationRuleSchema, validateBody } from "@/lib/validation";
 
 export async function GET() {
   try {
-    await requireApiAdmin();
+    const user = await requireApiAdmin();
+
+    // A user without an organization owns no rules. Never pass an undefined
+    // organizationId to Prisma: it would drop the filter and list every org.
+    const orgId = user.organizationId;
+    if (!orgId) return NextResponse.json([], { status: 200 });
 
     const rules = await prisma.automationRule.findMany({
+      where: { organizationId: orgId },
       include: {
         creator: {
           select: {
@@ -45,15 +52,20 @@ export async function POST(req: Request) {
 
     const user = await requireApiAdmin();
     await requireWritableOrg(user);
-    const body = await req.json();
-    const { name, description, trigger, conditions, actions } = body;
 
-    if (!name || !trigger) {
+    const orgId = user.organizationId;
+    if (!orgId) {
       return NextResponse.json(
-        { error: "Name and trigger are required" },
-        { status: 400 },
+        { error: "An organization is required to create automation rules" },
+        { status: 403 },
       );
     }
+
+    const body = await req.json();
+    const validated = validateBody(createAutomationRuleSchema, body);
+    if (validated instanceof NextResponse) return validated;
+    const { name, description, trigger, conditions, actions, isActive } =
+      validated;
 
     const rule = await prisma.automationRule.create({
       data: {
@@ -66,7 +78,9 @@ export async function POST(req: Request) {
             : JSON.stringify(conditions || {}),
         actions:
           typeof actions === "string" ? actions : JSON.stringify(actions || []),
+        isActive,
         createdBy: user.id!,
+        organizationId: orgId,
       },
       include: {
         creator: {
