@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { updateWebhookSchema } from "@/lib/validation-organization";
 import { getWebhookEvents } from "@/lib/webhooks";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
@@ -17,19 +20,11 @@ interface RouteParams {
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
 
     // Scope to user's organization to prevent cross-tenant access
-    const user = await prisma.user.findUnique({
-      where: { userid: session.user.id },
-      select: { organizationId: true },
-    });
-
     const webhook = await prisma.webhook.findFirst({
-      where: { id, organizationId: user?.organizationId ?? null },
+      where: { id, organizationId: user.organizationId ?? null },
       include: {
         organization: {
           select: { id: true, name: true },
@@ -47,6 +42,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(webhook);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching webhook", { error });
     return NextResponse.json(
       { error: "Failed to fetch webhook" },
@@ -61,10 +58,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     const body = await req.json();
     const validated = updateWebhookSchema.parse(body);
@@ -95,12 +90,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     }
 
     // Verify webhook belongs to user's organization
-    const user = await prisma.user.findUnique({
-      where: { userid: session.user.id },
-      select: { organizationId: true },
-    });
     const existing = await prisma.webhook.findFirst({
-      where: { id, organizationId: user?.organizationId ?? null },
+      where: { id, organizationId: user.organizationId ?? null },
       select: { id: true },
     });
     if (!existing) {
@@ -113,7 +104,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: user.id!,
       action: AUDIT_ACTIONS.UPDATE,
       entity: "Webhook",
       entityId: webhook.id,
@@ -122,6 +113,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(webhook);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error updating webhook", { error });
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
@@ -139,18 +132,12 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     // Verify webhook belongs to user's organization
-    const user = await prisma.user.findUnique({
-      where: { userid: session.user.id },
-      select: { organizationId: true },
-    });
     const webhook = await prisma.webhook.findFirst({
-      where: { id, organizationId: user?.organizationId ?? null },
+      where: { id, organizationId: user.organizationId ?? null },
     });
 
     if (!webhook) {
@@ -162,7 +149,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: user.id!,
       action: AUDIT_ACTIONS.DELETE,
       entity: "Webhook",
       entityId: id,
@@ -171,6 +158,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error deleting webhook", { error });
     return NextResponse.json(
       { error: "Failed to delete webhook" },

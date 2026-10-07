@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { requireNotDemoMode, requireSuperAdmin } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireSuperAdmin,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import {
+  apiErrorResponse,
+  ForbiddenError,
+  UnauthorizedError,
+} from "@/lib/errors";
 import prisma from "@/lib/prisma";
-import { updateOrganizationSchema } from "@/lib/validation-organization";
+import {
+  organizationAdminUpdateSchema,
+  updateOrganizationSchema,
+  type OrganizationAdminUpdateInput,
+} from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
@@ -13,35 +25,39 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * Probe whether the caller is a platform super-admin. `isadmin` is per-org,
+ * so it must never grant access to another org on its own. Only guard denials
+ * mean "no"; any other failure (e.g. the database) propagates as a 500.
+ */
+async function isPlatformSuperAdmin(): Promise<boolean> {
+  try {
+    await requireSuperAdmin();
+    return true;
+  } catch (error) {
+    if (error instanceof ForbiddenError || error instanceof UnauthorizedError) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+function organizationNotFound() {
+  return NextResponse.json(
+    { error: "Organization not found" },
+    { status: 404 },
+  );
+}
+
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireApiAdmin();
 
-    // Prevent IDOR — users may only view their own organization unless they
-    // are a real platform super-admin. `isadmin` is per-org, not platform-wide,
-    // so it must never be used to bypass this check on its own.
-    const callerUser = await prisma.user.findUnique({
-      where: { userid: session.user.id },
-      select: { organizationId: true },
-    });
-
-    if (!callerUser?.organizationId || callerUser.organizationId !== id) {
-      let isSuperAdmin = true;
-      try {
-        await requireSuperAdmin();
-      } catch {
-        isSuperAdmin = false;
-      }
-      if (!isSuperAdmin) {
-        return NextResponse.json(
-          { error: "Organization not found" },
-          { status: 404 },
-        );
-      }
+    // Prevent IDOR: an admin may only view their own organization unless they
+    // are a platform super-admin.
+    if (user.organizationId !== id && !(await isPlatformSuperAdmin())) {
+      return organizationNotFound();
     }
 
     const organization = await prisma.organization.findUnique({
@@ -62,14 +78,13 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     });
 
     if (!organization) {
-      return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 404 },
-      );
+      return organizationNotFound();
     }
 
     return NextResponse.json(organization);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching organization", { error });
     return NextResponse.json(
       { error: "Failed to fetch organization" },
@@ -84,25 +99,25 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
+    const superAdmin = await isPlatformSuperAdmin();
 
-    // Admins can only update their own organization
-    const adminUser = await prisma.user.findUnique({
-      where: { userid: session.user.id },
-      select: { organizationId: true },
-    });
-    if (!adminUser?.organizationId || adminUser.organizationId !== id) {
-      return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 404 },
-      );
+    // Admins can only update their own organization; only a platform
+    // super-admin may act on another one.
+    const actsOnOwnOrg = user.organizationId === id;
+    if (!actsOnOwnOrg && !superAdmin) {
+      return organizationNotFound();
+    }
+    if (actsOnOwnOrg) {
+      await requireWritableOrg(user);
     }
 
     const body = await req.json();
-    const validated = updateOrganizationSchema.parse(body);
+    // Only a super-admin may change `isActive`; for everyone else the schema
+    // strips it, so a tenant can never lift its own suspension.
+    const validated: OrganizationAdminUpdateInput = superAdmin
+      ? organizationAdminUpdateSchema.parse(body)
+      : updateOrganizationSchema.parse(body);
 
     // Check if slug is unique (excluding current organization)
     if (validated.slug) {
@@ -150,15 +165,17 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: user.id!,
       action: AUDIT_ACTIONS.UPDATE,
       entity: "Organization",
       entityId: organization.id,
-      details: validated as Record<string, unknown>,
+      details: validated,
     });
 
     return NextResponse.json(organization);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error updating organization", { error });
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -182,21 +199,16 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
 
-    // Admins can only delete their own organization
-    const adminUser = await prisma.user.findUnique({
-      where: { userid: session.user.id },
-      select: { organizationId: true },
-    });
-    if (!adminUser?.organizationId || adminUser.organizationId !== id) {
-      return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 404 },
-      );
+    // Admins can only delete their own organization; only a platform
+    // super-admin may act on another one.
+    const actsOnOwnOrg = user.organizationId === id;
+    if (!actsOnOwnOrg && !(await isPlatformSuperAdmin())) {
+      return organizationNotFound();
+    }
+    if (actsOnOwnOrg) {
+      await requireWritableOrg(user);
     }
 
     const organization = await prisma.organization.findUnique({
@@ -215,10 +227,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     });
 
     if (!organization) {
-      return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 404 },
-      );
+      return organizationNotFound();
     }
 
     const totalRelatedItems =
@@ -244,7 +253,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: user.id!,
       action: AUDIT_ACTIONS.DELETE,
       entity: "Organization",
       entityId: id,
@@ -253,6 +262,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error deleting organization", { error });
     return NextResponse.json(
       { error: "Failed to delete organization" },

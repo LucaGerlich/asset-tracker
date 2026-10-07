@@ -111,7 +111,6 @@ export async function POST(req: NextRequest) {
         settings: validated.settings
           ? (validated.settings as Prisma.InputJsonValue)
           : Prisma.JsonNull,
-        isActive: validated.isActive,
       },
     });
 

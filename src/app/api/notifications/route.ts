@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import {
   parsePaginationParams,
@@ -15,16 +18,13 @@ const NOTIFICATION_SORT_FIELDS = ["createdAt", "type", "status"];
 // GET /api/notifications - Fetch notifications for the current user
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireApiAuth();
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status"); // 'pending', 'sent', 'all'
 
     const where: Record<string, unknown> = {
-      userId: session.user.id,
+      userId: user.id!,
     };
 
     if (status && status !== "all") {
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     const unreadCount = await prisma.notification_queue.count({
       where: {
-        userId: session.user.id,
+        userId: user.id!,
         status: "pending",
       },
     });
@@ -84,6 +84,8 @@ export async function GET(request: NextRequest) {
       unreadCount,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching notifications", { error });
     return NextResponse.json(
       { error: "Failed to fetch notifications" },
@@ -98,17 +100,17 @@ export async function DELETE(_request: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     await prisma.notification_queue.deleteMany({
-      where: { userId: session.user.id },
+      where: { userId: user.id! },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error deleting notifications", { error });
     return NextResponse.json(
       { error: "Failed to delete notifications" },

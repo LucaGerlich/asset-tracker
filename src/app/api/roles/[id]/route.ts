@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import { updateRoleSchema } from "@/lib/validation-organization";
 import { PERMISSIONS } from "@/lib/rbac";
@@ -13,21 +16,10 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-async function getAdminOrgId(userId: string): Promise<string | null> {
-  const user = await prisma.user.findUnique({
-    where: { userid: userId },
-    select: { organizationId: true },
-  });
-  return user?.organizationId ?? null;
-}
-
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
 
     const role = await prisma.role.findUnique({
       where: { id },
@@ -55,15 +47,14 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     }
 
     // Verify role belongs to admin's org (system roles are readable by all)
-    if (role.organizationId) {
-      const adminOrgId = await getAdminOrgId(session.user.id!);
-      if (role.organizationId !== adminOrgId) {
-        return NextResponse.json({ error: "Role not found" }, { status: 404 });
-      }
+    if (role.organizationId && role.organizationId !== user.organizationId) {
+      return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
     return NextResponse.json(role);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching role", { error });
     return NextResponse.json(
       { error: "Failed to fetch role" },
@@ -78,10 +69,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     const existingRole = await prisma.role.findUnique({
       where: { id },
@@ -92,11 +81,11 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     }
 
     // Verify role belongs to admin's org
-    if (existingRole.organizationId) {
-      const adminOrgId = await getAdminOrgId(session.user.id!);
-      if (existingRole.organizationId !== adminOrgId) {
-        return NextResponse.json({ error: "Role not found" }, { status: 404 });
-      }
+    if (
+      existingRole.organizationId &&
+      existingRole.organizationId !== user.organizationId
+    ) {
+      return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
     if (existingRole.isSystem) {
@@ -152,7 +141,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: user.id!,
       action: AUDIT_ACTIONS.UPDATE,
       entity: "Role",
       entityId: role.id,
@@ -161,6 +150,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(role);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error updating role", { error });
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
@@ -178,10 +169,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     const role = await prisma.role.findUnique({
       where: { id },
@@ -197,11 +186,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     }
 
     // Verify role belongs to admin's org
-    if (role.organizationId) {
-      const adminOrgId = await getAdminOrgId(session.user.id!);
-      if (role.organizationId !== adminOrgId) {
-        return NextResponse.json({ error: "Role not found" }, { status: 404 });
-      }
+    if (role.organizationId && role.organizationId !== user.organizationId) {
+      return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
     if (role.isSystem) {
@@ -227,7 +213,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: user.id!,
       action: AUDIT_ACTIONS.DELETE,
       entity: "Role",
       entityId: id,
@@ -236,6 +222,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error deleting role", { error });
     return NextResponse.json(
       { error: "Failed to delete role" },

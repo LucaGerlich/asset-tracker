@@ -4,7 +4,8 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { setUserPassword, verifyUserPassword } from "@/lib/auth-utils";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import { getAuthUser, requireNotDemoMode } from "@/lib/api-auth";
+import { apiErrorResponse, UnauthorizedError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { queueEmail } from "@/lib/email";
@@ -41,11 +42,18 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
+    // getAuthUser (not requireApiAuth): a user of a suspended or read-only org
+    // must still be able to change their own password.
+    const user = await getAuthUser();
+    const userId = user.id!;
+
+    // The current session token keeps this device signed in when other
+    // sessions are revoked. API-key callers have no session and cannot change
+    // a password.
     const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session || session.user.id !== userId) {
+      throw new UnauthorizedError();
     }
-    const userId = session.user.id;
 
     // Rate limit per user — protects the bcrypt.compare on currentPassword from
     // being used as a brute-force oracle.
@@ -133,7 +141,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Optional notification email — fire-and-forget, queued via the existing pipeline
-    if (sendNotificationEmail && session.user.email) {
+    if (sendNotificationEmail && user.email) {
       const ip =
         req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
         req.headers.get("x-real-ip") ||
@@ -141,7 +149,7 @@ export async function POST(req: NextRequest) {
       const userAgent = req.headers.get("user-agent") || "unknown";
       const subject = "Your Asset Tracker password was changed";
       const html = `
-        <p>Hello ${session.user.name || ""},</p>
+        <p>Hello ${user.name || ""},</p>
         <p>Your password was just changed.</p>
         <ul>
           <li><strong>When:</strong> ${new Date().toUTCString()}</li>
@@ -150,18 +158,14 @@ export async function POST(req: NextRequest) {
         </ul>
         <p>If this was you, you can ignore this email. If you did not change your password, please reset it immediately and contact your administrator.</p>
       `;
-      queueEmail(
-        userId,
-        "password_change",
-        session.user.email,
-        subject,
-        html,
-      ).catch((err) => {
-        logger.warn("Failed to queue password change notification email", {
-          userId,
-          error: err,
-        });
-      });
+      queueEmail(userId, "password_change", user.email, subject, html).catch(
+        (err) => {
+          logger.warn("Failed to queue password change notification email", {
+            userId,
+            error: err,
+          });
+        },
+      );
     }
 
     await createAuditLog({
@@ -178,6 +182,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/auth/change-password error", { error });
     return NextResponse.json(
       { error: "Failed to change password" },

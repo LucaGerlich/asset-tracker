@@ -1,22 +1,35 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Organization validation schemas
  */
 export const organizationSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
-  slug: z.string()
+  slug: z
+    .string()
     .min(1)
     .max(50)
     .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
   description: z.string().optional().nullable(),
   settings: z.record(z.string(), z.unknown()).optional().nullable(),
-  isActive: z.boolean().default(true),
 });
 
+/**
+ * Update payload for an org admin. It deliberately has no `isActive`: the
+ * active flag drives tenant suspension and must only change through
+ * `organizationAdminUpdateSchema`. Unknown keys are stripped by `z.object`.
+ */
 export const updateOrganizationSchema = organizationSchema.partial();
 
+/** Update payload for a platform super-admin: may also (de)activate an org. */
+export const organizationAdminUpdateSchema = updateOrganizationSchema.extend({
+  isActive: z.boolean().optional(),
+});
+
 export type OrganizationInput = z.infer<typeof organizationSchema>;
+export type OrganizationAdminUpdateInput = z.infer<
+  typeof organizationAdminUpdateSchema
+>;
 
 /**
  * Department validation schemas
@@ -28,7 +41,9 @@ export const departmentSchema = z.object({
   parentId: z.string().uuid().optional().nullable(),
 });
 
-export const updateDepartmentSchema = departmentSchema.partial().omit({ organizationId: true });
+export const updateDepartmentSchema = departmentSchema
+  .partial()
+  .omit({ organizationId: true });
 
 export type DepartmentInput = z.infer<typeof departmentSchema>;
 
@@ -73,7 +88,9 @@ export const assetReservationSchema = z.object({
 });
 
 export const updateReservationSchema = z.object({
-  status: z.enum(['pending', 'approved', 'rejected', 'cancelled', 'completed']).optional(),
+  status: z
+    .enum(["pending", "approved", "rejected", "cancelled", "completed"])
+    .optional(),
   notes: z.string().optional().nullable(),
 });
 
@@ -90,7 +107,9 @@ export const stockAlertSchema = z.object({
   webhookNotify: z.boolean().default(false),
 });
 
-export const updateStockAlertSchema = stockAlertSchema.partial().omit({ consumableId: true });
+export const updateStockAlertSchema = stockAlertSchema
+  .partial()
+  .omit({ consumableId: true });
 
 export type StockAlertInput = z.infer<typeof stockAlertSchema>;
 
@@ -98,7 +117,14 @@ export type StockAlertInput = z.infer<typeof stockAlertSchema>;
  * Import Job validation
  */
 export const importJobSchema = z.object({
-  entityType: z.enum(['asset', 'accessory', 'consumable', 'licence', 'user', 'location']),
+  entityType: z.enum([
+    "asset",
+    "accessory",
+    "consumable",
+    "licence",
+    "user",
+    "location",
+  ]),
   fileName: z.string().min(1).max(255),
   fileSize: z.number().int().positive(),
 });

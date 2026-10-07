@@ -4,10 +4,6 @@ import {
   parseResponse,
 } from "../../../../tests/setup/test-helpers";
 
-vi.mock("@/lib/auth", () => ({
-  auth: { api: { getSession: vi.fn() } },
-}));
-
 vi.mock("@/lib/prisma");
 
 vi.mock("@/lib/api-auth");
@@ -20,34 +16,23 @@ vi.mock("@/lib/audit-log", () => ({
 vi.mock("@/lib/logger");
 
 import { GET, POST } from "@/app/api/roles/route";
-import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { requireApiAdmin, requireWritableOrg } from "@/lib/api-auth";
+import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 
-const mockAuth = vi.mocked(auth, true);
 const mockPrisma = vi.mocked(prisma, true);
 
-const adminSession = {
-  user: {
-    id: "admin-uuid-001",
-    isadmin: true,
-    organizationId: "org-uuid-001",
-  },
-};
-
-const regularSession = {
-  user: {
-    id: "user-uuid-001",
-    isadmin: false,
-    organizationId: "org-uuid-001",
-  },
+const adminUser = {
+  id: "admin-uuid-001",
+  isAdmin: true,
+  organizationId: "org-uuid-001",
+  orgStatus: "active" as const,
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAuth.api.getSession.mockResolvedValue(adminSession as any);
-  mockPrisma.user.findUnique.mockResolvedValue({
-    organizationId: "org-uuid-001",
-  } as any);
+  vi.mocked(requireApiAdmin).mockResolvedValue(adminUser as any);
+  vi.mocked(requireWritableOrg).mockResolvedValue(undefined);
 });
 
 describe("GET /api/roles", () => {
@@ -67,20 +52,32 @@ describe("GET /api/roles", () => {
     expect(body).toHaveLength(2);
   });
 
+  it("scopes the list to the admin's org plus system roles", async () => {
+    mockPrisma.role.findMany.mockResolvedValue([]);
+
+    await GET(createMockRequest("/api/roles"));
+
+    expect(mockPrisma.role.findMany.mock.calls[0][0]?.where).toEqual({
+      OR: [{ organizationId: "org-uuid-001" }, { organizationId: null }],
+    });
+  });
+
   it("returns 403 for non-admin users", async () => {
-    mockAuth.api.getSession.mockResolvedValue(regularSession as any);
+    vi.mocked(requireApiAdmin).mockRejectedValue(
+      new ForbiddenError("not_admin", "Admin access required"),
+    );
 
     const req = createMockRequest("/api/roles");
     const res = await GET(req);
     expect(res.status).toBe(403);
   });
 
-  it("returns 403 when not authenticated", async () => {
-    mockAuth.api.getSession.mockResolvedValue(null as any);
+  it("returns 401 when not authenticated", async () => {
+    vi.mocked(requireApiAdmin).mockRejectedValue(new UnauthorizedError());
 
     const req = createMockRequest("/api/roles");
     const res = await GET(req);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 });
 
@@ -143,8 +140,34 @@ describe("POST /api/roles", () => {
     expect(body.error).toContain("already exists");
   });
 
+  it("creates the role in the admin's own org", async () => {
+    mockPrisma.role.findFirst.mockResolvedValue(null);
+    mockPrisma.role.create.mockResolvedValue({
+      id: "new-role-id",
+      name: "Custom Role",
+      permissions: ["asset:view"],
+    } as any);
+
+    const req = createMockRequest("/api/roles", {
+      method: "POST",
+      body: {
+        name: "Custom Role",
+        permissions: ["asset:view"],
+        organizationId: "00000000-0000-4000-8000-000000000999",
+      },
+    });
+    await POST(req);
+
+    expect(mockPrisma.role.create.mock.calls[0][0].data).toMatchObject({
+      organizationId: "org-uuid-001",
+      isSystem: false,
+    });
+  });
+
   it("returns 403 for non-admin users", async () => {
-    mockAuth.api.getSession.mockResolvedValue(regularSession as any);
+    vi.mocked(requireApiAdmin).mockRejectedValue(
+      new ForbiddenError("not_admin", "Admin access required"),
+    );
 
     const req = createMockRequest("/api/roles", {
       method: "POST",
@@ -155,5 +178,25 @@ describe("POST /api/roles", () => {
     });
     const res = await POST(req);
     expect(res.status).toBe(403);
+  });
+
+  it("returns 403 and creates nothing when the org is read-only", async () => {
+    vi.mocked(requireWritableOrg).mockRejectedValue(
+      new ForbiddenError("org_read_only", "Organization is in read-only mode"),
+    );
+
+    const req = createMockRequest("/api/roles", {
+      method: "POST",
+      body: {
+        name: "Custom Role",
+        permissions: ["asset:view"],
+      },
+    });
+    const res = await POST(req);
+    const { status, body } = await parseResponse<{ code: string }>(res);
+
+    expect(status).toBe(403);
+    expect(body.code).toBe("org_read_only");
+    expect(mockPrisma.role.create).not.toHaveBeenCalled();
   });
 });

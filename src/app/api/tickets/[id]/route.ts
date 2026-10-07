@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createFreshdeskClient } from "@/lib/freshdesk";
 import { logger } from "@/lib/logger";
 import { getOrganizationContext } from "@/lib/organization-context";
@@ -22,10 +25,7 @@ interface RouteParams {
  */
 export async function GET(req: Request, { params }: RouteParams) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    await requireApiAdmin();
 
     const { id } = await params;
     const ticketId = parseInt(id, 10);
@@ -69,6 +69,8 @@ export async function GET(req: Request, { params }: RouteParams) {
 
     return NextResponse.json({ ticket: result.data });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/tickets/[id] error", { error });
     return NextResponse.json(
       { error: "Failed to fetch ticket" },
@@ -85,7 +87,8 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const _user = await requireApiAdmin();
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
     const { id } = await params;
     const body = await req.json();
 
@@ -188,18 +191,9 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
     return NextResponse.json(ticket, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PATCH /api/tickets/[id] error", { error });
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json(
-          { error: "Forbidden: Admin access required" },
-          { status: 403 },
-        );
-      }
-    }
     return NextResponse.json(
       { error: "Failed to update ticket" },
       { status: 500 },

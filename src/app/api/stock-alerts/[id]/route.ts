@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { updateStockAlertSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { logger } from "@/lib/logger";
@@ -15,10 +19,7 @@ interface RouteParams {
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await requireApiAuth();
 
     const alert = await prisma.stockAlert.findUnique({
       where: { id },
@@ -43,6 +44,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(alert);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching stock alert", { error });
     return NextResponse.json(
       { error: "Failed to fetch stock alert" },
@@ -57,10 +60,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     const body = await req.json();
     const validated = updateStockAlertSchema.parse(body);
@@ -99,7 +100,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: user.id!,
       action: AUDIT_ACTIONS.UPDATE,
       entity: "StockAlert",
       entityId: alert.id,
@@ -108,6 +109,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(alert);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error updating stock alert", { error });
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
@@ -125,10 +128,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const { id } = await params;
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     const alert = await prisma.stockAlert.findUnique({
       where: { id },
@@ -149,7 +150,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: user.id!,
       action: AUDIT_ACTIONS.DELETE,
       entity: "StockAlert",
       entityId: id,
@@ -158,6 +159,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error deleting stock alert", { error });
     return NextResponse.json(
       { error: "Failed to delete stock alert" },

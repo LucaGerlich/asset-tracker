@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import {
+  requireApiAdmin,
   requireApiAuth,
   requireNotDemoMode,
   requireWritableOrg,
@@ -150,10 +149,7 @@ async function getLocalTickets(url: URL) {
 // Fetch tickets from Freshdesk API (admin-only)
 async function getFreshdeskTickets(req: Request, url: URL) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    await requireApiAdmin();
 
     const [domainSetting, apiKeySetting] = await Promise.all([
       prisma.system_settings.findUnique({
@@ -201,6 +197,8 @@ async function getFreshdeskTickets(req: Request, url: URL) {
       types: SUPPORTED_TICKET_TYPES,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/tickets (freshdesk) error", { error });
     return NextResponse.json(
       { error: "Failed to fetch tickets" },
