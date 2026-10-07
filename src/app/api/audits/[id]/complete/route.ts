@@ -9,6 +9,10 @@ import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
+import {
+  getOrganizationContext,
+  scopeToOrganization,
+} from "@/lib/organization-context";
 import { logger, logCatchError } from "@/lib/logger";
 
 interface RouteParams {
@@ -24,8 +28,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     await requireWritableOrg(authUser);
     const { id } = await params;
 
-    const campaign = await prisma.auditCampaign.findUnique({
-      where: { id },
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+
+    const campaign = await prisma.auditCampaign.findFirst({
+      where: scopeToOrganization({ id }, orgId),
       include: { entries: true },
     });
 
@@ -44,7 +51,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     const updated = await prisma.auditCampaign.update({
-      where: { id },
+      where: { id: campaign.id },
       data: { status: "completed", completedAt: new Date() },
     });
 

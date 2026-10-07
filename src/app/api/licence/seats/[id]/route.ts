@@ -62,7 +62,7 @@ export async function GET(
     }
 
     // Verify the parent licence belongs to the user's organization
-    if (orgId && assignment.licence.organizationId !== orgId) {
+    if ((assignment.licence.organizationId ?? null) !== (orgId ?? null)) {
       return NextResponse.json(
         { error: "Seat assignment not found" },
         { status: 404 },
@@ -125,7 +125,7 @@ export async function DELETE(
     }
 
     // Verify the parent licence belongs to the user's organization
-    if (orgId && existing.licence.organizationId !== orgId) {
+    if ((existing.licence.organizationId ?? null) !== (orgId ?? null)) {
       return NextResponse.json(
         { error: "Seat assignment not found" },
         { status: 404 },

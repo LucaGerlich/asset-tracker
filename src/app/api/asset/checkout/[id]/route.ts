@@ -51,7 +51,7 @@ export async function GET(
     }
 
     // Verify the associated asset belongs to the user's organization
-    if (orgId && checkout.asset?.organizationId !== orgId) {
+    if ((checkout.asset?.organizationId ?? null) !== (orgId ?? null)) {
       return NextResponse.json(
         { error: "Checkout not found" },
         { status: 404 },
@@ -108,7 +108,7 @@ export async function PUT(
     }
 
     // Verify the associated asset belongs to the user's organization
-    if (orgId && existing.asset?.organizationId !== orgId) {
+    if ((existing.asset?.organizationId ?? null) !== (orgId ?? null)) {
       return NextResponse.json(
         { error: "Checkout not found" },
         { status: 404 },
