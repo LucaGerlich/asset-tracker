@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { notifyTicketComment } from "@/lib/notifications";
 
@@ -15,6 +20,7 @@ export async function POST(
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const { id } = await params;
     const body = await req.json();
 
@@ -96,10 +102,9 @@ export async function POST(
 
     return NextResponse.json(ticketComment, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/tickets/[id]/comments error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to add comment" },
       { status: 500 },

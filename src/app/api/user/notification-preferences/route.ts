@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
@@ -28,9 +29,8 @@ export async function GET() {
 
     return NextResponse.json(prefs);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/user/notification-preferences error", { error });
     return NextResponse.json(
       { error: "Failed to fetch notification preferences" },
@@ -88,9 +88,8 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(prefs);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/user/notification-preferences error", { error });
     return NextResponse.json(
       { error: "Failed to update notification preferences" },

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
 import { sendEmail } from "@/lib/email/service";
@@ -20,6 +25,7 @@ export async function POST(request: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     if (!user.id || !user.organizationId) {
       return NextResponse.json(
@@ -118,14 +124,8 @@ export async function POST(request: NextRequest) {
     const { token: _token, ...safeInvitation } = invitation;
     return NextResponse.json(safeInvitation, { status: 201 });
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error creating invitation", { error });
     return NextResponse.json(
       { error: "Internal server error" },
@@ -140,6 +140,7 @@ export async function PUT(request: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     if (!user.organizationId) {
       return NextResponse.json(
@@ -193,14 +194,8 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(updated);
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error updating invitation", { error });
     return NextResponse.json(
       { error: "Internal server error" },
@@ -235,14 +230,8 @@ export async function GET() {
 
     return NextResponse.json(invitations);
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching invitations", { error });
     return NextResponse.json(
       { error: "Internal server error" },

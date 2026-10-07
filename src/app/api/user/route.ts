@@ -1,6 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { hasPermission } from "@/lib/rbac";
 import {
   getOrganizationContext,
@@ -129,10 +134,9 @@ export async function GET(req: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/user error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch users" },
       { status: 500 },
@@ -148,6 +152,7 @@ export async function PUT(req: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const authUser = await requireApiAuth();
+    await requireWritableOrg(authUser);
     const body = await req.json();
     const { userid, password, _expectedVersion, ...data } = body || {};
 
@@ -288,13 +293,9 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(stripPassword(updated), { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/user error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to update user" },
       { status: 500 },

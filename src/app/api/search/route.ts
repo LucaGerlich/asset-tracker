@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import {
   getOrganizationContext,
@@ -106,9 +107,8 @@ export async function GET(req: Request) {
     // Ensure max 8 results total
     return NextResponse.json({ results: results.slice(0, 8) });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/search error", { error });
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }

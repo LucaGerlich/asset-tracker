@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import { updateReservationSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
@@ -16,13 +21,8 @@ function handleReservationError(
   error: unknown,
   fallbackMessage: string,
 ): NextResponse {
-  const message = error instanceof Error ? error.message : "";
-  if (message === "Unauthorized") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (message.startsWith("Forbidden")) {
-    return NextResponse.json({ error: message }, { status: 403 });
-  }
+  const denied = apiErrorResponse(error);
+  if (denied) return denied;
   if (error instanceof z.ZodError) {
     return NextResponse.json({ error: error.issues }, { status: 400 });
   }
@@ -86,6 +86,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const body = await req.json();
     const validated = updateReservationSchema.parse(body);
@@ -191,6 +192,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const reservation = await prisma.assetReservation.findUnique({
       where: { id },

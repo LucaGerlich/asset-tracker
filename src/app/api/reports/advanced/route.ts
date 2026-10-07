@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -337,10 +338,8 @@ export async function GET() {
       depreciationForecast,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    if (message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Advanced reports error", { error });
     return NextResponse.json(
       { error: "Failed to generate advanced reports" },

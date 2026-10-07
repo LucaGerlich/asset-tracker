@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
@@ -39,10 +40,9 @@ export async function GET(req: NextRequest) {
     });
     return NextResponse.json(rows, { status: 200 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/userAccessoires error", { error: e });
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch userAccessoires" },
       { status: 500 },

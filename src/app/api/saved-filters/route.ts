@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth } from "@/lib/api-auth";
+import { requireApiAuth, requireWritableOrg } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 // GET /api/saved-filters?entity=asset
@@ -27,10 +28,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json(filters, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/saved-filters error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch saved filters" },
       { status: 500 },
@@ -42,6 +42,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const body = await req.json();
     const { name, entity, filters, isDefault, isGlobal } = body;
 
@@ -75,10 +76,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(filter, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/saved-filters error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to save filter" },
       { status: 500 },

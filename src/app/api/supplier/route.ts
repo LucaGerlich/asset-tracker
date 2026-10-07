@@ -5,7 +5,9 @@ import {
   requireApiAuth,
   requireApiAdmin,
   requireNotDemoMode,
+  requireWritableOrg,
 } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   createSupplierSchema,
   updateSupplierSchema,
@@ -67,11 +69,9 @@ export async function GET(req: NextRequest) {
       status: 200,
     });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/supplier error", { error: e });
-
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     return NextResponse.json(
       { error: "Failed to fetch suppliers" },
@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
 
     // Only admins can create suppliers
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
 
     const body = await req.json();
 
@@ -140,14 +141,9 @@ export async function POST(req: NextRequest) {
     invalidateCacheByPrefix("suppliers").catch(() => {});
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("POST /api/supplier error", { error: e });
-
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e instanceof Error && e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to create supplier" },
@@ -164,6 +160,7 @@ export async function PUT(req: NextRequest) {
 
     // Only admins can update suppliers
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
 
     const body = await req.json();
 
@@ -236,14 +233,10 @@ export async function PUT(req: NextRequest) {
     invalidateCacheByPrefix("suppliers").catch(() => {});
     return NextResponse.json(updated, { status: 200 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("PUT /api/supplier error", { error: e });
 
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e instanceof Error && e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json(
         { error: "Supplier not found" },
@@ -265,6 +258,7 @@ export async function DELETE(req: NextRequest) {
 
     // Only admins can delete suppliers
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
 
     const body = await req.json();
     const { supplierid } = body;
@@ -346,14 +340,10 @@ export async function DELETE(req: NextRequest) {
       { status: 200 },
     );
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("DELETE /api/supplier error", { error: e });
 
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e instanceof Error && e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json(
         { error: "Supplier not found" },

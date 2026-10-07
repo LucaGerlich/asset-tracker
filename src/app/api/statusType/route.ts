@@ -4,7 +4,9 @@ import {
   requireApiAuth,
   requireApiAdmin,
   requireNotDemoMode,
+  requireWritableOrg,
 } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   createStatusTypeSchema,
   updateStatusTypeSchema,
@@ -67,11 +69,9 @@ export async function GET(req: NextRequest) {
       status: 200,
     });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/statusType error", { error: e });
-
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     return NextResponse.json(
       { error: "Failed to fetch status types" },
@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
 
     // Only admins can create status types
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
 
     const body = await req.json();
 
@@ -139,14 +140,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("POST /api/statusType error", { error: e });
-
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to create status type" },
@@ -163,6 +159,7 @@ export async function PUT(req: NextRequest) {
 
     // Only admins can update status types
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
 
     const body = await req.json();
 
@@ -233,14 +230,10 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(updated, { status: 200 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("PUT /api/statusType error", { error: e });
 
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json(
         { error: "Status type not found" },
@@ -262,6 +255,7 @@ export async function DELETE(req: NextRequest) {
 
     // Only admins can delete status types
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
 
     const body = await req.json();
     const { statustypeid } = body;
@@ -340,14 +334,10 @@ export async function DELETE(req: NextRequest) {
       { status: 200 },
     );
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("DELETE /api/statusType error", { error: e });
 
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json(
         { error: "Status type not found" },

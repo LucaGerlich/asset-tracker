@@ -5,7 +5,9 @@ import {
   requirePermission,
   requireNotDemoMode,
   requirePlanFeature,
+  requireWritableOrg,
 } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog } from "@/lib/audit-log";
 import {
   getOrganizationContext,
@@ -26,6 +28,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const user = await requirePermission("procurement:manage_orders");
+    await requireWritableOrg(user);
     await requirePlanFeature(user, "procurement");
 
     const orgContext = await getOrganizationContext();
@@ -159,15 +162,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(createdPOs, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/procurement/requests/[id]/generate-po error", {
       error,
     });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to generate purchase order" },
       { status: 500 },

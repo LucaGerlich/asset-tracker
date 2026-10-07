@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { revokeSession } from "@/lib/session-tracking";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import prisma from "@/lib/prisma";
@@ -79,14 +80,8 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.startsWith("Forbidden")) {
-        return NextResponse.json({ error: error.message }, { status: 403 });
-      }
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Failed to revoke session", { error });
     return NextResponse.json(
       { error: "Failed to revoke session" },

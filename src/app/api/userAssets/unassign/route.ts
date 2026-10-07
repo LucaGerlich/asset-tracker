@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 export async function DELETE(req: NextRequest) {
@@ -9,6 +14,7 @@ export async function DELETE(req: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
     const { assetId, userId } = await req.json();
 
     if (!assetId || !userId) {
@@ -73,17 +79,9 @@ export async function DELETE(req: NextRequest) {
       },
     );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error unassigning asset", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-      });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 403,
-      });
-    }
     return new Response(JSON.stringify({ error: "Error unassigning asset" }), {
       status: 500,
     });

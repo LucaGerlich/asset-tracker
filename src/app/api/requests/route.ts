@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma, PrismaClient } from "@prisma/client";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { logger, logCatchError } from "@/lib/logger";
 import {
@@ -134,9 +139,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(enriched);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/requests error", { error });
     return NextResponse.json(
       { error: "Failed to fetch requests" },
@@ -151,6 +155,7 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const body = await req.json();
     const { entityType, entityId, startDate, endDate, notes, quantity } = body;
@@ -308,9 +313,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(request, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/requests error", { error });
     return NextResponse.json(
       { error: "Failed to create request" },
@@ -325,6 +329,7 @@ export async function PUT(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const { id, status, notes, _expectedVersion } = await req.json();
 
@@ -521,9 +526,8 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ success: true, status });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/requests error", { error });
     return NextResponse.json(
       { error: "Failed to update request" },

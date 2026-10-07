@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { hasPermission } from "@/lib/rbac";
 import { assetReservationSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
@@ -78,13 +83,9 @@ export async function GET(req: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching reservations", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch reservations" },
       { status: 500 },
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const authUser = await requirePermission("reservation:create");
+    await requireWritableOrg(authUser);
 
     const body = await req.json();
     const validated = assetReservationSchema.parse(body);
@@ -188,13 +190,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(reservation, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error creating reservation", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }
