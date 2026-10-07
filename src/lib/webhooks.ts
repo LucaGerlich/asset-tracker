@@ -62,7 +62,11 @@ function generateSignature(payload: string, secret: string): string {
 }
 
 /**
- * Trigger webhooks for a specific event
+ * Trigger webhooks for a specific event.
+ *
+ * With an organization the event reaches that organization's webhooks plus the
+ * global ones (organizationId null). Without one it reaches the global webhooks
+ * only; it must never fall through to every organization's webhooks.
  */
 export async function triggerWebhook(
   event: WebhookEvent,
@@ -77,10 +81,9 @@ export async function triggerWebhook(
         events: {
           has: event,
         },
-        OR: [
-          { organizationId: organizationId || undefined },
-          { organizationId: null }, // Global webhooks
-        ],
+        ...(organizationId
+          ? { OR: [{ organizationId }, { organizationId: null }] }
+          : { organizationId: null }),
       },
     });
 
