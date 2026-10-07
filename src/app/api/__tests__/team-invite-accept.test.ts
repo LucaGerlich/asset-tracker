@@ -34,8 +34,16 @@ const TOKEN = "invite-token-1";
 
 type InviteStatus = "pending" | "accepted" | "revoked" | "cancelled";
 
-function invitation(overrides: { status?: InviteStatus; expired?: boolean }) {
-  const { status = "pending", expired = false } = overrides;
+function invitation(overrides: {
+  status?: InviteStatus;
+  expired?: boolean;
+  roleOrganizationId?: string | null;
+}) {
+  const {
+    status = "pending",
+    expired = false,
+    roleOrganizationId = INVITE_ORG,
+  } = overrides;
   return {
     id: "invitation-uuid-1",
     email: INVITEE_EMAIL,
@@ -45,7 +53,11 @@ function invitation(overrides: { status?: InviteStatus; expired?: boolean }) {
     expiresAt: new Date(Date.now() + (expired ? -1 : 1) * 60 * 60 * 1000),
     createdAt: new Date(),
     organization: { id: INVITE_ORG, name: "Org B" },
-    role: { id: "role-b-uuid", name: "Technician" },
+    role: {
+      id: "role-b-uuid",
+      name: "Technician",
+      organizationId: roleOrganizationId,
+    },
     inviter: { firstname: "Ada", lastname: "Admin" },
   };
 }
@@ -126,6 +138,59 @@ describe("invitation status validation", () => {
     expect(status).toBe(410);
   });
 
+  it("rejects an invitation whose role belongs to another org with 410", async () => {
+    mockPrisma.teamInvitation.findUnique.mockResolvedValue(
+      invitation({ roleOrganizationId: OTHER_ORG }) as never,
+    );
+
+    const { status } = await parseResponse(await accept());
+
+    expect(status).toBe(410);
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    expect(mockPrisma.userRole.upsert).not.toHaveBeenCalled();
+    expect(mockPrisma.teamInvitation.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects such an invitation on lookup too", async () => {
+    mockPrisma.teamInvitation.findUnique.mockResolvedValue(
+      invitation({ roleOrganizationId: OTHER_ORG }) as never,
+    );
+
+    const res = await GET(
+      createMockRequest(`/api/team/invite/${TOKEN}`),
+      params,
+    );
+
+    expect(res.status).toBe(410);
+  });
+
+  it("still accepts an invitation with a global role", async () => {
+    mockPrisma.teamInvitation.findUnique.mockResolvedValue(
+      invitation({ roleOrganizationId: null }) as never,
+    );
+    existingUserIn(INVITE_ORG, false);
+    signedInAs(INVITEE_EMAIL);
+
+    const { status } = await parseResponse(await accept());
+
+    expect(status).toBe(200);
+    expect(mockPrisma.userRole.upsert).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not expose the role's organization on lookup", async () => {
+    const res = await GET(
+      createMockRequest(`/api/team/invite/${TOKEN}`),
+      params,
+    );
+    const { status, body } = await parseResponse<{
+      role: Record<string, unknown>;
+    }>(res);
+
+    expect(status).toBe(200);
+    expect(body.role).toEqual({ id: "role-b-uuid", name: "Technician" });
+  });
+
   it("returns 404 for an unknown token", async () => {
     mockPrisma.teamInvitation.findUnique.mockResolvedValue(null);
 
@@ -159,15 +224,7 @@ describe("accepting as an existing user", () => {
       data: { organizationId: INVITE_ORG, isadmin: false, departmentId: null },
     });
     expect(mockPrisma.userRole.deleteMany).toHaveBeenCalledWith({
-      where: {
-        userId: "user-uuid-1",
-        role: {
-          AND: [
-            { organizationId: { not: null } },
-            { organizationId: { not: INVITE_ORG } },
-          ],
-        },
-      },
+      where: { userId: "user-uuid-1" },
     });
     expect(mockPrisma.userRole.upsert).toHaveBeenCalledTimes(1);
     expect(mockPrisma.teamInvitation.update).toHaveBeenCalledWith(
@@ -202,6 +259,22 @@ describe("accepting as an existing user", () => {
       "userRole.deleteMany",
       "userRole.upsert",
     ]);
+  });
+
+  it("drops global roles held before the move, not only the old org's roles", async () => {
+    // Permissions are the union of all of a user's roles, so a surviving global
+    // Administrator role would keep full access in the new org. The delete must
+    // therefore have no role filter at all.
+    existingUserIn(OTHER_ORG, true);
+    signedInAs(INVITEE_EMAIL);
+
+    await accept();
+
+    const [args] = mockPrisma.userRole.deleteMany.mock.calls[0] as [
+      { where: Record<string, unknown> },
+    ];
+    expect(args.where).toEqual({ userId: "user-uuid-1" });
+    expect(args.where).not.toHaveProperty("role");
   });
 
   it("moves a user without an organization the same way", async () => {

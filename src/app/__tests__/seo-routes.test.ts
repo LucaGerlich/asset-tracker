@@ -34,6 +34,42 @@ describe("sitemap", () => {
   });
 });
 
+describe("sitemap and robots with sign-up closed or open", () => {
+  function noSplit() {
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_URL", "");
+    vi.stubEnv("BETTER_AUTH_URL", "https://assets.example.com");
+    hostHeader.value = "assets.example.com";
+  }
+
+  async function allowedPaths(): Promise<string[]> {
+    const rules = (await robots()).rules;
+    const rule = Array.isArray(rules) ? rules[0] : rules;
+    const allow = rule.allow;
+    return Array.isArray(allow) ? allow : allow ? [allow] : [];
+  }
+
+  it("omits /register from the sitemap and robots while sign-up is closed", async () => {
+    noSplit();
+    vi.stubEnv("ALLOW_PUBLIC_SIGNUP", "");
+
+    expect(sitemap().map((e) => e.url)).not.toContain(
+      "https://assets.example.com/register",
+    );
+    expect(await allowedPaths()).not.toContain("/register");
+    expect(await allowedPaths()).toContain("/login");
+  });
+
+  it("lists /register in the sitemap and robots when sign-up is open", async () => {
+    noSplit();
+    vi.stubEnv("ALLOW_PUBLIC_SIGNUP", "true");
+
+    expect(sitemap().map((e) => e.url)).toContain(
+      "https://assets.example.com/register",
+    );
+    expect(await allowedPaths()).toContain("/register");
+  });
+});
+
 describe("robots", () => {
   it("disallows everything on the app host", async () => {
     enableSplit();

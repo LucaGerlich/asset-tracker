@@ -29,7 +29,7 @@ async function findAndValidateInvitation(token: string) {
     where: { token },
     include: {
       organization: { select: { id: true, name: true } },
-      role: { select: { id: true, name: true } },
+      role: { select: { id: true, name: true, organizationId: true } },
       inviter: { select: { firstname: true, lastname: true } },
     },
   });
@@ -54,6 +54,17 @@ async function findAndValidateInvitation(token: string) {
     return { error: "Invitation has expired", status: 410, invitation: null };
   }
 
+  // Invitations created before roles were checked at creation may name another
+  // organization's role. Global roles (no organization) are fine.
+  const roleOrgId = invitation.role?.organizationId;
+  if (roleOrgId && roleOrgId !== invitation.organization.id) {
+    return {
+      error: "Invitation is no longer available",
+      status: 410,
+      invitation: null,
+    };
+  }
+
   return { error: null, status: 200, invitation };
 }
 
@@ -74,7 +85,9 @@ export async function GET(
       id: invitation.id,
       email: invitation.email,
       organization: invitation.organization,
-      role: invitation.role,
+      role: invitation.role
+        ? { id: invitation.role.id, name: invitation.role.name }
+        : null,
       inviter: invitation.inviter,
       expiresAt: invitation.expiresAt,
       createdAt: invitation.createdAt,
@@ -146,9 +159,10 @@ export async function POST(
 
       await prisma.$transaction(async (tx) => {
         if (joinsNewOrganization) {
-          // Switching organizations must not carry rights over: admin status
-          // and roles of the previous org do not apply to the new one (global
-          // roles with no organization are kept).
+          // Switching organizations must not carry rights over: permissions
+          // are the union of all of a user's roles, so a surviving global
+          // role (e.g. the all-permissions Administrator) would keep full
+          // access in the new org. Drop every role, then grant the invited one.
           await tx.user.update({
             where: { userid: existingUser.userid },
             data: {
@@ -158,15 +172,7 @@ export async function POST(
             },
           });
           await tx.userRole.deleteMany({
-            where: {
-              userId: existingUser.userid,
-              role: {
-                AND: [
-                  { organizationId: { not: null } },
-                  { organizationId: { not: invitation.organization.id } },
-                ],
-              },
-            },
+            where: { userId: existingUser.userid },
           });
         }
 

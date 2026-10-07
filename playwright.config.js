@@ -67,5 +67,7 @@ export default defineConfig({
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
+    // Public sign-up is closed by default; the auth-flow specs open /register.
+    env: { ALLOW_PUBLIC_SIGNUP: "true" },
   },
 });

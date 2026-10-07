@@ -41,13 +41,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    // An invitation can only grant a role that belongs to the inviter's own
-    // organization; otherwise an admin could hand out another tenant's role.
+    // An invitation can only grant a role of the inviter's own organization or
+    // a global one; otherwise an admin could hand out another tenant's role.
     if (roleId) {
       const role =
         typeof roleId === "string"
           ? await prisma.role.findFirst({
-              where: { id: roleId, organizationId: user.organizationId },
+              where: {
+                id: roleId,
+                OR: [
+                  { organizationId: user.organizationId },
+                  { organizationId: null },
+                ],
+              },
             })
           : null;
       if (!role) {
