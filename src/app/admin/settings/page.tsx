@@ -6,6 +6,7 @@ import Breadcrumb from "@/components/Breadcrumb";
 import prisma from "@/lib/prisma";
 import { isSuperAdmin } from "@/lib/super-admin";
 import { MASKED_VALUE } from "@/lib/settings-keys";
+import { getEnvEmailConfig } from "@/lib/env-email-config";
 
 export const metadata = {
   title: "Admin Settings - Asset Tracker",
@@ -72,6 +73,9 @@ async function getUsers(organizationId: string | null) {
   });
 }
 
+type EmailTemplates = Awaited<ReturnType<typeof getEmailTemplates>>;
+
+// Email templates have no organization: they are platform-wide.
 async function getEmailTemplates() {
   return await prisma.email_templates.findMany({
     orderBy: { name: "asc" },
@@ -147,27 +151,17 @@ export default async function Page() {
       ? getSystemSettings()
       : Promise.resolve<GroupedSettings>({}),
     getUsers(adminUser?.organizationId ?? null),
-    getEmailTemplates(),
+    isSuperAdminUser
+      ? getEmailTemplates()
+      : Promise.resolve<EmailTemplates>([]),
     getLabelTemplates(),
     getCustomFields(),
     getDepreciationSettings(),
     getStatusTypes(adminUser?.organizationId ?? null),
   ]);
 
-  // Detect if email is configured via environment variables
-  const envEmailConfig = process.env.EMAIL_PROVIDER
-    ? {
-        provider: process.env.EMAIL_PROVIDER,
-        fromEmail: process.env.EMAIL_FROM || "",
-        fromName: process.env.EMAIL_FROM_NAME || "Asset Tracker",
-        hasApiKey: !!(
-          process.env.BREVO_API_KEY ||
-          process.env.SENDGRID_API_KEY ||
-          process.env.MAILGUN_API_KEY ||
-          process.env.POSTMARK_API_KEY
-        ),
-      }
-    : null;
+  // Platform mailer configured via environment variables (super-admins only)
+  const envEmailConfig = getEnvEmailConfig(isSuperAdminUser);
 
   const breadcrumbOptions = [
     { label: "Home", href: "/" },

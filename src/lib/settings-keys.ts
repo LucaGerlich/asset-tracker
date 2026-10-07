@@ -8,7 +8,8 @@ import { z } from "zod";
  * Without an allow-list a caller could overwrite any row: `deployment.mode`,
  * the SCIM bearer token or the short-lived `sso.token.*` login rows. Each list
  * is the union of the keys the settings tab sends and the keys the matching
- * library reads, so neither side can drift without the tests noticing.
+ * library reads. Adding a setting means adding its key here, and to the tests
+ * that pin these literals.
  */
 
 /** Placeholder the GET routes return in place of an encrypted value. */
@@ -120,5 +121,3 @@ export const settingsPayloadSchema = z.object({
     }),
   ),
 });
-
-export type SettingsPayload = z.infer<typeof settingsPayloadSchema>;
