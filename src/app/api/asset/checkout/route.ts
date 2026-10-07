@@ -181,13 +181,17 @@ export async function POST(req: Request) {
       },
     }).catch(logCatchError("Audit log failed"));
 
-    triggerWebhook("asset.checked_out", {
-      assetId,
-      assetName: asset.assetname,
-      checkoutId: checkout.id,
-      checkedOutToType,
-      targetLabel,
-    }).catch(() => {});
+    triggerWebhook(
+      "asset.checked_out",
+      {
+        assetId,
+        assetName: asset.assetname,
+        checkoutId: checkout.id,
+        checkedOutToType,
+        targetLabel,
+      },
+      asset.organizationId,
+    ).catch(() => {});
 
     // Slack/Teams notification
     notifyIntegrations("asset.checked_out", {

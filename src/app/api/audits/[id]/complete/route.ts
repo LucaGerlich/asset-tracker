@@ -67,13 +67,17 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       details: { action: "completed", total, found, missing, moved, unscanned },
     });
 
-    triggerWebhook("audit.campaign_completed", {
-      campaignId: id,
-      campaignName: campaign.name,
-      total,
-      found,
-      missing,
-    }).catch(() => {});
+    triggerWebhook(
+      "audit.campaign_completed",
+      {
+        campaignId: id,
+        campaignName: campaign.name,
+        total,
+        found,
+        missing,
+      },
+      campaign.organizationId,
+    ).catch(() => {});
     notifyIntegrations("audit.campaign_completed", {
       campaignName: campaign.name,
       found,

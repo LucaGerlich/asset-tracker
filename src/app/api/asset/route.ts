@@ -212,11 +212,15 @@ export async function POST(req: NextRequest) {
       entityId: created.assetid,
       details: { assetname: created.assetname, assettag: created.assettag },
     }).catch(logCatchError("Audit log failed"));
-    triggerWebhook("asset.created", {
-      assetId: created.assetid,
-      assetName: created.assetname,
-      assetTag: created.assettag,
-    }).catch(() => {});
+    triggerWebhook(
+      "asset.created",
+      {
+        assetId: created.assetid,
+        assetName: created.assetname,
+        assetTag: created.assettag,
+      },
+      created.organizationId,
+    ).catch(() => {});
     notifyIntegrations("asset.created", {
       assetName: created.assetname,
       assetTag: created.assettag,
@@ -290,11 +294,15 @@ export async function PUT(req: NextRequest) {
       before: toRecord(existing),
       after: toRecord(updated),
     }).catch(logCatchError("Audit log failed"));
-    triggerWebhook("asset.updated", {
-      assetId: updated.assetid,
-      assetName: updated.assetname,
-      changes: Object.keys(data),
-    }).catch(() => {});
+    triggerWebhook(
+      "asset.updated",
+      {
+        assetId: updated.assetid,
+        assetName: updated.assetname,
+        changes: Object.keys(data),
+      },
+      updated.organizationId,
+    ).catch(() => {});
     notifyIntegrations("asset.updated", {
       assetName: updated.assetname,
       assetTag: updated.assettag,

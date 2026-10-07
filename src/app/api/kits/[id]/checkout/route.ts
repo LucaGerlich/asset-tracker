@@ -198,13 +198,17 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     });
 
     // Webhooks + integrations
-    triggerWebhook("kit.checked_out", {
-      kitId: id,
-      kitName: kit.name,
-      userId,
-      userName: `${targetUser.firstname} ${targetUser.lastname}`,
-      results,
-    }).catch(() => {});
+    triggerWebhook(
+      "kit.checked_out",
+      {
+        kitId: id,
+        kitName: kit.name,
+        userId,
+        userName: `${targetUser.firstname} ${targetUser.lastname}`,
+        results,
+      },
+      orgId,
+    ).catch(() => {});
     notifyIntegrations("kit.checked_out", {
       kitName: kit.name,
       userName: `${targetUser.firstname} ${targetUser.lastname}`,

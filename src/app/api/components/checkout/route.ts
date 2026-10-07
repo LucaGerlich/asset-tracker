@@ -151,12 +151,16 @@ export async function POST(req: Request) {
     });
 
     // Webhook + integrations for checkout
-    triggerWebhook("component.checked_out", {
-      componentId,
-      componentName: component.name,
-      assetId,
-      quantity,
-    }).catch(() => {});
+    triggerWebhook(
+      "component.checked_out",
+      {
+        componentId,
+        componentName: component.name,
+        assetId,
+        quantity,
+      },
+      component.organizationId,
+    ).catch(() => {});
     notifyIntegrations("component.checked_out", {
       componentName: component.name,
       quantity,
@@ -166,12 +170,16 @@ export async function POST(req: Request) {
     const remainingStock = component.remainingQuantity - quantity;
     const minQty = component.minQuantity ?? 0;
     if (minQty > 0 && remainingStock <= minQty) {
-      triggerWebhook("component.low_stock", {
-        componentId,
-        componentName: component.name,
-        remainingStock,
-        minQuantity: minQty,
-      }).catch(() => {});
+      triggerWebhook(
+        "component.low_stock",
+        {
+          componentId,
+          componentName: component.name,
+          remainingStock,
+          minQuantity: minQty,
+        },
+        component.organizationId,
+      ).catch(() => {});
       notifyIntegrations("component.low_stock", {
         componentName: component.name,
         quantity: remainingStock,

@@ -293,13 +293,17 @@ export async function PUT(req: NextRequest) {
       await setUserPassword(userid, newPassword);
     }
 
-    triggerWebhook("user.updated", {
-      userId: userid,
-      changes: [
-        ...Object.keys(updateData),
-        ...(newPassword ? ["password"] : []),
-      ],
-    }).catch(() => {});
+    triggerWebhook(
+      "user.updated",
+      {
+        userId: userid,
+        changes: [
+          ...Object.keys(updateData),
+          ...(newPassword ? ["password"] : []),
+        ],
+      },
+      updated.organizationId,
+    ).catch(() => {});
 
     await invalidateCacheByPrefix("users").catch(() => {});
     await invalidateCacheByPrefix("user_count").catch(() => {});

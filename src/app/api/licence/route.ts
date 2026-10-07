@@ -205,11 +205,15 @@ export async function POST(req: NextRequest) {
     });
 
     if (created.licenceduserid) {
-      triggerWebhook("license.assigned", {
-        licenceId: created.licenceid,
-        userId: created.licenceduserid,
-        licenceKey: created.licencekey,
-      }).catch(() => {});
+      triggerWebhook(
+        "license.assigned",
+        {
+          licenceId: created.licenceid,
+          userId: created.licenceduserid,
+          licenceKey: created.licencekey,
+        },
+        created.organizationId,
+      ).catch(() => {});
     }
 
     invalidateCacheByPrefix("licences_all").catch(() => {});
@@ -330,11 +334,15 @@ export async function PUT(req: NextRequest) {
     });
 
     if (licenceduserid !== undefined) {
-      triggerWebhook("license.assigned", {
-        licenceId: updated.licenceid,
-        userId: updated.licenceduserid,
-        licenceKey: updated.licencekey,
-      }).catch(() => {});
+      triggerWebhook(
+        "license.assigned",
+        {
+          licenceId: updated.licenceid,
+          userId: updated.licenceduserid,
+          licenceKey: updated.licencekey,
+        },
+        updated.organizationId,
+      ).catch(() => {});
     }
 
     invalidateCacheByPrefix("licences_all").catch(() => {});

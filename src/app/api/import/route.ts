@@ -344,13 +344,17 @@ export async function POST(req: NextRequest) {
     // Trigger webhook
     const webhookEvent =
       errors.length === lines.length - 1 ? "import.failed" : "import.completed";
-    await triggerWebhook(webhookEvent, {
-      jobId: job.id,
-      entityType: validatedInput.entityType,
-      totalRows: lines.length - 1,
-      successCount,
-      errorCount: errors.length,
-    });
+    await triggerWebhook(
+      webhookEvent,
+      {
+        jobId: job.id,
+        entityType: validatedInput.entityType,
+        totalRows: lines.length - 1,
+        successCount,
+        errorCount: errors.length,
+      },
+      importOrgId,
+    );
     notifyIntegrations(webhookEvent, {
       entityType: validatedInput.entityType,
       successCount,

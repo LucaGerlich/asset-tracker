@@ -167,10 +167,14 @@ export async function POST(req: Request) {
     });
 
     // Webhook + integrations
-    triggerWebhook("component.created", {
-      componentId: created.id,
-      componentName: created.name,
-    }).catch(() => {});
+    triggerWebhook(
+      "component.created",
+      {
+        componentId: created.id,
+        componentName: created.name,
+      },
+      created.organizationId,
+    ).catch(() => {});
     notifyIntegrations("component.created", {
       componentName: created.name,
     }).catch(logCatchError("Integration notification failed"));
@@ -278,11 +282,15 @@ export async function PUT(req: Request) {
     });
 
     // Webhook + integrations
-    triggerWebhook("component.updated", {
-      componentId: updated.id,
-      componentName: updated.name,
-      changes: Object.keys(data),
-    }).catch(() => {});
+    triggerWebhook(
+      "component.updated",
+      {
+        componentId: updated.id,
+        componentName: updated.name,
+        changes: Object.keys(data),
+      },
+      updated.organizationId,
+    ).catch(() => {});
     notifyIntegrations("component.updated", {
       componentName: updated.name,
     }).catch(logCatchError("Integration notification failed"));
@@ -355,10 +363,14 @@ export async function DELETE(req: Request) {
     });
 
     // Webhook + integrations
-    triggerWebhook("component.deleted", {
-      componentId: id,
-      componentName: component.name,
-    }).catch(() => {});
+    triggerWebhook(
+      "component.deleted",
+      {
+        componentId: id,
+        componentName: component.name,
+      },
+      orgId,
+    ).catch(() => {});
     notifyIntegrations("component.deleted", {
       componentName: component.name,
     }).catch(logCatchError("Integration notification failed"));

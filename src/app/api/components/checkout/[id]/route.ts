@@ -144,11 +144,15 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     });
 
     // Webhook + integrations for check-in
-    triggerWebhook("component.checked_in", {
-      componentId: existing.componentId,
-      componentName: existing.component.name,
-      quantity: existing.quantity,
-    }).catch(() => {});
+    triggerWebhook(
+      "component.checked_in",
+      {
+        componentId: existing.componentId,
+        componentName: existing.component.name,
+        quantity: existing.quantity,
+      },
+      authUser.organizationId,
+    ).catch(() => {});
     notifyIntegrations("component.checked_in", {
       componentName: existing.component.name,
       quantity: existing.quantity,

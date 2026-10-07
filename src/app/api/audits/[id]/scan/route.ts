@@ -74,12 +74,16 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       },
     });
 
-    triggerWebhook("audit.asset_scanned", {
-      campaignId: id,
-      campaignName: campaign.name,
-      assetId,
-      status,
-    }).catch(() => {});
+    triggerWebhook(
+      "audit.asset_scanned",
+      {
+        campaignId: id,
+        campaignName: campaign.name,
+        assetId,
+        status,
+      },
+      campaign.organizationId,
+    ).catch(() => {});
 
     return NextResponse.json(entry, { status: 200 });
   } catch (e: any) {

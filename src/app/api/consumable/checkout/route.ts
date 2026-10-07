@@ -176,24 +176,32 @@ export async function POST(req: Request) {
     const remainingStock = consumable!.quantity - quantity;
     const minQty = consumable!.minQuantity ?? 0;
     if (minQty > 0 && remainingStock <= 0) {
-      triggerWebhook("consumable.critical_stock", {
-        consumableId,
-        consumableName: consumable!.consumablename,
-        remainingStock,
-        minQuantity: minQty,
-      }).catch(() => {});
+      triggerWebhook(
+        "consumable.critical_stock",
+        {
+          consumableId,
+          consumableName: consumable!.consumablename,
+          remainingStock,
+          minQuantity: minQty,
+        },
+        consumable!.organizationId,
+      ).catch(() => {});
       notifyIntegrations("consumable.critical_stock", {
         consumableName: consumable!.consumablename,
         quantity: remainingStock,
         minQuantity: minQty,
       }).catch(logCatchError("Integration notification failed"));
     } else if (minQty > 0 && remainingStock <= minQty) {
-      triggerWebhook("consumable.low_stock", {
-        consumableId,
-        consumableName: consumable!.consumablename,
-        remainingStock,
-        minQuantity: minQty,
-      }).catch(() => {});
+      triggerWebhook(
+        "consumable.low_stock",
+        {
+          consumableId,
+          consumableName: consumable!.consumablename,
+          remainingStock,
+          minQuantity: minQty,
+        },
+        consumable!.organizationId,
+      ).catch(() => {});
       notifyIntegrations("consumable.low_stock", {
         consumableName: consumable!.consumablename,
         quantity: remainingStock,

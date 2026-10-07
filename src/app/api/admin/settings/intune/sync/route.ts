@@ -15,12 +15,16 @@ export async function POST() {
 
     const result = await syncIntuneDevices(orgId, "manual");
 
-    triggerWebhook("intune.sync_completed", {
-      created: result.created,
-      updated: result.updated,
-      skipped: result.skipped,
-      errorCount: result.errors.length,
-    }).catch(() => {});
+    triggerWebhook(
+      "intune.sync_completed",
+      {
+        created: result.created,
+        updated: result.updated,
+        skipped: result.skipped,
+        errorCount: result.errors.length,
+      },
+      orgId,
+    ).catch(() => {});
 
     return NextResponse.json({ success: true, ...result });
   } catch (error) {

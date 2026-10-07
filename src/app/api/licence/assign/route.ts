@@ -59,11 +59,15 @@ export async function POST(req: NextRequest) {
       data: { licenceduserid: userId, change_date: new Date() },
     });
 
-    triggerWebhook("license.assigned", {
-      licenceId,
-      userId,
-      licenceKey: updated.licencekey ? "***" : null,
-    }).catch(() => {});
+    triggerWebhook(
+      "license.assigned",
+      {
+        licenceId,
+        userId,
+        licenceKey: updated.licencekey ? "***" : null,
+      },
+      updated.organizationId,
+    ).catch(() => {});
 
     await invalidateCacheByPrefix("licences_all").catch(() => {});
 

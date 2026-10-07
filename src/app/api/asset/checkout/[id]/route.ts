@@ -135,12 +135,16 @@ export async function PUT(
       },
     }).catch(logCatchError("Audit log failed"));
 
-    triggerWebhook("asset.checked_in", {
-      assetId: existing.assetId,
-      assetName: existing.asset?.assetname,
-      checkoutId: id,
-      checkedOutToType: existing.checkedOutToType,
-    }).catch(() => {});
+    triggerWebhook(
+      "asset.checked_in",
+      {
+        assetId: existing.assetId,
+        assetName: existing.asset?.assetname,
+        checkoutId: id,
+        checkedOutToType: existing.checkedOutToType,
+      },
+      existing.asset?.organizationId,
+    ).catch(() => {});
 
     // Slack/Teams notification
     notifyIntegrations("asset.checked_in", {

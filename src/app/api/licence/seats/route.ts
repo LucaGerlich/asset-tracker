@@ -196,14 +196,18 @@ export async function POST(req: Request) {
       },
     });
 
-    triggerWebhook("license.seat_assigned", {
-      assignmentId: assignment.id,
-      licenceId,
-      userId,
-      seatNumber: assignment.seatNumber,
-      userName:
-        `${assignment.user.firstname ?? ""} ${assignment.user.lastname ?? ""}`.trim(),
-    }).catch(() => {});
+    triggerWebhook(
+      "license.seat_assigned",
+      {
+        assignmentId: assignment.id,
+        licenceId,
+        userId,
+        seatNumber: assignment.seatNumber,
+        userName:
+          `${assignment.user.firstname ?? ""} ${assignment.user.lastname ?? ""}`.trim(),
+      },
+      admin.organizationId,
+    ).catch(() => {});
 
     // Slack/Teams notifications
     notifyIntegrations("license.seat_assigned", {

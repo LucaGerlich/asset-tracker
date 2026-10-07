@@ -134,10 +134,14 @@ export async function POST(req: Request) {
       details: { name },
     });
 
-    triggerWebhook("audit.campaign_created", {
-      campaignId: campaign.id,
-      campaignName: campaign.name,
-    }).catch(() => {});
+    triggerWebhook(
+      "audit.campaign_created",
+      {
+        campaignId: campaign.id,
+        campaignName: campaign.name,
+      },
+      campaign.organizationId,
+    ).catch(() => {});
     notifyIntegrations("audit.campaign_created", {
       campaignName: campaign.name,
     }).catch(logCatchError("Integration notification failed"));

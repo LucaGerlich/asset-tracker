@@ -159,10 +159,14 @@ describe("POST /api/audits", () => {
     });
     await POST(req);
 
-    expect(triggerWebhook).toHaveBeenCalledWith("audit.campaign_created", {
-      campaignId: "campaign-uuid-001",
-      campaignName: "Q1 2026 Audit",
-    });
+    expect(triggerWebhook).toHaveBeenCalledWith(
+      "audit.campaign_created",
+      {
+        campaignId: "campaign-uuid-001",
+        campaignName: "Q1 2026 Audit",
+      },
+      "org-uuid-001",
+    );
     expect(notifyIntegrations).toHaveBeenCalledWith("audit.campaign_created", {
       campaignName: "Q1 2026 Audit",
     });

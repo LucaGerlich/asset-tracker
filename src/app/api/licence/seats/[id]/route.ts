@@ -162,14 +162,18 @@ export async function DELETE(
     const userName =
       `${existing.user.firstname ?? ""} ${existing.user.lastname ?? ""}`.trim();
 
-    triggerWebhook("license.seat_unassigned", {
-      assignmentId: id,
-      licenceId: existing.licenceId,
-      userId: existing.userId,
-      seatNumber: existing.seatNumber,
-      userName,
-      licenceName: existing.licence.licencekey,
-    }).catch(() => {});
+    triggerWebhook(
+      "license.seat_unassigned",
+      {
+        assignmentId: id,
+        licenceId: existing.licenceId,
+        userId: existing.userId,
+        seatNumber: existing.seatNumber,
+        userName,
+        licenceName: existing.licence.licencekey,
+      },
+      existing.licence.organizationId,
+    ).catch(() => {});
 
     // Slack/Teams notifications
     notifyIntegrations("license.seat_unassigned", {
