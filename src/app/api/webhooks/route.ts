@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import {
   requirePermission,
   requireNotDemoMode,
+  requireSuperAdmin,
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
@@ -111,6 +112,10 @@ export async function POST(req: NextRequest) {
     const authUser = await requirePermission("webhook:manage");
     await requireWritableOrg(authUser);
 
+    // A webhook without an organization is global and receives the events of
+    // every tenant, so only a platform super-admin may create one.
+    if (!authUser.organizationId) await requireSuperAdmin();
+
     const body = await req.json();
     const validated = webhookSchema.parse(body);
 
@@ -128,11 +133,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { userid: authUser.id! },
-      select: { organizationId: true },
-    });
-
     // Generate a secret if not provided, then encrypt before storing
     const secret = validated.secret || crypto.randomBytes(32).toString("hex");
 
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
         events: validated.events,
         isActive: validated.isActive,
         retryAttempts: validated.retryAttempts,
-        organizationId: user?.organizationId || null,
+        organizationId: authUser.organizationId ?? null,
       },
     });
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   requireApiAdmin,
   requireNotDemoMode,
+  requireSuperAdmin,
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
@@ -112,6 +113,10 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // A global custom role may be held by users of every tenant, so only a
+    // platform super-admin may rewrite it.
+    if (existingRole.organizationId === null) await requireSuperAdmin();
+
     const body = await req.json();
     const validated = updateRoleSchema.parse(body);
 
@@ -213,6 +218,10 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
         { status: 400 },
       );
     }
+
+    // A global custom role may be held by users of every tenant, so only a
+    // platform super-admin may delete it.
+    if (role.organizationId === null) await requireSuperAdmin();
 
     if (role._count.userRoles > 0) {
       return NextResponse.json(

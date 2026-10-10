@@ -480,6 +480,48 @@ describe("PUT /api/roles/[id]", () => {
     expect(res.status).toBe(200);
   });
 
+  describe("a global custom role", () => {
+    const globalRole = { ...ownRole, organizationId: null };
+
+    beforeEach(() => {
+      vi.mocked(requireApiAdmin).mockResolvedValue({
+        ...adminUser,
+        organizationId: undefined,
+      } as any);
+      mockPrisma.role.findUnique.mockResolvedValue(globalRole as any);
+    });
+
+    it("answers 403 and writes nothing for an admin who is not a super-admin", async () => {
+      vi.mocked(requireSuperAdmin).mockRejectedValue(
+        new ForbiddenError("not_super_admin", "Super-admin access required"),
+      );
+
+      const res = await putRole({ name: "Hijacked" });
+
+      expect(res.status).toBe(403);
+      expect(mockPrisma.role.update).not.toHaveBeenCalled();
+    });
+
+    it("lets a super-admin edit it", async () => {
+      const res = await putRole({ name: "Renamed" });
+
+      expect(res.status).toBe(200);
+      expect(requireSuperAdmin).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.role.update).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("does not ask for a super-admin to edit a role of the caller's own org", async () => {
+    vi.mocked(requireSuperAdmin).mockRejectedValue(
+      new ForbiddenError("not_super_admin", "Super-admin access required"),
+    );
+
+    const res = await putRole({ name: "Renamed" });
+
+    expect(res.status).toBe(200);
+    expect(requireSuperAdmin).not.toHaveBeenCalled();
+  });
+
   it("returns 403 and updates nothing when the org is read-only", async () => {
     vi.mocked(requireWritableOrg).mockRejectedValue(
       new ForbiddenError("org_read_only", "Organization is in read-only mode"),
@@ -540,6 +582,72 @@ describe("DELETE /api/roles/[id]", () => {
     const res = await deleteRole();
 
     expect(res.status).toBe(404);
+    expect(mockPrisma.role.delete).not.toHaveBeenCalled();
+  });
+
+  describe("a global custom role", () => {
+    beforeEach(() => {
+      vi.mocked(requireApiAdmin).mockResolvedValue({
+        ...adminUser,
+        organizationId: undefined,
+      } as any);
+      mockPrisma.role.findUnique.mockResolvedValue({
+        ...ownRole,
+        organizationId: null,
+      } as any);
+    });
+
+    it("answers 403 and deletes nothing for an admin who is not a super-admin", async () => {
+      vi.mocked(requireSuperAdmin).mockRejectedValue(
+        new ForbiddenError("not_super_admin", "Super-admin access required"),
+      );
+
+      const res = await deleteRole();
+
+      expect(res.status).toBe(403);
+      expect(mockPrisma.role.delete).not.toHaveBeenCalled();
+    });
+
+    it("lets a super-admin delete it", async () => {
+      const res = await deleteRole();
+
+      expect(res.status).toBe(200);
+      expect(requireSuperAdmin).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.role.delete).toHaveBeenCalledWith({
+        where: { id: "role-1" },
+      });
+    });
+  });
+
+  it("does not ask for a super-admin to delete a role of the caller's own org", async () => {
+    vi.mocked(requireSuperAdmin).mockRejectedValue(
+      new ForbiddenError("not_super_admin", "Super-admin access required"),
+    );
+    mockPrisma.role.findUnique.mockResolvedValue(ownRole as any);
+
+    const res = await deleteRole();
+
+    expect(res.status).toBe(200);
+    expect(requireSuperAdmin).not.toHaveBeenCalled();
+  });
+
+  it("keeps the 400 for a global system role even for an admin who is not a super-admin", async () => {
+    vi.mocked(requireApiAdmin).mockResolvedValue({
+      ...adminUser,
+      organizationId: undefined,
+    } as any);
+    vi.mocked(requireSuperAdmin).mockRejectedValue(
+      new ForbiddenError("not_super_admin", "Super-admin access required"),
+    );
+    mockPrisma.role.findUnique.mockResolvedValue({
+      ...ownRole,
+      organizationId: null,
+      isSystem: true,
+    } as any);
+
+    const res = await deleteRole();
+
+    expect(res.status).toBe(400);
     expect(mockPrisma.role.delete).not.toHaveBeenCalled();
   });
 

@@ -19,6 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Ticket } from "@/types/ticket";
+import {
+  UNASSIGNED_VALUE,
+  toAssignedTo,
+  toAssigneeSelectValue,
+} from "@/lib/ticket-assignee";
 
 interface AdminUser {
   userid: string;
@@ -68,7 +73,7 @@ export function TicketModal({
   };
 
   const handleAssigneeChange = async (userId: string) => {
-    await onUpdate(ticket.id, { assignedTo: userId || null });
+    await onUpdate(ticket.id, { assignedTo: toAssignedTo(userId) });
   };
 
   const handleAddComment = async () => {
@@ -160,14 +165,14 @@ export function TicketModal({
             <div>
               <Label htmlFor="assignee">Assign To</Label>
               <Select
-                value={ticket.assignedTo || "unassigned"}
+                value={toAssigneeSelectValue(ticket.assignedTo)}
                 onValueChange={handleAssigneeChange}
               >
                 <SelectTrigger id="assignee">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  <SelectItem value={UNASSIGNED_VALUE}>Unassigned</SelectItem>
                   {adminUsers.map((admin) => (
                     <SelectItem key={admin.userid} value={admin.userid}>
                       {admin.firstname} {admin.lastname}
