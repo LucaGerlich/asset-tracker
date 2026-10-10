@@ -8,6 +8,7 @@ import {
   getQueueSnapshot,
   postToServiceWorker,
   replayQueue,
+  resolveUserAnnouncement,
   type QueuedMutation,
   type ReplaySummary,
 } from "@/lib/offline-queue";
@@ -48,7 +49,11 @@ function announceReplay(result: ReplaySummary): void {
 }
 
 export function useOfflineQueue(): UseOfflineQueueReturn {
-  const { data: session, isPending: sessionPending } = useSession();
+  const {
+    data: session,
+    isPending: sessionPending,
+    error: sessionError,
+  } = useSession();
   const userId = session?.user?.id ?? null;
   const [pendingCount, setPendingCount] = useState(0);
   const [blockedItems, setBlockedItems] = useState<QueuedMutation[]>([]);
@@ -57,11 +62,19 @@ export function useOfflineQueue(): UseOfflineQueueReturn {
   const syncingRef = useRef(false);
 
   // The service worker cannot see the session, so it learns who is signed in
-  // from here and stamps that id on every change it queues.
+  // from here and stamps that id on every change it queues. A failed session
+  // lookup (offline) is not announced as a sign-out.
+  const announcement = resolveUserAnnouncement({
+    isPending: sessionPending,
+    userId,
+    error: sessionError,
+  });
+  const shouldAnnounce = announcement !== null;
+  const announcedUserId = announcement?.userId ?? null;
   useEffect(() => {
-    if (sessionPending) return;
+    if (!shouldAnnounce) return;
     const announce = () => {
-      void postToServiceWorker({ type: "SET_USER", userId });
+      void postToServiceWorker({ type: "SET_USER", userId: announcedUserId });
     };
     announce();
     // A worker that takes control later (first visit) needs telling too.
@@ -72,7 +85,7 @@ export function useOfflineQueue(): UseOfflineQueueReturn {
         announce,
       );
     };
-  }, [sessionPending, userId]);
+  }, [shouldAnnounce, announcedUserId]);
 
   const refresh = useCallback(async () => {
     if (!userId) {

@@ -58,6 +58,32 @@ function hasOwner(entry: QueuedMutation): boolean {
   return typeof entry.userId === "string";
 }
 
+function isAuthRequest(entry: QueuedMutation): boolean {
+  try {
+    const { pathname } = new URL(entry.url, window.location.origin);
+    return pathname === "/api/auth" || pathname.startsWith("/api/auth/");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The queue as the page should see it. The first worker version also queued
+ * auth requests, whose bodies hold sign-in credentials in plain text. Those
+ * entries have no owner and are deleted on sight, never replayed or listed.
+ */
+async function loadQueue(): Promise<QueuedMutation[]> {
+  const kept: QueuedMutation[] = [];
+  for (const entry of await getPendingMutations()) {
+    if (!hasOwner(entry) && isAuthRequest(entry)) {
+      await discardMutation(entry.id);
+    } else {
+      kept.push(entry);
+    }
+  }
+  return kept;
+}
+
 export interface QueueSnapshot {
   /** Changes still waiting to be sent. */
   pendingCount: number;
@@ -72,7 +98,7 @@ export interface QueueSnapshot {
 export async function getQueueSnapshot(
   currentUserId: string,
 ): Promise<QueueSnapshot> {
-  const visible = (await getPendingMutations()).filter(
+  const visible = (await loadQueue()).filter(
     (entry) => !hasOwner(entry) || entry.userId === currentUserId,
   );
   return {
@@ -213,14 +239,10 @@ async function replayOne(mutation: QueuedMutation): Promise<ReplayStep> {
   }
 }
 
-/**
- * Sends the signed-in user's queued changes, oldest first. Entries of other
- * users are never sent, entries nobody owns are held for review, and blocked
- * entries are not retried until the user discards them.
- */
-export async function replayQueue(
-  currentUserId: string,
-): Promise<ReplaySummary> {
+/** Web Lock that keeps two tabs from replaying the same queue at once. */
+export const REPLAY_LOCK_NAME = "asset-tracker-offline-replay";
+
+async function replayOwnEntries(currentUserId: string): Promise<ReplaySummary> {
   const summary: ReplaySummary = {
     succeeded: 0,
     blocked: 0,
@@ -228,7 +250,7 @@ export async function replayQueue(
     failed: 0,
   };
 
-  for (const mutation of await getPendingMutations()) {
+  for (const mutation of await loadQueue()) {
     if (mutation.status === "blocked") continue;
 
     if (!hasOwner(mutation)) {
@@ -247,6 +269,23 @@ export async function replayQueue(
   }
 
   return summary;
+}
+
+/**
+ * Sends the signed-in user's queued changes, oldest first. Entries of other
+ * users are never sent, entries nobody owns are held for review, and blocked
+ * entries are not retried until the user discards them. Runs under a Web Lock
+ * when the browser has one, so a second tab waits and then finds the queue
+ * already worked through instead of sending every change twice.
+ */
+export async function replayQueue(
+  currentUserId: string,
+): Promise<ReplaySummary> {
+  const run = () => replayOwnEntries(currentUserId);
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return navigator.locks.request(REPLAY_LOCK_NAME, run);
+  }
+  return run();
 }
 
 /** Messages the page sends to the service worker. */
@@ -282,4 +321,35 @@ export async function clearQueueOnSignOut(): Promise<void> {
     // IndexedDB may not be available.
   }
   await postToServiceWorker({ type: "CLEAR_QUEUE" });
+}
+
+export interface SessionState {
+  isPending: boolean;
+  userId: string | null;
+  /** Error of the last session lookup, if it failed. */
+  error: unknown;
+}
+
+function errorStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null || !("status" in error)) {
+    return undefined;
+  }
+  return typeof error.status === "number" ? error.status : undefined;
+}
+
+/**
+ * Decides what the page tells the worker about who is signed in. Returns null
+ * for "say nothing": the session is still loading, or the lookup failed (for
+ * example offline), which does not mean the user signed out. The worker then
+ * keeps the last user it was told about. Only a signed-in session, or an
+ * answer that really is "nobody" (no error, or 401), is announced.
+ */
+export function resolveUserAnnouncement(
+  session: SessionState,
+): { userId: string | null } | null {
+  if (session.isPending) return null;
+  if (session.userId) return { userId: session.userId };
+  const status = errorStatus(session.error);
+  if (session.error && status !== 401) return null;
+  return { userId: null };
 }

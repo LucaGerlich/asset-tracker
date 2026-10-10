@@ -94,7 +94,12 @@ async function loadStoredUserId() {
 }
 
 async function getCurrentUserId() {
-  if (currentUserId === undefined) currentUserId = await loadStoredUserId();
+  if (currentUserId === undefined) {
+    const stored = await loadStoredUserId();
+    // A SET_USER or CLEAR_QUEUE that arrived while the stored value was being
+    // read is newer, so it wins.
+    if (currentUserId === undefined) currentUserId = stored;
+  }
   return currentUserId;
 }
 
@@ -125,6 +130,45 @@ self.addEventListener('message', (event) => {
   }
 });
 
+function jsonResponse(status, payload) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+// Keeps a mutation whose network request failed and answers 202. A body that
+// may hold a credential is not kept: the caller gets the 503 below instead, as
+// if the request had simply failed.
+async function queueFailedMutation(request) {
+  try {
+    const body = await request.clone().text();
+    if (self.bodyHasSecrets(request.headers.get('content-type'), body)) {
+      return jsonResponse(503, {
+        error: 'You are offline. This request contains credentials, so it was not saved.',
+        code: 'offline_not_queued',
+      });
+    }
+    const entry = {
+      id: crypto.randomUUID(),
+      url: request.url,
+      method: request.method,
+      headers: self.pickHeaders(request.headers),
+      body: body || null,
+      timestamp: Date.now(),
+      retryCount: 0,
+      userId: await getCurrentUserId(),
+    };
+    await storeInQueue(entry);
+    // Notify all clients
+    const clients = await self.clients.matchAll();
+    clients.forEach((c) => c.postMessage({ type: 'MUTATION_QUEUED' }));
+    return jsonResponse(202, { queued: true, id: entry.id });
+  } catch {
+    return jsonResponse(503, { error: 'Offline and queue failed' });
+  }
+}
+
 // Fetch event - network first for pages, cache first for static assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -139,34 +183,7 @@ self.addEventListener('fetch', (event) => {
   const sameOrigin = url.origin === self.location.origin;
   if (sameOrigin && self.shouldQueue(request.method, url.pathname, request.headers)) {
     event.respondWith(
-      fetch(request.clone()).catch(async () => {
-        try {
-          const body = await request.clone().text();
-          const entry = {
-            id: crypto.randomUUID(),
-            url: request.url,
-            method: request.method,
-            headers: self.pickHeaders(request.headers),
-            body: body || null,
-            timestamp: Date.now(),
-            retryCount: 0,
-            userId: await getCurrentUserId(),
-          };
-          await storeInQueue(entry);
-          // Notify all clients
-          const clients = await self.clients.matchAll();
-          clients.forEach((c) => c.postMessage({ type: 'MUTATION_QUEUED' }));
-          return new Response(JSON.stringify({ queued: true, id: entry.id }), {
-            status: 202,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        } catch {
-          return new Response(JSON.stringify({ error: 'Offline and queue failed' }), {
-            status: 503,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
-      })
+      fetch(request.clone()).catch(() => queueFailedMutation(request))
     );
     return;
   }

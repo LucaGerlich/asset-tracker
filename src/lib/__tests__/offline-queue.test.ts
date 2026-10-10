@@ -26,7 +26,9 @@ import {
   discardMutation,
   getQueueSnapshot,
   postToServiceWorker,
+  REPLAY_LOCK_NAME,
   replayQueue,
+  resolveUserAnnouncement,
   type QueuedMutation,
 } from "@/lib/offline-queue";
 
@@ -332,6 +334,161 @@ describe("replayQueue", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.dropped).toBe(1);
     expect(stored("m1")).toBeUndefined();
+  });
+});
+
+describe("replayQueue and legacy auth entries", () => {
+  const authEntry = (overrides: Partial<QueuedMutation> = {}) =>
+    entry({
+      id: "auth",
+      url: "http://localhost:3000/api/auth/sign-in/email",
+      body: '{"email":"a@b.c","password":"hunter2"}',
+      userId: null,
+      ...overrides,
+    });
+
+  it("deletes ownerless auth requests without sending or reporting them", async () => {
+    seed(
+      authEntry(),
+      authEntry({ id: "auth-root", url: "http://localhost:3000/api/auth" }),
+    );
+
+    const result = await replayQueue("u1");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result).toEqual({ succeeded: 0, blocked: 0, dropped: 0, failed: 0 });
+    expect(mocks.store.size).toBe(0);
+  });
+
+  it("deletes them when the page only reads the queue", async () => {
+    seed(authEntry(), entry({ id: "mine" }));
+
+    const snapshot = await getQueueSnapshot("u1");
+
+    expect(stored("auth")).toBeUndefined();
+    expect(snapshot.pendingCount).toBe(1);
+    expect(snapshot.blocked).toEqual([]);
+  });
+
+  it("keeps other ownerless entries for review", async () => {
+    seed(authEntry({ id: "legacy", url: "http://localhost:3000/api/authors" }));
+
+    const result = await replayQueue("u1");
+
+    expect(result.blocked).toBe(1);
+    expect(stored("legacy")?.status).toBe("blocked");
+  });
+});
+
+describe("replayQueue across tabs", () => {
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, "locks");
+  });
+
+  it("runs under the replay lock when the browser has Web Locks", async () => {
+    const request = vi.fn(
+      async (_name: string, callback: () => Promise<unknown>) => callback(),
+    );
+    Object.defineProperty(navigator, "locks", {
+      configurable: true,
+      value: { request },
+    });
+    seed(entry());
+    fetchMock.mockResolvedValue(jsonResponse(200, {}));
+
+    const result = await replayQueue("u1");
+
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls[0][0]).toBe(REPLAY_LOCK_NAME);
+    expect(REPLAY_LOCK_NAME).toBe("asset-tracker-offline-replay");
+    expect(result.succeeded).toBe(1);
+  });
+
+  it("reads the queue only after the lock is granted", async () => {
+    const { keys } = await import("idb-keyval");
+    vi.mocked(keys).mockClear();
+    let grant: () => void = () => {};
+    const granted = new Promise<void>((resolve) => (grant = resolve));
+    Object.defineProperty(navigator, "locks", {
+      configurable: true,
+      value: {
+        request: async (_name: string, callback: () => Promise<unknown>) => {
+          await granted;
+          return callback();
+        },
+      },
+    });
+    seed(entry());
+    fetchMock.mockResolvedValue(jsonResponse(200, {}));
+
+    const replay = replayQueue("u1");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(keys).not.toHaveBeenCalled();
+    grant();
+    const result = await replay;
+
+    expect(keys).toHaveBeenCalled();
+    expect(result.succeeded).toBe(1);
+  });
+
+  it("runs directly when Web Locks are not available", async () => {
+    expect(navigator.locks).toBeFalsy();
+    seed(entry());
+    fetchMock.mockResolvedValue(jsonResponse(200, {}));
+
+    const result = await replayQueue("u1");
+
+    expect(result.succeeded).toBe(1);
+  });
+});
+
+describe("resolveUserAnnouncement", () => {
+  it("announces a signed-in user", () => {
+    expect(
+      resolveUserAnnouncement({ isPending: false, userId: "u1", error: null }),
+    ).toEqual({ userId: "u1" });
+  });
+
+  it("announces nobody when the session answered with no user", () => {
+    expect(
+      resolveUserAnnouncement({ isPending: false, userId: null, error: null }),
+    ).toEqual({ userId: null });
+  });
+
+  it("announces nobody when the server said unauthorized", () => {
+    expect(
+      resolveUserAnnouncement({
+        isPending: false,
+        userId: null,
+        error: { status: 401, statusText: "Unauthorized" },
+      }),
+    ).toEqual({ userId: null });
+  });
+
+  it("says nothing while the session is loading", () => {
+    expect(
+      resolveUserAnnouncement({ isPending: true, userId: null, error: null }),
+    ).toBeNull();
+  });
+
+  it.each([
+    ["a network failure", new TypeError("Failed to fetch")],
+    ["a failed lookup", { status: 0, statusText: "" }],
+    ["a server error", { status: 503, statusText: "Service Unavailable" }],
+  ])("says nothing when the lookup failed with %s", (_label, error) => {
+    expect(
+      resolveUserAnnouncement({ isPending: false, userId: null, error }),
+    ).toBeNull();
+  });
+
+  it("keeps announcing a known user even if a later refresh failed", () => {
+    expect(
+      resolveUserAnnouncement({
+        isPending: false,
+        userId: "u1",
+        error: new TypeError("Failed to fetch"),
+      }),
+    ).toEqual({ userId: "u1" });
   });
 });
 
