@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import Breadcrumb from "@/components/Breadcrumb";
-import prisma from "@/lib/prisma";
+import { getOrganizationContext } from "@/lib/organization-context";
+import { getReservations } from "./data";
 import ReservationsCalendarClient from "./ReservationsCalendarClient";
 import MyItemRequestsClient from "./MyItemRequestsClient";
 
@@ -20,22 +21,11 @@ export default async function ReservationsPage() {
 
   // Self-service restriction: non-admins only see their own reservations
   const isAdmin = session.user.isadmin;
-  const baseWhere = isAdmin ? {} : { userId: session.user.id };
-
-  const reservations = await prisma.assetReservation.findMany({
-    where: {
-      ...baseWhere,
-      status: { notIn: ["cancelled", "rejected"] },
-    },
-    include: {
-      asset: {
-        select: { assetid: true, assetname: true, assettag: true },
-      },
-      user: {
-        select: { userid: true, firstname: true, lastname: true },
-      },
-    },
-    orderBy: { startDate: "desc" },
+  const ctx = isAdmin ? await getOrganizationContext() : null;
+  const reservations = await getReservations({
+    userId: session.user.id,
+    isAdmin,
+    organizationId: ctx?.organization?.id ?? null,
   });
 
   // Serialize dates for the client component

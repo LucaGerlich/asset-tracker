@@ -7,6 +7,12 @@ import prisma from "@/lib/prisma";
 import { isSuperAdmin } from "@/lib/super-admin";
 import { MASKED_VALUE } from "@/lib/settings-keys";
 import { getEnvEmailConfig } from "@/lib/env-email-config";
+import {
+  getCustomFields,
+  getDepreciationSettings,
+  getStatusTypes,
+  getUsers,
+} from "./data";
 
 export const metadata = {
   title: "Admin Settings - Asset Tracker",
@@ -56,23 +62,6 @@ async function getSystemSettings(): Promise<GroupedSettings> {
   return grouped;
 }
 
-async function getUsers(organizationId: string | null) {
-  return await prisma.user.findMany({
-    where: { organizationId },
-    select: {
-      userid: true,
-      username: true,
-      firstname: true,
-      lastname: true,
-      email: true,
-      isadmin: true,
-      canrequest: true,
-      creation_date: true,
-    },
-    orderBy: [{ isadmin: "desc" }, { lastname: "asc" }],
-  });
-}
-
 type EmailTemplates = Awaited<ReturnType<typeof getEmailTemplates>>;
 
 // Email templates have no organization: they are platform-wide.
@@ -85,32 +74,6 @@ async function getEmailTemplates() {
 async function getLabelTemplates() {
   return await prisma.label_templates.findMany({
     orderBy: { name: "asc" },
-  });
-}
-
-async function getStatusTypes(organizationId: string | null) {
-  return await prisma.statusType.findMany({
-    where: { organizationId },
-    orderBy: { statustypename: "asc" },
-  });
-}
-
-// A user without an organization owns no definitions. Skip the query rather
-// than pass a missing organizationId to Prisma, which would drop the filter and
-// return every organization's definitions.
-async function getCustomFields(organizationId: string | null) {
-  if (!organizationId) return [];
-  return await prisma.custom_field_definitions.findMany({
-    where: { organizationId },
-    orderBy: [{ entityType: "asc" }, { displayOrder: "asc" }],
-  });
-}
-
-async function getDepreciationSettings() {
-  return await prisma.depreciation_settings.findMany({
-    include: {
-      assetCategoryType: true,
-    },
   });
 }
 
@@ -161,7 +124,7 @@ export default async function Page() {
       : Promise.resolve<EmailTemplates>([]),
     getLabelTemplates(),
     getCustomFields(adminUser?.organizationId ?? null),
-    getDepreciationSettings(),
+    getDepreciationSettings(adminUser?.organizationId ?? null),
     getStatusTypes(adminUser?.organizationId ?? null),
   ]);
 
