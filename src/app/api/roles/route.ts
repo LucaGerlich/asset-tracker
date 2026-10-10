@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   requireApiAdmin,
   requireNotDemoMode,
+  requireSuperAdmin,
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
@@ -99,6 +100,10 @@ export async function POST(req: NextRequest) {
 
     const user = await requireApiAdmin();
     await requireWritableOrg(user);
+
+    // A role without an organization is global and visible to every tenant,
+    // so only a platform super-admin may create one.
+    if (!user.organizationId) await requireSuperAdmin();
 
     const body = await req.json();
     const validated = roleSchema.parse(body);

@@ -37,7 +37,9 @@ export type OrganizationAdminUpdateInput = z.infer<
 export const departmentSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().optional().nullable(),
-  organizationId: z.string().uuid(),
+  // Never used to pick the org: a department is created in the caller's org.
+  // Accepted for existing clients; when present it must match the caller's org.
+  organizationId: z.string().uuid().optional(),
   parentId: z.string().uuid().optional().nullable(),
 });
 

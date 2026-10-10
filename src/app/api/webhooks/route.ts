@@ -27,19 +27,23 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
 
-    const user = await prisma.user.findUnique({
-      where: { userid: authUser.id! },
-      select: { organizationId: true },
-    });
+    // A caller without an org owns no webhooks: never widen the filter to
+    // every org.
+    if (!authUser.organizationId) {
+      return NextResponse.json(
+        searchParams.has("page")
+          ? buildPaginatedResponse([], 0, parsePaginationParams(searchParams))
+          : [],
+      );
+    }
 
-    const where: Record<string, unknown> = user?.organizationId
-      ? {
-          OR: [
-            { organizationId: user.organizationId },
-            { organizationId: null },
-          ],
-        }
-      : {};
+    // Own org's webhooks plus global ones (no organization).
+    const where: Record<string, unknown> = {
+      OR: [
+        { organizationId: authUser.organizationId },
+        { organizationId: null },
+      ],
+    };
 
     const include = {
       organization: {

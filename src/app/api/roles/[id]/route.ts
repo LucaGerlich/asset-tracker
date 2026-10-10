@@ -34,6 +34,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const user = await requireApiAdmin();
 
+    // A global role is assigned to users of every tenant: list only the
+    // members of the caller's org. A caller without an org sees none.
+    const memberScope = user.organizationId
+      ? { user: { organizationId: user.organizationId } }
+      : { userId: { in: [] } };
+
     const role = await prisma.role.findUnique({
       where: { id },
       include: {
@@ -41,6 +47,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
           select: { id: true, name: true },
         },
         userRoles: {
+          where: memberScope,
           include: {
             user: {
               select: {

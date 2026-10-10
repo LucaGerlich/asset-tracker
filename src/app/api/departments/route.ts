@@ -97,38 +97,33 @@ export async function POST(req: NextRequest) {
     const authUser = await requirePermission("dept:manage");
     await requireWritableOrg(authUser);
 
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
+    // A department always belongs to the caller's own org; a caller without
+    // an org cannot create one.
+    const orgId = authUser.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "An organization is required to create departments" },
+        { status: 403 },
+      );
+    }
 
     const body = await req.json();
     const validated = departmentSchema.parse(body);
 
-    // If user has an org, ensure they can only create departments in their own org
-    if (orgId && validated.organizationId !== orgId) {
+    // The body organizationId is never used; if sent, it must be the caller's.
+    if (validated.organizationId && validated.organizationId !== orgId) {
       return NextResponse.json(
         { error: "Cannot create department in another organization" },
         { status: 403 },
       );
     }
 
-    // Verify organization exists
-    const organization = await prisma.organization.findUnique({
-      where: { id: validated.organizationId },
-    });
-
-    if (!organization) {
-      return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 404 },
-      );
-    }
-
-    // If parent is specified, verify it exists and belongs to same organization
+    // If parent is specified, verify it exists and belongs to the same organization
     if (validated.parentId) {
       const parent = await prisma.department.findFirst({
         where: {
           id: validated.parentId,
-          organizationId: validated.organizationId,
+          organizationId: orgId,
         },
       });
 
@@ -144,7 +139,7 @@ export async function POST(req: NextRequest) {
       data: {
         name: validated.name,
         description: validated.description,
-        organizationId: validated.organizationId,
+        organizationId: orgId,
         parentId: validated.parentId || null,
       },
       include: {

@@ -9,7 +9,6 @@ import {
 import { apiErrorResponse } from "@/lib/errors";
 import { createFreshdeskClient, SUPPORTED_TICKET_TYPES } from "@/lib/freshdesk";
 import { decrypt } from "@/lib/encryption";
-import { getOrganizationContext } from "@/lib/organization-context";
 import {
   parsePaginationParams,
   buildPrismaArgs,
@@ -44,13 +43,22 @@ async function getLocalTickets(url: URL) {
     const user = await requireApiAuth();
     const searchParams = url.searchParams;
 
+    // An admin without an org owns no tickets: never widen the filter to
+    // every org.
+    if (user.isAdmin && !user.organizationId) {
+      return NextResponse.json(
+        searchParams.has("page")
+          ? buildPaginatedResponse([], 0, parsePaginationParams(searchParams))
+          : [],
+        { status: 200 },
+      );
+    }
+
     // Scope tickets to user's organization (through creator's org)
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
     const where: Record<string, unknown> = user.isAdmin
-      ? orgId
-        ? { user_tickets_createdByTouser: { organizationId: orgId } }
-        : {}
+      ? {
+          user_tickets_createdByTouser: { organizationId: user.organizationId },
+        }
       : { createdBy: user.id };
 
     const include = {

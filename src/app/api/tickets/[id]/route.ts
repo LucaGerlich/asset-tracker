@@ -10,6 +10,7 @@ import { apiErrorResponse } from "@/lib/errors";
 import { createFreshdeskClient } from "@/lib/freshdesk";
 import { logger } from "@/lib/logger";
 import { decrypt } from "@/lib/encryption";
+import { z } from "zod";
 import {
   notifyTicketAssigned,
   notifyTicketStatusChanged,
@@ -110,6 +111,31 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
     if (!existingTicket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    }
+
+    // The assignee is notified and shown the ticket: it must be a user of the
+    // caller's org. `null` unassigns.
+    if (assignedTo !== undefined && assignedTo !== null) {
+      const assigneeId = z.string().uuid().safeParse(assignedTo);
+      if (!assigneeId.success) {
+        return NextResponse.json(
+          { error: "assignedTo must be a user id or null" },
+          { status: 400 },
+        );
+      }
+      const assignee = await prisma.user.findFirst({
+        where: {
+          userid: assigneeId.data,
+          organizationId: user.organizationId,
+        },
+        select: { userid: true },
+      });
+      if (!assignee) {
+        return NextResponse.json(
+          { error: "Assignee not found in your organization" },
+          { status: 400 },
+        );
+      }
     }
 
     const updateData: any = {

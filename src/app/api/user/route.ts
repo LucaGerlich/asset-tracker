@@ -168,41 +168,34 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    if (_expectedVersion) {
-      const current = await prisma.user.findUnique({
-        where: { userid },
-        select: { change_date: true },
-      });
-      if (
-        current?.change_date &&
-        new Date(_expectedVersion).getTime() !==
-          new Date(current.change_date).getTime()
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "This user was modified by another admin. Please refresh and try again.",
-          },
-          { status: 409 },
-        );
-      }
-    }
-
     if (!authUser.isAdmin && authUser.id !== userid) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Verify target user belongs to requester's org (skip for own profile)
-    if (authUser.id !== userid) {
-      const orgContext = await getOrganizationContext();
-      const orgId = orgContext?.organization?.id;
-      const targetUser = await prisma.user.findFirst({
-        where: scopeToOrganization({ userid }, orgId),
-        select: { userid: true },
-      });
-      if (!targetUser) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
+    // Resolve the target inside the caller's org before anything that could
+    // reveal whether the id exists elsewhere (such as the version check
+    // below): a foreign and a missing user must look the same.
+    const targetUser = await prisma.user.findFirst({
+      where: scopeToOrganization({ userid }, authUser.organizationId),
+      select: { change_date: true },
+    });
+    if (!targetUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (
+      _expectedVersion &&
+      targetUser.change_date &&
+      new Date(_expectedVersion).getTime() !==
+        new Date(targetUser.change_date).getTime()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This user was modified by another admin. Please refresh and try again.",
+        },
+        { status: 409 },
+      );
     }
 
     const schema = authUser.isAdmin

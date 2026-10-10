@@ -9,9 +9,6 @@ vi.mock("@/lib/freshdesk", () => ({
   SUPPORTED_TICKET_TYPES: ["Hardware Request", "Problem"],
 }));
 vi.mock("@/lib/encryption", () => ({ decrypt: (value: string) => value }));
-vi.mock("@/lib/organization-context", () => ({
-  getOrganizationContext: vi.fn().mockResolvedValue(null),
-}));
 
 import { GET } from "@/app/api/tickets/route";
 import prisma from "@/lib/prisma";
