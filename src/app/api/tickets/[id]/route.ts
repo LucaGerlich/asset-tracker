@@ -63,8 +63,13 @@ export async function GET(req: Request, { params }: RouteParams) {
     const result = await client.getTicket(ticketId);
 
     if (!result.success) {
+      // The client relays Freshdesk's or fetch's raw text (hosts, API
+      // descriptions); it stays in the log.
+      logger.error("GET /api/tickets/[id] upstream error", {
+        error: result.error,
+      });
       return NextResponse.json(
-        { error: result.error || "Failed to fetch ticket" },
+        { error: "Failed to fetch ticket" },
         { status: 500 },
       );
     }

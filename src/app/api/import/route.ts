@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import {
   requirePermission,
   requireNotDemoMode,
   requireWritableOrg,
 } from "@/lib/api-auth";
-import { apiErrorResponse } from "@/lib/errors";
+import { AppError, apiErrorResponse } from "@/lib/errors";
 import { assertEmailAssignable } from "@/lib/email-ownership";
 import { isSuperAdmin } from "@/lib/super-admin";
 import { importJobSchema } from "@/lib/validation-organization";
@@ -17,6 +18,45 @@ import { logger, logCatchError } from "@/lib/logger";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+
+/**
+ * A problem with a row's own data or the import's setup, reported by this file.
+ * Its message is written for the user and is stored on the import job as is.
+ */
+class ImportRowError extends Error {}
+
+const ROW_FAILED_MESSAGE = "Row could not be imported";
+
+/**
+ * What a user may read about a failed row. Messages this code writes itself
+ * (ImportRowError) and typed application errors (email conflict, reserved
+ * address) pass through. Known Prisma errors map to a fixed sentence. Anything
+ * else (query text, table and column names, connection details) is replaced
+ * and only logged.
+ */
+function describeRowError(error: unknown): {
+  message: string;
+  unexpected: boolean;
+} {
+  if (error instanceof ImportRowError || error instanceof AppError) {
+    return { message: error.message, unexpected: false };
+  }
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      return {
+        message: "A record with the same unique value already exists",
+        unexpected: false,
+      };
+    }
+    if (error.code === "P2003") {
+      return {
+        message: "A referenced record does not exist",
+        unexpected: false,
+      };
+    }
+  }
+  return { message: ROW_FAILED_MESSAGE, unexpected: true };
+}
 
 // Entity field mappings for CSV import
 const ENTITY_FIELDS: Record<string, string[]> = {
@@ -296,10 +336,15 @@ export async function POST(req: NextRequest) {
         );
         successCount++;
       } catch (err) {
-        errors.push({
-          row: i + 1,
-          error: err instanceof Error ? err.message : "Unknown error",
-        });
+        const { message, unexpected } = describeRowError(err);
+        if (unexpected) {
+          logger.error("Import row failed", {
+            row: i + 1,
+            entityType: validatedInput.entityType,
+            error: err,
+          });
+        }
+        errors.push({ row: i + 1, error: message });
       }
 
       if (i % 10 === 0) {
@@ -526,7 +571,7 @@ async function createEntity(
         !accSupplier ||
         !accModel
       ) {
-        throw new Error(
+        throw new ImportRowError(
           "Missing required reference data for accessory import. Ensure manufacturer, status type, accessory category, location, supplier, and model records exist.",
         );
       }
@@ -558,7 +603,7 @@ async function createEntity(
         data.consumablecategorytypeid || defaultRefs.consumablecategorytypeid;
       const conSupplier = data.supplierid || defaultRefs.supplierid;
       if (!conManufacturer || !conCategory || !conSupplier) {
-        throw new Error(
+        throw new ImportRowError(
           "Missing required reference data for consumable import. Ensure manufacturer, consumable category, and supplier records exist.",
         );
       }
@@ -587,7 +632,7 @@ async function createEntity(
         data.licencecategorytypeid || defaultRefs.licencecategorytypeid;
       const licSupplier = data.supplierid || defaultRefs.supplierid;
       if (!licManufacturer || !licCategory || !licSupplier) {
-        throw new Error(
+        throw new ImportRowError(
           "Missing required reference data for licence import. Ensure manufacturer, licence category, and supplier records exist.",
         );
       }
@@ -666,7 +711,9 @@ async function createEntity(
       break;
 
     default:
-      throw new Error(`Import not implemented for entity type: ${entityType}`);
+      throw new ImportRowError(
+        `Import not implemented for entity type: ${entityType}`,
+      );
   }
 }
 

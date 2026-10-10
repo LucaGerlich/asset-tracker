@@ -23,8 +23,17 @@ if (!/^[a-zA-Z0-9_]+$/.test(S)) {
 }
 const USER_TABLE = Prisma.raw(`"${S}"."user"`);
 
-async function countUsers(condition: Prisma.Sql): Promise<number> {
-  const rows = await prisma.$queryRaw<Array<{ count: number }>>(
+/**
+ * What the helpers run their statement on: the shared client by default, or a
+ * transaction client, so an integration test can roll everything back.
+ */
+type RawQueryClient = Pick<Prisma.TransactionClient, "$queryRaw">;
+
+async function countUsers(
+  condition: Prisma.Sql,
+  db: RawQueryClient,
+): Promise<number> {
+  const rows = await db.$queryRaw<Array<{ count: number }>>(
     Prisma.sql`SELECT count(*)::int AS count FROM ${USER_TABLE} WHERE ${condition}`,
   );
   return rows[0]?.count ?? 0;
@@ -37,12 +46,14 @@ async function countUsers(condition: Prisma.Sql): Promise<number> {
 export function countUsersByEmail(
   email: string,
   excludeUserId?: string,
+  db: RawQueryClient = prisma,
 ): Promise<number> {
   const sameEmail = Prisma.sql`lower("email") = lower(${email})`;
   return countUsers(
     excludeUserId
       ? Prisma.sql`${sameEmail} AND "userid" <> ${excludeUserId}::uuid`
       : sameEmail,
+    db,
   );
 }
 
@@ -50,10 +61,12 @@ export function countUsersByEmail(
 export async function userHoldsEmail(
   userId: string,
   email: string,
+  db: RawQueryClient = prisma,
 ): Promise<boolean> {
   return (
     (await countUsers(
       Prisma.sql`"userid" = ${userId}::uuid AND lower("email") = lower(${email})`,
+      db,
     )) > 0
   );
 }

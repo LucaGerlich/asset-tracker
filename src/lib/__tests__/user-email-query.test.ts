@@ -93,3 +93,19 @@ describe("userHoldsEmail", () => {
     await expect(userHoldsEmail("user-1", "root@x.io")).resolves.toBe(false);
   });
 });
+
+describe("explicit client", () => {
+  it("runs both lookups on the given client instead of the shared one", async () => {
+    const client = { $queryRaw: vi.fn().mockResolvedValue([{ count: 1 }]) };
+
+    await expect(
+      countUsersByEmail("a@b.io", "user-1", client as never),
+    ).resolves.toBe(1);
+    await expect(
+      userHoldsEmail("user-1", "a@b.io", client as never),
+    ).resolves.toBe(true);
+
+    expect(client.$queryRaw).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
+  });
+});

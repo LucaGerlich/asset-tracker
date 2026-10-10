@@ -31,7 +31,14 @@ vi.mock("@/lib/cache", () => ({
   invalidateCacheByPrefix: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/integrations/intune", () => ({ syncIntuneDevices: vi.fn() }));
-vi.mock("@/lib/freshdesk", () => ({ createFreshdeskClient: vi.fn() }));
+vi.mock("@/lib/freshdesk", () => ({
+  createFreshdeskClient: vi.fn(),
+  SUPPORTED_TICKET_TYPES: ["Hardware Request", "Problem"],
+}));
+vi.mock("@/lib/notifications", () => ({
+  notifyTicketAssigned: vi.fn(),
+  notifyTicketStatusChanged: vi.fn(),
+}));
 
 const s3 = vi.hoisted(() => ({ upload: vi.fn(), remove: vi.fn() }));
 vi.mock("@/lib/storage/s3", () => ({
@@ -46,6 +53,8 @@ import { POST as testStorage } from "@/app/api/admin/settings/storage/test/route
 import { GET as getStorage } from "@/app/api/admin/settings/storage/route";
 import { PUT as updateStatus } from "@/app/api/asset/updateStatus/route";
 import { POST as assignAsset } from "@/app/api/userAssets/assign/route";
+import { GET as getTickets } from "@/app/api/tickets/route";
+import { GET as getTicket } from "@/app/api/tickets/[id]/route";
 import { GET as getUsers } from "@/app/api/user/getUser/route";
 import { GET as getReady } from "@/app/api/health/ready/route";
 import prisma from "@/lib/prisma";
@@ -312,6 +321,59 @@ describe("POST /api/userAssets/assign", () => {
       error: "The 'Active' status is not configured for this organization",
     });
     expect(JSON.stringify(body)).not.toContain("statusType");
+  });
+});
+
+describe("Freshdesk ticket reads (upstream error relay)", () => {
+  /** Both Freshdesk settings exist, so the handler reaches the client call. */
+  function freshdeskConfigured() {
+    mockPrisma.system_settings.findUnique.mockResolvedValue({
+      settingValue: "acme",
+    } as never);
+  }
+
+  it("GET /api/tickets?source=freshdesk logs the upstream error and returns a fixed body", async () => {
+    freshdeskConfigured();
+    vi.mocked(createFreshdeskClient).mockReturnValue({
+      getTicketsByTypes: vi
+        .fn()
+        .mockResolvedValue({ success: false, error: INTERNAL }),
+    } as never);
+
+    const { status, body } = await parseResponse(
+      await getTickets(
+        createMockRequest("/api/tickets?source=freshdesk") as never,
+      ),
+    );
+
+    expect(status).toBe(500);
+    expect(body).toEqual({ error: "Failed to fetch tickets" });
+    expectNoInternals(body);
+    expect(logger.error).toHaveBeenCalledWith(
+      "GET /api/tickets (freshdesk) upstream error",
+      { error: INTERNAL },
+    );
+  });
+
+  it("GET /api/tickets/[id] logs the upstream error and returns a fixed body", async () => {
+    freshdeskConfigured();
+    vi.mocked(createFreshdeskClient).mockReturnValue({
+      getTicket: vi.fn().mockResolvedValue({ success: false, error: INTERNAL }),
+    } as never);
+
+    const { status, body } = await parseResponse(
+      await getTicket(createMockRequest("/api/tickets/42"), {
+        params: Promise.resolve({ id: "42" }),
+      }),
+    );
+
+    expect(status).toBe(500);
+    expect(body).toEqual({ error: "Failed to fetch ticket" });
+    expectNoInternals(body);
+    expect(logger.error).toHaveBeenCalledWith(
+      "GET /api/tickets/[id] upstream error",
+      { error: INTERNAL },
+    );
   });
 });
 
