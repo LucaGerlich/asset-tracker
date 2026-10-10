@@ -57,11 +57,7 @@ export async function POST(req: Request) {
     if (denied) return denied;
     logger.error("POST /api/admin/settings/freshdesk/test error", { error });
     return NextResponse.json(
-      {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Connection test failed",
-      },
+      { success: false, error: "Connection test failed" },
       { status: 500 },
     );
   }

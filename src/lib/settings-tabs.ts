@@ -1,8 +1,9 @@
 /**
  * Visibility rules for the admin settings tabs.
  *
- * Platform-wide tabs configure rows that every tenant shares (system settings,
- * the organization list). They are shown, and rendered, only for super-admins:
+ * Platform-wide tabs configure or expose rows that every tenant shares (system
+ * settings, the organization list, the rate limit counters). They are shown,
+ * and rendered, only for super-admins:
  * a regular org admin must not see or edit them. This is a usability filter on
  * top of the API guards, never a replacement for them.
  */
@@ -17,6 +18,7 @@ export const SUPER_ADMIN_ONLY_TABS: ReadonlySet<string> = new Set([
   "intune",
   "integrations",
   "organizations",
+  "rateLimits",
 ]);
 
 /** Billing exists only in the hosted SaaS deployment. */

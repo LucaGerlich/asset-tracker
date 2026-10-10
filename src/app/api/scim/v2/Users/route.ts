@@ -8,13 +8,10 @@ import {
   scimError,
   userToScim,
   scimListResponse,
+  scimEmailRejection,
 } from "@/lib/scim";
 import { checkUserLimit } from "@/lib/tenant-limits";
-import {
-  assertEmailAssignable,
-  EmailConflictError,
-} from "@/lib/email-ownership";
-import { ForbiddenError } from "@/lib/errors";
+import { assertEmailAssignable } from "@/lib/email-ownership";
 import { logger, logCatchError } from "@/lib/logger";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 
@@ -215,18 +212,8 @@ export async function POST(req: Request) {
       headers: scimHeaders(),
     });
   } catch (error) {
-    if (error instanceof EmailConflictError) {
-      return NextResponse.json(scimError(error.message, 409), {
-        status: 409,
-        headers: scimHeaders(),
-      });
-    }
-    if (error instanceof ForbiddenError) {
-      return NextResponse.json(scimError(error.message, 403), {
-        status: 403,
-        headers: scimHeaders(),
-      });
-    }
+    const rejection = scimEmailRejection(error);
+    if (rejection) return rejection;
     logger.error("SCIM POST /Users error", { error });
     return NextResponse.json(scimError("Internal server error", 500), {
       status: 500,

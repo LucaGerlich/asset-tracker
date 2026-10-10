@@ -16,6 +16,7 @@ const PLATFORM_TABS = [
   "intune",
   "integrations",
   "organizations",
+  "rateLimits",
 ];
 
 const ORG_TABS = [

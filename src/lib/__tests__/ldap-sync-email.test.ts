@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { EventEmitter } from "node:events";
+import type { Prisma } from "@prisma/client";
 
 vi.mock("@/lib/prisma");
 vi.mock("@/lib/logger");
@@ -53,10 +54,6 @@ const mockPrisma = vi.mocked(prisma, true);
 
 const RESERVED = "root@example.com";
 
-type FindFirstArgs = {
-  where?: { OR?: unknown; email?: { equals?: string } };
-};
-
 function entry(
   username: string,
   email: string | undefined,
@@ -74,18 +71,23 @@ function entry(
   };
 }
 
-/** `existing` answers the user-by-externalId/username lookup, `holder` the email lookup. */
+/**
+ * `existing` answers the user-by-externalId/username lookup; `held` makes the
+ * exact-match email lookups report that another user already holds the address.
+ */
 function stubLookups(opts: {
   existing?: Record<string, unknown> | null;
-  holder?: Record<string, unknown> | null;
+  held?: boolean;
 }) {
   mockPrisma.user.findFirst.mockReset();
-  mockPrisma.user.findFirst.mockImplementation(((args: FindFirstArgs) =>
-    Promise.resolve(
-      args?.where?.email?.equals
-        ? (opts.holder ?? null)
-        : (opts.existing ?? null),
-    )) as never);
+  mockPrisma.user.findFirst.mockResolvedValue((opts.existing ?? null) as never);
+  mockPrisma.$queryRaw.mockReset();
+  mockPrisma.$queryRaw.mockResolvedValue([{ count: opts.held ? 1 : 0 }]);
+}
+
+/** The n-th parameterized statement sent through prisma.$queryRaw. */
+function sentQuery(index: number): Prisma.Sql {
+  return mockPrisma.$queryRaw.mock.calls[index][0] as unknown as Prisma.Sql;
 }
 
 beforeEach(() => {
@@ -146,7 +148,7 @@ describe("syncUsers email ownership", () => {
 
   it("skips an entry whose email another user already holds", async () => {
     directory.entries = [entry("bob", "Taken@Example.com", "guid-3")];
-    stubLookups({ holder: { userid: "someone-else" } });
+    stubLookups({ held: true });
 
     const result = await syncUsers("org-1");
 
@@ -162,7 +164,7 @@ describe("syncUsers email ownership", () => {
     directory.entries = [entry("carol", "Taken@Example.com", "guid-4")];
     stubLookups({
       existing: { userid: "carol-id", email: "carol@example.com" },
-      holder: { userid: "someone-else" },
+      held: true,
     });
 
     const result = await syncUsers("org-1");
@@ -182,13 +184,9 @@ describe("syncUsers email ownership", () => {
 
     expect(result.updated).toBe(1);
     expect(result.errors).toEqual([]);
-    expect(mockPrisma.user.findFirst).toHaveBeenLastCalledWith({
-      where: {
-        email: { equals: "carol.new@example.com", mode: "insensitive" },
-        NOT: { userid: "carol-id" },
-      },
-      select: { userid: true },
-    });
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(sentQuery(0).text).toContain(`"userid" <> $2::uuid`);
+    expect(sentQuery(0).values).toEqual(["carol.new@example.com", "carol-id"]);
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userid: "carol-id" },
@@ -212,6 +210,26 @@ describe("syncUsers email ownership", () => {
     );
     // Only the user lookup ran; no email ownership lookup.
     expect(mockPrisma.user.findFirst).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
+  });
+
+  it("keeps a reserved address on the existing account that already holds it", async () => {
+    directory.entries = [entry("root", "Root@Example.com", "guid-8")];
+    stubLookups({ existing: { userid: "root-id", email: RESERVED } });
+    mockPrisma.$queryRaw.mockResolvedValueOnce([{ count: 1 }]); // holder check
+    mockPrisma.$queryRaw.mockResolvedValueOnce([{ count: 0 }]); // no other holder
+
+    const result = await syncUsers("org-1");
+
+    expect(result.errors).toEqual([]);
+    expect(result.updated).toBe(1);
+    expect(sentQuery(0).values).toEqual(["root-id", RESERVED]);
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userid: "root-id" },
+        data: expect.objectContaining({ email: RESERVED }),
+      }),
+    );
   });
 
   it("creates a user without an email and skips the ownership lookup", async () => {
@@ -226,5 +244,6 @@ describe("syncUsers email ownership", () => {
       }),
     );
     expect(mockPrisma.user.findFirst).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
   });
 });

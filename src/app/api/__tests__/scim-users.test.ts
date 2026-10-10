@@ -6,7 +6,10 @@ import {
 
 vi.mock("@/lib/prisma");
 
-vi.mock("@/lib/scim", () => ({
+vi.mock("@/lib/scim", async (importOriginal) => ({
+  // The real 409/403 mapping, so the routes' email rejections are exercised.
+  scimEmailRejection: (await importOriginal<typeof import("@/lib/scim")>())
+    .scimEmailRejection,
   authenticateScim: vi.fn().mockResolvedValue(null),
   scimHeaders: vi
     .fn()
@@ -241,10 +244,8 @@ describe("PUT /api/scim/v2/Users/:id", () => {
       firstname: "Jane",
       lastname: "Smith",
     };
-    // 1st lookup: the org-scoped user; 2nd: the email ownership check.
-    mockPrisma.user.findFirst
-      .mockResolvedValueOnce(mockUser as any)
-      .mockResolvedValueOnce(null);
+    // The org-scoped user lookup; email ownership is an exact raw query.
+    mockPrisma.user.findFirst.mockResolvedValueOnce(mockUser as any);
     mockPrisma.user.update.mockResolvedValue(updatedUser as any);
 
     const req = createMockRequest(
@@ -312,14 +313,19 @@ describe("PATCH /api/scim/v2/Users/:id", () => {
 describe("SCIM email ownership", () => {
   const usersUrl = "http://localhost:3000/api/scim/v2/Users";
   const userUrl = `${usersUrl}/user-001`;
-  const otherUser = { userid: "someone-else" };
   const params = { params: Promise.resolve({ id: "user-001" }) };
+
+  /** Exact-match lookups (holder checks and conflict checks) report a count. */
+  const matchingUsers = (count: number) =>
+    mockPrisma.$queryRaw.mockResolvedValueOnce([{ count }]);
 
   beforeEach(() => {
     mockPrisma.user.findFirst.mockReset();
     mockPrisma.user.findFirst.mockResolvedValue(null);
     mockPrisma.user.create.mockResolvedValue(mockUser as any);
     mockPrisma.user.update.mockResolvedValue(mockUser as any);
+    mockPrisma.$queryRaw.mockReset();
+    mockPrisma.$queryRaw.mockResolvedValue([{ count: 0 }]);
   });
 
   afterEach(() => {
@@ -327,10 +333,9 @@ describe("SCIM email ownership", () => {
   });
 
   it("POST returns 409 when another user already holds the email", async () => {
-    // 1st lookup: org-scoped duplicate check; 2nd: global email ownership.
-    mockPrisma.user.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(otherUser as any);
+    // The org-scoped duplicate check finds nothing; the platform-wide exact
+    // email lookup finds another user.
+    matchingUsers(1);
 
     const res = await createUser(
       createMockRequest(usersUrl, {
@@ -390,9 +395,8 @@ describe("SCIM email ownership", () => {
   });
 
   it("PUT returns 409 when another user already holds the email", async () => {
-    mockPrisma.user.findFirst
-      .mockResolvedValueOnce(mockUser as any)
-      .mockResolvedValueOnce(otherUser as any);
+    mockPrisma.user.findFirst.mockResolvedValueOnce(mockUser as any);
+    matchingUsers(1);
 
     const res = await replaceUser(
       createMockRequest(userUrl, {
@@ -409,9 +413,7 @@ describe("SCIM email ownership", () => {
   });
 
   it("PUT excludes the user itself and stores the normalised email", async () => {
-    mockPrisma.user.findFirst
-      .mockResolvedValueOnce(mockUser as any)
-      .mockResolvedValueOnce(null);
+    mockPrisma.user.findFirst.mockResolvedValueOnce(mockUser as any);
 
     const res = await replaceUser(
       createMockRequest(userUrl, {
@@ -422,11 +424,12 @@ describe("SCIM email ownership", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(mockPrisma.user.findFirst).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ NOT: { userid: "user-001" } }),
-      }),
-    );
+    const conflictQuery = mockPrisma.$queryRaw.mock.calls[0][0] as unknown as {
+      text: string;
+      values: unknown[];
+    };
+    expect(conflictQuery.text).toContain(`"userid" <> $2::uuid`);
+    expect(conflictQuery.values).toEqual(["jdoe@example.com", "user-001"]);
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ email: "jdoe@example.com" }),
@@ -450,10 +453,31 @@ describe("SCIM email ownership", () => {
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
+  it("PUT keeps a reserved address on the account that already holds it", async () => {
+    vi.stubEnv("SUPER_ADMIN_EMAILS", "root@example.com");
+    mockPrisma.user.findFirst.mockResolvedValueOnce(mockUser as any);
+    matchingUsers(1); // user-001 already holds root@example.com
+    matchingUsers(0); // nobody else does
+
+    const res = await replaceUser(
+      createMockRequest(userUrl, {
+        method: "PUT",
+        body: { userName: "jdoe", emails: [{ value: "Root@Example.com" }] },
+      }),
+      params,
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ email: "root@example.com" }),
+      }),
+    );
+  });
+
   it("PATCH returns 409 when another user already holds the email", async () => {
-    mockPrisma.user.findFirst
-      .mockResolvedValueOnce(mockUser as any)
-      .mockResolvedValueOnce(otherUser as any);
+    mockPrisma.user.findFirst.mockResolvedValueOnce(mockUser as any);
+    matchingUsers(1);
 
     const res = await patchUser(
       createMockRequest(userUrl, {
@@ -498,6 +522,35 @@ describe("SCIM email ownership", () => {
 
     expect(res.status).toBe(403);
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("PATCH keeps a reserved address on the account that already holds it", async () => {
+    vi.stubEnv("SUPER_ADMIN_EMAILS", "root@example.com");
+    mockPrisma.user.findFirst.mockResolvedValueOnce(mockUser as any);
+    matchingUsers(1); // user-001 already holds root@example.com
+    matchingUsers(0); // nobody else does
+
+    const res = await patchUser(
+      createMockRequest(userUrl, {
+        method: "PATCH",
+        body: {
+          Operations: [
+            {
+              op: "replace",
+              value: { emails: [{ value: "root@example.com" }] },
+            },
+          ],
+        },
+      }),
+      params,
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ email: "root@example.com" }),
+      }),
+    );
   });
 
   it("PATCH without an email leaves the ownership check out", async () => {

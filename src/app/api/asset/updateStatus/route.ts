@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "../../../../lib/prisma";
 import { logger, logCatchError } from "@/lib/logger";
 import {
@@ -173,29 +174,24 @@ export async function PUT(req: NextRequest) {
     const duration = Date.now() - startTime;
     logger.apiError("PUT", "/api/asset/updateStatus", error, { duration });
 
+    // Only fixed messages leave the server; the details are logged above.
     let errorMessage = "Failed to update status";
     let statusCode = 500;
 
-    if (error.code === "P2025") {
-      errorMessage = "Asset not found";
-      statusCode = 404;
-    } else if (error.code === "P2003") {
-      errorMessage = "Invalid status ID - status does not exist";
-      statusCode = 400;
-    } else if (error.message) {
-      errorMessage = error.message;
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2025") {
+        errorMessage = "Asset not found";
+        statusCode = 404;
+      } else if (error.code === "P2003") {
+        errorMessage = "Invalid status ID - status does not exist";
+        statusCode = 400;
+      }
     }
 
-    return new Response(
-      JSON.stringify({
-        error: errorMessage,
-        code: error.code || "UNKNOWN",
-      }),
-      {
-        status: statusCode,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: statusCode,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
 

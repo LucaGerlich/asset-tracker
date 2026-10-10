@@ -13,8 +13,8 @@ import { logger } from "@/lib/logger";
 
 /**
  * Categorize a storage-config failure into an actionable response. Full details
- * are always logged server-side; the returned message is safe for the (admin-only)
- * caller and points at the concrete cause.
+ * are always logged server-side; the returned message is a fixed string that
+ * points at the concrete cause for the known failures and is generic otherwise.
  */
 function storageErrorResponse(action: string, error: unknown): NextResponse {
   logger.error(`Storage config ${action} failed`, { error });
@@ -61,9 +61,10 @@ function storageErrorResponse(action: string, error: unknown): NextResponse {
     );
   }
 
-  // Fall back to the real message (admin-only endpoint — safe to surface)
+  // Anything else stays server-side (logged above): the raw message can carry
+  // connection strings, hosts or query text.
   return NextResponse.json(
-    { error: `Failed to ${action} storage config: ${message}` },
+    { error: `Failed to ${action} storage config` },
     { status: 500 },
   );
 }

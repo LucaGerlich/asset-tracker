@@ -7,6 +7,8 @@
 
 import prisma from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
+import { EmailConflictError } from "@/lib/email-ownership";
+import { ForbiddenError } from "@/lib/errors";
 import { getOrgSuspensionStatus } from "@/lib/org-suspension";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
@@ -132,6 +134,28 @@ export function scimError(
     detail,
     status,
   };
+}
+
+/**
+ * Map an email-ownership rejection (assertEmailAssignable) to a SCIM error
+ * response: 409 for an address another user holds, 403 for a reserved
+ * (super-admin) address. Returns null for anything else, so the caller keeps
+ * its generic 500 handling.
+ */
+export function scimEmailRejection(error: unknown): NextResponse | null {
+  if (error instanceof EmailConflictError) {
+    return NextResponse.json(scimError(error.message, 409), {
+      status: 409,
+      headers: scimHeaders(),
+    });
+  }
+  if (error instanceof ForbiddenError) {
+    return NextResponse.json(scimError(error.message, 403), {
+      status: 403,
+      headers: scimHeaders(),
+    });
+  }
+  return null;
 }
 
 export interface ScimUser {

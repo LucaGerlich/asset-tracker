@@ -31,9 +31,8 @@ export async function POST() {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
     logger.error("POST /api/admin/settings/intune/sync error", { error });
-    const message = error instanceof Error ? error.message : "Failed to sync";
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: "Failed to sync" },
       { status: 500 },
     );
   }

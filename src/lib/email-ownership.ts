@@ -1,6 +1,6 @@
-import prisma from "./prisma";
 import { AppError, ForbiddenError } from "./errors";
 import { getSuperAdminEmails } from "./super-admin";
+import { countUsersByEmail, userHoldsEmail } from "./user-email-query";
 
 /** 409 — another user already holds this email address. */
 export class EmailConflictError extends AppError {
@@ -21,9 +21,12 @@ export function normalizeEmail(email: string): string {
  * - ForbiddenError("not_super_admin") when the address is listed in
  *   SUPER_ADMIN_EMAILS and the caller is not a super-admin. Without this, a
  *   tenant admin could rename a user to a super-admin address and inherit the
- *   platform rights.
+ *   platform rights. The one exception is an unchanged address: when
+ *   `excludeUserId` already holds the reserved address, keeping it is allowed,
+ *   so directory syncs and admin edits of the real super-admin account work.
  * - EmailConflictError when another user already holds the address, compared
- *   case-insensitively (the database unique index is case-sensitive).
+ *   case-insensitively (the database unique index is case-sensitive) and
+ *   exactly: `_` and `%` in the address are never wildcards.
  *
  * Pass `excludeUserId` when updating an existing user so their own current
  * address does not count as a conflict.
@@ -35,20 +38,18 @@ export async function assertEmailAssignable(
   const normalized = normalizeEmail(email);
 
   if (!opts.callerIsSuperAdmin && getSuperAdminEmails().includes(normalized)) {
-    throw new ForbiddenError(
-      "not_super_admin",
-      "This email address is reserved",
-    );
+    const alreadyHeld = opts.excludeUserId
+      ? await userHoldsEmail(opts.excludeUserId, normalized)
+      : false;
+    if (!alreadyHeld) {
+      throw new ForbiddenError(
+        "not_super_admin",
+        "This email address is reserved",
+      );
+    }
   }
 
-  const existing = await prisma.user.findFirst({
-    where: {
-      email: { equals: normalized, mode: "insensitive" },
-      ...(opts.excludeUserId ? { NOT: { userid: opts.excludeUserId } } : {}),
-    },
-    select: { userid: true },
-  });
-  if (existing) {
+  if ((await countUsersByEmail(normalized, opts.excludeUserId)) > 0) {
     throw new EmailConflictError();
   }
 

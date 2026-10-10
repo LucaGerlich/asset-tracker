@@ -10,7 +10,7 @@ async function fetchReportRows(organizationId: string) {
   const where = { organizationId };
   const [
     assets,
-    users,
+    userCount,
     accessories,
     licenses,
     consumables,
@@ -30,7 +30,8 @@ async function fetchReportRows(organizationId: string) {
         manufacturer: true,
       },
     }),
-    prisma.user.findMany({ where }),
+    // The report only shows a head count: do not load user rows for it.
+    prisma.user.count({ where }),
     prisma.accessories.findMany({ where }),
     prisma.licence.findMany({ where }),
     prisma.consumable.findMany({ where }),
@@ -46,7 +47,7 @@ async function fetchReportRows(organizationId: string) {
 
   return {
     assets,
-    users,
+    userCount,
     accessories,
     licenses,
     consumables,
@@ -63,7 +64,7 @@ type ReportRows = Awaited<ReturnType<typeof fetchReportRows>>;
 
 const EMPTY_ROWS: ReportRows = {
   assets: [],
-  users: [],
+  userCount: 0,
   accessories: [],
   licenses: [],
   consumables: [],
@@ -83,7 +84,7 @@ const EMPTY_ROWS: ReportRows = {
 export async function getReportData(organizationId: string | null) {
   const {
     assets,
-    users,
+    userCount,
     accessories,
     licenses,
     consumables,
@@ -217,7 +218,7 @@ export async function getReportData(organizationId: string | null) {
   return {
     summary: {
       totalAssets: assets.length,
-      totalUsers: users.length,
+      totalUsers: userCount,
       totalAccessories: accessories.length,
       totalLicenses: licenses.length,
       totalConsumables: consumables.length,

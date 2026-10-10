@@ -38,6 +38,10 @@ export async function POST(req: Request) {
               PLANS[plan].maxAssets === -1 ? 999999 : PLANS[plan].maxAssets,
             maxUsers:
               PLANS[plan].maxUsers === -1 ? 999999 : PLANS[plan].maxUsers,
+            // Stripe does not guarantee event order: customer.subscription.updated
+            // can arrive first, find no org (the subscription id is stored here)
+            // and clear nothing. isActive is the operator's lock and is left alone.
+            suspendedAt: null,
           },
         });
       }

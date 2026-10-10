@@ -49,7 +49,7 @@ describe("reports getReportData", () => {
 
     const orgWhere = { where: { organizationId: ORG_ID } };
     expect(firstArg(mockPrisma.asset.findMany)).toMatchObject(orgWhere);
-    expect(firstArg(mockPrisma.user.findMany)).toEqual(orgWhere);
+    expect(firstArg(mockPrisma.user.count)).toEqual(orgWhere);
     expect(firstArg(mockPrisma.accessories.findMany)).toEqual(orgWhere);
     expect(firstArg(mockPrisma.licence.findMany)).toEqual(orgWhere);
     expect(firstArg(mockPrisma.consumable.findMany)).toEqual(orgWhere);
@@ -57,6 +57,17 @@ describe("reports getReportData", () => {
     expect(firstArg(mockPrisma.statusType.findMany)).toEqual(orgWhere);
     expect(firstArg(mockPrisma.location.findMany)).toEqual(orgWhere);
     expect(firstArg(mockPrisma.manufacturer.findMany)).toEqual(orgWhere);
+  });
+
+  it("counts users in the database instead of loading their rows", async () => {
+    mockPrisma.user.count.mockResolvedValue(42);
+
+    const report = await getReportData(ORG_ID);
+
+    expect(report.summary.totalUsers).toBe(42);
+    // Only the head count is needed; user rows (password hashes included)
+    // must not be read into memory for it.
+    expect(mockPrisma.user.findMany).not.toHaveBeenCalled();
   });
 
   it("scopes the join tables through their parent", async () => {
@@ -75,6 +86,7 @@ describe("reports getReportData", () => {
   it("returns an empty report and runs no query without an organization", async () => {
     const report = await getReportData(null);
 
+    expect(mockPrisma.user.count).not.toHaveBeenCalled();
     for (const model of [
       mockPrisma.asset,
       mockPrisma.user,

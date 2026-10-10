@@ -55,6 +55,45 @@ describe("POST /api/billing/webhook", () => {
     expect(response.status).toBe(400);
   });
 
+  describe("checkout.session.completed", () => {
+    it("activates the plan and clears the suspension without touching isActive", async () => {
+      receiveEvent("checkout.session.completed", {
+        subscription: "sub_1",
+        metadata: { organizationId: "org-1", plan: "professional" },
+      });
+
+      const response = await POST(webhookRequest());
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.organization.update).toHaveBeenCalledTimes(1);
+      const args = mockPrisma.organization.update.mock.calls[0][0];
+      expect(args.where).toEqual({ id: "org-1" });
+      // Stripe does not guarantee event order: when customer.subscription.updated
+      // arrives first it finds no org (no subscription id yet) and clears nothing,
+      // so the completed event has to clear the billing suspension itself.
+      expect(args.data).toEqual({
+        plan: "professional",
+        stripeSubscriptionId: "sub_1",
+        maxAssets: 5000,
+        maxUsers: 25,
+        suspendedAt: null,
+      });
+      expect(args.data).not.toHaveProperty("isActive");
+    });
+
+    it("ignores a session without organization or a known plan", async () => {
+      receiveEvent("checkout.session.completed", {
+        subscription: "sub_1",
+        metadata: { organizationId: "org-1", plan: "platinum" },
+      });
+
+      const response = await POST(webhookRequest());
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.organization.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe("customer.subscription.deleted", () => {
     it("starts the read-only grace period without deactivating the org", async () => {
       receiveEvent("customer.subscription.deleted", { id: "sub_1" });

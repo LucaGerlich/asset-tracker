@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
+import type { Prisma } from "@prisma/client";
 import {
   createMockRequest,
   parseResponse,
@@ -72,21 +73,44 @@ import { requireApiAuth, requirePermission } from "@/lib/api-auth";
 const mockPrisma = vi.mocked(prisma, true);
 
 const RESERVED = "root@example.com";
-const otherUser = { userid: "someone-else" };
+const SECOND_RESERVED = "ops@example.com";
+const OTHER_USER_ID = "someone-else";
 
-type FindFirstArgs = { where?: { email?: { equals?: string } } };
+/** Who holds which address (lower-cased), as the exact-match queries see it. */
+const emailHolders = new Map<string, string[]>();
 
-/** findFirst answers `holder` for email ownership lookups, `fallback` otherwise. */
-function stubEmailHolder(holder: object | null, fallback: object | null) {
-  mockPrisma.user.findFirst.mockReset();
-  mockPrisma.user.findFirst.mockImplementation(((args: FindFirstArgs) =>
-    Promise.resolve(args?.where?.email?.equals ? holder : fallback)) as never);
+function holdEmail(email: string, userId: string) {
+  emailHolders.set(email.toLowerCase(), [
+    ...(emailHolders.get(email.toLowerCase()) ?? []),
+    userId,
+  ]);
 }
 
-function lastEmailLookup(): FindFirstArgs | undefined {
-  return mockPrisma.user.findFirst.mock.calls
-    .map(([args]) => args as FindFirstArgs)
-    .findLast((args) => args?.where?.email?.equals);
+/**
+ * Answer the exact-match email lookups (src/lib/user-email-query.ts) from
+ * `emailHolders`, comparing case-insensitively like the real lower() = lower().
+ */
+function emulateEmailLookups() {
+  mockPrisma.$queryRaw.mockImplementation((async (query: Prisma.Sql) => {
+    const holdersOf = (email: string) =>
+      emailHolders.get(email.toLowerCase()) ?? [];
+
+    if (query.text.includes(`"userid" = $1::uuid`)) {
+      const [userId, email] = query.values as [string, string];
+      return [{ count: holdersOf(email).includes(userId) ? 1 : 0 }];
+    }
+    const [email, excludeUserId] = query.values as [string, string?];
+    return [
+      { count: holdersOf(email).filter((id) => id !== excludeUserId).length },
+    ];
+  }) as never);
+}
+
+/** The exact-match queries that excluded the given user (conflict lookups). */
+function conflictLookupsExcluding(userId: string): Prisma.Sql[] {
+  return mockPrisma.$queryRaw.mock.calls
+    .map(([query]) => query as unknown as Prisma.Sql)
+    .filter((query) => query.values.includes(userId));
 }
 
 function asAdmin(email: string) {
@@ -104,11 +128,13 @@ function asAdmin(email: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();
-  vi.stubEnv("SUPER_ADMIN_EMAILS", RESERVED);
+  vi.stubEnv("SUPER_ADMIN_EMAILS", `${RESERVED},${SECOND_RESERVED}`);
   vi.stubEnv("ALLOW_PUBLIC_SIGNUP", "true");
   asAdmin("admin@example.com");
-  stubEmailHolder(null, null);
-  mockPrisma.user.count.mockResolvedValue(0);
+  mockPrisma.user.findFirst.mockReset();
+  mockPrisma.user.findFirst.mockResolvedValue(null);
+  emailHolders.clear();
+  emulateEmailLookups();
 });
 
 afterEach(() => {
@@ -125,12 +151,14 @@ describe("PUT /api/user", () => {
     );
 
   beforeEach(() => {
-    // Org-scoped target lookup, then any email lookup.
-    stubEmailHolder(null, { userid: "user-uuid-002" });
+    // The org-scoped target lookup.
+    mockPrisma.user.findFirst.mockResolvedValue({
+      userid: "user-uuid-002",
+    } as never);
   });
 
   it("returns 409 when another user already holds the email", async () => {
-    stubEmailHolder(otherUser, { userid: "user-uuid-002" });
+    holdEmail("taken@example.com", OTHER_USER_ID);
 
     const { status, body } = await parseResponse<{ error: string }>(
       await put({ email: "Taken@Example.com" }),
@@ -153,9 +181,26 @@ describe("PUT /api/user", () => {
 
   it("lets a super-admin assign a reserved address", async () => {
     asAdmin(RESERVED);
-    mockPrisma.user.count.mockResolvedValue(1);
+    holdEmail(RESERVED, "admin-uuid-001");
 
-    const { status } = await parseResponse(await put({ email: RESERVED }));
+    const { status } = await parseResponse(
+      await put({ email: SECOND_RESERVED }),
+    );
+
+    expect(status).toBe(200);
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ email: SECOND_RESERVED }),
+      }),
+    );
+  });
+
+  it("keeps a reserved address on the account that already holds it", async () => {
+    holdEmail(RESERVED, "user-uuid-002");
+
+    const { status } = await parseResponse(
+      await put({ email: "Root@Example.com" }),
+    );
 
     expect(status).toBe(200);
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
@@ -165,18 +210,27 @@ describe("PUT /api/user", () => {
     );
   });
 
+  it("still rejects a reserved address held by a different account", async () => {
+    holdEmail(RESERVED, OTHER_USER_ID);
+
+    const { status, body } = await parseResponse<{ code: string }>(
+      await put({ email: RESERVED }),
+    );
+
+    expect(status).toBe(403);
+    expect(body.code).toBe("not_super_admin");
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
   it("stores the normalised email and excludes the edited user", async () => {
     const { status } = await parseResponse(
       await put({ email: "New.Address@Example.com" }),
     );
 
     expect(status).toBe(200);
-    expect(lastEmailLookup()).toMatchObject({
-      where: {
-        email: { equals: "new.address@example.com" },
-        NOT: { userid: "user-uuid-002" },
-      },
-    });
+    const [lookup] = conflictLookupsExcluding("user-uuid-002");
+    expect(lookup.text).toContain(`"userid" <> $2::uuid`);
+    expect(lookup.values).toEqual(["new.address@example.com", "user-uuid-002"]);
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ email: "new.address@example.com" }),
@@ -188,7 +242,7 @@ describe("PUT /api/user", () => {
     const { status } = await parseResponse(await put({ firstname: "Jane" }));
 
     expect(status).toBe(200);
-    expect(lastEmailLookup()).toBeUndefined();
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
   });
 });
 
@@ -208,7 +262,7 @@ describe("POST /api/user/addUser", () => {
     );
 
   it("returns 409 when another user already holds the email", async () => {
-    stubEmailHolder(otherUser, null);
+    holdEmail("taken@example.com", OTHER_USER_ID);
 
     const { status, body } = await parseResponse<{ error: string }>(
       await create("Taken@Example.com"),
@@ -255,11 +309,7 @@ describe("POST /api/import (user rows)", () => {
   };
 
   it("fails only the rows with a taken or reserved email", async () => {
-    stubEmailHolder(null, null);
-    mockPrisma.user.findFirst.mockImplementation(((args: FindFirstArgs) =>
-      Promise.resolve(
-        args?.where?.email?.equals === "taken@example.com" ? otherUser : null,
-      )) as never);
+    holdEmail("taken@example.com", OTHER_USER_ID);
     mockPrisma.user.create.mockResolvedValue({ userid: "imported" } as never);
 
     const csv = [
@@ -291,17 +341,19 @@ describe("POST /api/import (user rows)", () => {
 
   it("lets a super-admin import a reserved address", async () => {
     asAdmin(RESERVED);
-    mockPrisma.user.count.mockResolvedValue(1);
+    holdEmail(RESERVED, "admin-uuid-001");
     mockPrisma.user.create.mockResolvedValue({ userid: "imported" } as never);
 
     const res = await importUsers(
-      ["username,email,firstname,lastname", `b,${RESERVED},B,B`].join("\n"),
+      ["username,email,firstname,lastname", `b,${SECOND_RESERVED},B,B`].join(
+        "\n",
+      ),
     );
 
     expect(res.status).toBe(201);
     expect(mockPrisma.user.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ email: RESERVED }),
+        data: expect.objectContaining({ email: SECOND_RESERVED }),
       }),
     );
   });
@@ -342,7 +394,7 @@ describe("POST /api/auth/register", () => {
   });
 
   it("rejects an address that differs from an existing one only by case", async () => {
-    stubEmailHolder(otherUser, null);
+    holdEmail("taken@example.com", OTHER_USER_ID);
 
     const { status, body } = await parseResponse<{ message: string }>(
       await signUp("Taken@Example.com"),
@@ -413,10 +465,7 @@ describe("POST /api/team/invite/[token]", () => {
       invitationFor("taken@example.com"),
     );
     // The exact-match existing-user lookup misses; the ownership check hits.
-    mockPrisma.user.findFirst.mockReset();
-    mockPrisma.user.findFirst.mockImplementation(((args: FindFirstArgs) =>
-      Promise.resolve(args?.where?.email?.equals ? otherUser : null)) as never);
-    mockPrisma.user.findFirst.mockResolvedValueOnce(null);
+    holdEmail("Taken@Example.com", OTHER_USER_ID);
 
     const { status, body } = await parseResponse<{ error: string }>(
       await accept(),

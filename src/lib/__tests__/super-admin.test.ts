@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { Prisma } from "@prisma/client";
 
 vi.mock("@/lib/prisma");
 
@@ -6,6 +7,11 @@ import prisma from "@/lib/prisma";
 import { getSuperAdminEmails, isSuperAdmin } from "@/lib/super-admin";
 
 const mockPrisma = vi.mocked(prisma, true);
+
+/** Make the exact-match holder lookup report this many users. */
+function holders(count: number) {
+  mockPrisma.$queryRaw.mockResolvedValue([{ count }]);
+}
 
 describe("getSuperAdminEmails", () => {
   const originalEnv = process.env.SUPER_ADMIN_EMAILS;
@@ -39,6 +45,7 @@ describe("isSuperAdmin", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPrisma.$queryRaw.mockResolvedValue([]);
     delete process.env.SUPER_ADMIN_EMAILS;
   });
 
@@ -56,18 +63,30 @@ describe("isSuperAdmin", () => {
     });
 
     it("allows a listed email that is held by exactly one user", async () => {
-      mockPrisma.user.count.mockResolvedValue(1);
+      holders(1);
 
       await expect(
         isSuperAdmin({ id: "u1", email: "root@x.io" }),
       ).resolves.toBe(true);
-      expect(mockPrisma.user.count).toHaveBeenCalledWith({
-        where: { email: { equals: "root@x.io", mode: "insensitive" } },
-      });
+    });
+
+    it("counts holders with an exact comparison and a bound email", async () => {
+      process.env.SUPER_ADMIN_EMAILS = "ro_t@x.io";
+      holders(1);
+
+      await isSuperAdmin({ id: "u1", email: "ro_t@x.io" });
+
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+      const query = mockPrisma.$queryRaw.mock
+        .calls[0][0] as unknown as Prisma.Sql;
+      expect(query.text).toContain(`lower("email") = lower($1)`);
+      expect(query.text).not.toMatch(/like/i);
+      expect(query.values).toEqual(["ro_t@x.io"]);
+      expect(mockPrisma.user.count).not.toHaveBeenCalled();
     });
 
     it("matches the list case-insensitively", async () => {
-      mockPrisma.user.count.mockResolvedValue(1);
+      holders(1);
 
       await expect(
         isSuperAdmin({ id: "u1", email: "Root@X.io" }),
@@ -75,7 +94,7 @@ describe("isSuperAdmin", () => {
     });
 
     it("denies a listed email when a case-variant duplicate exists", async () => {
-      mockPrisma.user.count.mockResolvedValue(2);
+      holders(2);
 
       await expect(
         isSuperAdmin({ id: "u1", email: "root@x.io" }),
@@ -86,7 +105,7 @@ describe("isSuperAdmin", () => {
       await expect(
         isSuperAdmin({ id: "u1", email: "someone@x.io" }),
       ).resolves.toBe(false);
-      expect(mockPrisma.user.count).not.toHaveBeenCalled();
+      expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
       expect(mockPrisma.organization.count).not.toHaveBeenCalled();
     });
 
@@ -106,7 +125,7 @@ describe("isSuperAdmin", () => {
     });
 
     it("never matches an untrimmed stored email against the list", async () => {
-      mockPrisma.user.count.mockResolvedValue(1);
+      holders(1);
 
       await expect(
         isSuperAdmin({ id: "u1", email: " root@x.io" }),

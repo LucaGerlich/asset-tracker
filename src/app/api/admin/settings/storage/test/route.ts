@@ -5,6 +5,7 @@ import { getOrganizationContext } from "@/lib/organization-context";
 import { S3StorageProvider } from "@/lib/storage/s3";
 import { decrypt } from "@/lib/encryption";
 import prisma from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import crypto from "crypto";
 
 export async function POST(req: Request) {
@@ -74,9 +75,13 @@ export async function POST(req: Request) {
   } catch (error) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
-    const message =
-      error instanceof Error ? error.message : "Connection failed";
-    return NextResponse.json({ success: false, error: message });
+    // The provider's raw error can carry internal hosts and request details;
+    // the caller only learns that the test failed.
+    logger.error("POST /api/admin/settings/storage/test error", { error });
+    return NextResponse.json({
+      success: false,
+      error: "Connection failed. Check the endpoint, bucket and credentials.",
+    });
   }
 }
 

@@ -1,4 +1,5 @@
 import prisma from "./prisma";
+import { countUsersByEmail } from "./user-email-query";
 
 /**
  * Platform super-admin detection.
@@ -22,7 +23,8 @@ export function getSuperAdminEmails(): string[] {
  * - SUPER_ADMIN_EMAILS set: the email must be listed AND held by exactly one
  *   user. Emails are unique case-sensitively in the database, so a case-variant
  *   duplicate ("Root@x.io" next to "root@x.io") must never inherit the rights
- *   of the listed address.
+ *   of the listed address. Holders are counted with an exact lower()
+ *   comparison, so "_" and "%" in an address are never wildcards.
  * - SUPER_ADMIN_EMAILS unset: only while the platform has at most one
  *   organization (a self-hosted single-tenant install). Creating a second
  *   organization closes this, so admins of a tenant never become platform
@@ -46,8 +48,5 @@ export async function isSuperAdmin(user: {
     return false;
   }
 
-  const holders = await prisma.user.count({
-    where: { email: { equals: user.email, mode: "insensitive" } },
-  });
-  return holders === 1;
+  return (await countUsersByEmail(user.email)) === 1;
 }

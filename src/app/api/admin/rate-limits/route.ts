@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import {
-  requireApiAdmin,
+  requireSuperAdmin,
   requireNotDemoMode,
   requireWritableOrg,
 } from "@/lib/api-auth";
@@ -13,9 +13,12 @@ const RL_TABLE = `"${S}"."rate_limits"`;
 
 export const dynamic = "force-dynamic";
 
+// The rate_limits table is platform-wide: it holds the counters of every
+// tenant. Reading or resetting it is a super-admin operation, not an org-admin
+// one.
 export async function GET() {
   try {
-    await requireApiAdmin();
+    await requireSuperAdmin();
 
     const rows = await prisma.$queryRawUnsafe<
       Array<{ key: string; count: number; reset_at: Date }>
@@ -53,7 +56,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    const user = await requireApiAdmin();
+    const user = await requireSuperAdmin();
     await requireWritableOrg(user);
 
     const { key } = await req.json();

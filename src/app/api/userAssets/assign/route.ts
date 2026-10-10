@@ -121,9 +121,12 @@ export async function POST(req: NextRequest) {
       error instanceof Error &&
       error.message === "Status 'Active' not found in statusType"
     ) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-      });
+      return new Response(
+        JSON.stringify({
+          error: "The 'Active' status is not configured for this organization",
+        }),
+        { status: 500 },
+      );
     }
     return new Response(JSON.stringify({ error: "Error assigning asset" }), {
       status: 500,

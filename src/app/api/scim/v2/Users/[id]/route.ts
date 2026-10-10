@@ -5,37 +5,14 @@ import {
   scimHeaders,
   scimError,
   userToScim,
+  scimEmailRejection,
 } from "@/lib/scim";
 import { logger } from "@/lib/logger";
-import {
-  assertEmailAssignable,
-  EmailConflictError,
-} from "@/lib/email-ownership";
-import { ForbiddenError } from "@/lib/errors";
+import { assertEmailAssignable } from "@/lib/email-ownership";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-/**
- * Map an email-ownership rejection to a SCIM error response. Returns null for
- * anything else so the caller keeps its generic 500 handling.
- */
-function emailRejectionResponse(error: unknown): NextResponse | null {
-  if (error instanceof EmailConflictError) {
-    return NextResponse.json(scimError(error.message, 409), {
-      status: 409,
-      headers: scimHeaders(),
-    });
-  }
-  if (error instanceof ForbiddenError) {
-    return NextResponse.json(scimError(error.message, 403), {
-      status: 403,
-      headers: scimHeaders(),
-    });
-  }
-  return null;
 }
 
 const USER_SELECT = {
@@ -152,7 +129,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
       headers: scimHeaders(),
     });
   } catch (error) {
-    const rejection = emailRejectionResponse(error);
+    const rejection = scimEmailRejection(error);
     if (rejection) return rejection;
     logger.error("SCIM PUT /Users/:id error", { error });
     return NextResponse.json(scimError("Internal server error", 500), {
@@ -283,7 +260,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       headers: scimHeaders(),
     });
   } catch (error) {
-    const rejection = emailRejectionResponse(error);
+    const rejection = scimEmailRejection(error);
     if (rejection) return rejection;
     logger.error("SCIM PATCH /Users/:id error", { error });
     return NextResponse.json(scimError("Internal server error", 500), {
