@@ -1,4 +1,11 @@
-const CACHE_NAME = 'asset-tracker-v1';
+// Queue rules (shouldQueue, pickHeaders) live in their own file so tests can
+// load them.
+importScripts('/sw-queue-rules.js');
+
+const CACHE_NAME = 'asset-tracker-v2';
+// Holds worker state that must survive the browser stopping an idle worker.
+const META_CACHE_NAME = 'asset-tracker-meta';
+const META_USER_KEY = '/__sw-meta/user';
 const OFFLINE_URL = '/offline';
 
 // Static assets to pre-cache
@@ -25,7 +32,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME)
+          .filter((name) => name !== CACHE_NAME && name !== META_CACHE_NAME)
           .map((name) => caches.delete(name))
       );
     })
@@ -56,6 +63,68 @@ async function storeInQueue(entry) {
   });
 }
 
+async function clearQueueStore() {
+  const db = await openQueueDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// --- Who is signed in ---
+// The worker cannot read the session. The page tells it with a SET_USER
+// message and each queued change is stamped with that id, so a change is only
+// ever replayed for the user who made it. The id is also kept in Cache Storage
+// because the browser stops idle workers and the in-memory value would be lost.
+// undefined = not loaded yet, null = nobody signed in.
+let currentUserId;
+
+async function loadStoredUserId() {
+  try {
+    const cache = await caches.open(META_CACHE_NAME);
+    const stored = await cache.match(META_USER_KEY);
+    if (!stored) return null;
+    const data = await stored.json();
+    return typeof data.userId === 'string' ? data.userId : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getCurrentUserId() {
+  if (currentUserId === undefined) currentUserId = await loadStoredUserId();
+  return currentUserId;
+}
+
+async function setCurrentUserId(userId) {
+  currentUserId = userId;
+  try {
+    const cache = await caches.open(META_CACHE_NAME);
+    if (userId === null) {
+      await cache.delete(META_USER_KEY);
+    } else {
+      await cache.put(META_USER_KEY, new Response(JSON.stringify({ userId })));
+    }
+  } catch {
+    // The in-memory value still applies until the worker is stopped.
+  }
+}
+
+self.addEventListener('message', (event) => {
+  const data = event.data;
+  if (!data || typeof data !== 'object') return;
+
+  if (data.type === 'SET_USER') {
+    const userId =
+      typeof data.userId === 'string' && data.userId ? data.userId : null;
+    event.waitUntil(setCurrentUserId(userId));
+  } else if (data.type === 'CLEAR_QUEUE') {
+    event.waitUntil(Promise.all([clearQueueStore(), setCurrentUserId(null)]));
+  }
+});
+
 // Fetch event - network first for pages, cache first for static assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -64,8 +133,11 @@ self.addEventListener('fetch', (event) => {
   // Skip non-http(s) schemes (e.g. chrome-extension)
   if (!url.protocol.startsWith('http')) return;
 
-  // For non-GET API requests: try network, queue on failure
-  if (request.method !== 'GET' && url.pathname.startsWith('/api/')) {
+  // Failed app API mutations are queued (sw-queue-rules.js decides which).
+  // Anything else that is not a GET, such as auth calls, uploads, replays and
+  // the HEAD connectivity probe, goes to the network untouched.
+  const sameOrigin = url.origin === self.location.origin;
+  if (sameOrigin && self.shouldQueue(request.method, url.pathname, request.headers)) {
     event.respondWith(
       fetch(request.clone()).catch(async () => {
         try {
@@ -74,10 +146,11 @@ self.addEventListener('fetch', (event) => {
             id: crypto.randomUUID(),
             url: request.url,
             method: request.method,
-            headers: Object.fromEntries(request.headers.entries()),
+            headers: self.pickHeaders(request.headers),
             body: body || null,
             timestamp: Date.now(),
             retryCount: 0,
+            userId: await getCurrentUserId(),
           };
           await storeInQueue(entry);
           // Notify all clients

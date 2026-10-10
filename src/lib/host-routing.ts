@@ -1,6 +1,8 @@
 // Host-based split between the marketing site (NEXT_PUBLIC_MARKETING_URL)
 // and the app (BETTER_AUTH_URL). Disabled unless both are set.
 
+import { isServiceWorkerPath } from "@/lib/service-worker-paths";
+
 export interface SplitOrigins {
   marketing: URL;
   app: URL;
@@ -41,7 +43,7 @@ function alwaysPasses(pathname: string): boolean {
     pathname.startsWith("/__nextjs") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/icons/") ||
-    pathname === "/sw.js" ||
+    isServiceWorkerPath(pathname) ||
     pathname === "/manifest.json" ||
     pathname.startsWith("/api/health") ||
     pathname === "/monitoring" ||

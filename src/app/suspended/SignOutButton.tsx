@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
+import { clearQueueOnSignOut } from "@/lib/offline-queue";
 
 export default function SignOutButton() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function SignOutButton() {
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
+      await clearQueueOnSignOut();
       await signOut();
       router.push("/login");
     } finally {

@@ -4,10 +4,31 @@ import {
   getSyncQueue,
   removeFromSyncQueue,
   incrementRetryCount,
+  markSyncItemBlocked,
   setCachedAssets,
 } from "./offline";
 
 const MAX_RETRIES = 5;
+
+type ReplayOutcome = "succeeded" | "blocked" | "dropped" | "retry";
+
+/**
+ * Same table as classifyReplayStatus in src/lib/offline-queue.ts (web).
+ *
+ * - 2xx: applied, remove the item.
+ * - 401/403/409/422: refused but may still matter (session expired, no
+ *   permission, locked organization, version conflict). Keep it, flagged
+ *   `blocked`, and do not retry it.
+ * - 400/404: can never apply (invalid, or its target is gone). Remove it.
+ * - 429 and 5xx: temporary, retry later.
+ * - Anything else is unexpected, so it is kept as blocked as well.
+ */
+function classifyReplayStatus(status: number): ReplayOutcome {
+  if (status >= 200 && status < 300) return "succeeded";
+  if (status === 400 || status === 404) return "dropped";
+  if (status === 429 || status >= 500) return "retry";
+  return "blocked";
+}
 
 /**
  * Sync service that processes queued offline mutations when the device
@@ -28,6 +49,8 @@ export async function processQueue(): Promise<{
   let failed = 0;
 
   for (const item of queue) {
+    if (item.blocked) continue;
+
     if (item.retryCount >= MAX_RETRIES) {
       await removeFromSyncQueue(item.id);
       failed++;
@@ -50,13 +73,19 @@ export async function processQueue(): Promise<{
         body: item.body ? JSON.stringify(item.body) : undefined,
       });
 
-      if (response.ok) {
+      const outcome = classifyReplayStatus(response.status);
+      if (outcome === "succeeded") {
         await removeFromSyncQueue(item.id);
         processed++;
-      } else if (response.status >= 400 && response.status < 500) {
-        // Client error – don't retry
+      } else if (outcome === "dropped") {
         await removeFromSyncQueue(item.id);
         failed++;
+      } else if (outcome === "blocked") {
+        await markSyncItemBlocked(item.id, response.status);
+        failed++;
+      } else if (response.status === 429) {
+        // Rate limited: stop this pass, the item stays queued.
+        break;
       } else {
         await incrementRetryCount(item.id);
         failed++;

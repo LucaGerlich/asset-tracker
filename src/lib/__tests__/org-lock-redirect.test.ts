@@ -39,6 +39,7 @@ describe("shouldCheckOrgLock", () => {
     ["/monitoring", false],
     ["/monitoring/tunnel", false],
     ["/sw.js", false],
+    ["/sw-queue-rules.js", false],
     ["/manifest.json", false],
     ["/favicon.ico", false],
     ["/icons/icon-192.png", false],

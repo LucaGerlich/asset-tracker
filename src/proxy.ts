@@ -11,6 +11,7 @@ import {
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { getSplitOrigins, resolveHostRoute } from "@/lib/host-routing";
 import { getLockedRedirect, shouldCheckOrgLock } from "@/lib/org-lock-redirect";
+import { isServiceWorkerPath } from "@/lib/service-worker-paths";
 
 // Env is fixed per process; the config is validated at startup (instrumentation).
 const splitOrigins = getSplitOrigins();
@@ -118,7 +119,7 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/icons/") ||
-    pathname === "/sw.js" ||
+    isServiceWorkerPath(pathname) ||
     pathname === "/manifest.json" ||
     pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webp)$/);
 

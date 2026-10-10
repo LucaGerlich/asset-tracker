@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useSession, signOut, type SessionUser } from "@/lib/auth-client";
+import { clearQueueOnSignOut } from "@/lib/offline-queue";
 import {
   navSections,
   primaryNavItems,
@@ -166,9 +167,10 @@ export default function MobileNav() {
                       Edit Profile
                     </Link>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setSheetOpen(false);
-                        signOut();
+                        await clearQueueOnSignOut();
+                        await signOut();
                       }}
                       className="touch-target text-destructive hover:bg-destructive/10 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
                     >

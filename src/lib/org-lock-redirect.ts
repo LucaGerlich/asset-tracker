@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { isSelfHosted } from "@/lib/deployment-mode";
 import { resolveOrgStatus } from "@/lib/org-suspension";
+import { isServiceWorkerPath } from "@/lib/service-worker-paths";
 
 const LOCKED_REDIRECT_PATH = "/suspended";
 
@@ -17,7 +18,7 @@ const UNGATED_PREFIXES = [
 ];
 
 const STATIC_FILE = /\.(png|jpe?g|gif|svg|ico|webp)$/i;
-const STATIC_PATHS = new Set(["/sw.js", "/manifest.json"]);
+const STATIC_PATHS = new Set(["/manifest.json"]);
 
 function hasPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -33,7 +34,13 @@ export function shouldCheckOrgLock(
   isPublicRoute: boolean,
 ): boolean {
   if (isPublicRoute) return false;
-  if (STATIC_PATHS.has(pathname) || STATIC_FILE.test(pathname)) return false;
+  if (
+    isServiceWorkerPath(pathname) ||
+    STATIC_PATHS.has(pathname) ||
+    STATIC_FILE.test(pathname)
+  ) {
+    return false;
+  }
   return !UNGATED_PREFIXES.some((prefix) => hasPrefix(pathname, prefix));
 }
 
