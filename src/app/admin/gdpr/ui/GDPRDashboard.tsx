@@ -33,7 +33,14 @@ interface RetentionSettings {
   updatedAt: string | null;
 }
 
-export default function GDPRDashboard() {
+interface GDPRDashboardProps {
+  /** Retention is deployment-wide; only platform super-admins may change it. */
+  canEditRetention: boolean;
+}
+
+export default function GDPRDashboard({
+  canEditRetention,
+}: GDPRDashboardProps) {
   return (
     <div>
       <h1 className="mb-2 text-2xl font-bold">GDPR Management</h1>
@@ -58,7 +65,7 @@ export default function GDPRDashboard() {
         </TabsContent>
 
         <TabsContent value="retention">
-          <RetentionPolicyTab />
+          <RetentionPolicyTab canEdit={canEditRetention} />
         </TabsContent>
       </Tabs>
     </div>
@@ -410,7 +417,7 @@ function DataAnonymizationTab() {
   );
 }
 
-function RetentionPolicyTab() {
+function RetentionPolicyTab({ canEdit }: { canEdit: boolean }) {
   const [settings, setSettings] = useState<RetentionSettings>({
     auditLogRetentionDays: 365,
     deletedUserRetentionDays: 90,
@@ -488,6 +495,13 @@ function RetentionPolicyTab() {
           become eligible for cleanup. These settings help maintain GDPR
           compliance.
         </p>
+        {!canEdit && (
+          <p className="text-muted-foreground text-sm">
+            Retention applies to the whole deployment, so only a platform
+            administrator can change it. The current values are shown for
+            reference.
+          </p>
+        )}
 
         <div className="grid max-w-md gap-6">
           <div className="space-y-2">
@@ -496,6 +510,7 @@ function RetentionPolicyTab() {
               id="audit-retention"
               type="number"
               min={1}
+              disabled={!canEdit}
               value={settings.auditLogRetentionDays}
               onChange={(e) =>
                 setSettings((s) => ({
@@ -517,6 +532,7 @@ function RetentionPolicyTab() {
               id="deleted-user-retention"
               type="number"
               min={1}
+              disabled={!canEdit}
               value={settings.deletedUserRetentionDays}
               onChange={(e) =>
                 setSettings((s) => ({
@@ -537,6 +553,7 @@ function RetentionPolicyTab() {
               id="export-retention"
               type="number"
               min={1}
+              disabled={!canEdit}
               value={settings.exportRetentionDays}
               onChange={(e) =>
                 setSettings((s) => ({
@@ -552,9 +569,11 @@ function RetentionPolicyTab() {
         </div>
 
         <div className="flex items-center gap-4">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save Settings"}
-          </Button>
+          {canEdit && (
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save Settings"}
+            </Button>
+          )}
           {settings.updatedAt && (
             <span className="text-muted-foreground text-xs">
               Last updated: {new Date(settings.updatedAt).toLocaleString()}

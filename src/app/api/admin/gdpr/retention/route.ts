@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   requireApiAdmin,
   requireNotDemoMode,
+  requireSuperAdmin,
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
@@ -11,6 +12,8 @@ import { logger } from "@/lib/logger";
 /**
  * GET /api/admin/gdpr/retention
  * Returns current GDPR retention settings (or defaults if none exist).
+ * Readable by any org admin: the same values are already part of the
+ * compliance report. Only the write is platform-level (see PUT).
  */
 export async function GET() {
   try {
@@ -30,14 +33,16 @@ export async function GET() {
 
 /**
  * PUT /api/admin/gdpr/retention
- * Updates GDPR retention settings.
+ * Updates GDPR retention settings. The settings file is shared by the whole
+ * deployment and the retention cron applies it to every organization's audit
+ * logs, so only a platform super-admin may change it.
  */
 export async function PUT(req: Request) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const user = await requireApiAdmin();
+    const user = await requireSuperAdmin();
     await requireWritableOrg(user);
     const body = await req.json();
 
