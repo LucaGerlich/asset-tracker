@@ -314,6 +314,9 @@ export async function POST(req: NextRequest) {
       validatedInput.entityType === "user"
         ? await isSuperAdmin(authUser)
         : false;
+    // import:execute can be granted to a plain role; only an admin may mint
+    // admins from the file.
+    const callerIsAdmin = authUser.isAdmin === true;
 
     // Process rows (in a real app, this would be done asynchronously)
     const errors: { row: number; error: string }[] = [];
@@ -333,6 +336,7 @@ export async function POST(req: NextRequest) {
           importOrgId,
           defaultRefs,
           callerIsSuperAdmin,
+          callerIsAdmin,
         );
         successCount++;
       } catch (err) {
@@ -529,6 +533,7 @@ async function createEntity(
   organizationId: string | null,
   defaultRefs: Record<string, string | undefined>,
   callerIsSuperAdmin: boolean,
+  callerIsAdmin: boolean,
 ): Promise<void> {
   const now = new Date();
 
@@ -676,7 +681,10 @@ async function createEntity(
           firstname: data.firstname,
           lastname: data.lastname,
           password: randomPassword,
-          isadmin: data.isadmin === "true" || data.isadmin === "1",
+          // An importer without admin rights cannot create admins: the column
+          // is ignored for them.
+          isadmin:
+            callerIsAdmin && (data.isadmin === "true" || data.isadmin === "1"),
           canrequest: data.canrequest !== "false" && data.canrequest !== "0",
           creation_date: now,
           organizationId,
