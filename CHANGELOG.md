@@ -116,7 +116,8 @@ deploying a multi-organization instance.**
   activating an audit campaign, commenting on a ticket (which emailed the ticket's
   creator in another tenant) and re-pointing a user asset accepted any ID of any
   tenant. They resolve the target through the caller's organization and answer 404
-  before writing or emailing. A maintenance assignee must belong to the organization.
+  before writing or emailing. A maintenance assignee must belong to the organization,
+  and completing a schedule never emails an assignee of another one.
   The request, approval, return and self-return flows set the Pending, Active and
   Available status from the asset's organization instead of any tenant's.
 - **Callers without an organization get nothing.** The audit log list and revert, asset
