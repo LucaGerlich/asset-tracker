@@ -29,6 +29,36 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // The assignment (through its asset) and the new holder must both belong to
+    // the admin's organization. A caller without an organization owns neither;
+    // never widen the lookups to every organization.
+    const orgId = admin.organizationId;
+    if (
+      !orgId ||
+      typeof userAssetsId !== "string" ||
+      typeof userId !== "string"
+    ) {
+      return new Response(JSON.stringify({ error: "UserAsset not found" }), {
+        status: 404,
+      });
+    }
+
+    const [assignment, newHolder] = await Promise.all([
+      prisma.userAssets.findFirst({
+        where: { userassetsid: userAssetsId, asset: { organizationId: orgId } },
+        select: { userassetsid: true },
+      }),
+      prisma.user.findFirst({
+        where: { userid: userId, organizationId: orgId },
+        select: { userid: true },
+      }),
+    ]);
+    if (!assignment || !newHolder) {
+      return new Response(JSON.stringify({ error: "UserAsset not found" }), {
+        status: 404,
+      });
+    }
+
     const updatedUserAsset = await prisma.userAssets.update({
       where: {
         userassetsid: userAssetsId,

@@ -22,7 +22,19 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     await requireWritableOrg(authUser);
     const { id } = await params;
 
-    const campaign = await prisma.auditCampaign.findUnique({ where: { id } });
+    // A caller without an organization owns no campaigns; never widen the
+    // lookup to every organization.
+    const orgId = authUser.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Audit campaign not found" },
+        { status: 404 },
+      );
+    }
+
+    const campaign = await prisma.auditCampaign.findFirst({
+      where: { id, organizationId: orgId },
+    });
 
     if (!campaign) {
       return NextResponse.json(
@@ -44,9 +56,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     } else if (campaign.scopeType === "category" && campaign.scopeId) {
       assetWhere.assetcategorytypeid = campaign.scopeId;
     }
-    if (campaign.organizationId) {
-      assetWhere.organizationId = campaign.organizationId;
-    }
+    assetWhere.organizationId = orgId;
 
     const assets = await prisma.asset.findMany({
       where: assetWhere,
@@ -80,10 +90,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       { message: "Campaign activated", assetsCount: assets.length },
       { status: 200 },
     );
-  } catch (e: any) {
-    const denied = apiErrorResponse(e);
+  } catch (error) {
+    const denied = apiErrorResponse(error);
     if (denied) return denied;
-    logger.error("POST /api/audits/[id]/activate error", { error: e });
+    logger.error("POST /api/audits/[id]/activate error", { error });
     return NextResponse.json(
       { error: "Failed to activate audit campaign" },
       { status: 500 },

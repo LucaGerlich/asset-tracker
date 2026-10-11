@@ -33,9 +33,20 @@ export async function POST(
       );
     }
 
+    // A ticket belongs to the organization of its creator. A caller without an
+    // organization owns none: never widen the lookup to every organization
+    // (the comment is also emailed to the creator).
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    }
+
     // Verify user has access to this ticket
-    const ticket = await prisma.tickets.findUnique({
-      where: { id },
+    const ticket = await prisma.tickets.findFirst({
+      where: {
+        id,
+        user_tickets_createdByTouser: { organizationId: orgId },
+      },
       include: {
         user_tickets_createdByTouser: {
           select: {

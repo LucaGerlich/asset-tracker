@@ -60,8 +60,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
 
-    const schedule = await prisma.maintenance_schedules.findUnique({
-      where: { id },
+    // A schedule belongs to the organization of its asset. A caller without an
+    // organization owns none; never widen the lookup to every organization.
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Maintenance schedule not found" },
+        { status: 404 },
+      );
+    }
+
+    const schedule = await prisma.maintenance_schedules.findFirst({
+      where: { id, asset: { organizationId: orgId } },
     });
 
     if (!schedule) {
