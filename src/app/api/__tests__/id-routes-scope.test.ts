@@ -94,7 +94,12 @@ describe("POST /api/maintenance/[id]/complete", () => {
     mockPrisma.maintenance_schedules.update.mockResolvedValue({
       ...schedule,
       assignedTo: "tech-1",
-      user: { firstname: "T", lastname: "Tech", email: "tech@example.com" },
+      user: {
+        firstname: "T",
+        lastname: "Tech",
+        email: "tech@example.com",
+        organizationId: OWN_ORG,
+      },
       asset: { assetname: "Laptop" },
     } as never);
   });
@@ -108,6 +113,24 @@ describe("POST /api/maintenance/[id]/complete", () => {
     });
     expect(mockPrisma.maintenance_logs.create).toHaveBeenCalled();
     expect(queueEmail).toHaveBeenCalled();
+  });
+
+  it("does not email an assignee of another organization", async () => {
+    mockPrisma.maintenance_schedules.update.mockResolvedValue({
+      ...schedule,
+      user: {
+        firstname: "F",
+        lastname: "Foreign",
+        email: "foreign@example.com",
+        organizationId: OTHER_ORG,
+      },
+      asset: { assetname: "Laptop" },
+    } as never);
+
+    const res = await complete();
+
+    expect(res.status).toBe(201);
+    expect(queueEmail).not.toHaveBeenCalled();
   });
 
   it("answers 404 and writes nothing for another organization's schedule", async () => {

@@ -122,14 +122,21 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
               firstname: true,
               lastname: true,
               email: true,
+              organizationId: true,
             },
           },
         },
       }),
     ]);
 
-    // Send notification to assigned user about completion and next due date
-    if (updatedSchedule.assignedTo && updatedSchedule.user?.email) {
+    // Send notification to assigned user about completion and next due date.
+    // A legacy schedule may still name an assignee of another organization
+    // (assignees were not checked before): never email that user.
+    if (
+      updatedSchedule.assignedTo &&
+      updatedSchedule.user?.email &&
+      updatedSchedule.user.organizationId === orgId
+    ) {
       const template = emailTemplates.maintenanceCompleted;
       const variables = {
         userName: `${updatedSchedule.user.firstname} ${updatedSchedule.user.lastname}`,
