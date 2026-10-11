@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
           const available = await tx.statusType.findFirst({
             where: {
               statustypename: { equals: "Available", mode: "insensitive" },
+              organizationId: orgId ?? null,
             },
           });
           if (available) {

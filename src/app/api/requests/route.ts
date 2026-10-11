@@ -234,9 +234,12 @@ export async function POST(req: NextRequest) {
 
           // Set item status to "Pending" while request is being reviewed
           if (initialStatus === "pending" && entityType === "asset") {
+            // The status must belong to the entity's organization: a lookup by
+            // name alone could pick another tenant's "Pending".
             const pendingStatus = await tx.statusType.findFirst({
               where: {
                 statustypename: { equals: "Pending", mode: "insensitive" },
+                organizationId: orgId ?? null,
               },
             });
             if (pendingStatus) {
@@ -429,6 +432,7 @@ export async function PUT(req: NextRequest) {
         const available = await tx.statusType.findFirst({
           where: {
             statustypename: { equals: "Available", mode: "insensitive" },
+            organizationId: orgId ?? null,
           },
         });
         if (available) {
@@ -449,6 +453,7 @@ export async function PUT(req: NextRequest) {
           existing.entityType,
           existing.entityId,
           existing.userId,
+          orgId ?? null,
         );
       }
 
@@ -460,6 +465,7 @@ export async function PUT(req: NextRequest) {
           existing.entityId,
           existing.userId,
           existing.quantity,
+          orgId ?? null,
         );
       }
 
@@ -589,6 +595,7 @@ async function autoAssignItem(
   entityId: string,
   userId: string,
   quantity: number,
+  organizationId: string | null,
 ): Promise<void> {
   switch (entityType) {
     case "asset": {
@@ -611,7 +618,10 @@ async function autoAssignItem(
 
       // Always ensure the asset status is "Active"
       const active = await tx.statusType.findFirst({
-        where: { statustypename: { equals: "Active", mode: "insensitive" } },
+        where: {
+          statustypename: { equals: "Active", mode: "insensitive" },
+          organizationId,
+        },
       });
       if (active) {
         await tx.asset.update({
@@ -677,6 +687,7 @@ async function unassignItem(
   entityType: string,
   entityId: string,
   userId: string,
+  organizationId: string | null,
 ): Promise<void> {
   switch (entityType) {
     case "asset": {
@@ -687,6 +698,7 @@ async function unassignItem(
       const available = await tx.statusType.findFirst({
         where: {
           statustypename: { equals: "Available", mode: "insensitive" },
+          organizationId,
         },
       });
       if (available) {
