@@ -8,10 +8,7 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
-import {
-  getOrganizationContext,
-  scopeToOrganization,
-} from "@/lib/organization-context";
+import { transitionsOfOrganization } from "@/lib/status-transitions";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { invalidateCacheByPrefix } from "@/lib/cache";
@@ -27,8 +24,7 @@ export async function PUT(req: NextRequest) {
     if (demoBlock) return demoBlock;
     const user = await requirePermission("asset:edit");
     await requireWritableOrg(user);
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
+    const orgId = user.organizationId;
 
     const { assetId, statusTypeId, statusName, _expectedVersion } =
       await req.json();
@@ -48,10 +44,50 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    let statusId = statusTypeId;
-    if (!statusId && statusName) {
+    // A caller without an organization owns no assets and no statuses.
+    if (!orgId) {
+      return new Response(JSON.stringify({ error: "Asset not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (
+      (statusTypeId != null && typeof statusTypeId !== "string") ||
+      (statusName != null && typeof statusName !== "string")
+    ) {
+      return new Response(
+        JSON.stringify({
+          error: "statusTypeId and statusName must be strings",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // The target status is resolved inside the caller's organization: neither
+    // an ID nor a name can select another tenant's status type.
+    let statusId: string;
+    if (statusTypeId) {
+      const own = await prisma.statusType.findFirst({
+        where: { statustypeid: statusTypeId, organizationId: orgId },
+        select: { statustypeid: true },
+      });
+      if (!own) {
+        return new Response(
+          JSON.stringify({
+            error: "Invalid status ID - status does not exist",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      statusId = own.statustypeid;
+    } else {
       const found = await prisma.statusType.findFirst({
-        where: { statustypename: { equals: statusName, mode: "insensitive" } },
+        where: {
+          statustypename: { equals: statusName, mode: "insensitive" },
+          organizationId: orgId,
+        },
+        select: { statustypeid: true },
       });
       if (!found) {
         logger.warn("PUT /api/asset/updateStatus - Status not found", {
@@ -67,7 +103,7 @@ export async function PUT(req: NextRequest) {
 
     // Verify asset belongs to user's organization before updating
     const existingAsset = await prisma.asset.findFirst({
-      where: scopeToOrganization({ assetid: assetId }, orgId),
+      where: { assetid: assetId, organizationId: orgId },
     });
 
     if (!existingAsset) {
@@ -95,15 +131,20 @@ export async function PUT(req: NextRequest) {
 
         // Enforce status workflow transitions (if any are defined)
         if (current.statustypeid && current.statustypeid !== statusId) {
-          const transitionCount = await tx.status_transitions.count();
+          // Only this organization's workflow counts: another tenant defining
+          // transitions must not lock this one's status changes.
+          const ownTransitions = transitionsOfOrganization(orgId);
+          const transitionCount = await tx.status_transitions.count({
+            where: ownTransitions,
+          });
           if (transitionCount > 0) {
-            const allowed = await tx.status_transitions.findUnique({
+            const allowed = await tx.status_transitions.findFirst({
               where: {
-                fromStatusId_toStatusId: {
-                  fromStatusId: current.statustypeid,
-                  toStatusId: statusId,
-                },
+                ...ownTransitions,
+                fromStatusId: current.statustypeid,
+                toStatusId: statusId,
               },
+              select: { id: true },
             });
             if (!allowed) {
               throw new Error("TRANSITION_NOT_ALLOWED");

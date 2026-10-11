@@ -228,6 +228,9 @@ describe("PUT /api/asset/updateStatus", () => {
     );
 
   beforeEach(() => {
+    mockPrisma.statusType.findFirst.mockResolvedValue({
+      statustypeid: "status-1",
+    } as never);
     mockPrisma.asset.findFirst.mockResolvedValue({
       assetid: "asset-1",
     } as never);
