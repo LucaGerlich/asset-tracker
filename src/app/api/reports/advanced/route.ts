@@ -255,11 +255,15 @@ export async function GET() {
       }),
     );
 
+    // Both levels are scoped: the settings belong to a category, and the
+    // forecast must only add up the caller's own assets.
     const depreciationSettings = await prisma.depreciation_settings.findMany({
+      where: { assetCategoryType: orgScope },
       include: {
         assetCategoryType: {
           include: {
             asset: {
+              where: orgScope,
               select: {
                 assetid: true,
                 purchaseprice: true,
