@@ -6,24 +6,14 @@ import { countUsersByEmail, userHoldsEmail } from "@/lib/user-email-query";
 
 // Integration test: runs the real exact-match email SQL against Postgres.
 // Every test works inside a transaction that is rolled back, so nothing
-// persists. Same gate as scope-automation-migration.test.ts: only a local
-// database (CI uses localhost) or an explicit ALLOW_DESTRUCTIVE_DB_TESTS=1 opt-in
-// runs it; without DATABASE_URL, or with a shared one, it is skipped.
-const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]", "::1"];
-
-function isLocalDatabase(url: string): boolean {
-  try {
-    return LOCAL_HOSTS.includes(new URL(url).hostname);
-  } catch {
-    return false;
-  }
-}
-
+// persists. Same gate as scope-automation-migration.test.ts: it runs only when
+// ALLOW_DESTRUCTIVE_DB_TESTS=1 is set explicitly (CI sets it for its throwaway
+// Postgres service); the DATABASE_URL host is never trusted, because a
+// localhost tunnel to a shared database looks like a local one. Without the
+// opt-in, or without a DATABASE_URL, it is skipped.
 const databaseUrl = process.env.DATABASE_URL;
 const describeDb =
-  databaseUrl &&
-  (isLocalDatabase(databaseUrl) ||
-    process.env.ALLOW_DESTRUCTIVE_DB_TESTS === "1")
+  databaseUrl && process.env.ALLOW_DESTRUCTIVE_DB_TESTS === "1"
     ? describe
     : describe.skip;
 

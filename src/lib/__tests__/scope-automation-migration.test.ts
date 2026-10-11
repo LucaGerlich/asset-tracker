@@ -9,25 +9,15 @@ import prisma from "@/lib/prisma";
 // Every test runs inside a transaction that is rolled back, so nothing persists.
 // They are still destructive while that transaction is open: the single and zero
 // organization cases delete all organizations (cascading through dozens of
-// tables, with row locks) and the backfills touch whole tables. So the suite only
-// runs against a local database (CI uses localhost) or when explicitly opted in
-// with ALLOW_DESTRUCTIVE_DB_TESTS=1. A DATABASE_URL that points at a shared or
-// production database skips it.
-const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]", "::1"];
-
-function isLocalDatabase(url: string): boolean {
-  try {
-    return LOCAL_HOSTS.includes(new URL(url).hostname);
-  } catch {
-    return false;
-  }
-}
-
+// tables, with row locks) and the backfills touch whole tables. So the suite runs
+// only when ALLOW_DESTRUCTIVE_DB_TESTS=1 is set explicitly (CI sets it for its
+// throwaway Postgres service). A localhost DATABASE_URL is not proof of a
+// disposable database: an SSH tunnel to a shared or production database looks
+// exactly the same, so the host is never trusted. Without the opt-in, or without
+// a DATABASE_URL, the suite is skipped.
 const databaseUrl = process.env.DATABASE_URL;
 const describeDb =
-  databaseUrl &&
-  (isLocalDatabase(databaseUrl) ||
-    process.env.ALLOW_DESTRUCTIVE_DB_TESTS === "1")
+  databaseUrl && process.env.ALLOW_DESTRUCTIVE_DB_TESTS === "1"
     ? describe
     : describe.skip;
 
