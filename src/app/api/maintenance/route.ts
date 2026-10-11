@@ -6,10 +6,6 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
-import {
-  getOrganizationContext,
-  scopeToOrganization,
-} from "@/lib/organization-context";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import {
@@ -30,24 +26,28 @@ const MAINTENANCE_SORT_FIELDS = [
 // GET: List all maintenance schedules, optionally filtered by assetId
 export async function GET(req: NextRequest) {
   try {
-    await requireApiAuth();
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
+    const user = await requireApiAuth();
 
     const searchParams = req.nextUrl.searchParams;
     const assetId = searchParams.get("assetId");
 
-    const where: Record<string, unknown> = {};
-    if (assetId) {
-      where.assetId = assetId;
+    // A caller without an organization owns no schedules. Never drop the
+    // filter: it would list every tenant's schedules.
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return searchParams.has("page")
+        ? NextResponse.json(
+            buildPaginatedResponse([], 0, parsePaginationParams(searchParams)),
+          )
+        : NextResponse.json([]);
     }
 
-    // Scope through the related asset's organizationId
-    if (orgId) {
-      where.asset = {
-        ...(where.asset as Record<string, unknown>),
-        organizationId: orgId,
-      };
+    const where: Record<string, unknown> = {
+      // Scope through the related asset's organizationId
+      asset: { organizationId: orgId },
+    };
+    if (assetId) {
+      where.assetId = assetId;
     }
 
     const include = {
@@ -108,8 +108,6 @@ export async function POST(req: NextRequest) {
 
     const user = await requireApiAuth();
     await requireWritableOrg(user);
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
 
     const body = await req.json();
 
@@ -150,21 +148,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // A caller without an organization owns no assets; never drop the filter.
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return NextResponse.json({ error: "Asset not found" }, { status: 404 });
+    }
+
     // Verify asset exists and belongs to user's organization
     const asset = await prisma.asset.findFirst({
-      where: scopeToOrganization({ assetid: assetId }, orgId),
+      where: { assetid: assetId, organizationId: orgId },
     });
 
     if (!asset) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
     }
 
-    // Verify assigned user exists if provided
+    // The assignee is emailed when the schedule is completed: it must be a
+    // user of the caller's organization.
     if (assignedTo) {
-      const user = await prisma.user.findUnique({
-        where: { userid: assignedTo },
+      const assignee = await prisma.user.findFirst({
+        where: { userid: assignedTo, organizationId: orgId },
+        select: { userid: true },
       });
-      if (!user) {
+      if (!assignee) {
         return NextResponse.json(
           { error: "Assigned user not found" },
           { status: 404 },

@@ -8,7 +8,6 @@ import {
   buildPaginatedResponse,
 } from "@/lib/pagination";
 import { logger } from "@/lib/logger";
-import { getOrganizationContext } from "@/lib/organization-context";
 
 const AUDIT_LOG_SORT_FIELDS = [
   "createdAt",
@@ -20,7 +19,7 @@ const AUDIT_LOG_SORT_FIELDS = [
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("audit:view");
+    const user = await requirePermission("audit:view");
 
     const { searchParams } = new URL(req.url);
     const params = parsePaginationParams(searchParams);
@@ -33,14 +32,17 @@ export async function GET(req: Request) {
 
     const prismaArgs = buildPrismaArgs(params, AUDIT_LOG_SORT_FIELDS);
 
-    const where: Record<string, unknown> = {};
+    // A caller without an organization owns no audit logs. Never drop the
+    // filter: it would list every organization's trail.
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return NextResponse.json(buildPaginatedResponse([], 0, params), {
+        status: 200,
+      });
+    }
 
     // Scope audit logs to the caller's organization through the user relation
-    const orgCtx = await getOrganizationContext();
-    const orgId = orgCtx?.organization?.id;
-    if (orgId) {
-      where.user = { organizationId: orgId };
-    }
+    const where: Record<string, unknown> = { user: { organizationId: orgId } };
 
     const userId = searchParams.get("userId");
     if (userId) {

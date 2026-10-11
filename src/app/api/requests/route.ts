@@ -28,17 +28,18 @@ export async function GET(req: NextRequest) {
     const mine = searchParams.get("mine");
     const limit = searchParams.get("limit");
 
-    const where: Record<string, unknown> = {};
+    // A caller without an organization owns no requests. Never drop the
+    // filter: it would list every tenant's requests.
+    const orgId = user.organizationId;
+    if (!orgId) return NextResponse.json([]);
+
+    // Scope all requests to user's organization
+    const where: Record<string, unknown> = {
+      user: { organizationId: orgId },
+    };
 
     if (status && status !== "all") {
       where.status = status;
-    }
-
-    // Scope all requests to user's organization
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
-    if (orgId) {
-      where.user = { organizationId: orgId };
     }
 
     // Non-admins only see their own requests

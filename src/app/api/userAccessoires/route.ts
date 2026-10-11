@@ -2,15 +2,17 @@ import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
-import { getOrganizationContext } from "@/lib/organization-context";
 import { logger } from "@/lib/logger";
 
 // GET /api/userAccessoires?userId=...
 export async function GET(req: NextRequest) {
   try {
     const authUser = await requireApiAuth();
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
+
+    // A caller without an organization owns no assignments. Never drop the
+    // filter: it would list every tenant's assignments.
+    const orgId = authUser.organizationId;
+    if (!orgId) return NextResponse.json([], { status: 200 });
 
     const userId = req.nextUrl.searchParams.get("userId");
     const resolvedUserId = authUser.isAdmin ? userId : authUser.id;
@@ -19,9 +21,7 @@ export async function GET(req: NextRequest) {
       : {};
 
     // Scope through the related accessory's organizationId
-    if (orgId) {
-      where.accessories = { organizationId: orgId };
-    }
+    where.accessories = { organizationId: orgId };
 
     const rows = await prisma.userAccessoires.findMany({
       where,

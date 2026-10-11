@@ -6,8 +6,7 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
-import { getOrganizationContext } from "@/lib/organization-context";
-import { getStorage, getOrgStorage } from "@/lib/storage";
+import { getOrgStorage } from "@/lib/storage";
 import { deleteThumbnails } from "@/lib/storage/thumbnails";
 
 export async function DELETE(
@@ -19,16 +18,21 @@ export async function DELETE(
     if (demoBlock) return demoBlock;
     const user = await requireApiAuth();
     await requireWritableOrg(user);
-    const orgCtx = await getOrganizationContext();
-    const orgId = orgCtx?.organization?.id;
 
     const { id } = await params;
 
+    // A caller without an organization owns no attachments: never drop the
+    // filter, it would let the delete reach any tenant's file.
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Attachment not found" },
+        { status: 404 },
+      );
+    }
+
     const attachment = await prisma.asset_attachments.findFirst({
-      where: {
-        id,
-        ...(orgId ? { asset: { organizationId: orgId } } : {}),
-      },
+      where: { id, asset: { organizationId: orgId } },
     });
 
     if (!attachment) {
@@ -38,7 +42,7 @@ export async function DELETE(
       );
     }
 
-    const storage = orgId ? await getOrgStorage(orgId) : await getStorage();
+    const storage = await getOrgStorage(orgId);
     try {
       await storage.delete(attachment.filename);
       if (attachment.thumbnailPath) {
@@ -73,18 +77,21 @@ export async function PATCH(
     if (demoBlock) return demoBlock;
     const user = await requireApiAuth();
     await requireWritableOrg(user);
-    const orgCtx2 = await getOrganizationContext();
-    const orgId2 = orgCtx2?.organization?.id;
 
     const { id } = await params;
     const body = await req.json();
     const { isPrimary } = body;
 
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Attachment not found" },
+        { status: 404 },
+      );
+    }
+
     const attachment = await prisma.asset_attachments.findFirst({
-      where: {
-        id,
-        ...(orgId2 ? { asset: { organizationId: orgId2 } } : {}),
-      },
+      where: { id, asset: { organizationId: orgId } },
     });
 
     if (!attachment) {

@@ -3,7 +3,6 @@ import prisma from "@/lib/prisma";
 import { requireApiAdmin, requireWritableOrg } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog } from "@/lib/audit-log";
-import { getOrganizationContext } from "@/lib/organization-context";
 
 /**
  * Map from the `entity` string stored in audit logs to the corresponding
@@ -104,15 +103,22 @@ export async function POST(
     await requireWritableOrg(admin);
     const { id } = await params;
 
-    // 1. Fetch the audit log entry, scoped to the caller's organization
-    const orgCtx = await getOrganizationContext();
-    const orgId = orgCtx?.organization?.id;
+    // 1. Fetch the audit log entry, scoped to the caller's organization. A
+    // caller without an organization owns no audit logs: never drop the
+    // filter, it would let the revert reach any tenant's entry.
+    const orgId = admin.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Audit log entry not found" },
+        { status: 404 },
+      );
+    }
 
     const auditLog = await prisma.audit_logs.findFirst({
       where: {
         id,
         // Scope through the user relation — audit_logs doesn't have organizationId directly
-        ...(orgId ? { user: { organizationId: orgId } } : {}),
+        user: { organizationId: orgId },
       },
     });
 
