@@ -1,6 +1,6 @@
 # Technical Debt
 
-Last updated: 2026-10-11 (v0.14.0 — Phase 0 tenant isolation; follow-ups in items 53–75)
+Last updated: 2026-10-11 (v0.14.0 — Phase 0 tenant isolation; follow-ups in items 53–80)
 
 This document tracks issues found by whole-application audits. Items marked
 **FIXED** were resolved in the version noted; **DEFERRED** items are documented
@@ -19,7 +19,7 @@ with a recommended fix. The audits so far:
   (`docs/superpowers/specs/2026-10-06-phase0-tenant-security-design.md`): a review of
   the SaaS boundary spec plus a code investigation, implemented task by task (29
   commits, 317 files) with an independent review per task. See CHANGELOG 0.14.0. What
-  it deliberately left open is items 53–75.
+  it deliberately left open is items 53–80.
 
 ## Summary (as of 2026-09-07; the cross-tenant row updated 2026-10-11)
 
@@ -27,7 +27,7 @@ with a recommended fix. The audits so far:
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | CI (lint, typecheck, unit, build)  | green since 2026-09-07 (v0.9.5 fixed the lockfile/typings; the DB suites and the Build job first passed today) |
 | Production dependency advisories   | 0 (was 1 critical, 53 high)                                                                                    |
-| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; four platform-wide leftovers remain (items 53, 57, 62, 65)            |
+| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69 (see "Phase 0 follow-ups")  |
 | MFA login enforcement              | functional since v0.10.0 (enrolment on BetterAuth twoFactor)                                                   |
 | SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                                                                    |
 | TypeScript strict mode             | off; 830 errors to clear (D3)                                                                                  |
@@ -390,10 +390,16 @@ schema })` and retrofit high-traffic routes first.
 
 Phase 0 (v0.14.0, spec `docs/superpowers/specs/2026-10-06-phase0-tenant-security-design.md`)
 closed the cross-tenant and privilege holes it listed. Items 53–59 are the spec's
-"Out of scope" list; items 60–75 surfaced while implementing and reviewing it. Items
-that still cross a tenant boundary are 53, 57, 62 and 65 (and 69, a member count);
-everything else is correctness, hardening or a decision. File:line references are
-from the tree at the end of Phase 0.
+"Out of scope" list; items 60–80 surfaced while implementing and reviewing it. Items
+that still cross a tenant boundary are 53 (LDAP sync), 57 (label templates), 63 (legacy
+SCIM token), 65 (Slack/Teams) and 69 (callers without an organization still reach
+organization-less rows); 54, 55, 62 and 76 are privilege paths. Everything else is
+correctness, hardening or a decision. The final whole-branch review found and fixed
+further cross-tenant routes before release (status transitions, four ID-addressed
+writes, a dozen routes that dropped their organization filter for callers without an
+organization, the depreciation forecast; see CHANGELOG 0.14.0). That is not a proof
+that no other ID-addressed route lacks an organization filter: the sweeps were
+heuristic (item 74). File:line references are from the tree at the end of Phase 0.
 
 ### Named out of scope in the spec
 
@@ -432,21 +438,26 @@ from the tree at the end of Phase 0.
     taken", which enumerates accounts wherever `ALLOW_PUBLIC_SIGNUP=true`. _Recommended:_
     item 5 for the header (platform header on Vercel, trusted-proxy setting
     self-hosted); one generic answer plus an email confirmation step for register.
-57. **Email templates, label templates and depreciation settings are platform-wide
-    (high)** (`email_templates`, `label_templates`, `depreciation_settings` in
-    `prisma/schema.prisma` have no `organizationId`). Every org admin can list, edit,
-    delete and default every tenant's label layouts (`api/admin/labels/route.ts:15,57,63`,
-    `api/admin/labels/[id]/route.ts:37,43,82`, `api/admin/labels/[id]/default/route.ts:25,31`;
-    read by `api/labels/pdf/route.ts:32`), and the settings page loads all three
-    (`admin/settings/page.tsx:69,75`, `admin/settings/data.ts:48`). Depreciation settings
-    feed every tenant's TCO, fleet value, health score, export and reports
-    (`api/dashboard/tco/route.ts:81`, `fleet-value/route.ts:33`, `health-score/route.ts:50`,
-    `api/export/route.ts:360,390`, `api/reports/advanced/route.ts:258`,
-    `lib/report-generator.ts:101`). The `rate_limits` view named in the spec is fixed:
+57. **Label templates are platform-wide (high); email templates and depreciation
+    settings are mostly contained** (`email_templates`, `label_templates`,
+    `depreciation_settings` in `prisma/schema.prisma` have no `organizationId`). Label
+    templates: every org admin can list, edit, delete and default every tenant's label
+    layouts (`api/admin/labels/route.ts:15,57,63`, `api/admin/labels/[id]/route.ts:37,43,82`,
+    `api/admin/labels/[id]/default/route.ts:25,31`; read by `api/labels/pdf/route.ts:32`),
+    and the settings page loads them unscoped for every org admin
+    (`admin/settings/page.tsx:74,125`). Email templates: the settings page loads them
+    only for super-admins and the table is dead data (item 38). Depreciation settings:
+    the settings page lists only the caller's categories' settings
+    (`admin/settings/data.ts:46`, scoped through the asset category, empty for an org-less
+    admin), and TCO, fleet value, health score, export and `report-generator` read them
+    as a lookup by category id for the caller's own assets, so they do not mix tenants;
+    no API route writes them. The actual leak, the depreciation forecast in
+    `api/reports/advanced`, which summed every tenant's categories and assets, is fixed
+    in 0.14.0 (final review, R1). The `rate_limits` view named in the spec is fixed:
     `/api/admin/rate-limits` and its tab are super-admin only. _Recommended:_ nullable
-    `organizationId` (FK cascade, index) on the three tables, a backfill in the style of
-    `20260505_scope_shared_tables`, org-scoped reads and writes, and `NULL` rows kept as
-    read-only platform defaults. `email_templates` is also dead data (item 38).
+    `organizationId` (FK cascade, index) on `label_templates` (and `email_templates` if
+    it stays), a backfill in the style of `20260505_scope_shared_tables`, org-scoped
+    reads and writes, and `NULL` rows kept as read-only platform defaults.
 58. **Callers treat the offline queue's 202 as a real response (medium)**
     (`public/sw.js:166`). A queued change is answered `202 { queued: true, id }`;
     `Response.ok` is true for 202 and nothing under `src` reads `queued`, so forms toast
@@ -499,7 +510,7 @@ from the tree at the end of Phase 0.
     _Recommended:_ qualify with the `"${S}"."table"` pattern from
     `lib/user-email-query.ts` and cover it with a DB-gated test.
 65. **Slack/Teams notifications are platform-level (medium)**
-    (`lib/integrations/slack-teams.ts:258`; 26 call sites in 21 files, e.g.
+    (`lib/integrations/slack-teams.ts:258`; 25 call sites in 19 files, e.g.
     `api/asset/route.ts:224,306`, `api/asset/updateStatus/route.ts:153`,
     `api/asset/checkout/route.ts:197`). `notifyIntegrations` reads the one global
     integration setting, so on a multi-tenant deployment every tenant's asset events
@@ -530,23 +541,36 @@ from the tree at the end of Phase 0.
     `lib/validation.ts` custom field schema, `api/custom-fields/values/route.ts:152`).
     `verifyEntityOrgOwnership` maps `component` to the delegate `"Component"` and has no
     `kit`, so values for components and kits answer 404 (fail closed; see item 35).
-    Existing definitions with a `fieldType` outside the six UI types, or
-    `entityType: "license"`, now fail a full PUT. Value upserts are not transactional and
-    the value is not validated against `fieldType`. `admin/settings/ui/CustomFieldsTab.tsx`
-    is unused legacy code. There are no page-level tests for the scoped definitions.
+    Existing definitions with a `fieldType` outside the six UI types, or an
+    `entityType` outside the registry keys (`asset`, `accessory`, `consumable`,
+    `licence`, `component`, `kit`; note the British spelling, `license` is rejected),
+    now fail a full PUT. Value upserts are not transactional and the value is not
+    validated against `fieldType`. `admin/settings/ui/CustomFieldsTab.tsx` is unused
+    legacy code. There are no page-level tests for the scoped definitions.
     _Recommended:_ check production data for the odd types, fix the map, validate values
     by type inside one transaction, delete the legacy tab.
 69. **Org-less users are handled inconsistently** (`lib/data.ts:133-160`,
     `lib/organization-context.ts:118` `scopeToOrganization`, `api/roles/route.ts:44`).
-    Reads fail closed, but differently: the picker helpers (`getUserOptions`,
-    `getAssetOptions`, `getLocationOptions`) throw through `strictOrgWhere()` and answer
-    500 where routes answer empty or 404. `scopeToOrganization` maps "no org" to
-    `organizationId: null`, so an org-less admin still reads and edits org-less rows
-    (departments, user PUT). A global role's `_count.userRoles` counts members across
-    tenants (count only). Since 0.14.0 global roles are editable by super-admins only;
-    an org admin who relied on editing a legacy global custom role must copy it into the
-    org. _Recommended:_ finish items 53 and 54 so every user has an org, backfill, make
-    `user.organizationId` NOT NULL and delete the `null` branch.
+    Three behaviours coexist. (1) Fail closed, the rule: 404 or an empty result without
+    querying (`strictOrgWhere()` in `lib/data.ts` for pages and picker helpers, which
+    throw and answer 500; `if (!orgId)` in routes). Since the final review wave this
+    covers the routes that used to drop their organization filter for a caller without
+    an organization (audit log list and revert, asset attachment delete and patch,
+    maintenance, user asset and accessory lists, requests, user validation) as well as
+    the status workflow and the four ID-addressed writes. (2) The `null` stand-in:
+    `scopeToOrganization` (called in 56 route files) maps "no org" to
+    `organizationId: null`, and 43 route files use `… ?? null` expressions (as does
+    `verifyEntityOrgOwnership`), so an org-less admin still reads and edits org-less rows
+    (departments, user PUT, assets, accessories, audit campaign completion, request and
+    checkout flows, …). Org-less rows belong to no tenant, but every org-less user
+    shares them, so two org-less users see each other's data. (3) The
+    picker helpers answer 500 where routes answer empty. A global role's
+    `_count.userRoles` counts members across tenants (count only). Since 0.14.0 global
+    roles are editable by super-admins only; an org admin who relied on editing a legacy
+    global custom role must copy it into the org. _Recommended:_ finish items 53 and 54
+    so every user has an org, backfill, make `user.organizationId` NOT NULL and delete
+    the `null` branch; until then add `requireOrgId(user)` (throws a typed
+    `ForbiddenError("no_organization")`) and replace the `?? null` sites with it.
 70. **Billing and suspension edge cases** (`app/suspended/page.tsx:47`,
     `api/billing/portal/route.ts:28`, `proxy.ts:185`, `lib/org-lock-redirect.ts:55`,
     `api/organizations/route.ts`). `/suspended` offers the billing portal only, never
@@ -588,17 +612,64 @@ from the tree at the end of Phase 0.
     `requireWritableOrg` sits in each mutating handler; the webhook-callers scan checks
     arity only (an `undefined` or body-supplied org passes, and generics, optional calls
     and aliases are missed); the page scope test treats any `where` token as scoped and
-    looks at `findMany` only. There is no runtime read-only test per handler.
+    looks at `findMany` only. There is no runtime read-only test per handler, and no
+    permanent test walks the ID-addressed handlers (`[id]`, `[userId]`, body ids) for an
+    organization token near each `findUnique`, `update` or `delete` on a tenant model;
+    the final review found the status-transition and the four sibling writes with
+    one-off greps that should be a test.
     _Recommended:_ AST-based per-handler checks, or the `withApiRoute` wrapper from item
     43 so the guard is structural.
-75. **The destructive DB tests trust the URL host** (`src/lib/__tests__/scope-automation-migration.test.ts`,
-    `user-email-query.db.test.ts`). They run when `DATABASE_URL` points at `localhost`,
-    `127.0.0.1` or `[::1]`, or when `ALLOW_DESTRUCTIVE_DB_TESTS=1`. An SSH tunnel to the
-    production database on localhost, or a `?host=` override, passes the gate, and the
-    migration test runs `DELETE FROM organizations` (rolled back, but it takes locks and
-    cascades). Item 7's note that `.env` points at production makes this realistic.
-    _Recommended:_ always require the explicit opt-in, or check the database name
-    (`*_test`) as well.
+75. **FIXED in 0.14.0 (final review, I5): the destructive DB tests trusted the URL
+    host** (`src/lib/__tests__/scope-automation-migration.test.ts`,
+    `user-email-query.db.test.ts`). They ran when `DATABASE_URL` pointed at `localhost`,
+    `127.0.0.1` or `[::1]`, so an SSH tunnel to the production database passed the gate
+    and the migration test ran `DELETE FROM organizations` (rolled back, but it takes
+    locks and cascades). Both now run only with `ALLOW_DESTRUCTIVE_DB_TESTS=1`, which
+    the CI unit-test job sets for its throwaway Postgres service. Running them locally
+    needs the variable and a disposable database.
+
+### Found by the final whole-branch review (fixed items are in CHANGELOG 0.14.0)
+
+76. **Admin and super-admin guards ignore API-key scopes (medium)**
+    (`lib/api-auth.ts`: `requireApiAdmin`, `requireSuperAdmin`, `requireApiAuth` and
+    `requireApiCanRequest` never read `apiKeyScopes`; only `requirePermission` does). An
+    API key limited to `asset:view` that belongs to an admin (or a super-admin) can call
+    every admin-only route (user management, webhooks, platform settings), because those
+    routes use `requireApiAdmin` or `requireSuperAdmin`. Pre-existing.
+    _Recommended:_ reject any scoped key in `requireApiAdmin` and `requireSuperAdmin`
+    unless it carries an explicit `admin` scope, and let `requireApiAuth` routes declare
+    the scope they need.
+77. **Status transitions still have no `organizationId` of their own**
+    (`prisma/schema.prisma` `status_transitions`; `lib/status-transitions.ts`).
+    Isolation works by filtering on the owning status types, which is correct but
+    implicit. A transition whose two statuses belong to different organizations, or to
+    none (legacy global statuses), is invisible to every organization and so is never
+    enforced after 0.14.0; it can only be removed in SQL or by deleting one of its
+    statuses (the pre-deploy query is in the CHANGELOG). `@@unique([fromStatusId,
+toStatusId])` is global. _Recommended:_ add a nullable `organizationId`, backfill it
+    from the from-status, enforce that both statuses share it, and delete the stranded
+    rows.
+78. **GDPR retention is one deployment-wide file (medium)**
+    (`lib/gdpr-settings.ts:11` `data/gdpr-settings.json`, `lib/gdpr-retention.ts:13`,
+    `api/cron/gdpr-retention/route.ts`). Since 0.14.0 only a super-admin can write it
+    (an org admin could previously shorten every tenant's audit retention), and org
+    admins see it read-only (`api/admin/compliance` also reports the values). The cron
+    still applies one number to every tenant's audit logs, a write to a local file fails
+    on read-only filesystems (Vercel) and diverges between instances.
+    _Recommended:_ per-organization retention in `Organization.settings` or
+    `system_settings`, applied per organization by the cron; keep a platform minimum.
+79. **The service worker caches authenticated page HTML across users (medium)**
+    (`public/sw.js:198-228`, cache `asset-tracker-v2`). Navigation responses are cached
+    and not cleared on sign-out, so a second user of a shared browser can see the first
+    user's cached pages offline. Pre-existing and outside the offline queue's scope (P0-6).
+    _Recommended:_ do not cache authenticated navigations, or clear the page cache on
+    sign-out next to the queue.
+80. **Small leftovers from the final review.** About 50 `catch (e: any)` sites remain
+    (API routes for audits, kits, components, EULA, licence seats, consumable checkout,
+    SSO callbacks; `lib/ldap.ts`; several client forms), against the no-`any` rule; the
+    activate route is clean. Stash `stash@{0}` ("task-13 interrupted partial work") is
+    obsolete once the release is merged; `stash@{1}` is unrelated.
+    _Recommended:_ `unknown` plus `apiErrorResponse` in the routes, delete the stash.
 
 ## Repository loose ends (2026-09-07)
 

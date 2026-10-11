@@ -89,7 +89,7 @@ This guide documents security gaps found in the current codebase and a prioritiz
 
 **Status (0.14.0):** the model and its rules are described in section 7. The
 remaining platform-wide tables and unscoped writers are tracked in
-`TECHNICAL_DEBT.md`, items 53-75.
+`TECHNICAL_DEBT.md`, items 53-80.
 
 ### 2.3 User Enumeration Protection
 
@@ -172,7 +172,7 @@ remaining platform-wide tables and unscoped writers are tracked in
 ## 7) Tenant Isolation Model (implemented in 0.14.0)
 
 This is how isolation works today. New code must follow it. Open gaps are listed in
-`TECHNICAL_DEBT.md` ("Phase 0 follow-ups", items 53-75).
+`TECHNICAL_DEBT.md` ("Phase 0 follow-ups", items 53-80).
 
 ### 7.1 Organization status
 
@@ -198,16 +198,19 @@ Where it is enforced:
   public invite-accept route and the session check in change-password (after
   `getAuthUser`) are the deliberate exceptions.
 - **API writes:** every mutating handler calls `requireWritableOrg(user)` next to
-  `requireNotDemoMode()`. `src/app/api/__tests__/route-conventions.test.ts` fails when a
-  route file has a mutating export without it, unless the route is on the named
-  allow-list (sign-out and session revocation, change-password, own preferences, the
-  billing portal and checkout, read-style POSTs such as label PDFs and connectivity
-  tests, auth flows).
+  `requireNotDemoMode()`. `src/app/api/__tests__/route-conventions.test.ts` compares,
+  per route file, the number of `requireWritableOrg(` calls with the number of mutating
+  exports and fails on a shortfall, unless the route is on the named allow-list (auth
+  flows, sign-out and session revocation, change-password, own preferences, the billing
+  portal, checkout and webhook, `/api/setup`, SCIM, the SAML callback, invite accept,
+  read-style POSTs such as label PDFs and connectivity tests). The check is per file,
+  not per handler (`TECHNICAL_DEBT.md`, item 74).
 - **Pages:** `src/proxy.ts` (through `src/lib/org-lock-redirect.ts`) redirects signed-in
   members of a locked-out organization to `/suspended`. Public pages, `/api`, static
   assets and `/suspended` itself are never redirected.
 - **SCIM:** `authenticateScim` (`src/lib/scim.ts`) checks the token organization's
-  status.
+  status. It answers a SCIM-format 403 (`scimError`, no `code`) for a locked-out
+  organization and for any non-GET request while the organization is read-only.
 - **Billing:** `/api/billing/portal` and `/api/billing/checkout` skip the status block
   on purpose, so a suspended admin can pay.
 
@@ -218,8 +221,8 @@ Guards throw `ForbiddenError(code, message)` or `UnauthorizedError` from
 a 401 or 403 with `{ error, code }` for these classes and `null` for everything else, so
 routes keep their own 404, 409 and 500 handling. Codes: `org_locked`, `org_read_only`,
 `not_admin`, `not_super_admin`, `insufficient_permission`, `api_key_scope`,
-`request_permission`, `feature_not_entitled`. Clients (including the offline queue) key
-off `code`; do not return a 500 or a bare "Forbidden" for a denial.
+`request_permission`, `feature_not_entitled`, and `unauthorized` (the 401 from
+`UnauthorizedError`). Clients (including the offline queue) key off `code`; do not return a 500 or a bare "Forbidden" for a denial.
 
 ### 7.3 Platform (super-admin) boundary
 
@@ -235,13 +238,21 @@ by `requireSuperAdmin` and by the settings page. It fails closed:
 Keep super-admin accounts in the operator organization: a same-organization admin can
 still edit them (`TECHNICAL_DEBT.md`, item 62).
 
-Every code path that writes `user.email` goes through `assertEmailAssignable`
-(`src/lib/email-ownership.ts`): lower-case and trim, reject an address another user
-holds (409) and reject an address listed in `SUPER_ADMIN_EMAILS` unless the caller is a
-super-admin. Platform settings (general, email, Freshdesk, notifications, SSO, LDAP,
-Intune, integrations, organizations, rate limits), global webhooks, global roles and the
-Freshdesk ticket routes are super-admin only. Settings PUTs accept an allow-list of
-keys, and the masked placeholder is never stored.
+`assertEmailAssignable` (`src/lib/email-ownership.ts`) lower-cases and trims an address,
+rejects one another user holds (409) and rejects one listed in `SUPER_ADMIN_EMAILS`
+unless the caller is a super-admin. These writers use it: `PUT /api/user`,
+`POST /api/user/addUser`, `POST /api/auth/register`, the CSV import, SCIM create and
+update, LDAP sync and invite accept (new users). These writers do **not**: the OIDC and
+SAML callbacks (`api/auth/callback/oidc`, `api/auth/callback/saml`; item 54),
+`/api/setup` (item 55) and BetterAuth's own OAuth sign-up hook in `auth-server.ts`
+(item 61). Anything new that writes `user.email` must call it, and the unguarded ones
+should be moved over.
+
+Platform settings (general, email, Freshdesk, notifications, SSO, LDAP, Intune,
+integrations, organizations, rate limits), global webhooks, global roles and the
+Freshdesk ticket routes are super-admin only, and so is the GDPR retention PUT (one
+file for the whole deployment, applied by the cron to every tenant). Settings PUTs
+accept an allow-list of keys, and the masked placeholder is never stored.
 
 ### 7.4 Sign-up and invites
 
@@ -252,15 +263,30 @@ keys, and the masked placeholder is never stored.
   first admin through `/setup` or `scripts/create-admin.mjs`.
 - An invite is acceptable only while `pending`. Its role must belong to the inviter's
   organization or be a global role. The user limit is re-checked on accept. An existing
-  user who accepts into another organization gets `isadmin = false` and loses the roles
-  of the old organization.
+  user who accepts into another organization gets `isadmin = false`, loses all of their
+  roles (global roles included) and their department, then receives the invited role.
 
 ### 7.5 Scoping rules for new code
 
-- Scope every query on an organization-owned table with the caller's `organizationId`
-  (`scopeToOrganization`, `strictOrgWhere`). A record of another organization answers
-  404, the same as a missing one. A user without an organization gets nothing: never
-  match `organizationId: null` on behalf of such a user.
+- Scope every query on an organization-owned table with the caller's `organizationId`.
+  A record of another organization answers 404, the same as a missing one. A user
+  without an organization gets nothing: return 404 or an empty result **before** the
+  query (`const orgId = user.organizationId; if (!orgId) ...`, as `admin/workflows`
+  does), and never write `...(orgId ? { organizationId: orgId } : {})`, which drops the
+  filter for exactly the caller who must get nothing. `strictOrgWhere()` in
+  `src/lib/data.ts` is the primitive that follows this rule for pages and helpers: it
+  throws when the organization is missing. Beware `scopeToOrganization`
+  (`src/lib/organization-context.ts`): it maps a missing organization to
+  `organizationId: null`, so an org-less caller still matches org-less rows. Do not use
+  it where such a caller must get nothing (`TECHNICAL_DEBT.md`, item 69).
+- A table without its own `organizationId` is scoped through its parent: audit logs via
+  `user`, maintenance schedules and user assets via `asset`, tickets via their creator,
+  and status transitions via both status types (`transitionsOfOrganization` in
+  `src/lib/status-transitions.ts`). Resolve an ID-addressed target through that
+  relation, never by ID alone, and check every body-supplied ID the same way (a status
+  type, an assignee, a target user).
+- Never return a stored secret, even encrypted: webhook responses carry `hasSecret`
+  (`src/lib/webhook-response.ts`).
 - Never trust an `organizationId` from a request body; compare it with the caller's or
   ignore it.
 - Server-rendered pages follow the same rule as routes. `src/app/__tests__/` has the

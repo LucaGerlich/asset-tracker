@@ -36,8 +36,8 @@ deploying a multi-organization instance.**
   exactly one user; unset, it works only while the database has at most one
   organization. Emails are trimmed, lower-cased and checked for duplicates and
   reserved addresses on the profile, add-user, register, CSV import, SCIM, LDAP sync
-  and invite-accept write paths (the SSO callbacks are still open,
-  `TECHNICAL_DEBT.md` item 54). Org admins receive only org-scoped settings data; the
+  and invite-accept write paths. The OIDC and SAML callbacks, `/api/setup` and
+  BetterAuth's own OAuth sign-up are still open (`TECHNICAL_DEBT.md` items 54, 55, 61). Org admins receive only org-scoped settings data; the
   platform tabs (General, Email, Freshdesk, Notifications, SSO, LDAP, Intune,
   Integrations, Organizations, Rate Limits) are not rendered for them, including via
   `?tab=`. Setting PUTs accept an allow-list of keys and never store the masked
@@ -50,16 +50,20 @@ deploying a multi-organization instance.**
   `ALLOW_PUBLIC_SIGNUP=true`; BetterAuth's own sign-up is disabled as a second layer.
   Invites can be accepted only while `pending`, the role must belong to the inviter's
   organization or be a global role, the user limit is re-checked on accept, and an
-  existing user who accepts into another organization loses the admin flag and the
-  roles of the old one.
+  existing user who accepts into another organization loses the admin flag, all of
+  their roles (global ones included) and their department.
 - **Suspension and lock are enforced.** An inactive organization is `locked_out`
   first; a suspension is `read_only` for 14 days and `locked_out` afterwards.
   `getAuthUser` loads the status with the user, so guards need no second query. Every
-  mutating route calls `requireWritableOrg` (403 `org_read_only`); a test walks all
-  routes and fails on a mutating handler that neither calls it nor is on the named
-  allow-list (sign-out, change-password, own preferences, billing portal and
-  checkout, read-style POSTs). Locked-out organizations get 403 `org_locked` from the
-  API guards, from the former raw-session routes and from SCIM, and members are
+  mutating route calls `requireWritableOrg` (403 `org_read_only`); a test compares, per
+  route file, the number of calls with the number of mutating exports and fails on a
+  shortfall unless the file is on the named allow-list (auth flows, sign-out,
+  change-password, own preferences, billing portal, checkout and webhook, setup, SCIM,
+  the SAML callback, invite accept, read-style POSTs such as label PDFs and connectivity
+  tests). Locked-out organizations get 403 `org_locked` from the API guards and from
+  the former raw-session routes. SCIM answers a SCIM-format 403 (no `code`) for a
+  locked-out organization and also blocks its non-GET requests while it is read-only.
+  Members are
   redirected to `/suspended` on every page (sign-out, plus "Manage subscription" for
   admins; the CSP allows the Stripe portal as a form target). Tenants can no longer
   change their own `isActive`, and an organization update no longer silently sets it
@@ -70,7 +74,7 @@ deploying a multi-organization instance.**
 - **Denials are typed.** Guards throw `ForbiddenError` or `UnauthorizedError` with a
   machine-readable `code` (`org_locked`, `org_read_only`, `not_admin`,
   `not_super_admin`, `insufficient_permission`, `api_key_scope`, `request_permission`,
-  `feature_not_entitled`). Routes answer 401 or 403 with `{ error, code }` instead of
+  `feature_not_entitled`, and `unauthorized` on a 401). Routes answer 401 or 403 with `{ error, code }` instead of
   a 500 or a bare "Forbidden", so clients can tell a denial from an outage.
 - **The offline queue keeps secrets out and no longer loses refused changes.** The
   service worker never queues `/api/auth/*`, HEAD or OPTIONS, multipart bodies, the
@@ -78,10 +82,10 @@ deploying a multi-organization instance.**
   bodies with secret-looking fields, and stores only allow-listed headers. Queued
   changes are stamped with the signed-in user, replay only for that user, and the
   queue is cleared on sign-out. Replay no longer loops back through the service
-  worker. 2xx counts as synced; 401, 403, 409 and 422 are kept as blocked (listed in
-  the indicator, with the server's code and message, and discardable); 400 and 404
-  are dropped and reported; 429 and 5xx are retried up to three times, stopping at
-  the first 429. The toast reports synced, blocked and failed counts separately, and
+  worker. 2xx counts as synced; 400 and 404 are dropped and reported; 429 and 5xx are retried
+  (three attempts in total), stopping at the first 429; any other status (401, 403, 409
+  and 422, but also an unexpected 3xx or 405) is kept as blocked, listed in the
+  indicator with the server's code and message, and discardable. The toast reports synced, blocked and failed counts separately, and
   the mobile sync service uses the same classification.
 - **More cross-tenant holes closed**, found while implementing the above: stock
   alerts, roles (including `organizationId` mass assignment on role edits and
@@ -99,9 +103,46 @@ deploying a multi-organization instance.**
 - **Case-insensitive email checks are exact.** They compare `lower(email)` as a bound
   parameter instead of a pattern match, so `_` and `%` in an address are never
   wildcards.
+- **The status workflow is per organization.** `status_transitions` has no owner of its
+  own, so the workflow admin routes, `GET /api/status-transitions` and the status
+  update read and wrote every tenant's transitions; one tenant defining a single
+  transition made `PUT /api/asset/updateStatus` answer 400 "not allowed" for every
+  other tenant, and a status could be set from another tenant's status type. Transitions
+  are now matched through the organization of both statuses, creating one requires both
+  statuses to be yours (400), deleting someone else's answers 404, the "is a workflow
+  defined" check counts only your own, and the target status (by ID or by name) must
+  belong to your organization.
+- **More ID-addressed writes are scoped.** Completing a maintenance schedule,
+  activating an audit campaign, commenting on a ticket (which emailed the ticket's
+  creator in another tenant) and re-pointing a user asset accepted any ID of any
+  tenant. They resolve the target through the caller's organization and answer 404
+  before writing or emailing. A maintenance assignee must belong to the organization.
+  The request, approval, return and self-return flows set the Pending, Active and
+  Available status from the asset's organization instead of any tenant's.
+- **Callers without an organization get nothing.** The audit log list and revert, asset
+  attachment delete and patch, maintenance schedules, user asset and accessory lists,
+  requests and the user validation endpoint applied their organization filter only
+  when the caller had an organization, so an org-less user (LDAP, OIDC and SAML users
+  today) could read, revert, delete or edit every tenant's rows. They answer 404 or an
+  empty result without querying.
+- **GDPR retention is super-admin only.** The retention settings are one file for the
+  whole deployment and the cron applies them to every tenant's audit logs, yet any
+  org admin could write them (set 1 day and the next run erases every audit trail).
+  Org admins now see the values read-only.
+- **A CSV user import cannot create admins unless the importer is one.** A role with
+  `import:execute` could fill the `isadmin` column; the column is ignored for importers
+  who are not admins.
+- **The depreciation forecast no longer adds up other tenants' assets.**
+  `/api/reports/advanced` scopes the categories and the assets it includes.
+- **The stored webhook secret is never returned.** Webhook responses carry `hasSecret`
+  instead of the encrypted value (global webhooks are listed to every tenant). Editing a
+  webhook keeps its secret unless a new one is entered.
 
 ### Changed
 
+- The destructive database tests (`scope-automation-migration`, `user-email-query.db`)
+  run only with `ALLOW_DESTRUCTIVE_DB_TESTS=1`, no longer on any localhost
+  `DATABASE_URL`; CI sets it for its throwaway Postgres.
 - Org admins can no longer edit global roles (those with no organization); only
   super-admins can, and only super-admins can create global webhooks and roles.
 - Guarded routes answer 403 with `{ error, code }` where some used to answer a bare
@@ -109,8 +150,10 @@ deploying a multi-organization instance.**
   body text needs a look.
 - An advanced-search filter on a custom field outside the organization's definitions
   matches nothing instead of being ignored.
-- Custom field definitions accept the six field types the UI offers; a full update
-  that resends another type or the entity type `license` is rejected.
+- Custom field definitions accept the six field types the UI offers (`text`, `number`,
+  `date`, `checkbox`, `select`, `textarea`) and the entity types `asset`, `accessory`,
+  `consumable`, `licence`, `component` and `kit` (British spelling; `license` is
+  rejected). A full update that resends another type or entity type is rejected.
 - A change queued offline is still answered with HTTP 202, as before; callers treat
   that as success (see `TECHNICAL_DEBT.md`, item 58).
 
@@ -148,6 +191,17 @@ Before deploying:
   unscoped and become invisible**. Their count is raised as a database notice
   ("Custom field definitions left unscoped"); the Prisma CLI may not show server
   notices, so also run the queries under "After deploying".
+- Check the custom field definitions against the accepted sets; a full update of any
+  definition outside them is rejected (400) until an admin fixes it:
+  `SELECT id, name, "entityType", "fieldType" FROM custom_field_definitions WHERE "fieldType" NOT IN ('text','number','date','checkbox','select','textarea') OR "entityType" NOT IN ('asset','accessory','consumable','licence','component','kit')`.
+- The status workflow is per organization now. Transitions between two statuses of one
+  organization keep working for that organization only; a transition whose statuses
+  belong to different organizations, or to none, is no longer enforced for anyone. List
+  them and delete or recreate them: `SELECT t.id, f."statustypename" AS "from", f."organizationId" AS "fromOrganization", g."statustypename" AS "to", g."organizationId" AS "toOrganization" FROM status_transitions t JOIN "statusType" f ON f."statustypeid" = t."fromStatusId" JOIN "statusType" g ON g."statustypeid" = t."toStatusId" WHERE f."organizationId" IS NULL OR g."organizationId" IS NULL OR f."organizationId" <> g."organizationId"`.
+  An organization with no transitions of its own is unrestricted, also when another
+  organization had defined some.
+- GDPR retention settings can only be changed by a super-admin. If an org admin changed
+  `data/gdpr-settings.json`, review it before the next retention cron run.
 - Rehearse `prisma migrate deploy` on a restored copy of production first. The
   production database is shared with other applications: run `migrate deploy` only,
   never `migrate reset` or `db push`. Preview deployments must not use the production
