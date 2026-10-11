@@ -113,3 +113,23 @@ describe("POST /api/webhooks", () => {
     expect(mockPrisma.webhook.create).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/webhooks response", () => {
+  it("does not echo the stored secret back", async () => {
+    mockPrisma.webhook.create.mockResolvedValue({
+      id: "hook-new",
+      name: "Hook",
+      url: "https://example.com/hook",
+      events: ["asset.created"],
+      secret: "enc:v1:ciphertext",
+    } as never);
+
+    const res = await create();
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(res.status).toBe(201);
+    expect(JSON.stringify(body)).not.toContain("ciphertext");
+    expect(body).not.toHaveProperty("secret");
+    expect(body.hasSecret).toBe(true);
+  });
+});

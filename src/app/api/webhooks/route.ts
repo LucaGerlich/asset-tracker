@@ -9,6 +9,7 @@ import {
 import { apiErrorResponse } from "@/lib/errors";
 import { webhookSchema } from "@/lib/validation-organization";
 import { getWebhookEvents } from "@/lib/webhooks";
+import { toPublicWebhook } from "@/lib/webhook-response";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { z } from "zod";
 import crypto from "crypto";
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
         include,
         orderBy: { createdAt: "desc" },
       });
-      return NextResponse.json(webhooks);
+      return NextResponse.json(webhooks.map(toPublicWebhook));
     }
 
     // Paginated path
@@ -90,9 +91,10 @@ export async function GET(req: NextRequest) {
       prisma.webhook.count({ where }),
     ]);
 
-    return NextResponse.json(buildPaginatedResponse(webhooks, total, params), {
-      status: 200,
-    });
+    return NextResponse.json(
+      buildPaginatedResponse(webhooks.map(toPublicWebhook), total, params),
+      { status: 200 },
+    );
   } catch (error) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
@@ -156,7 +158,7 @@ export async function POST(req: NextRequest) {
       details: { name: webhook.name, url: webhook.url, events: webhook.events },
     });
 
-    return NextResponse.json(webhook, { status: 201 });
+    return NextResponse.json(toPublicWebhook(webhook), { status: 201 });
   } catch (error) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;

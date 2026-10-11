@@ -8,6 +8,7 @@ import {
 import { apiErrorResponse } from "@/lib/errors";
 import { updateWebhookSchema } from "@/lib/validation-organization";
 import { getWebhookEvents } from "@/lib/webhooks";
+import { toPublicWebhook } from "@/lib/webhook-response";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { z } from "zod";
 import { encrypt } from "@/lib/encryption";
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     if (!webhook) return webhookNotFound();
 
-    return NextResponse.json(webhook);
+    return NextResponse.json(toPublicWebhook(webhook));
   } catch (error) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
@@ -114,7 +115,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       details: validated as Record<string, unknown>,
     });
 
-    return NextResponse.json(webhook);
+    return NextResponse.json(toPublicWebhook(webhook));
   } catch (error) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;

@@ -112,3 +112,42 @@ describe("GET /api/webhooks", () => {
     expect(mockPrisma.webhook.findMany).not.toHaveBeenCalled();
   });
 });
+
+describe("GET /api/webhooks secrets", () => {
+  const withSecret = (id: string, organizationId: string | null) => ({
+    id,
+    name: id,
+    url: "https://example.com/hook",
+    secret: "enc:v1:ciphertext",
+    organizationId,
+  });
+
+  beforeEach(() => {
+    mockPrisma.webhook.findMany.mockResolvedValue([
+      withSecret("hook-own", OWN_ORG),
+      // Global webhooks are listed to every tenant.
+      withSecret("hook-global", null),
+      { ...withSecret("hook-unsigned", OWN_ORG), secret: null },
+    ] as never);
+    mockPrisma.webhook.count.mockResolvedValue(3);
+  });
+
+  it("never returns the stored secret in the list", async () => {
+    const { body } = await parseResponse<Array<Record<string, unknown>>>(
+      await list(),
+    );
+
+    expect(JSON.stringify(body)).not.toContain("ciphertext");
+    for (const hook of body) expect(hook).not.toHaveProperty("secret");
+    expect(body.map((hook) => hook.hasSecret)).toEqual([true, true, false]);
+  });
+
+  it("never returns the stored secret in a paginated list", async () => {
+    const { body } = await parseResponse<{
+      data: Array<Record<string, unknown>>;
+    }>(await list("?page=1"));
+
+    expect(JSON.stringify(body)).not.toContain("ciphertext");
+    for (const hook of body.data) expect(hook).not.toHaveProperty("secret");
+  });
+});

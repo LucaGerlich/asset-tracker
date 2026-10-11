@@ -196,3 +196,43 @@ describe("DELETE /api/webhooks/[id]", () => {
     expect(mockPrisma.webhook.delete).not.toHaveBeenCalled();
   });
 });
+
+describe("webhook responses never carry the stored secret", () => {
+  beforeEach(() => {
+    mockPrisma.webhook.findFirst.mockResolvedValue({
+      ...ownWebhook,
+      secret: "enc:v1:ciphertext",
+    } as never);
+    mockPrisma.webhook.update.mockResolvedValue({
+      ...ownWebhook,
+      secret: "enc:v1:ciphertext",
+    } as never);
+  });
+
+  it("GET returns hasSecret instead of the secret", async () => {
+    const res = await GET(
+      createMockRequest("/api/webhooks/hook-own"),
+      params("hook-own"),
+    );
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(JSON.stringify(body)).not.toContain("ciphertext");
+    expect(body).not.toHaveProperty("secret");
+    expect(body.hasSecret).toBe(true);
+  });
+
+  it("PUT returns hasSecret instead of the secret", async () => {
+    const res = await PUT(
+      createMockRequest("/api/webhooks/hook-own", {
+        method: "PUT",
+        body: { name: "Renamed" },
+      }),
+      params("hook-own"),
+    );
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(JSON.stringify(body)).not.toContain("ciphertext");
+    expect(body).not.toHaveProperty("secret");
+    expect(body.hasSecret).toBe(true);
+  });
+});
