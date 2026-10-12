@@ -34,7 +34,7 @@ A hosted database carries a `system_settings` row `deployment.mode = 'cloud'`. A
   - `assertConfirmed(target: string, confirm: string | undefined): void` (throws unless `confirm === target`)
   - `readDeploymentMode(client: pg.ClientBase, schema: string): Promise<string | null>`
   - `writeDeploymentMode(client: pg.ClientBase, schema: string, mode: DeploymentMode): Promise<void>` (`INSERT ... ON CONFLICT ("settingKey") DO UPDATE`, `settingType 'string'`, `category 'deployment'`, `updatedAt` now in UTC)
-- `scripts/set-deployment-mode.ts`: `--schema` (required, `parseSchemaName`), `--confirm "<describeTarget>"` (required), writes `cloud`.
+- `scripts/set-deployment-mode.ts`: `--schema` (required, `parseSchemaName`), `--confirm "<describeTarget>"` (required), writes `cloud`. `describeTarget` accepts only a `postgres:` or `postgresql:` URL that names host, port and database explicitly (there is no default port) and has no `host`, `hostaddr`, `port`, `dbname` or `service` query parameter, so `DATABASE_URL` for this script always carries an explicit port.
 - Marker exclusions: `getSystemSettings` never returns a key starting with `deployment.`; the demo reset deletes every `system_settings` row except `DEPLOYMENT_MODE_KEY`, and refuses to run at all in cloud mode. (The four settings PUT routes already refuse to write the key: `settings-keys.test.ts`, `settings-sso.test.ts`, `settings-platform-routes.test.ts`.)
 
 - [ ] **Step 1: Write the failing tests**
@@ -1142,7 +1142,7 @@ export async function writeDeploymentMode(
 }
 ```
 
-The CLI prints the target before it connects and refuses to go on unless `--confirm` repeats it. It fingerprints both the `system_settings` and the `organizations` table (the latter carries the phase 1a columns), so a foreign schema that merely has a `system_settings` table is rejected. Create `scripts/set-deployment-mode.ts`:
+The CLI prints the target before it connects and refuses to go on unless `--confirm` repeats it. `describeTarget` (phase 1a) throws on a `DATABASE_URL` without an explicit host, port and database, or with a `host`, `hostaddr`, `port`, `dbname` or `service` query parameter, so the printed target is where pg really connects. It fingerprints both the `system_settings` and the `organizations` table (the latter carries the phase 1a columns), so a foreign schema that merely has a `system_settings` table is rejected. Create `scripts/set-deployment-mode.ts`:
 
 ```ts
 /**
@@ -1156,6 +1156,10 @@ The CLI prints the target before it connects and refuses to go on unless `--conf
  * SUPER_ADMIN_EMAILS: a Preview or any other deployment on the same database
  * without them stops starting. The call is idempotent. To undo it, delete the
  * row by hand.
+ *
+ * DATABASE_URL must be a postgres:// or postgresql:// URL that names host, port
+ * and database explicitly, without host, hostaddr, port, dbname or service query
+ * parameters; describeTarget refuses anything else.
  *
  *   bun scripts/set-deployment-mode.ts --schema public
  *   bun scripts/set-deployment-mode.ts --schema public \

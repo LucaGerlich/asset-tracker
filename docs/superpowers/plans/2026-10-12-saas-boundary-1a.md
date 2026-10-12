@@ -1045,7 +1045,7 @@ The script runs from a laptop or CI shell against the SaaS database only. It doe
 - Consumes: `legacyPlanToEntitlements`, `isLegacyPlan`, `ENFORCED_BEFORE_ENTITLEMENTS` (Task 2); `GATED_FEATURES`, `isOverLimit`, `type Entitlements`, `type GatedFeature` (Task 2).
 - Produces (`scripts/lib/db-target.ts`; phase 1b's cut-over script reuses it):
   - `parseSchemaName(value: string | undefined): string` (throws `Error` unless it matches `/^[a-z_][a-z0-9_]{0,62}$/`)
-  - `describeTarget(connectionString: string, schema: string): string` (`host:port/database/schema`, never credentials; port defaults to `5432`)
+  - `describeTarget(connectionString: string, schema: string): string` (`host:port/database/schema`, never credentials). It throws unless the URL uses the `postgres:` or `postgresql:` scheme (pg reads `socket:` URLs differently) and names host, port and database explicitly; there is no default port, because pg would take a missing one from `PGPORT`. It rejects the `host`, `hostaddr`, `port`, `dbname` and `service` query parameters, whatever their case, because pg lets them override the URL. Host and database are printed decoded as pg decodes them; an encoded reserved character (`%2F`) or a malformed escape in the database name is rejected. When the string holds a space or a malformed `%` escape, pg-connection-string re-encodes it whole with `encodeURI`, so any `%` in the host or database name is then rejected (a stray `%` in the password is fine). Error messages never echo the connection string.
   - `qualified(schema: string, table: string): string` (`"schema"."table"`)
   - `assertColumns(client: ClientBase, schema: string, table: string, columns: readonly string[]): Promise<void>` (throws naming the missing columns)
 - Produces (`scripts/lib/backfill-entitlements.ts`):
@@ -1061,8 +1061,10 @@ The script runs from a laptop or CI shell against the SaaS database only. It doe
 
 ```ts
 // tests/scripts/db-target.test.ts
-import { describe, it, expect } from "vitest";
+import type { ClientBase } from "pg";
+import { describe, it, expect, vi } from "vitest";
 import {
+  assertColumns,
   describeTarget,
   parseSchemaName,
   qualified,
@@ -1091,10 +1093,155 @@ describe("describeTarget", () => {
     ).toBe("db.example.com:6543/postgres/public");
   });
 
-  it("defaults the port to 5432", () => {
-    expect(describeTarget("postgres://u:p@localhost/app", "assettool")).toBe(
-      "localhost:5432/app/assettool",
+  it("prints the decoded database name", () => {
+    expect(
+      describeTarget("postgres://u:p@localhost:5432/my%20app", "assettool"),
+    ).toBe("localhost:5432/my app/assettool");
+  });
+
+  it("prints the decoded host, as pg connects to it", () => {
+    expect(
+      describeTarget("postgres://u:p@%61.example.com:5432/app", "public"),
+    ).toBe("a.example.com:5432/app/public");
+  });
+
+  it("rejects a URL without a port, which pg would take from PGPORT", () => {
+    expect(() =>
+      describeTarget("postgres://u:p@localhost/app", "assettool"),
+    ).toThrow(/port explicitly/);
+  });
+
+  it("rejects an empty host, which pg would take from PGHOST or localhost", () => {
+    expect(() => describeTarget("postgresql:///app", "public")).toThrow(
+      /host explicitly/,
     );
+  });
+
+  it.each(["postgresql://u:p@/app", "postgresql://u:p@:5432/app"])(
+    "rejects credentials without a host: %s",
+    (url) => {
+      expect(() => describeTarget(url, "public")).toThrow();
+    },
+  );
+
+  it.each(["postgres://u:p@localhost:5432", "postgres://u:p@localhost:5432/"])(
+    "rejects a missing database: %s",
+    (url) => {
+      expect(() => describeTarget(url, "public")).toThrow(
+        /database explicitly/,
+      );
+    },
+  );
+
+  it.each(["host", "hostaddr", "port", "dbname", "service"])(
+    "rejects the %s query parameter, which overrides the URL",
+    (param) => {
+      expect(() =>
+        describeTarget(
+          `postgres://u:p@a.example.com:5432/app?${param}=other`,
+          "public",
+        ),
+      ).toThrow(new RegExp(`"${param}" query parameter`));
+    },
+  );
+
+  it("rejects an overriding parameter whatever its case", () => {
+    expect(() =>
+      describeTarget("postgres://u:p@a.example.com:5432/app?HOST=b", "public"),
+    ).toThrow(/"HOST" query parameter/);
+  });
+
+  it("keeps other query parameters", () => {
+    expect(
+      describeTarget(
+        "postgres://u:p@a.example.com:5432/app?sslmode=require&connect_timeout=5",
+        "public",
+      ),
+    ).toBe("a.example.com:5432/app/public");
+  });
+
+  it("rejects an encoded reserved character that pg would decode differently", () => {
+    expect(() =>
+      describeTarget("postgres://u:p@a.example.com:5432/my%2Fapp", "public"),
+    ).toThrow(/encoded reserved characters/);
+  });
+
+  it("rejects a malformed percent escape that ends the string", () => {
+    expect(() =>
+      describeTarget("postgres://u:p@a.example.com:5432/my%", "public"),
+    ).toThrow(/malformed database name/);
+  });
+
+  it("rejects a malformed percent escape inside the database name", () => {
+    expect(() =>
+      describeTarget("postgres://u:p@a.example.com:5432/my%zzapp", "public"),
+    ).toThrow(/percent escapes/);
+  });
+
+  it.each([
+    "socket://u:p@a.example.com:5432/app?db=other",
+    "http://u:p@a.example.com:5432/app",
+    "mysql://u:p@a.example.com:5432/app",
+  ])("rejects a scheme other than postgres or postgresql: %s", (url) => {
+    expect(() => describeTarget(url, "public")).toThrow(
+      /postgres: or postgresql: scheme/,
+    );
+  });
+
+  it.each(["postgres", "postgresql", "POSTGRESQL"])(
+    "accepts the %s scheme",
+    (scheme) => {
+      expect(
+        describeTarget(`${scheme}://u:p@a.example.com:5432/app`, "public"),
+      ).toBe("a.example.com:5432/app/public");
+    },
+  );
+
+  it("keeps a well-formed percent escape in the database, as pg does", () => {
+    expect(
+      describeTarget("postgres://u:p@h.example.com:5432/my%2Dapp", "public"),
+    ).toBe("h.example.com:5432/my-app/public");
+  });
+
+  // pg-connection-string re-encodes the whole string with encodeURI when it
+  // holds a space or a malformed escape, which turns every "%" into "%25": the
+  // database below would then be the literal name my%2Dapp, not my-app.
+  it("rejects a percent escape in the database when another escape is malformed", () => {
+    const attempt = (): string =>
+      describeTarget("postgres://u:p%ss@h.example.com:5432/my%2Dapp", "public");
+    expect(attempt).toThrow(/percent escapes/);
+    expect(attempt).not.toThrow(/p%ss/);
+  });
+
+  it("rejects a percent escape in the host when another escape is malformed", () => {
+    expect(() =>
+      describeTarget("postgres://u:p%ss@a%2Dc.example.com:5432/app", "public"),
+    ).toThrow(/percent escapes/);
+  });
+
+  it("rejects a percent escape in the database when the string holds a space", () => {
+    expect(() =>
+      describeTarget("postgres://u:p ss@h.example.com:5432/my%2Dapp", "public"),
+    ).toThrow(/percent escapes/);
+  });
+
+  it("accepts a stray percent sign in the password, which never reaches the target", () => {
+    expect(
+      describeTarget("postgres://u:p%ss@h.example.com:5432/app", "public"),
+    ).toBe("h.example.com:5432/app/public");
+  });
+
+  it("accepts a space in the password", () => {
+    expect(
+      describeTarget("postgres://u:p ss@h.example.com:5432/app", "public"),
+    ).toBe("h.example.com:5432/app/public");
+  });
+
+  it("rejects an invalid URL without echoing its credentials", () => {
+    const attempt = (): string =>
+      describeTarget("postgres://admin:s3cret@exa mple.com:5432/app", "public");
+    expect(attempt).toThrow(/not a valid URL/);
+    expect(attempt).not.toThrow(/s3cret/);
   });
 });
 
@@ -1103,6 +1250,57 @@ describe("qualified", () => {
     expect(qualified("public", "organizations")).toBe(
       '"public"."organizations"',
     );
+  });
+
+  it.each(['a"b', "Public", "a.b", ""])("rejects the schema %j", (schema) => {
+    expect(() => qualified(schema, "organizations")).toThrow();
+  });
+});
+
+describe("assertColumns", () => {
+  function clientWithColumns(columns: readonly string[]): {
+    client: ClientBase;
+    query: ReturnType<typeof vi.fn>;
+  } {
+    const query = vi.fn().mockResolvedValue({
+      rows: columns.map((column_name) => ({ column_name })),
+    });
+    return { client: { query } as unknown as ClientBase, query };
+  }
+
+  it("resolves when every column is present", async () => {
+    const { client, query } = clientWithColumns(["id", "plan", "extra"]);
+
+    await expect(
+      assertColumns(client, "assettool", "organizations", ["id", "plan"]),
+    ).resolves.toBeUndefined();
+    expect(query).toHaveBeenCalledWith(expect.any(String), [
+      "assettool",
+      "organizations",
+    ]);
+  });
+
+  it("names the missing columns and points at the migration", async () => {
+    const { client } = clientWithColumns(["id"]);
+
+    const failure = assertColumns(client, "public", "organizations", [
+      "id",
+      "entitlements",
+      "createdAt",
+    ]);
+
+    await expect(failure).rejects.toThrow(
+      /public\.organizations is missing entitlements, createdAt/,
+    );
+    await expect(failure).rejects.toThrow(/migration has not been applied/);
+  });
+
+  it("treats a schema without the table as all columns missing", async () => {
+    const { client } = clientWithColumns([]);
+
+    await expect(
+      assertColumns(client, "public", "organizations", ["id"]),
+    ).rejects.toThrow(/is missing id/);
   });
 });
 ```
@@ -1359,13 +1557,92 @@ export function parseSchemaName(value: string | undefined): string {
   return value;
 }
 
+/**
+ * Query parameters that make pg connect somewhere other than the URL says:
+ * pg-connection-string lets host and port override the URL, and libpq-style
+ * hostaddr, dbname and service name a target as well.
+ */
+const TARGET_OVERRIDES = ["host", "hostaddr", "port", "dbname", "service"];
+
+/**
+ * pg-connection-string (2.14.0) re-encodes the whole string with encodeURI when
+ * it holds a space or a malformed percent escape. Every "%" then becomes "%25",
+ * so escapes in the host or database name are taken literally and no longer
+ * match what is printed here. This is the same test pg runs.
+ */
+const PG_REENCODES_INPUT = / |%[^a-f0-9]|%[a-f0-9][^a-f0-9]/i;
+
+const POSTGRES_SCHEMES = ["postgres:", "postgresql:"];
+
+function decode(value: string, what: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    throw new Error(`The connection string has a malformed ${what}`);
+  }
+}
+
+/**
+ * Describes where pg will connect, as host:port/database/schema, never with
+ * credentials. Throws unless the URL uses the postgres: or postgresql: scheme
+ * (pg reads socket: URLs differently), names host, port and database
+ * explicitly, and has no query parameter that overrides them: otherwise pg
+ * would fall back to PGHOST, PGPORT or localhost, or follow the override, and
+ * the printed target would differ from the real one. A percent escape in the
+ * host or database name is rejected when the string holds a space or a
+ * malformed escape elsewhere (see PG_REENCODES_INPUT).
+ */
 export function describeTarget(
   connectionString: string,
   schema: string,
 ): string {
-  const url = new URL(connectionString);
-  const database = url.pathname.replace(/^\//, "") || "postgres";
-  return `${url.hostname}:${url.port || "5432"}/${database}/${schema}`;
+  let url: URL;
+  try {
+    url = new URL(connectionString);
+  } catch {
+    // Not echoing the input: it contains credentials.
+    throw new Error("The connection string is not a valid URL");
+  }
+  if (!POSTGRES_SCHEMES.includes(url.protocol)) {
+    throw new Error(
+      "The connection string must use the postgres: or postgresql: scheme",
+    );
+  }
+  if (!url.hostname) {
+    throw new Error("The connection string must name the host explicitly");
+  }
+  if (!url.port) {
+    throw new Error("The connection string must name the port explicitly");
+  }
+  const rawDatabase = url.pathname.replace(/^\//, "");
+  if (!rawDatabase) {
+    throw new Error("The connection string must name the database explicitly");
+  }
+  for (const key of url.searchParams.keys()) {
+    if (TARGET_OVERRIDES.includes(key.toLowerCase())) {
+      throw new Error(
+        `The connection string must not use the "${key}" query parameter`,
+      );
+    }
+  }
+  if (
+    PG_REENCODES_INPUT.test(connectionString) &&
+    (url.hostname.includes("%") || rawDatabase.includes("%"))
+  ) {
+    throw new Error(
+      "The connection string has a space or a malformed percent escape, " +
+        "so its host and database name must not contain percent escapes",
+    );
+  }
+  const database = decode(rawDatabase, "database name");
+  // pg decodes the database name with decodeURI, which keeps encoded reserved
+  // characters such as %2F; refuse the names where the two would disagree.
+  if (database !== decodeURI(rawDatabase)) {
+    throw new Error(
+      "The database name in the connection string must not contain encoded reserved characters",
+    );
+  }
+  return `${decode(url.hostname, "host")}:${url.port}/${database}/${schema}`;
 }
 
 export function qualified(schema: string, table: string): string {

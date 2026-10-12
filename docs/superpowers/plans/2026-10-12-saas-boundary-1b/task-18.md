@@ -202,10 +202,10 @@ Self-hosted: remove `SELF_HOSTED`; nothing else to do.
 
 Hosted SaaS (cut-over), in this order:
 
-1. Gate: run the 0.15.0 backfill dry run; its summary must show `"unset":0`. Preview
-   must have its own database or the full cloud env: once step 5 is done, every
-   deployment on the SaaS database without the secret refuses to start (Preview, and a
-   local `next start` with the production `.env`).
+1. Gate: run the 0.15.0 backfill dry run; its summary must show `"unset":0` and
+   `"invalid":0`. Preview must have its own database or the full cloud env: once step 5
+   is done, every deployment on the SaaS database without the secret refuses to start
+   (Preview, and a local `next start` with the production `.env`).
 2. Check the production build can run the preflight: a recent production build log
    shows `bun` resolving (the install step uses it), and in the Vercel project settings
    every variable `validateEnvironment()` needs (`DATABASE_URL`, `BETTER_AUTH_URL`,
@@ -229,17 +229,17 @@ Hosted SaaS (cut-over), in this order:
 
 - [ ] **Step 5: Update the debt register and the version**
 
-In `TECHNICAL_DEBT.md`: set "Last updated" to the release date and `v0.16.0`; mark item 29 (unenforced plan features) `FIXED in 0.16.0`; amend item 63 (legacy SCIM token) with "refused in cloud mode since 0.16.0; still active for self-hosters"; amend item 15 (quota TOCTOU) with "limits now also checked in procurement receive, LDAP and Intune; the check-then-create race remains"; amend item 54 (OIDC/SAML org-less users) with "refused in cloud mode since 0.16.0". Add new items from 81 on, in the register's format:
+In `TECHNICAL_DEBT.md`: set "Last updated" to the release date and `v0.16.0`; mark item 29 (unenforced plan features) `FIXED in 0.16.0`; amend item 63 (legacy SCIM token) with "refused in cloud mode since 0.16.0; still active for self-hosters"; amend item 15 (quota TOCTOU) with "limits now also checked in procurement receive, LDAP and Intune; the check-then-create race remains"; amend item 54 (OIDC/SAML org-less users) with "refused in cloud mode since 0.16.0". Add new items from 82 on (item 81 is 1a's), in the register's format:
 
-- 81. **Custom field forms (medium)** (`src/components/CustomFieldsSection.tsx`, the create forms): the create forms render no inputs (the values GET needs an `entityId`), and the accessory, component, licence and consumable forms never save values in edit mode. _Recommended:_ fix the section's create mode and post values in edit mode.
-- 82. **Unused `POST /api/asset/addAsset` (low)** (`src/app/api/asset/addAsset/route.ts`): no UI caller; only the Postman collection. _Recommended:_ remove it or document it as API.
-- 83. **`prisma/create-admin.ts` raw organization insert (low)**: bypasses `createOrganization`; in cloud mode its org reads as `NEW_ORG_ENTITLEMENTS` (NULL), which is correct, but it sends no `org.created` event. _Recommended:_ route it through the helper or delete it in favour of `/api/setup`.
-- 84. **Stripe CSP origins (low)** (`src/lib/csp.ts`): `form-action`, `connect-src` and `frame-src` still allow Stripe for the legacy path. _Recommended:_ remove them in phase 3a unless the control plane's handoff redirects to Stripe.
-- 85. **Sitemap and robots list marketing pages on self-hosted installs (low)** (`src/app/sitemap.ts`, `src/app/robots.ts`): `/pricing`, `/terms` and `/privacy` redirect to `/login` without cloud mode but stay listed. _Recommended:_ filter them on `isCloudMode()`, or move them with the marketing site (sub-project 3).
-- 86. **Pending invitations do not reserve seats (low)** (`src/app/api/team/invite/route.ts`): the user limit is checked at create and again at accept, so several invitations can exceed it until accepted. _Recommended:_ count pending invitations if seats become a billed unit.
-- 87. **LDAP sync user lookup is not organization-scoped (medium)** (`src/lib/ldap.ts`): a reactivated user may belong to another organization yet takes a seat of the syncing one; cron syncs create nothing in cloud mode. _Recommended:_ scope the lookup and add an LDAP default-organization setting (with items 53 and 59).
-- 88. **Login page ignores `?error=` (low)** (`src/app/login`): `organization_required` from the OIDC and SAML callbacks is not shown. _Recommended:_ display known error keys (with item 54).
-- 89. **Setup and the admin organization route do not seed defaults (low)** (`src/app/api/setup/route.ts`, `src/app/api/organizations/route.ts`): only register calls `seedOrgDefaults`. _Recommended:_ seed inside `createOrganization`'s callers consistently.
+- 82. **Custom field forms (medium)** (`src/components/CustomFieldsSection.tsx`, the create forms): the create forms render no inputs (the values GET needs an `entityId`), and the accessory, component, licence and consumable forms never save values in edit mode. _Recommended:_ fix the section's create mode and post values in edit mode.
+- 83. **Unused `POST /api/asset/addAsset` (low)** (`src/app/api/asset/addAsset/route.ts`): no UI caller; only the Postman collection. _Recommended:_ remove it or document it as API.
+- 84. **`prisma/create-admin.ts` raw organization insert (low)**: bypasses `createOrganization`; in cloud mode its org reads as `NEW_ORG_ENTITLEMENTS` (NULL), which is correct, but it sends no `org.created` event. _Recommended:_ route it through the helper or delete it in favour of `/api/setup`.
+- 85. **Stripe CSP origins (low)** (`src/lib/csp.ts`): `form-action`, `connect-src` and `frame-src` still allow Stripe for the legacy path. _Recommended:_ remove them in phase 3a unless the control plane's handoff redirects to Stripe.
+- 86. **Sitemap and robots list marketing pages on self-hosted installs (low)** (`src/app/sitemap.ts`, `src/app/robots.ts`): `/pricing`, `/terms` and `/privacy` redirect to `/login` without cloud mode but stay listed. _Recommended:_ filter them on `isCloudMode()`, or move them with the marketing site (sub-project 3).
+- 87. **Pending invitations do not reserve seats (low)** (`src/app/api/team/invite/route.ts`): the user limit is checked at create and again at accept, so several invitations can exceed it until accepted. _Recommended:_ count pending invitations if seats become a billed unit.
+- 88. **LDAP sync user lookup is not organization-scoped (medium)** (`src/lib/ldap.ts`): a reactivated user may belong to another organization yet takes a seat of the syncing one; cron syncs create nothing in cloud mode. _Recommended:_ scope the lookup and add an LDAP default-organization setting (with items 53 and 59).
+- 89. **Login page ignores `?error=` (low)** (`src/app/login`): `organization_required` from the OIDC and SAML callbacks is not shown. _Recommended:_ display known error keys (with item 54).
+- 90. **Setup and the admin organization route do not seed defaults (low)** (`src/app/api/setup/route.ts`, `src/app/api/organizations/route.ts`): only register calls `seedOrgDefaults`. _Recommended:_ seed inside `createOrganization`'s callers consistently.
 
 Set `"version": "0.16.0"` in `package.json`.
 

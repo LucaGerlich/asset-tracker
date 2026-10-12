@@ -1461,38 +1461,40 @@ import { notifyOrgCreated } from "@/lib/control-plane/events";
 
 Edit 2. In `POST`, replace the create call as 1a left it
 
+<!-- prettier-ignore -->
 ```ts
-const organization = await prisma.organization.create({
-  data: {
-    name: validated.name,
-    slug: validated.slug,
-    description: validated.description,
-    settings: validated.settings
-      ? (validated.settings as Prisma.InputJsonValue)
-      : Prisma.JsonNull,
-  },
-  select: organizationApiSelect,
-});
+    const organization = await prisma.organization.create({
+      data: {
+        name: validated.name,
+        slug: validated.slug,
+        description: validated.description,
+        settings: validated.settings
+          ? (validated.settings as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+      },
+      select: organizationApiSelect,
+    });
 ```
 
 with
 
+<!-- prettier-ignore -->
 ```ts
-// Entitlements are never taken from the request body: only the internal
-// API sets them. The helper stores NEW_ORG_ENTITLEMENTS in cloud mode.
-const organization = await prisma.$transaction((tx) =>
-  createOrganization(tx, {
-    name: validated.name,
-    slug: validated.slug,
-    description: validated.description,
-    settings: validated.settings
-      ? (validated.settings as Prisma.InputJsonValue)
-      : undefined,
-  }),
-);
+    // Entitlements are never taken from the request body: only the internal
+    // API sets them. The helper stores NEW_ORG_ENTITLEMENTS in cloud mode.
+    const organization = await prisma.$transaction((tx) =>
+      createOrganization(tx, {
+        name: validated.name,
+        slug: validated.slug,
+        description: validated.description,
+        settings: validated.settings
+          ? (validated.settings as Prisma.InputJsonValue)
+          : undefined,
+      }),
+    );
 
-// After the commit; never throws.
-notifyOrgCreated(organization);
+    // After the commit; never throws.
+    notifyOrgCreated(organization);
 ```
 
 The `createAuditLog(...)` call and the `return NextResponse.json(organization, { status: 201 })` below stay as they are (the helper selects `organizationApiSelect`, so the response keeps the allow-list from 1a).

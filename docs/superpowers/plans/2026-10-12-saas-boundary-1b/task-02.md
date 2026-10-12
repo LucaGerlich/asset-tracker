@@ -709,90 +709,91 @@ import { checkRateLimit, createRateLimitResponse } from "@/lib/rate-limit";
 import { stubCloudMode } from "../../../../tests/setup/cloud-mode";
 ```
 
-Replace the whole phase 1a `describe("trial entitlements (phase 1a dual-write)", ...)` block (from the line `describe("trial entitlements (phase 1a dual-write)", () => {` up to, not including, the final `});` of the file) with:
+Replace the whole phase 1a `describe("trial entitlements (phase 1a dual-write)", ...)` block. It is nested inside `describe("POST /api/auth/register", ...)`, where `validBody` is defined: it starts at the indented line `  describe("trial entitlements (phase 1a dual-write)", () => {` and ends at its own closing `  });`, the line before the final `});` of the file. Replace it with the following, nested the same way:
 
+<!-- prettier-ignore -->
 ```ts
-describe("trial rule per deployment mode", () => {
-  beforeEach(() => {
-    mockPrisma.user.findFirst.mockResolvedValue(null);
-    mockPrisma.organization.create.mockResolvedValue({
-      id: "new-org-id",
-    } as any);
-    mockPrisma.user.create.mockResolvedValue({
-      userid: "new-user-id",
-    } as any);
-  });
+  describe("trial rule per deployment mode", () => {
+    beforeEach(() => {
+      mockPrisma.user.findFirst.mockResolvedValue(null);
+      mockPrisma.organization.create.mockResolvedValue({
+        id: "new-org-id",
+      } as never);
+      mockPrisma.user.create.mockResolvedValue({
+        userid: "new-user-id",
+      } as never);
+    });
 
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
 
-  async function register() {
-    await POST(
-      createMockRequest("/api/auth/register", {
-        method: "POST",
-        body: validBody,
-      }),
-    );
-    return mockPrisma.organization.create.mock.calls[0][0].data;
-  }
+    async function register() {
+      await POST(
+        createMockRequest("/api/auth/register", {
+          method: "POST",
+          body: validBody,
+        }),
+      );
+      return mockPrisma.organization.create.mock.calls[0][0].data;
+    }
 
-  it("starts the professional trial and records its entitlements in cloud mode with legacy billing", async () => {
-    stubCloudMode();
-    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_x");
+    it("starts the professional trial and records its entitlements in cloud mode with legacy billing", async () => {
+      stubCloudMode();
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_x");
 
-    const data = await register();
+      const data = await register();
 
-    expect(data).toMatchObject({
-      plan: "professional",
-      maxAssets: 5000,
-      maxUsers: 25,
-      entitlements: {
-        features: [
-          "api_keys",
-          "procurement",
-          "advanced_reports",
-          "tco_dashboard",
-          "custom_fields",
-          "workflow_automation",
-        ],
+      expect(data).toMatchObject({
+        plan: "professional",
         maxAssets: 5000,
         maxUsers: 25,
-      },
+        entitlements: {
+          features: [
+            "api_keys",
+            "procurement",
+            "advanced_reports",
+            "tco_dashboard",
+            "custom_fields",
+            "workflow_automation",
+          ],
+          maxAssets: 5000,
+          maxUsers: 25,
+        },
+      });
+      expect(data.trialEndsAt).toBeInstanceOf(Date);
     });
-    expect(data.trialEndsAt).toBeInstanceOf(Date);
-  });
 
-  it("writes no trial fields in cloud mode without legacy billing", async () => {
-    stubCloudMode();
-    vi.stubEnv("STRIPE_SECRET_KEY", "");
+    it("writes no trial fields in cloud mode without legacy billing", async () => {
+      stubCloudMode();
+      vi.stubEnv("STRIPE_SECRET_KEY", "");
 
-    expect(await register()).toEqual({
-      name: "Test Corp",
-      slug: expect.any(String),
+      expect(await register()).toEqual({
+        name: "Test Corp",
+        slug: expect.any(String),
+      });
+    });
+
+    it("creates an unlimited organization without a trial when self-hosted", async () => {
+      vi.stubEnv("CONTROL_PLANE_SECRET", "");
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_x");
+
+      expect(await register()).toEqual({
+        name: "Test Corp",
+        slug: expect.any(String),
+        maxAssets: -1,
+        maxUsers: -1,
+      });
+    });
+
+    it("ignores the deprecated SELF_HOSTED variable", async () => {
+      stubCloudMode();
+      vi.stubEnv("SELF_HOSTED", "true");
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_x");
+
+      expect(await register()).toMatchObject({ plan: "professional" });
     });
   });
-
-  it("creates an unlimited organization without a trial when self-hosted", async () => {
-    vi.stubEnv("CONTROL_PLANE_SECRET", "");
-    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_x");
-
-    expect(await register()).toEqual({
-      name: "Test Corp",
-      slug: expect.any(String),
-      maxAssets: -1,
-      maxUsers: -1,
-    });
-  });
-
-  it("ignores the deprecated SELF_HOSTED variable", async () => {
-    stubCloudMode();
-    vi.stubEnv("SELF_HOSTED", "true");
-    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_x");
-
-    expect(await register()).toMatchObject({ plan: "professional" });
-  });
-});
 ```
 
 - [ ] **Step 3: Run the tests to verify they fail**
@@ -926,44 +927,52 @@ In `src/app/api/auth/register/route.ts`:
 
 Replace `import { isSelfHosted } from "@/lib/deployment-mode";` with `import { isCloudMode } from "@/lib/deployment-mode";`.
 
+The trial block sits inside the handler's `try`, so both snippets below are quoted at their real indentation (four spaces) and marked `prettier-ignore`, which keeps the formatter from dedenting them in this file.
+
 Replace:
 
+<!-- prettier-ignore -->
 ```ts
-// SaaS mode: start with 14-day Professional trial
-// Self-hosted: unlimited, no trial
-const trialData = isSelfHosted()
-  ? { maxAssets: -1, maxUsers: -1 }
-  : {
-      plan: "professional",
-      trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-      maxAssets: 5000,
-      maxUsers: 25,
-      // Phase 1a dual-write: nothing reads it yet (SaaS boundary spec, section 7).
-      ...(isLegacyBillingActive()
-        ? {
-            entitlements: legacyPlanToEntitlements("professional", 5000, 25),
-          }
-        : {}),
-    };
+    // SaaS mode: start with 14-day Professional trial
+    // Self-hosted: unlimited, no trial
+    const trialData = isSelfHosted()
+      ? { maxAssets: -1, maxUsers: -1 }
+      : {
+          plan: "professional",
+          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          maxAssets: 5000,
+          maxUsers: 25,
+          // Phase 1a dual-write: nothing reads it yet (SaaS boundary spec, section 7).
+          ...(isLegacyBillingActive()
+            ? {
+                entitlements: legacyPlanToEntitlements(
+                  "professional",
+                  5000,
+                  25,
+                ),
+              }
+            : {}),
+        };
 ```
 
 with:
 
+<!-- prettier-ignore -->
 ```ts
-// Cloud mode with legacy billing: 14-day Professional trial, recorded in
-// the legacy columns and in entitlements. Cloud mode without legacy
-// billing: no trial; the control plane decides. Self-hosted: unlimited.
-const trialData = !isCloudMode()
-  ? { maxAssets: -1, maxUsers: -1 }
-  : isLegacyBillingActive()
-    ? {
-        plan: "professional",
-        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-        maxAssets: 5000,
-        maxUsers: 25,
-        entitlements: legacyPlanToEntitlements("professional", 5000, 25),
-      }
-    : {};
+    // Cloud mode with legacy billing: 14-day Professional trial, recorded in
+    // the legacy columns and in entitlements. Cloud mode without legacy
+    // billing: no trial; the control plane decides. Self-hosted: unlimited.
+    const trialData = !isCloudMode()
+      ? { maxAssets: -1, maxUsers: -1 }
+      : isLegacyBillingActive()
+        ? {
+            plan: "professional",
+            trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+            maxAssets: 5000,
+            maxUsers: 25,
+            entitlements: legacyPlanToEntitlements("professional", 5000, 25),
+          }
+        : {};
 ```
 
 The Stripe webhook answers 404 first while legacy billing is inactive. The three phase 1a dual-write comments no longer say "nothing reads it":
