@@ -5,6 +5,7 @@ import {
   applyBackfill,
   countUnset,
   planBackfill,
+  summarizeBackfill,
 } from "../../scripts/lib/backfill-entitlements";
 
 // Same opt-in as src/lib/__tests__/scope-automation-migration.test.ts: never
@@ -18,6 +19,8 @@ const describeDb =
 const DB_TEST = { timeout: 30_000 };
 const SCHEMA = process.env.DB_SCHEMA || "assettool";
 const t = (name: string): string => `"${SCHEMA}"."${name}"`;
+// Fails the strict entitlements schema: unknown feature, missing limits.
+const INVALID_STORED = { features: ["white_label"] };
 
 async function inRolledBackTransaction(
   fn: (client: pg.Client) => Promise<void>,
@@ -141,6 +144,12 @@ describeDb("backfill-entitlements against Postgres", () => {
             maxUsers: 7,
           }),
         });
+        const invalidStored = await insertOrg(client, {
+          plan: "starter",
+          maxAssets: 100,
+          maxUsers: 3,
+          entitlements: JSON.stringify(INVALID_STORED),
+        });
 
         const rows = await planBackfill(client, SCHEMA, {
           deploymentSelfHosted: false,
@@ -150,6 +159,11 @@ describeDb("backfill-entitlements against Postgres", () => {
         expect(byId.get(starter)?.entitlementsSet).toBe(false);
         expect(byId.get(jsonNull)?.entitlementsSet).toBe(false);
         expect(byId.get(alreadySet)?.entitlementsSet).toBe(true);
+        expect(byId.get(alreadySet)?.storedValid).toBe(true);
+        expect(byId.get(starter)?.storedValid).toBeNull();
+        expect(byId.get(jsonNull)?.storedValid).toBeNull();
+        expect(byId.get(invalidStored)?.entitlementsSet).toBe(true);
+        expect(byId.get(invalidStored)?.storedValid).toBe(false);
         expect(byId.get(unknown)?.knownPlan).toBe(false);
         expect(byId.get(starter)?.losesFeatures).toEqual([
           "scim",
@@ -160,8 +174,20 @@ describeDb("backfill-entitlements against Postgres", () => {
         ]);
 
         const ours = rows.filter((row) =>
-          [starter, enterprise, unknown, jsonNull, alreadySet].includes(row.id),
+          [
+            starter,
+            enterprise,
+            unknown,
+            jsonNull,
+            alreadySet,
+            invalidStored,
+          ].includes(row.id),
         );
+        expect(summarizeBackfill(ours)).toMatchObject({
+          organizations: 6,
+          unset: 4,
+          invalid: 1,
+        });
         // Other organizations may exist in the database: compare to a baseline.
         const unsetBefore = await countUnset(client, SCHEMA);
         expect(await applyBackfill(client, SCHEMA, ours)).toBe(4);
@@ -180,12 +206,61 @@ describeDb("backfill-entitlements against Postgres", () => {
           maxAssets: 7,
           maxUsers: 7,
         });
+        // An invalid stored value is reported, never overwritten.
+        expect(await storedEntitlements(client, invalidStored)).toEqual(
+          INVALID_STORED,
+        );
 
         expect(await applyBackfill(client, SCHEMA, ours)).toBe(0);
         expect(await countUnset(client, SCHEMA)).toBe(unsetBefore - 4);
       });
     },
   );
+
+  // A row can change between planning and apply (READ COMMITTED): the update
+  // must match the values planning read, or it would write a stale proposal.
+  const STALE_CHANGES = [
+    ["plan", `"plan" = 'professional'`],
+    ["maxAssets", `"maxAssets" = 500`],
+    ["maxUsers", `"maxUsers" = 10`],
+  ] as const;
+
+  for (const [column, assignment] of STALE_CHANGES) {
+    it(
+      `skips a row whose ${column} changed after planning`,
+      DB_TEST,
+      async () => {
+        await inRolledBackTransaction(async (client) => {
+          const id = await insertOrg(client, {
+            plan: "starter",
+            maxAssets: 100,
+            maxUsers: 3,
+          });
+          const planned = (
+            await planBackfill(client, SCHEMA, { deploymentSelfHosted: false })
+          ).filter((row) => row.id === id);
+          expect(planned).toHaveLength(1);
+
+          await client.query(
+            `UPDATE ${t("organizations")} SET ${assignment} WHERE "id" = $1::uuid`,
+            [id],
+          );
+
+          expect(await applyBackfill(client, SCHEMA, planned)).toBe(0);
+          expect(await storedEntitlements(client, id)).toBeNull();
+
+          // A fresh plan sees the changed values and may write them.
+          const replanned = (
+            await planBackfill(client, SCHEMA, { deploymentSelfHosted: false })
+          ).filter((row) => row.id === id);
+          expect(await applyBackfill(client, SCHEMA, replanned)).toBe(1);
+          expect(await storedEntitlements(client, id)).toEqual(
+            replanned[0].proposed,
+          );
+        });
+      },
+    );
+  }
 
   it(
     "counts active users and assets and measures the limit against active users",

@@ -24,6 +24,16 @@ export function parseSchemaName(value: string | undefined): string {
  */
 const TARGET_OVERRIDES = ["host", "hostaddr", "port", "dbname", "service"];
 
+/**
+ * pg-connection-string (2.14.0) re-encodes the whole string with encodeURI when
+ * it holds a space or a malformed percent escape. Every "%" then becomes "%25",
+ * so escapes in the host or database name are taken literally and no longer
+ * match what is printed here. This is the same test pg runs.
+ */
+const PG_REENCODES_INPUT = / |%[^a-f0-9]|%[a-f0-9][^a-f0-9]/i;
+
+const POSTGRES_SCHEMES = ["postgres:", "postgresql:"];
+
 function decode(value: string, what: string): string {
   try {
     return decodeURIComponent(value);
@@ -34,10 +44,13 @@ function decode(value: string, what: string): string {
 
 /**
  * Describes where pg will connect, as host:port/database/schema, never with
- * credentials. Throws unless the URL names host, port and database explicitly
- * and has no query parameter that overrides them: otherwise pg would fall back
- * to PGHOST, PGPORT or localhost, or follow the override, and the printed target
- * would differ from the real one.
+ * credentials. Throws unless the URL uses the postgres: or postgresql: scheme
+ * (pg reads socket: URLs differently), names host, port and database
+ * explicitly, and has no query parameter that overrides them: otherwise pg
+ * would fall back to PGHOST, PGPORT or localhost, or follow the override, and
+ * the printed target would differ from the real one. A percent escape in the
+ * host or database name is rejected when the string holds a space or a
+ * malformed escape elsewhere (see PG_REENCODES_INPUT).
  */
 export function describeTarget(
   connectionString: string,
@@ -49,6 +62,11 @@ export function describeTarget(
   } catch {
     // Not echoing the input: it contains credentials.
     throw new Error("The connection string is not a valid URL");
+  }
+  if (!POSTGRES_SCHEMES.includes(url.protocol)) {
+    throw new Error(
+      "The connection string must use the postgres: or postgresql: scheme",
+    );
   }
   if (!url.hostname) {
     throw new Error("The connection string must name the host explicitly");
@@ -66,6 +84,15 @@ export function describeTarget(
         `The connection string must not use the "${key}" query parameter`,
       );
     }
+  }
+  if (
+    PG_REENCODES_INPUT.test(connectionString) &&
+    (url.hostname.includes("%") || rawDatabase.includes("%"))
+  ) {
+    throw new Error(
+      "The connection string has a space or a malformed percent escape, " +
+        "so its host and database name must not contain percent escapes",
+    );
   }
   const database = decode(rawDatabase, "database name");
   // pg decodes the database name with decodeURI, which keeps encoded reserved

@@ -103,10 +103,75 @@ describe("describeTarget", () => {
     ).toThrow(/encoded reserved characters/);
   });
 
-  it("rejects a malformed percent escape", () => {
+  it("rejects a malformed percent escape that ends the string", () => {
+    expect(() =>
+      describeTarget("postgres://u:p@a.example.com:5432/my%", "public"),
+    ).toThrow(/malformed database name/);
+  });
+
+  it("rejects a malformed percent escape inside the database name", () => {
     expect(() =>
       describeTarget("postgres://u:p@a.example.com:5432/my%zzapp", "public"),
-    ).toThrow(/malformed database name/);
+    ).toThrow(/percent escapes/);
+  });
+
+  it.each([
+    "socket://u:p@a.example.com:5432/app?db=other",
+    "http://u:p@a.example.com:5432/app",
+    "mysql://u:p@a.example.com:5432/app",
+  ])("rejects a scheme other than postgres or postgresql: %s", (url) => {
+    expect(() => describeTarget(url, "public")).toThrow(
+      /postgres: or postgresql: scheme/,
+    );
+  });
+
+  it.each(["postgres", "postgresql", "POSTGRESQL"])(
+    "accepts the %s scheme",
+    (scheme) => {
+      expect(
+        describeTarget(`${scheme}://u:p@a.example.com:5432/app`, "public"),
+      ).toBe("a.example.com:5432/app/public");
+    },
+  );
+
+  it("keeps a well-formed percent escape in the database, as pg does", () => {
+    expect(
+      describeTarget("postgres://u:p@h.example.com:5432/my%2Dapp", "public"),
+    ).toBe("h.example.com:5432/my-app/public");
+  });
+
+  // pg-connection-string re-encodes the whole string with encodeURI when it
+  // holds a space or a malformed escape, which turns every "%" into "%25": the
+  // database below would then be the literal name my%2Dapp, not my-app.
+  it("rejects a percent escape in the database when another escape is malformed", () => {
+    const attempt = (): string =>
+      describeTarget("postgres://u:p%ss@h.example.com:5432/my%2Dapp", "public");
+    expect(attempt).toThrow(/percent escapes/);
+    expect(attempt).not.toThrow(/p%ss/);
+  });
+
+  it("rejects a percent escape in the host when another escape is malformed", () => {
+    expect(() =>
+      describeTarget("postgres://u:p%ss@a%2Dc.example.com:5432/app", "public"),
+    ).toThrow(/percent escapes/);
+  });
+
+  it("rejects a percent escape in the database when the string holds a space", () => {
+    expect(() =>
+      describeTarget("postgres://u:p ss@h.example.com:5432/my%2Dapp", "public"),
+    ).toThrow(/percent escapes/);
+  });
+
+  it("accepts a stray percent sign in the password, which never reaches the target", () => {
+    expect(
+      describeTarget("postgres://u:p%ss@h.example.com:5432/app", "public"),
+    ).toBe("h.example.com:5432/app/public");
+  });
+
+  it("accepts a space in the password", () => {
+    expect(
+      describeTarget("postgres://u:p ss@h.example.com:5432/app", "public"),
+    ).toBe("h.example.com:5432/app/public");
   });
 
   it("rejects an invalid URL without echoing its credentials", () => {

@@ -12,6 +12,9 @@
  * this database (not of your shell); it decides the "currentAccess" column.
  * overLimit counts active users, as phase 1b will; 0.15.0 enforcement still
  * counts all users, and "usage" reports both.
+ * The summary line counts "unset" rows (what --apply fills) and "invalid" rows
+ * (a stored value that fails the entitlements schema: reported, never touched).
+ * Phase 1b needs both at 0.
  * DATABASE_URL must name host, port and database explicitly (no host/port/dbname
  * query parameters), so the printed target is where the script really connects.
  * Bun loads .env automatically: check the printed target before applying.
@@ -23,6 +26,7 @@ import {
   countUnset,
   parseBackfillArgs,
   planBackfill,
+  summarizeBackfill,
 } from "./lib/backfill-entitlements";
 
 // Every column planBackfill reads, so a wrong schema fails before any query runs.
@@ -51,18 +55,8 @@ async function main(): Promise<void> {
     await assertColumns(client, schema, "user", ["organizationId", "isActive"]);
     const rows = await planBackfill(client, schema, { deploymentSelfHosted });
     for (const row of rows) console.log(JSON.stringify(row));
-    console.log(
-      JSON.stringify({
-        organizations: rows.length,
-        unset: rows.filter((row) => !row.entitlementsSet).length,
-        losingFeatures: rows.filter((row) => row.losesFeatures.length > 0)
-          .length,
-        overLimit: rows.filter((row) => row.overLimit).length,
-        unknownPlans: rows
-          .filter((row) => !row.knownPlan)
-          .map((row) => row.slug),
-      }),
-    );
+    const summary = summarizeBackfill(rows);
+    console.log(JSON.stringify(summary));
     if (!apply) {
       await client.query("ROLLBACK");
       console.log("Dry run: nothing written.");
@@ -72,7 +66,8 @@ async function main(): Promise<void> {
     const remaining = await countUnset(client, schema);
     await client.query("COMMIT");
     console.log(
-      `Updated ${updated} organizations; ${remaining} without entitlements.`,
+      `Updated ${updated} of ${summary.unset} organizations; ${remaining} still ` +
+        "without entitlements (rows changed since planning are skipped: run again).",
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);

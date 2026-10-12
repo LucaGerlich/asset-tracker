@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 import type { ClientBase } from "pg";
 import {
+  entitlementsSchema,
   GATED_FEATURES,
   isOverLimit,
   type Entitlements,
@@ -73,9 +74,17 @@ export interface BackfillRow {
   name: string;
   slug: string;
   plan: string;
+  /** The legacy limit columns as read; apply only writes while they are unchanged. */
+  maxAssets: number;
+  maxUsers: number;
   knownPlan: boolean;
   /** True when a non-null JSON value is stored; such rows are never touched. */
   entitlementsSet: boolean;
+  /**
+   * Whether the stored value passes the strict entitlements schema; null when
+   * nothing is stored. An invalid value is reported, never overwritten.
+   */
+  storedValid: boolean | null;
   /** What the organization can use today, given real enforcement. */
   currentAccess: GatedFeature[];
   proposed: Entitlements;
@@ -102,6 +111,15 @@ export function currentAccessFor(
   );
 }
 
+/** Classifies a stored value; null when nothing is stored. Pure, so it is tested alone. */
+export function storedEntitlementsValid(
+  entitlementsSet: boolean,
+  stored: unknown,
+): boolean | null {
+  if (!entitlementsSet) return null;
+  return entitlementsSchema.safeParse(stored).success;
+}
+
 interface OrgRow {
   id: string;
   name: string;
@@ -110,6 +128,8 @@ interface OrgRow {
   maxAssets: number;
   maxUsers: number;
   entitlementsSet: boolean;
+  /** The stored JSON as pg parsed it; null for SQL NULL and for a JSON null. */
+  stored: unknown;
   assets: number;
   users: number;
   activeUsers: number;
@@ -123,6 +143,7 @@ export async function planBackfill(
   const result = await client.query<OrgRow>(
     `SELECT o."id", o."name", o."slug", o."plan", o."maxAssets", o."maxUsers",
             (o."entitlements" IS NOT NULL AND o."entitlements" <> 'null'::jsonb) AS "entitlementsSet",
+            o."entitlements" AS "stored",
             (SELECT count(*) FROM ${qualified(schema, "asset")} a
               WHERE a."organizationId" = o."id")::int AS "assets",
             (SELECT count(*) FROM ${qualified(schema, "user")} u
@@ -147,8 +168,11 @@ export async function planBackfill(
       name: row.name,
       slug: row.slug,
       plan: row.plan,
+      maxAssets: row.maxAssets,
+      maxUsers: row.maxUsers,
       knownPlan: isLegacyPlan(row.plan),
       entitlementsSet: row.entitlementsSet,
+      storedValid: storedEntitlementsValid(row.entitlementsSet, row.stored),
       currentAccess,
       proposed,
       losesFeatures: currentAccess.filter(
@@ -167,7 +191,37 @@ export async function planBackfill(
   });
 }
 
-/** Writes proposed entitlements to rows that have none. Idempotent. */
+export interface BackfillSummary {
+  organizations: number;
+  /** Rows --apply fills. */
+  unset: number;
+  /** Rows whose stored value fails the schema: reported, never touched. */
+  invalid: number;
+  losingFeatures: number;
+  overLimit: number;
+  unknownPlans: string[];
+}
+
+/** The summary line the CLI prints; the gate to phase 1b is unset 0 and invalid 0. */
+export function summarizeBackfill(
+  rows: readonly BackfillRow[],
+): BackfillSummary {
+  return {
+    organizations: rows.length,
+    unset: rows.filter((row) => !row.entitlementsSet).length,
+    invalid: rows.filter((row) => row.storedValid === false).length,
+    losingFeatures: rows.filter((row) => row.losesFeatures.length > 0).length,
+    overLimit: rows.filter((row) => row.overLimit).length,
+    unknownPlans: rows.filter((row) => !row.knownPlan).map((row) => row.slug),
+  };
+}
+
+/**
+ * Writes proposed entitlements to rows that have none. Idempotent. The update
+ * only matches while plan, maxAssets and maxUsers still equal what planning
+ * read, so a row changed in between (a plan switch, say) is skipped, not
+ * overwritten with a stale proposal; the caller sees it in the returned count.
+ */
 export async function applyBackfill(
   client: ClientBase,
   schema: string,
@@ -180,8 +234,15 @@ export async function applyBackfill(
       `UPDATE ${qualified(schema, "organizations")}
           SET "entitlements" = $1::jsonb
         WHERE "id" = $2::uuid
-          AND ("entitlements" IS NULL OR "entitlements" = 'null'::jsonb)`,
-      [JSON.stringify(row.proposed), row.id],
+          AND ("entitlements" IS NULL OR "entitlements" = 'null'::jsonb)
+          AND "plan" = $3 AND "maxAssets" = $4 AND "maxUsers" = $5`,
+      [
+        JSON.stringify(row.proposed),
+        row.id,
+        row.plan,
+        row.maxAssets,
+        row.maxUsers,
+      ],
     );
     updated += result.rowCount ?? 0;
   }
