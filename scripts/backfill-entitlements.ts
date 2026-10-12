@@ -2,70 +2,53 @@
  * Backfill organizations.entitlements from the legacy plan columns
  * (SaaS boundary phase 1a). Run only against the SaaS database.
  *
+ * Dry run (the default; --dry-run says so explicitly), nothing is written:
  *   bun scripts/backfill-entitlements.ts --schema public --deployment-self-hosted false
+ * Apply (--confirm must repeat the printed target; not valid without --apply):
  *   bun scripts/backfill-entitlements.ts --schema public --deployment-self-hosted false \
  *     --apply --confirm "host:5432/postgres/public"
  *
  * --deployment-self-hosted is the SELF_HOSTED value of the deployment that uses
  * this database (not of your shell); it decides the "currentAccess" column.
+ * overLimit counts active users, as phase 1b will; 0.15.0 enforcement still
+ * counts all users, and "usage" reports both.
+ * DATABASE_URL must name host, port and database explicitly (no host/port/dbname
+ * query parameters), so the printed target is where the script really connects.
  * Bun loads .env automatically: check the printed target before applying.
  */
-import { parseArgs } from "node:util";
 import pg from "pg";
-import {
-  assertColumns,
-  describeTarget,
-  parseSchemaName,
-} from "./lib/db-target";
+import { assertColumns } from "./lib/db-target";
 import {
   applyBackfill,
   countUnset,
+  parseBackfillArgs,
   planBackfill,
 } from "./lib/backfill-entitlements";
 
-const REQUIRED_COLUMNS = [
+// Every column planBackfill reads, so a wrong schema fails before any query runs.
+const ORGANIZATION_COLUMNS = [
   "id",
+  "name",
   "slug",
   "plan",
   "maxAssets",
   "maxUsers",
   "entitlements",
+  "createdAt",
 ] as const;
 
-function parseBoolean(name: string, value: string | undefined): boolean {
-  if (value === "true") return true;
-  if (value === "false") return false;
-  throw new Error(`--${name} must be true or false`);
-}
-
 async function main(): Promise<void> {
-  const { values } = parseArgs({
-    options: {
-      schema: { type: "string" },
-      "deployment-self-hosted": { type: "string" },
-      apply: { type: "boolean", default: false },
-      confirm: { type: "string" },
-    },
-    strict: true,
-  });
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) throw new Error("DATABASE_URL is not set");
-  const schema = parseSchemaName(values.schema);
-  const deploymentSelfHosted = parseBoolean(
-    "deployment-self-hosted",
-    values["deployment-self-hosted"],
-  );
-  const target = describeTarget(connectionString, schema);
+  const { connectionString, schema, deploymentSelfHosted, apply, target } =
+    parseBackfillArgs(process.argv.slice(2), process.env);
   console.log(`Target: ${target}`);
-  if (values.apply && values.confirm !== target) {
-    throw new Error(`--apply requires --confirm "${target}"`);
-  }
 
   const client = new pg.Client({ connectionString });
   await client.connect();
   try {
-    await client.query(values.apply ? "BEGIN" : "BEGIN READ ONLY");
-    await assertColumns(client, schema, "organizations", REQUIRED_COLUMNS);
+    await client.query(apply ? "BEGIN" : "BEGIN READ ONLY");
+    await assertColumns(client, schema, "organizations", ORGANIZATION_COLUMNS);
+    await assertColumns(client, schema, "asset", ["organizationId"]);
+    await assertColumns(client, schema, "user", ["organizationId", "isActive"]);
     const rows = await planBackfill(client, schema, { deploymentSelfHosted });
     for (const row of rows) console.log(JSON.stringify(row));
     console.log(
@@ -80,7 +63,7 @@ async function main(): Promise<void> {
           .map((row) => row.slug),
       }),
     );
-    if (!values.apply) {
+    if (!apply) {
       await client.query("ROLLBACK");
       console.log("Dry run: nothing written.");
       return;

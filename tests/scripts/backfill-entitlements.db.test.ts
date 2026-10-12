@@ -59,6 +59,40 @@ async function insertOrg(
   return id;
 }
 
+async function insertUsers(
+  client: pg.Client,
+  organizationId: string,
+  activeFlags: readonly boolean[],
+): Promise<void> {
+  for (const isActive of activeFlags) {
+    await client.query(
+      `INSERT INTO ${t("user")}
+         ("userid", "firstname", "lastname", "creation_date", "canrequest", "isadmin", "isActive", "organizationId")
+       VALUES ($1::uuid, 'T', 'U', now(), false, false, $2, $3::uuid)`,
+      [randomUUID(), isActive, organizationId],
+    );
+  }
+}
+
+async function insertAsset(
+  client: pg.Client,
+  organizationId: string,
+): Promise<void> {
+  const unique = randomUUID();
+  await client.query(
+    `INSERT INTO ${t("asset")}
+       ("assetid", "assetname", "assettag", "serialnumber", "creation_date", "organizationId")
+     VALUES ($1::uuid, $2, $3, $4, now(), $5::uuid)`,
+    [
+      unique,
+      `asset-${unique}`,
+      `tag-${unique}`,
+      `sn-${unique}`,
+      organizationId,
+    ],
+  );
+}
+
 async function storedEntitlements(
   client: pg.Client,
   id: string,
@@ -128,6 +162,8 @@ describeDb("backfill-entitlements against Postgres", () => {
         const ours = rows.filter((row) =>
           [starter, enterprise, unknown, jsonNull, alreadySet].includes(row.id),
         );
+        // Other organizations may exist in the database: compare to a baseline.
+        const unsetBefore = await countUnset(client, SCHEMA);
         expect(await applyBackfill(client, SCHEMA, ours)).toBe(4);
 
         expect(await storedEntitlements(client, enterprise)).toMatchObject({
@@ -146,37 +182,43 @@ describeDb("backfill-entitlements against Postgres", () => {
         });
 
         expect(await applyBackfill(client, SCHEMA, ours)).toBe(0);
-        expect(await countUnset(client, SCHEMA)).toBe(0);
+        expect(await countUnset(client, SCHEMA)).toBe(unsetBefore - 4);
       });
     },
   );
 
   it(
-    "counts active users and assets and flags orgs over the proposed limits",
+    "counts active users and assets and measures the limit against active users",
     DB_TEST,
     async () => {
       await inRolledBackTransaction(async (client) => {
-        const org = await insertOrg(client, {
+        const atLimit = await insertOrg(client, {
+          plan: "starter",
+          maxAssets: 100,
+          maxUsers: 2,
+        });
+        const aboveLimit = await insertOrg(client, {
           plan: "starter",
           maxAssets: 100,
           maxUsers: 1,
         });
-        for (const isActive of [true, true, false]) {
-          await client.query(
-            `INSERT INTO ${t("user")}
-               ("userid", "firstname", "lastname", "creation_date", "canrequest", "isadmin", "isActive", "organizationId")
-             VALUES ($1::uuid, 'T', 'U', now(), false, false, $2, $3::uuid)`,
-            [randomUUID(), isActive, org],
-          );
+        for (const org of [atLimit, aboveLimit]) {
+          // Two active users and one inactive: 3 in total, 2 active.
+          await insertUsers(client, org, [true, true, false]);
+          await insertAsset(client, org);
         }
 
         const rows = await planBackfill(client, SCHEMA, {
           deploymentSelfHosted: false,
         });
-        const row = rows.find((candidate) => candidate.id === org);
+        const byId = new Map(rows.map((row) => [row.id, row]));
+        const usage = { assets: 1, users: 3, activeUsers: 2 };
 
-        expect(row?.usage).toEqual({ assets: 0, users: 3, activeUsers: 2 });
-        expect(row?.overLimit).toBe(true);
+        // 2 active users fit maxUsers 2; counting all 3 would wrongly flag it.
+        expect(byId.get(atLimit)?.usage).toEqual(usage);
+        expect(byId.get(atLimit)?.overLimit).toBe(false);
+        expect(byId.get(aboveLimit)?.usage).toEqual(usage);
+        expect(byId.get(aboveLimit)?.overLimit).toBe(true);
       });
     },
   );

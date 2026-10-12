@@ -1,3 +1,4 @@
+import { parseArgs } from "node:util";
 import type { ClientBase } from "pg";
 import {
   GATED_FEATURES,
@@ -10,7 +11,62 @@ import {
   isLegacyPlan,
   legacyPlanToEntitlements,
 } from "@/lib/legacy-billing";
-import { qualified } from "./db-target";
+import { describeTarget, parseSchemaName, qualified } from "./db-target";
+
+export interface BackfillArgs {
+  connectionString: string;
+  schema: string;
+  deploymentSelfHosted: boolean;
+  apply: boolean;
+  /** host:port/database/schema, exactly what --confirm must repeat to apply. */
+  target: string;
+}
+
+function parseBoolean(name: string, value: string | undefined): boolean {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`--${name} must be true or false`);
+}
+
+/**
+ * The CLI's argument and environment checks, kept pure so they can be tested.
+ * Dry run is the default; --apply must repeat the printed target in --confirm.
+ */
+export function parseBackfillArgs(
+  argv: readonly string[],
+  env: Readonly<Record<string, string | undefined>>,
+): BackfillArgs {
+  const { values } = parseArgs({
+    args: [...argv],
+    options: {
+      schema: { type: "string" },
+      "deployment-self-hosted": { type: "string" },
+      apply: { type: "boolean", default: false },
+      "dry-run": { type: "boolean", default: false },
+      confirm: { type: "string" },
+    },
+    strict: true,
+  });
+  const connectionString = env.DATABASE_URL;
+  if (!connectionString) throw new Error("DATABASE_URL is not set");
+  const schema = parseSchemaName(values.schema);
+  const deploymentSelfHosted = parseBoolean(
+    "deployment-self-hosted",
+    values["deployment-self-hosted"],
+  );
+  const apply = values.apply === true;
+  if (apply && values["dry-run"]) {
+    throw new Error("--dry-run and --apply cannot be combined");
+  }
+  if (values.confirm !== undefined && !apply) {
+    throw new Error("--confirm is only valid together with --apply");
+  }
+  const target = describeTarget(connectionString, schema);
+  if (apply && values.confirm !== target) {
+    throw new Error(`--apply requires --confirm "${target}"`);
+  }
+  return { connectionString, schema, deploymentSelfHosted, apply, target };
+}
 
 export interface BackfillRow {
   id: string;
