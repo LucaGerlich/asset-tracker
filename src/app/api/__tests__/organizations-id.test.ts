@@ -22,6 +22,7 @@ import {
 import { createAuditLog } from "@/lib/audit-log";
 import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 import { updateOrganizationSchema } from "@/lib/validation-organization";
+import { expectAllowListSelect } from "./org-select-assertions";
 
 const mockPrisma = vi.mocked(prisma, true);
 const params = { params: Promise.resolve({ id: "org-uuid-001" }) };
@@ -310,5 +311,23 @@ describe("DELETE /api/organizations/[id]", () => {
     const res = await DELETE(req, params);
     expect(res.status).toBe(200);
     expect(requireWritableOrg).not.toHaveBeenCalled();
+  });
+});
+
+describe("organization responses never carry billing or control-plane columns", () => {
+  it("GET selects only tenant-visible fields", async () => {
+    await GET(createMockRequest("/api/organizations/org-uuid-001"), params);
+    expectAllowListSelect(mockPrisma.organization.findUnique.mock.calls[0][0]);
+  });
+
+  it("PUT returns only tenant-visible fields", async () => {
+    await PUT(
+      createMockRequest("/api/organizations/org-uuid-001", {
+        method: "PUT",
+        body: { name: "Acme" },
+      }),
+      params,
+    );
+    expectAllowListSelect(mockPrisma.organization.update.mock.calls[0][0]);
   });
 });
