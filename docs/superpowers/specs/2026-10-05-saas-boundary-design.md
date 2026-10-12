@@ -1,10 +1,13 @@
 # SaaS Boundary in Core: Design
 
-- **Date:** 2026-10-05, revised 2026-10-06 after a multi-agent review
-- **Status:** Revised; pending written-spec review
+- **Date:** 2026-10-05, revised 2026-10-06 after a multi-agent review, revised
+  2026-10-12 after mapping it against the 0.14.0 code (see "Revision 3")
+- **Status:** Revision 3; plans written (`docs/superpowers/plans/2026-10-12-saas-boundary-1a.md`,
+  `...-1b.md`), pending owner review
 - **Sub-project:** 1 of 5 (see "Programme context")
 - **Prerequisite:** Phase 0 security fixes
-  (`2026-10-06-phase0-tenant-security-design.md`) are merged and released.
+  (`2026-10-06-phase0-tenant-security-design.md`) are merged and released
+  (done: 0.14.0, 2026-10-12).
 
 ## Goal
 
@@ -479,3 +482,82 @@ TDD; unit tests first. Existing tests that change: `org-suspension.test.ts`,
 - Infrastructure, including a separate Preview database (sub-project 4).
 - IP allowlists, mutual TLS, a message queue, optimistic-concurrency revisions
   on internal writes, and sign-in from the control plane back into the app.
+
+## Revision 3 (2026-10-12): corrections from the code map
+
+A read-only map of the 0.14.0 code against this spec found the points below. Where
+they contradict earlier sections, this section wins. Both plans implement it.
+
+**Facts the spec had wrong**
+
+- Procurement is gated at 13 call sites in 10 route files (not "13 files"), and its 5
+  pages are not gated at all.
+- Only `api_keys` and `procurement` are enforced per plan today. `scim`,
+  `advanced_reports`, `tco_dashboard`, `custom_fields` and `workflow_automation` have
+  no gate, so phase 1b adds new gates rather than switching reads, and starter orgs
+  lose those features at the switch. The backfill report shows this per org
+  (`losesFeatures`). The hosted deployment has no paying customers yet, so no
+  grandfathering is planned.
+- No code creates SCIM tokens, so `scim` has no config-time gate. Only the use-time
+  gate in `authenticateScim` exists; the legacy global token is refused in cloud mode.
+- "Advanced reports" is a tab of `/reports`, not a page: the tab is gated, the page is
+  not. `tco_dashboard` has four consumers (`/tco`, the Reports TCO tab, the dashboard
+  widget and the scheduled `tco` report); all four are gated.
+- React `cache()` does not deduplicate in Route Handlers or crons. Entitlements are
+  therefore loaded with the user in the existing org select (like `orgStatus`), and
+  org-id reads (SCIM, crons, syncs) use a per-run memo. `cache()` is used only for
+  server pages.
+- `server-only` is not installed. The repo convention (`*-shared.ts` plus a server
+  module) is kept instead.
+- The signup trial, check-trials and the webhook each decide "billing is on"
+  differently. One `isLegacyBillingActive()` (`STRIPE_SECRET_KEY` set) replaces them.
+- `STRIPE_*` are required at startup today unless `SELF_HOSTED=true`. Phase 1b makes
+  them optional.
+- The `selfHosted` feature flag is live: four marketing pages redirect to `/login` with
+  it. Phase 1b replaces it with `!isCloudMode()`.
+- Sign-in is not blocked for locked orgs (correction to section 3): the API guards and
+  the proxy redirect to `/suspended` enforce the lock, which keeps billing reachable.
+- Phase 0 shipped migration `20261007_scope_automation_custom_fields`, not `20261006_...`.
+
+**Decisions taken while planning**
+
+- Phase 1a does not touch `deployment-mode.ts`. Rewriting it before production has
+  `CONTROL_PLANE_SECRET` would make the SaaS unrestricted; `isCloudMode()` ships in 1b.
+- `organizationApiSelect` ships in 1a with the migration, because the four organization
+  routes return whole rows and would leak the new columns immediately.
+- The backfill script uses raw `pg` with a required `--schema`, a printed target and
+  `--apply --confirm "<target>"`, because the generated Prisma client bakes the schema
+  name in at build time. It takes the deployment's `SELF_HOSTED` value as a flag.
+- Route guard: `requireFeature(user, feature)` in `api-auth.ts` replaces
+  `requirePlanFeature`; `requireEntitlement(orgId, feature)` serves callers without a
+  user.
+- Typed denials: `EntitlementError` and `LimitError` extend `ForbiddenError`; new
+  codes `limit_reached`, `organization_required`, `session_required` and `bad_origin`.
+- Limits: `max: null` means unlimited (no `-1`), only active users count, every check
+  takes an explicit org id, and reactivation (SCIM `active: true`, LDAP) is checked like
+  creation. In cloud mode an org-less creation is refused with `organization_required`:
+  the OIDC and SAML callbacks refuse, and the LDAP and Intune crons skip and log.
+- In phase 1b, with legacy billing inactive the Stripe webhook answers 404 and
+  check-trials does nothing. `billingEnabled` means cloud mode with `BILLING_URL` set or
+  legacy billing active. When both are set, `/suspended` uses the handoff.
+- Revoked features: create and edit are blocked; list, deactivate and delete stay open.
+  Gated pages render a neutral "not available for your organization" panel, and the
+  nav hides gated items through a small `/api/entitlements` endpoint.
+- Custom fields: `GET /api/custom-fields/values` sends `X-Custom-Fields-Editable`, and the
+  form section falls back to its read-only mode. Pre-existing defects in the custom-field
+  forms are out of scope (debt register).
+- Internal API: `requireControlPlane` uses its own constant-time comparison (the cron
+  helper's default parameter would accept `CRON_SECRET` when the previous secret is
+  unset). The list endpoint pages with a Prisma cursor on `id`, ordered by
+  `createdAt, id`; `createdAfter` is inclusive. `billingContact` is the oldest active
+  admin with a non-empty email (ties by user id), else `null`. `overLimit` uses the
+  effective entitlements and is strictly greater than a limit. Audit entries keep the
+  existing spelling `entity: "Organization"`.
+- Startup guard: runs only in the production runtime, outside the build phase. A failed
+  marker read is logged and the server starts; only a stored `cloud` marker without a
+  secret refuses. The marker is written by `scripts/set-deployment-mode.ts`, which reuses
+  the backfill's target guard. The settings page and the demo reset leave it alone.
+- The preflight runs the full `validateEnvironment()` with `NODE_ENV` forced to
+  `production`, only in the `vercel.json` production branch.
+- Handoff: the CSP builder moves to `src/lib/csp.ts`; `Origin` is compared with
+  `new URL(getBaseUrl()).origin`.
