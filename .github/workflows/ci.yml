@@ -31,6 +31,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bunx prisma generate
       - run: bunx tsc --noEmit
+      # Bundles the backfill script without running it: proves Bun resolves its
+      # @/ imports (tsconfig paths); Vitest uses its own alias for them.
+      - run: bun build scripts/backfill-entitlements.ts --target=bun --outfile /tmp/backfill-entitlements.js
 
   unit-tests:
     name: Unit Tests
