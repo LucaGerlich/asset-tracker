@@ -1,7 +1,17 @@
 import prisma from "../../../../lib/prisma";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
+import {
+  assertEmailAssignable,
+  EmailConflictError,
+} from "@/lib/email-ownership";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { hashPassword } from "@/lib/auth-utils";
 import { createUserSchema } from "@/lib/validation";
@@ -23,6 +33,7 @@ export async function POST(request) {
 
     // Require user:create permission
     const admin = await requirePermission("user:create");
+    await requireWritableOrg(admin);
 
     const limitCheck = await checkUserLimit();
     if (!limitCheck.allowed) {
@@ -53,12 +64,20 @@ export async function POST(request) {
       canrequest = true,
       lastname,
       firstname,
-      email,
+      email: requestedEmail,
       lan,
       password,
       passwordMode = "manual",
       accessExpiresAt,
     } = validationResult.data;
+
+    // Reject reserved and already-used addresses; from here on `email` is the
+    // normalised form that gets stored and used for invitations.
+    const email = requestedEmail
+      ? await assertEmailAssignable(requestedEmail, {
+          callerIsSuperAdmin: await isSuperAdmin(admin),
+        })
+      : requestedEmail;
 
     // Modes that need email
     if (passwordMode !== "manual" && !email) {
@@ -233,14 +252,12 @@ export async function POST(request) {
       { status: 201 },
     );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
+    if (error instanceof EmailConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     logger.error("POST /api/user/addUser error", { error });
-
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
 
     if (error instanceof Object && "code" in error && error.code === "P2002") {
       return NextResponse.json(

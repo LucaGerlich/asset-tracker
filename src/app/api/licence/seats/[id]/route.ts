@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
@@ -57,7 +62,7 @@ export async function GET(
     }
 
     // Verify the parent licence belongs to the user's organization
-    if (orgId && assignment.licence.organizationId !== orgId) {
+    if ((assignment.licence.organizationId ?? null) !== (orgId ?? null)) {
       return NextResponse.json(
         { error: "Seat assignment not found" },
         { status: 404 },
@@ -66,14 +71,9 @@ export async function GET(
 
     return NextResponse.json(assignment, { status: 200 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/licence/seats/[id] error", { error: e });
-
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to fetch seat assignment" },
@@ -91,6 +91,7 @@ export async function DELETE(
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const admin = await requirePermission("license:assign");
+    await requireWritableOrg(admin);
 
     const { id } = await params;
     const orgCtx = await getOrganizationContext();
@@ -124,7 +125,7 @@ export async function DELETE(
     }
 
     // Verify the parent licence belongs to the user's organization
-    if (orgId && existing.licence.organizationId !== orgId) {
+    if ((existing.licence.organizationId ?? null) !== (orgId ?? null)) {
       return NextResponse.json(
         { error: "Seat assignment not found" },
         { status: 404 },
@@ -161,14 +162,18 @@ export async function DELETE(
     const userName =
       `${existing.user.firstname ?? ""} ${existing.user.lastname ?? ""}`.trim();
 
-    triggerWebhook("license.seat_unassigned", {
-      assignmentId: id,
-      licenceId: existing.licenceId,
-      userId: existing.userId,
-      seatNumber: existing.seatNumber,
-      userName,
-      licenceName: existing.licence.licencekey,
-    }).catch(() => {});
+    triggerWebhook(
+      "license.seat_unassigned",
+      {
+        assignmentId: id,
+        licenceId: existing.licenceId,
+        userId: existing.userId,
+        seatNumber: existing.seatNumber,
+        userName,
+        licenceName: existing.licence.licencekey,
+      },
+      existing.licence.organizationId,
+    ).catch(() => {});
 
     // Slack/Teams notifications
     notifyIntegrations("license.seat_unassigned", {
@@ -182,14 +187,10 @@ export async function DELETE(
 
     return NextResponse.json(updated, { status: 200 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("DELETE /api/licence/seats/[id] error", { error: e });
 
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json(
         { error: "Seat assignment not found" },

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requirePermission } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   parsePaginationParams,
   buildPrismaArgs,
   buildPaginatedResponse,
 } from "@/lib/pagination";
 import { logger } from "@/lib/logger";
-import { getOrganizationContext } from "@/lib/organization-context";
 
 const AUDIT_LOG_SORT_FIELDS = [
   "createdAt",
@@ -19,7 +19,7 @@ const AUDIT_LOG_SORT_FIELDS = [
 
 export async function GET(req: Request) {
   try {
-    await requirePermission("audit:view");
+    const user = await requirePermission("audit:view");
 
     const { searchParams } = new URL(req.url);
     const params = parsePaginationParams(searchParams);
@@ -32,14 +32,17 @@ export async function GET(req: Request) {
 
     const prismaArgs = buildPrismaArgs(params, AUDIT_LOG_SORT_FIELDS);
 
-    const where: Record<string, unknown> = {};
+    // A caller without an organization owns no audit logs. Never drop the
+    // filter: it would list every organization's trail.
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return NextResponse.json(buildPaginatedResponse([], 0, params), {
+        status: 200,
+      });
+    }
 
     // Scope audit logs to the caller's organization through the user relation
-    const orgCtx = await getOrganizationContext();
-    const orgId = orgCtx?.organization?.id;
-    if (orgId) {
-      where.user = { organizationId: orgId };
-    }
+    const where: Record<string, unknown> = { user: { organizationId: orgId } };
 
     const userId = searchParams.get("userId");
     if (userId) {
@@ -111,13 +114,9 @@ export async function GET(req: Request) {
       status: 200,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/admin/audit-logs error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch audit logs" },
       { status: 500 },

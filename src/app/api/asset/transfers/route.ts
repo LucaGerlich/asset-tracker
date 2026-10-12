@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 // Optional query: ?assetId=<uuid> to filter by asset
@@ -22,15 +27,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json(transfers, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/asset/transfers error", { error });
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
     return NextResponse.json(
       { error: "Failed to fetch transfers" },
       { status: 500 },
@@ -45,6 +44,7 @@ export async function POST(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     const transferredBy = user.id!;
     const body = await req.json();
@@ -215,15 +215,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(transfer, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/asset/transfers error", { error });
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
     return NextResponse.json(
       { error: "Failed to create transfer" },
       { status: 500 },

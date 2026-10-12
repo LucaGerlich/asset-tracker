@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireNotDemoMode, requireSuperAdmin } from "@/lib/api-auth";
+import {
+  requireNotDemoMode,
+  requireSuperAdmin,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 export async function POST(req: Request) {
@@ -8,7 +13,8 @@ export async function POST(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireSuperAdmin();
+    const user = await requireSuperAdmin();
+    await requireWritableOrg(user);
 
     const body = await req.json();
     const {
@@ -141,6 +147,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/admin/settings/notifications error", { error });
     return NextResponse.json(
       { error: "Failed to save notification settings" },

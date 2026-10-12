@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
 import { sendEmail } from "@/lib/email/service";
@@ -20,6 +25,7 @@ export async function POST(request: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     if (!user.id || !user.organizationId) {
       return NextResponse.json(
@@ -33,6 +39,29 @@ export async function POST(request: NextRequest) {
 
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    }
+
+    // An invitation can only grant a role of the inviter's own organization or
+    // a global one; otherwise an admin could hand out another tenant's role.
+    if (roleId) {
+      const role =
+        typeof roleId === "string"
+          ? await prisma.role.findFirst({
+              where: {
+                id: roleId,
+                OR: [
+                  { organizationId: user.organizationId },
+                  { organizationId: null },
+                ],
+              },
+            })
+          : null;
+      if (!role) {
+        return NextResponse.json(
+          { error: "Role not found in your organization" },
+          { status: 400 },
+        );
+      }
     }
 
     const existingInvitation = await prisma.teamInvitation.findFirst({
@@ -50,7 +79,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const limitCheck = await checkUserLimit();
+    const limitCheck = await checkUserLimit(user.organizationId);
     if (!limitCheck.allowed) {
       return NextResponse.json(
         {
@@ -118,14 +147,8 @@ export async function POST(request: NextRequest) {
     const { token: _token, ...safeInvitation } = invitation;
     return NextResponse.json(safeInvitation, { status: 201 });
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error creating invitation", { error });
     return NextResponse.json(
       { error: "Internal server error" },
@@ -140,6 +163,7 @@ export async function PUT(request: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     if (!user.organizationId) {
       return NextResponse.json(
@@ -193,14 +217,8 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(updated);
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error updating invitation", { error });
     return NextResponse.json(
       { error: "Internal server error" },
@@ -235,14 +253,8 @@ export async function GET() {
 
     return NextResponse.json(invitations);
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching invitations", { error });
     return NextResponse.json(
       { error: "Internal server error" },

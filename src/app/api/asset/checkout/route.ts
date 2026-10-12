@@ -4,7 +4,9 @@ import {
   requireApiAuth,
   requirePermission,
   requireNotDemoMode,
+  requireWritableOrg,
 } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { validateBody, assetCheckoutSchema } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -60,14 +62,10 @@ export async function GET(req: Request) {
 
     return NextResponse.json(checkouts, { status: 200 });
   } catch (error: unknown) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     const message = error instanceof Error ? error.message : "Unknown error";
     logger.error("GET /api/asset/checkout error", { error: message });
-    if (message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (message.includes("Forbidden")) {
-      return NextResponse.json({ error: message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch checkouts" },
       { status: 500 },
@@ -83,6 +81,7 @@ export async function POST(req: Request) {
     if (demoBlock) return demoBlock;
     // Checkout requires the asset:assign permission (matches the bulk route).
     const user = await requirePermission("asset:assign");
+    await requireWritableOrg(user);
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
@@ -182,13 +181,17 @@ export async function POST(req: Request) {
       },
     }).catch(logCatchError("Audit log failed"));
 
-    triggerWebhook("asset.checked_out", {
-      assetId,
-      assetName: asset.assetname,
-      checkoutId: checkout.id,
-      checkedOutToType,
-      targetLabel,
-    }).catch(() => {});
+    triggerWebhook(
+      "asset.checked_out",
+      {
+        assetId,
+        assetName: asset.assetname,
+        checkoutId: checkout.id,
+        checkedOutToType,
+        targetLabel,
+      },
+      asset.organizationId,
+    ).catch(() => {});
 
     // Slack/Teams notification
     notifyIntegrations("asset.checked_out", {
@@ -200,14 +203,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json(checkout, { status: 201 });
   } catch (error: unknown) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     const message = error instanceof Error ? error.message : "Unknown error";
     logger.error("POST /api/asset/checkout error", { error: message });
-    if (message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (message.includes("Forbidden")) {
-      return NextResponse.json({ error: message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to create checkout" },
       { status: 500 },

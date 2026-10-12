@@ -1,7 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   getOrganizationContext,
@@ -78,9 +83,10 @@ export async function GET(req: NextRequest) {
       // Use PostgreSQL full-text search via the generated search_vector column
       const tsQuery = search.trim().split(/\s+/).join(" & ");
       const matchingIds = await prisma
-        .$queryRawUnsafe<
-          Array<{ assetid: string }>
-        >(`SELECT "assetid" FROM "asset" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`, tsQuery)
+        .$queryRawUnsafe<Array<{ assetid: string }>>(
+          `SELECT "assetid" FROM "asset" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`,
+          tsQuery,
+        )
         .catch(() => null);
 
       if (matchingIds && matchingIds.length > 0) {
@@ -139,13 +145,9 @@ export async function GET(req: NextRequest) {
       status: 200,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/asset error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch assets" },
       { status: 500 },
@@ -158,7 +160,8 @@ export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requirePermission("asset:create");
+    const user = await requirePermission("asset:create");
+    await requireWritableOrg(user);
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
@@ -209,11 +212,15 @@ export async function POST(req: NextRequest) {
       entityId: created.assetid,
       details: { assetname: created.assetname, assettag: created.assettag },
     }).catch(logCatchError("Audit log failed"));
-    triggerWebhook("asset.created", {
-      assetId: created.assetid,
-      assetName: created.assetname,
-      assetTag: created.assettag,
-    }).catch(() => {});
+    triggerWebhook(
+      "asset.created",
+      {
+        assetId: created.assetid,
+        assetName: created.assetname,
+        assetTag: created.assettag,
+      },
+      created.organizationId,
+    ).catch(() => {});
     notifyIntegrations("asset.created", {
       assetName: created.assetname,
       assetTag: created.assettag,
@@ -221,13 +228,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/asset error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to create asset" },
       { status: 500 },
@@ -241,7 +244,8 @@ export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requirePermission("asset:edit");
+    const user = await requirePermission("asset:edit");
+    await requireWritableOrg(user);
     const body = await req.json();
     const { _expectedVersion, ...bodyWithoutVersion } = body;
     const validated = validateBody(updateAssetSchema, bodyWithoutVersion);
@@ -290,11 +294,15 @@ export async function PUT(req: NextRequest) {
       before: toRecord(existing),
       after: toRecord(updated),
     }).catch(logCatchError("Audit log failed"));
-    triggerWebhook("asset.updated", {
-      assetId: updated.assetid,
-      assetName: updated.assetname,
-      changes: Object.keys(data),
-    }).catch(() => {});
+    triggerWebhook(
+      "asset.updated",
+      {
+        assetId: updated.assetid,
+        assetName: updated.assetname,
+        changes: Object.keys(data),
+      },
+      updated.organizationId,
+    ).catch(() => {});
     notifyIntegrations("asset.updated", {
       assetName: updated.assetname,
       assetTag: updated.assettag,
@@ -302,13 +310,9 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(updated, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/asset error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to update asset" },
       { status: 500 },

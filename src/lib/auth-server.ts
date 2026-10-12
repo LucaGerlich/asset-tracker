@@ -29,6 +29,7 @@ import {
 } from "@/lib/auth-two-factor-audit";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { resolveSsoUserData } from "@/lib/sso-provisioning";
+import { USER_ADDITIONAL_FIELDS } from "@/lib/auth-user-fields";
 import { parseDeviceName, parseBrowser } from "@/lib/session-tracking";
 import {
   recordLoginAttempt,
@@ -197,6 +198,10 @@ export const auth = betterAuth({
 
   emailAndPassword: {
     enabled: true,
+    // Sign-up goes through /api/auth/register (org creation, rate limiting,
+    // ALLOW_PUBLIC_SIGNUP); BetterAuth's own endpoint stays off. The
+    // /sign-up/email hook below remains as defence in depth.
+    disableSignUp: true,
     minPasswordLength: 12,
     password: {
       async hash(password: string) {
@@ -221,51 +226,7 @@ export const auth = betterAuth({
       createdAt: "creation_date",
       updatedAt: "updatedAt",
     },
-    additionalFields: {
-      username: {
-        type: "string",
-        required: false,
-        input: true,
-      },
-      lastname: {
-        type: "string",
-        required: false,
-        defaultValue: "",
-        input: true,
-      },
-      isadmin: {
-        type: "boolean",
-        required: false,
-        defaultValue: false,
-      },
-      canrequest: {
-        type: "boolean",
-        required: false,
-        defaultValue: true,
-      },
-      organizationId: {
-        type: "string",
-        required: false,
-      },
-      departmentId: {
-        type: "string",
-        required: false,
-      },
-      authProvider: {
-        type: "string",
-        required: false,
-        defaultValue: "local",
-      },
-      isActive: {
-        type: "boolean",
-        required: false,
-        defaultValue: true,
-      },
-      password: {
-        type: "string",
-        required: false,
-      },
-    },
+    additionalFields: USER_ADDITIONAL_FIELDS,
   },
 
   account: {

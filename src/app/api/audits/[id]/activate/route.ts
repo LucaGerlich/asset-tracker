@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { logger } from "@/lib/logger";
 
@@ -14,9 +19,22 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("audit_campaign:edit");
+    await requireWritableOrg(authUser);
     const { id } = await params;
 
-    const campaign = await prisma.auditCampaign.findUnique({ where: { id } });
+    // A caller without an organization owns no campaigns; never widen the
+    // lookup to every organization.
+    const orgId = authUser.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Audit campaign not found" },
+        { status: 404 },
+      );
+    }
+
+    const campaign = await prisma.auditCampaign.findFirst({
+      where: { id, organizationId: orgId },
+    });
 
     if (!campaign) {
       return NextResponse.json(
@@ -38,9 +56,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     } else if (campaign.scopeType === "category" && campaign.scopeId) {
       assetWhere.assetcategorytypeid = campaign.scopeId;
     }
-    if (campaign.organizationId) {
-      assetWhere.organizationId = campaign.organizationId;
-    }
+    assetWhere.organizationId = orgId;
 
     const assets = await prisma.asset.findMany({
       where: assetWhere,
@@ -74,14 +90,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       { message: "Campaign activated", assetsCount: assets.length },
       { status: 200 },
     );
-  } catch (e: any) {
-    logger.error("POST /api/audits/[id]/activate error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
+  } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
+    logger.error("POST /api/audits/[id]/activate error", { error });
     return NextResponse.json(
       { error: "Failed to activate audit campaign" },
       { status: 500 },

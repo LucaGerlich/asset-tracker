@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { notifyTicketComment } from "@/lib/notifications";
 
@@ -15,6 +20,7 @@ export async function POST(
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const { id } = await params;
     const body = await req.json();
 
@@ -27,9 +33,20 @@ export async function POST(
       );
     }
 
+    // A ticket belongs to the organization of its creator. A caller without an
+    // organization owns none: never widen the lookup to every organization
+    // (the comment is also emailed to the creator).
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    }
+
     // Verify user has access to this ticket
-    const ticket = await prisma.tickets.findUnique({
-      where: { id },
+    const ticket = await prisma.tickets.findFirst({
+      where: {
+        id,
+        user_tickets_createdByTouser: { organizationId: orgId },
+      },
       include: {
         user_tickets_createdByTouser: {
           select: {
@@ -96,10 +113,9 @@ export async function POST(
 
     return NextResponse.json(ticketComment, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/tickets/[id]/comments error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to add comment" },
       { status: 500 },

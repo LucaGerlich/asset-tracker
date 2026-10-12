@@ -140,3 +140,44 @@ describe("checkUserLimit", () => {
     expect(result.max).toBe(10);
   });
 });
+
+describe("explicit organizationId", () => {
+  it("checkUserLimit uses the given org instead of the session's", async () => {
+    mockGetOrgContext.mockResolvedValue({
+      organization: { id: "session-org" },
+    } as any);
+    mockPrisma.organization.findUnique.mockResolvedValue({
+      maxUsers: 10,
+    } as any);
+    mockPrisma.user.count.mockResolvedValue(10);
+
+    const result = await checkUserLimit("invite-org");
+
+    expect(result.allowed).toBe(false);
+    expect(mockGetOrgContext).not.toHaveBeenCalled();
+    expect(mockPrisma.organization.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "invite-org" } }),
+    );
+    expect(mockPrisma.user.count).toHaveBeenCalledWith({
+      where: { organizationId: "invite-org" },
+    });
+  });
+
+  it("checkAssetLimit uses the given org instead of the session's", async () => {
+    mockGetOrgContext.mockResolvedValue({
+      organization: { id: "session-org" },
+    } as any);
+    mockPrisma.organization.findUnique.mockResolvedValue({
+      maxAssets: 100,
+    } as any);
+    mockPrisma.asset.count.mockResolvedValue(3);
+
+    const result = await checkAssetLimit("other-org");
+
+    expect(result.allowed).toBe(true);
+    expect(mockGetOrgContext).not.toHaveBeenCalled();
+    expect(mockPrisma.asset.count).toHaveBeenCalledWith({
+      where: { organizationId: "other-org" },
+    });
+  });
+});

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -49,12 +50,9 @@ export async function GET(req: NextRequest) {
       status: 200,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error finding UserAsset", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-      });
-    }
     return new Response(JSON.stringify({ error: "Error finding UserAsset" }), {
       status: 500,
     });

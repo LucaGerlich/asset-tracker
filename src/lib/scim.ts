@@ -7,6 +7,9 @@
 
 import prisma from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
+import { EmailConflictError } from "@/lib/email-ownership";
+import { ForbiddenError } from "@/lib/errors";
+import { getOrgSuspensionStatus } from "@/lib/org-suspension";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
@@ -15,9 +18,29 @@ export interface ScimAuthResult {
 }
 
 /**
+ * SCIM authenticates by token, not session, so the org-suspension rules the
+ * session guards enforce are applied here instead: a locked-out org is denied
+ * entirely, a read-only org may still read (GET) but not provision.
+ */
+async function rejectSuspendedOrg(
+  organizationId: string,
+  method: string,
+): Promise<NextResponse | ScimAuthResult> {
+  const status = await getOrgSuspensionStatus(organizationId);
+  if (status === "locked_out" || (status === "read_only" && method !== "GET")) {
+    return NextResponse.json(scimError("Organization suspended", 403), {
+      status: 403,
+      headers: scimHeaders(),
+    });
+  }
+  return { organizationId };
+}
+
+/**
  * Validate SCIM bearer token from Authorization header.
  * Tokens are stored per-org in the scim_tokens table.
- * Returns the matched organization ID on success, or a NextResponse error.
+ * Returns the matched organization ID on success, or a NextResponse error
+ * (401 for a bad token, 403 when the token's organization is suspended).
  */
 export async function authenticateScim(
   req: Request,
@@ -77,7 +100,7 @@ export async function authenticateScim(
         headers: scimHeaders(),
       });
     }
-    return { organizationId: firstOrg.id };
+    return rejectSuspendedOrg(firstOrg.id, req.method);
   }
 
   const tokenBuf = Buffer.from(token);
@@ -88,7 +111,7 @@ export async function authenticateScim(
       tokenBuf.length === storedBuf.length &&
       crypto.timingSafeEqual(tokenBuf, storedBuf)
     ) {
-      return { organizationId: record.organizationId };
+      return rejectSuspendedOrg(record.organizationId, req.method);
     }
   }
 
@@ -111,6 +134,28 @@ export function scimError(
     detail,
     status,
   };
+}
+
+/**
+ * Map an email-ownership rejection (assertEmailAssignable) to a SCIM error
+ * response: 409 for an address another user holds, 403 for a reserved
+ * (super-admin) address. Returns null for anything else, so the caller keeps
+ * its generic 500 handling.
+ */
+export function scimEmailRejection(error: unknown): NextResponse | null {
+  if (error instanceof EmailConflictError) {
+    return NextResponse.json(scimError(error.message, 409), {
+      status: 409,
+      headers: scimHeaders(),
+    });
+  }
+  if (error instanceof ForbiddenError) {
+    return NextResponse.json(scimError(error.message, 403), {
+      status: 403,
+      headers: scimHeaders(),
+    });
+  }
+  return null;
 }
 
 export interface ScimUser {

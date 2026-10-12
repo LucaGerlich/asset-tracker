@@ -11,7 +11,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import prisma from "@/lib/prisma";
-import { getComponentById, getEntityHistory } from "@/lib/data";
+import {
+  getAssetOptions,
+  getComponentById,
+  getEntityHistory,
+} from "@/lib/data";
 import HistoryTimeline from "@/components/HistoryTimeline";
 import EntityAttachments from "@/components/EntityAttachments";
 import ComponentDetailClient from "./ui/ComponentDetailClient";
@@ -52,10 +56,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     }),
   ]);
 
-  const assets = await prisma.asset.findMany({
-    select: { assetid: true, assetname: true, assettag: true },
-    orderBy: { assetname: "asc" },
-  });
+  const assets = await getAssetOptions();
 
   const stockStatus = (() => {
     const qty = component.remainingQuantity ?? 0;

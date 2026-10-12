@@ -41,6 +41,7 @@ import {
 import { PlusIcon as SidebarPlusIcon } from "../ui/Icons";
 import SearchTypeahead from "./SearchTypeahead";
 import { useSession, signOut, type SessionUser } from "@/lib/auth-client";
+import { clearQueueOnSignOut } from "@/lib/offline-queue";
 import {
   navSections,
   isActivePath,
@@ -97,6 +98,7 @@ const Sidebar = ({ initialCollapsed = false }) => {
     : "U";
 
   const handleLogout = async () => {
+    await clearQueueOnSignOut();
     await signOut();
     router.push("/login");
   };

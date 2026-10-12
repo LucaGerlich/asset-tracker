@@ -1,9 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Asset, SyncQueueItem } from '../types';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { Asset, SyncQueueItem } from "../types";
 
-const ASSETS_CACHE_KEY = '@offline_assets';
-const SYNC_QUEUE_KEY = '@sync_queue';
-const LAST_SYNC_KEY = '@last_sync_timestamp';
+const ASSETS_CACHE_KEY = "@offline_assets";
+const SYNC_QUEUE_KEY = "@sync_queue";
+const LAST_SYNC_KEY = "@last_sync_timestamp";
 
 /**
  * Offline storage service for caching data locally and queuing
@@ -41,7 +41,7 @@ export async function getSyncQueue(): Promise<SyncQueueItem[]> {
 }
 
 export async function addToSyncQueue(
-  item: Omit<SyncQueueItem, 'id' | 'createdAt' | 'retryCount'>,
+  item: Omit<SyncQueueItem, "id" | "createdAt" | "retryCount">,
 ): Promise<void> {
   const queue = await getSyncQueue();
   const newItem: SyncQueueItem = {
@@ -69,16 +69,26 @@ export async function incrementRetryCount(id: string): Promise<void> {
   await AsyncStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
 }
 
+export async function markSyncItemBlocked(
+  id: string,
+  status: number,
+): Promise<void> {
+  const queue = await getSyncQueue();
+  const item = queue.find((q) => q.id === id);
+  if (item) {
+    item.blocked = true;
+    item.lastStatus = status;
+  }
+  await AsyncStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+}
+
 export async function clearSyncQueue(): Promise<void> {
   await AsyncStorage.removeItem(SYNC_QUEUE_KEY);
 }
 
 // ── Generic cache helpers ────────────────────────────────────────────
 
-export async function cacheData(
-  key: string,
-  data: unknown,
-): Promise<void> {
+export async function cacheData(key: string, data: unknown): Promise<void> {
   await AsyncStorage.setItem(
     `@cache_${key}`,
     JSON.stringify({ data, timestamp: Date.now() }),
@@ -104,7 +114,7 @@ export async function getCachedData<T>(
 export async function clearAllCache(): Promise<void> {
   const keys = await AsyncStorage.getAllKeys();
   const cacheKeys = keys.filter(
-    (k) => k.startsWith('@cache_') || k === ASSETS_CACHE_KEY,
+    (k) => k.startsWith("@cache_") || k === ASSETS_CACHE_KEY,
   );
   await AsyncStorage.multiRemove(cacheKeys);
 }

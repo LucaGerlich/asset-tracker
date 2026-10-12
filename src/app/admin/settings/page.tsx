@@ -4,29 +4,46 @@ import { headers } from "next/headers";
 import AdminSettingsPage from "./ui/AdminSettingsPage";
 import Breadcrumb from "@/components/Breadcrumb";
 import prisma from "@/lib/prisma";
+import { isSuperAdmin } from "@/lib/super-admin";
+import { MASKED_VALUE } from "@/lib/settings-keys";
+import { getEnvEmailConfig } from "@/lib/env-email-config";
+import {
+  getCustomFields,
+  getDepreciationSettings,
+  getStatusTypes,
+  getUsers,
+} from "./data";
 
 export const metadata = {
   title: "Admin Settings - Asset Tracker",
   description: "Configure system settings and preferences",
 };
 
-async function getSystemSettings() {
+type GroupedSettings = Record<
+  string,
+  Array<{
+    id: string;
+    key: string;
+    value: string | null;
+    type: string;
+    description: string | null;
+    isEncrypted: boolean;
+  }>
+>;
+
+/**
+ * Platform-wide system settings, grouped by category. The table is shared by
+ * every tenant: call this only for a super-admin. Short-lived sso.token.*
+ * login rows are never part of the configuration and never leave the server.
+ */
+async function getSystemSettings(): Promise<GroupedSettings> {
   const settings = await prisma.system_settings.findMany({
+    where: { NOT: { settingKey: { startsWith: "sso.token." } } },
     orderBy: [{ category: "asc" }, { settingKey: "asc" }],
   });
 
   // Group settings by category
-  const grouped: Record<
-    string,
-    Array<{
-      id: string;
-      key: string;
-      value: string | null;
-      type: string;
-      description: string | null;
-      isEncrypted: boolean;
-    }>
-  > = {};
+  const grouped: GroupedSettings = {};
 
   for (const setting of settings) {
     if (!grouped[setting.category]) {
@@ -35,7 +52,7 @@ async function getSystemSettings() {
     grouped[setting.category].push({
       id: setting.id,
       key: setting.settingKey,
-      value: setting.isEncrypted ? "********" : setting.settingValue,
+      value: setting.isEncrypted ? MASKED_VALUE : setting.settingValue,
       type: setting.settingType,
       description: setting.description,
       isEncrypted: setting.isEncrypted,
@@ -45,23 +62,9 @@ async function getSystemSettings() {
   return grouped;
 }
 
-async function getUsers(organizationId: string | null) {
-  return await prisma.user.findMany({
-    where: { organizationId },
-    select: {
-      userid: true,
-      username: true,
-      firstname: true,
-      lastname: true,
-      email: true,
-      isadmin: true,
-      canrequest: true,
-      creation_date: true,
-    },
-    orderBy: [{ isadmin: "desc" }, { lastname: "asc" }],
-  });
-}
+type EmailTemplates = Awaited<ReturnType<typeof getEmailTemplates>>;
 
+// Email templates have no organization: they are platform-wide.
 async function getEmailTemplates() {
   return await prisma.email_templates.findMany({
     orderBy: { name: "asc" },
@@ -74,20 +77,6 @@ async function getLabelTemplates() {
   });
 }
 
-async function getCustomFields() {
-  return await prisma.custom_field_definitions.findMany({
-    orderBy: [{ entityType: "asc" }, { displayOrder: "asc" }],
-  });
-}
-
-async function getDepreciationSettings() {
-  return await prisma.depreciation_settings.findMany({
-    include: {
-      assetCategoryType: true,
-    },
-  });
-}
-
 export default async function Page() {
   const session = await auth.api.getSession({ headers: await headers() });
 
@@ -97,7 +86,14 @@ export default async function Page() {
 
   const adminUser = await prisma.user.findUnique({
     where: { userid: session.user.id },
-    select: { organizationId: true },
+    select: { organizationId: true, email: true },
+  });
+
+  // Determine if current admin is a platform super-admin. The email comes from
+  // the database row, never from the session.
+  const isSuperAdminUser = await isSuperAdmin({
+    id: session.user.id,
+    email: adminUser?.email,
   });
 
   const orgPlan = adminUser?.organizationId
@@ -118,39 +114,22 @@ export default async function Page() {
     depreciationSettings,
     statuses,
   ] = await Promise.all([
-    getSystemSettings(),
+    // Only super-admins see platform settings; everyone else gets none.
+    isSuperAdminUser
+      ? getSystemSettings()
+      : Promise.resolve<GroupedSettings>({}),
     getUsers(adminUser?.organizationId ?? null),
-    getEmailTemplates(),
+    isSuperAdminUser
+      ? getEmailTemplates()
+      : Promise.resolve<EmailTemplates>([]),
     getLabelTemplates(),
-    getCustomFields(),
-    getDepreciationSettings(),
-    prisma.statusType.findMany({ orderBy: { statustypename: "asc" } }),
+    getCustomFields(adminUser?.organizationId ?? null),
+    getDepreciationSettings(adminUser?.organizationId ?? null),
+    getStatusTypes(adminUser?.organizationId ?? null),
   ]);
 
-  // Determine if current admin is a platform super-admin
-  const superAdminEmails = process.env.SUPER_ADMIN_EMAILS;
-  const isSuperAdmin = !superAdminEmails
-    ? true // No list configured = single-tenant, all admins are super
-    : !!session.user.email &&
-      superAdminEmails
-        .split(",")
-        .map((e) => e.trim().toLowerCase())
-        .includes(session.user.email.toLowerCase());
-
-  // Detect if email is configured via environment variables
-  const envEmailConfig = process.env.EMAIL_PROVIDER
-    ? {
-        provider: process.env.EMAIL_PROVIDER,
-        fromEmail: process.env.EMAIL_FROM || "",
-        fromName: process.env.EMAIL_FROM_NAME || "Asset Tracker",
-        hasApiKey: !!(
-          process.env.BREVO_API_KEY ||
-          process.env.SENDGRID_API_KEY ||
-          process.env.MAILGUN_API_KEY ||
-          process.env.POSTMARK_API_KEY
-        ),
-      }
-    : null;
+  // Platform mailer configured via environment variables (super-admins only)
+  const envEmailConfig = getEnvEmailConfig(isSuperAdminUser);
 
   const breadcrumbOptions = [
     { label: "Home", href: "/" },
@@ -169,7 +148,7 @@ export default async function Page() {
         depreciationSettings={depreciationSettings}
         envEmailConfig={envEmailConfig}
         statuses={statuses}
-        isSuperAdmin={isSuperAdmin}
+        isSuperAdmin={isSuperAdminUser}
         orgPlan={orgPlan as "starter" | "professional" | "enterprise"}
         isSelfHostedMode={process.env.SELF_HOSTED === "true"}
       />

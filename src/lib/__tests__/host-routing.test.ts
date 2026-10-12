@@ -90,6 +90,7 @@ describe("resolveHostRoute", () => {
     "/favicon.ico",
     "/icons/icon-192.png",
     "/sw.js",
+    "/sw-queue-rules.js",
     "/manifest.json",
     "/logo.svg",
     "/api/health",

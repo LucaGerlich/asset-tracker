@@ -63,6 +63,7 @@ import AssetTemplatesTab from "./AssetTemplatesTab";
 import { PlanGate } from "@/components/PlanGate";
 import BillingTab from "./BillingTab";
 import StorageSettingsTab from "./StorageSettingsTab";
+import { isTabVisible, resolveActiveTab } from "@/lib/settings-tabs";
 
 interface NavItem {
   value: string;
@@ -130,9 +131,6 @@ const settingsNav: NavGroup[] = [
     ],
   },
 ];
-
-const SUPER_ADMIN_ONLY_TABS = new Set(["organizations"]);
-const SELF_HOSTED_HIDDEN_TABS = new Set(["billing"]);
 
 interface AdminSettingsPageProps {
   settings: Record<
@@ -222,8 +220,8 @@ export default function AdminSettingsPage({
   isSelfHostedMode = false,
 }: AdminSettingsPageProps) {
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "general",
+  const [requestedTab, setRequestedTab] = useState<string | null>(
+    searchParams.get("tab"),
   );
 
   const filteredNav = useMemo(
@@ -231,16 +229,23 @@ export default function AdminSettingsPage({
       settingsNav
         .map((group) => ({
           ...group,
-          items: group.items.filter((item) => {
-            if (SUPER_ADMIN_ONLY_TABS.has(item.value) && !isSuperAdmin)
-              return false;
-            if (SELF_HOSTED_HIDDEN_TABS.has(item.value) && isSelfHostedMode)
-              return false;
-            return true;
-          }),
+          items: group.items.filter((item) =>
+            isTabVisible(item.value, { isSuperAdmin, isSelfHostedMode }),
+          ),
         }))
         .filter((group) => group.items.length > 0),
     [isSuperAdmin, isSelfHostedMode],
+  );
+
+  // A tab the viewer may not see (hidden from the nav) never renders, even
+  // when it is selected through ?tab=: fall back to the first visible tab.
+  const activeTab = useMemo(
+    () =>
+      resolveActiveTab(
+        requestedTab,
+        filteredNav.flatMap((group) => group.items.map((item) => item.value)),
+      ),
+    [requestedTab, filteredNav],
   );
 
   return (
@@ -254,7 +259,7 @@ export default function AdminSettingsPage({
 
         {/* Mobile dropdown */}
         <div className="mt-4 md:hidden">
-          <Select value={activeTab} onValueChange={setActiveTab}>
+          <Select value={activeTab} onValueChange={setRequestedTab}>
             <SelectTrigger className="w-full text-sm font-medium">
               <SelectValue />
             </SelectTrigger>
@@ -291,7 +296,7 @@ export default function AdminSettingsPage({
                       <Button
                         key={item.value}
                         variant="ghost"
-                        onClick={() => setActiveTab(item.value)}
+                        onClick={() => setRequestedTab(item.value)}
                         className={cn(
                           "flex w-full items-center justify-start gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                           active
@@ -340,24 +345,8 @@ export default function AdminSettingsPage({
           {activeTab === "departments" && <DepartmentsTab />}
           {activeTab === "roles" && <RolesTab />}
           {activeTab === "webhooks" && <WebhooksTab />}
-          {activeTab === "sso" && (
-            <PlanGate
-              feature="sso"
-              plan={orgPlan}
-              isSelfHosted={isSelfHostedMode}
-            >
-              <SSOSettingsTab />
-            </PlanGate>
-          )}
-          {activeTab === "ldap" && (
-            <PlanGate
-              feature="ldap"
-              plan={orgPlan}
-              isSelfHosted={isSelfHostedMode}
-            >
-              <LDAPSettingsTab />
-            </PlanGate>
-          )}
+          {activeTab === "sso" && <SSOSettingsTab />}
+          {activeTab === "ldap" && <LDAPSettingsTab />}
           {activeTab === "intune" && <IntuneSettingsTab />}
           {activeTab === "integrations" && <IntegrationsTab />}
           {activeTab === "locationTracking" && <LocationTrackingTab />}

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 // DELETE /api/admin/api-keys/[id] - Revoke (deactivate) an API key
@@ -13,6 +18,7 @@ export async function DELETE(
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAdmin();
+    await requireWritableOrg(user);
     const { id } = await params;
 
     // Ensure the key belongs to the authenticated user
@@ -37,13 +43,9 @@ export async function DELETE(
       { status: 200 },
     );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("DELETE /api/admin/api-keys/[id] error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to revoke API key" },
       { status: 500 },

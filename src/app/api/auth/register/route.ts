@@ -11,7 +11,13 @@ import {
 import { requireNotDemoMode } from "@/lib/api-auth";
 import { seedOrgDefaults } from "@/lib/org-defaults";
 import { isSelfHosted } from "@/lib/deployment-mode";
+import { isPublicSignupEnabled } from "@/lib/signup";
 import { logger } from "@/lib/logger";
+import { ForbiddenError } from "@/lib/errors";
+import {
+  assertEmailAssignable,
+  EmailConflictError,
+} from "@/lib/email-ownership";
 
 const registerSchema = z.object({
   firstname: z.string().min(1, "First name is required").max(100),
@@ -38,6 +44,13 @@ function generateSlug(name: string): string {
 }
 
 export async function POST(req: Request) {
+  // Public sign-up is closed unless explicitly enabled. Answer before anything
+  // else (no rate-limit bookkeeping, no body parsing) as if the route did not
+  // exist.
+  if (!isPublicSignupEnabled()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
@@ -84,6 +97,28 @@ export async function POST(req: Request) {
       );
     }
 
+    // Public sign-up can never take a reserved (super-admin) address or one
+    // that differs from an existing user's only by case. Both answer exactly
+    // like a taken address, so the response does not reveal which emails are
+    // reserved. Checked before the organization is created to avoid orphans.
+    let normalizedEmail: string;
+    try {
+      normalizedEmail = await assertEmailAssignable(email, {
+        callerIsSuperAdmin: false,
+      });
+    } catch (emailError) {
+      if (
+        emailError instanceof EmailConflictError ||
+        emailError instanceof ForbiddenError
+      ) {
+        return NextResponse.json(
+          { message: "Email is already taken." },
+          { status: 409 },
+        );
+      }
+      throw emailError;
+    }
+
     const hashedPassword = await hashPassword(password);
 
     // SaaS mode: start with 14-day Professional trial
@@ -109,7 +144,7 @@ export async function POST(req: Request) {
       data: {
         firstname,
         lastname,
-        email: email.toLowerCase().trim(),
+        email: normalizedEmail,
         username,
         password: hashedPassword,
         isadmin: true,

@@ -17,6 +17,7 @@ vi.mock("@/lib/api-auth", () => ({
   requireApiAuth: vi.fn(),
   requirePermission: vi.fn(),
   requireNotDemoMode: vi.fn().mockReturnValue(null),
+  requireWritableOrg: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/lib/organization-context", () => ({
@@ -44,6 +45,7 @@ vi.mock("@/lib/logger");
 import { GET, POST, PUT } from "@/app/api/asset/route";
 import prisma from "@/lib/prisma";
 import { requirePermission } from "@/lib/api-auth";
+import { ForbiddenError, UnauthorizedError } from "@/lib/errors";
 import { checkAssetLimit } from "@/lib/tenant-limits";
 
 const mockPrisma = vi.mocked(prisma, true);
@@ -113,7 +115,7 @@ describe("GET /api/asset", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    mockRequirePermission.mockRejectedValue(new Error("Unauthorized"));
+    mockRequirePermission.mockRejectedValue(new UnauthorizedError());
 
     const req = createMockRequest("/api/asset");
     const res = await GET(req);
@@ -122,7 +124,7 @@ describe("GET /api/asset", () => {
 
   it("returns 403 when user lacks permission", async () => {
     mockRequirePermission.mockRejectedValue(
-      new Error("Forbidden: Insufficient permissions"),
+      new ForbiddenError("insufficient_permission", "Insufficient permissions"),
     );
 
     const req = createMockRequest("/api/asset");
@@ -173,7 +175,7 @@ describe("POST /api/asset", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    mockRequirePermission.mockRejectedValue(new Error("Unauthorized"));
+    mockRequirePermission.mockRejectedValue(new UnauthorizedError());
 
     const req = createMockRequest("/api/asset", {
       method: "POST",
@@ -222,7 +224,7 @@ describe("PUT /api/asset", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    mockRequirePermission.mockRejectedValue(new Error("Unauthorized"));
+    mockRequirePermission.mockRejectedValue(new UnauthorizedError());
 
     const req = createMockRequest("/api/asset", {
       method: "PUT",

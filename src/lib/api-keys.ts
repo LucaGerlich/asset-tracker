@@ -56,6 +56,7 @@ export async function validateApiKey(key: string) {
           canrequest: true,
           organizationId: true,
           isActive: true,
+          organization: { select: { isActive: true, suspendedAt: true } },
         },
       },
     },

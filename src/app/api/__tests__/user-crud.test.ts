@@ -36,6 +36,7 @@ import { GET } from "@/app/api/user/route";
 import prisma from "@/lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
 import { hasPermission } from "@/lib/rbac";
+import { UnauthorizedError } from "@/lib/errors";
 
 const mockPrisma = vi.mocked(prisma, true);
 const mockRequireAuth = vi.mocked(requireApiAuth);
@@ -109,7 +110,7 @@ describe("GET /api/user", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    mockRequireAuth.mockRejectedValue(new Error("Unauthorized"));
+    mockRequireAuth.mockRejectedValue(new UnauthorizedError());
 
     const req = createMockRequest("/api/user");
     const res = await GET(req);

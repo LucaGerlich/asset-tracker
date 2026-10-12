@@ -3,80 +3,13 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import Breadcrumb from "@/components/Breadcrumb";
 import KanbanBoard from "./ui/KanbanBoard";
-import prisma from "@/lib/prisma";
+import { getOrganizationContext } from "@/lib/organization-context";
+import { getAdminUsers, getTickets } from "./data";
 
 export const metadata = {
   title: "Tickets - Asset Tracker",
   description: "Manage user tickets and requests",
 };
-
-async function getTickets() {
-  const rawTickets = await prisma.tickets.findMany({
-    include: {
-      user_tickets_createdByTouser: {
-        select: {
-          userid: true,
-          username: true,
-          firstname: true,
-          lastname: true,
-          email: true,
-        },
-      },
-      user_tickets_assignedToTouser: {
-        select: {
-          userid: true,
-          username: true,
-          firstname: true,
-          lastname: true,
-          email: true,
-        },
-      },
-      ticket_comments: {
-        include: {
-          user: {
-            select: {
-              userid: true,
-              username: true,
-              firstname: true,
-              lastname: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-
-  // Map Prisma relation names to expected interface names
-  return rawTickets.map((ticket) => ({
-    ...ticket,
-    creator: ticket.user_tickets_createdByTouser,
-    assignee: ticket.user_tickets_assignedToTouser,
-    comments: ticket.ticket_comments,
-  }));
-}
-
-async function getAdminUsers() {
-  return await prisma.user.findMany({
-    where: {
-      isadmin: true,
-    },
-    select: {
-      userid: true,
-      username: true,
-      firstname: true,
-      lastname: true,
-    },
-    orderBy: {
-      firstname: "asc",
-    },
-  });
-}
 
 export default async function TicketsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -89,8 +22,12 @@ export default async function TicketsPage() {
     redirect("/dashboard");
   }
 
-  const tickets = await getTickets();
-  const adminUsers = await getAdminUsers();
+  const ctx = await getOrganizationContext();
+  const organizationId = ctx?.organization?.id ?? null;
+  const [tickets, adminUsers] = await Promise.all([
+    getTickets(organizationId),
+    getAdminUsers(organizationId),
+  ]);
 
   return (
     <div className="container mx-auto px-4 py-8">

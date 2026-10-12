@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
@@ -14,10 +17,8 @@ export async function PATCH(
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const { id } = await params;
     const body = await request.json();
@@ -32,7 +33,7 @@ export async function PATCH(
     const notification = await prisma.notification_queue.findFirst({
       where: {
         id,
-        userId: session.user.id,
+        userId: user.id!,
       },
     });
 
@@ -53,6 +54,8 @@ export async function PATCH(
 
     return NextResponse.json(updated);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error updating notification", { error });
     return NextResponse.json(
       { error: "Failed to update notification" },
@@ -70,10 +73,8 @@ export async function DELETE(
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const { id } = await params;
 
@@ -81,7 +82,7 @@ export async function DELETE(
     const notification = await prisma.notification_queue.findFirst({
       where: {
         id,
-        userId: session.user.id,
+        userId: user.id!,
       },
     });
 
@@ -98,6 +99,8 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error deleting notification", { error });
     return NextResponse.json(
       { error: "Failed to delete notification" },

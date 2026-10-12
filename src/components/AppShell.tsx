@@ -19,6 +19,7 @@ const PUBLIC_ROUTES = [
   "/reset-password",
   "/mfa-verify",
   "/offline",
+  "/suspended",
   "/pricing",
   "/terms",
   "/privacy",

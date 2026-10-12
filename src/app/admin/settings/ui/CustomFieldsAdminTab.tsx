@@ -47,7 +47,7 @@ interface CustomFieldDefinition {
   isRequired: boolean;
   isActive: boolean;
   displayOrder: number;
-  options: string[] | null;
+  options: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,6 +71,7 @@ const FIELD_TYPES = [
 ];
 
 import { getEntitiesWithCustomFields } from "@/lib/entity-registry";
+import { parseCustomFieldOptions } from "@/lib/custom-field-options";
 
 const ENTITY_TYPES = getEntitiesWithCustomFields().map((e) => ({
   id: e.key,
@@ -131,7 +132,7 @@ export default function CustomFieldsAdminTab() {
       name: field.name,
       fieldType: field.fieldType,
       entityType: field.entityType,
-      options: Array.isArray(field.options) ? field.options.join(", ") : "",
+      options: parseCustomFieldOptions(field.options).join(", "),
       isRequired: field.isRequired,
       displayOrder: field.displayOrder ?? 0,
     });

@@ -1,23 +1,24 @@
 import { NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
-import { getOrganizationContext } from "@/lib/organization-context";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
     const user = await requireApiAuth();
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
+
+    // A caller without an organization owns no assignments. Never drop the
+    // filter: it would list every tenant's assignments.
+    const orgId = user.organizationId;
+    if (!orgId) return NextResponse.json([], { status: 200 });
 
     const where: Record<string, unknown> = user.isAdmin
       ? {}
       : { userid: user.id };
 
     // Scope through the related asset's organizationId
-    if (orgId) {
-      where.asset = { organizationId: orgId };
-    }
+    where.asset = { organizationId: orgId };
 
     const items = await prisma.userAssets.findMany({
       where,
@@ -32,10 +33,9 @@ export async function GET() {
     });
     return NextResponse.json(items, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/userAssets error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch userAssets" },
       { status: 500 },

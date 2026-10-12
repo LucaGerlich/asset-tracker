@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireSuperAdmin,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { webhookSchema } from "@/lib/validation-organization";
 import { getWebhookEvents } from "@/lib/webhooks";
+import { toPublicWebhook } from "@/lib/webhook-response";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { z } from "zod";
 import crypto from "crypto";
@@ -22,19 +29,23 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
 
-    const user = await prisma.user.findUnique({
-      where: { userid: authUser.id! },
-      select: { organizationId: true },
-    });
+    // A caller without an org owns no webhooks: never widen the filter to
+    // every org.
+    if (!authUser.organizationId) {
+      return NextResponse.json(
+        searchParams.has("page")
+          ? buildPaginatedResponse([], 0, parsePaginationParams(searchParams))
+          : [],
+      );
+    }
 
-    const where: Record<string, unknown> = user?.organizationId
-      ? {
-          OR: [
-            { organizationId: user.organizationId },
-            { organizationId: null },
-          ],
-        }
-      : {};
+    // Own org's webhooks plus global ones (no organization).
+    const where: Record<string, unknown> = {
+      OR: [
+        { organizationId: authUser.organizationId },
+        { organizationId: null },
+      ],
+    };
 
     const include = {
       organization: {
@@ -52,7 +63,7 @@ export async function GET(req: NextRequest) {
         include,
         orderBy: { createdAt: "desc" },
       });
-      return NextResponse.json(webhooks);
+      return NextResponse.json(webhooks.map(toPublicWebhook));
     }
 
     // Paginated path
@@ -80,17 +91,14 @@ export async function GET(req: NextRequest) {
       prisma.webhook.count({ where }),
     ]);
 
-    return NextResponse.json(buildPaginatedResponse(webhooks, total, params), {
-      status: 200,
-    });
+    return NextResponse.json(
+      buildPaginatedResponse(webhooks.map(toPublicWebhook), total, params),
+      { status: 200 },
+    );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching webhooks", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch webhooks" },
       { status: 500 },
@@ -104,6 +112,11 @@ export async function POST(req: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const authUser = await requirePermission("webhook:manage");
+    await requireWritableOrg(authUser);
+
+    // A webhook without an organization is global and receives the events of
+    // every tenant, so only a platform super-admin may create one.
+    if (!authUser.organizationId) await requireSuperAdmin();
 
     const body = await req.json();
     const validated = webhookSchema.parse(body);
@@ -122,11 +135,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { userid: authUser.id! },
-      select: { organizationId: true },
-    });
-
     // Generate a secret if not provided, then encrypt before storing
     const secret = validated.secret || crypto.randomBytes(32).toString("hex");
 
@@ -138,7 +146,7 @@ export async function POST(req: NextRequest) {
         events: validated.events,
         isActive: validated.isActive,
         retryAttempts: validated.retryAttempts,
-        organizationId: user?.organizationId || null,
+        organizationId: authUser.organizationId ?? null,
       },
     });
 
@@ -150,15 +158,11 @@ export async function POST(req: NextRequest) {
       details: { name: webhook.name, url: webhook.url, events: webhook.events },
     });
 
-    return NextResponse.json(webhook, { status: 201 });
+    return NextResponse.json(toPublicWebhook(webhook), { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error creating webhook", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }
@@ -176,12 +180,8 @@ export async function OPTIONS() {
     const events = getWebhookEvents();
     return NextResponse.json({ events });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return NextResponse.json(
       { error: "Failed to fetch webhook events" },
       { status: 500 },

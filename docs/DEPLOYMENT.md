@@ -95,6 +95,10 @@ CRON_SECRET=<output from openssl rand -hex 16>
 # Self-hosted mode (skip SaaS landing page, go straight to login)
 SELF_HOSTED=true
 
+# Public sign-up (/register) is closed by default. Do NOT set this for a
+# single-organization install; it is only for multi-tenant SaaS deployments.
+# ALLOW_PUBLIC_SIGNUP=true
+
 # Email (optional — can configure later via Admin Settings UI)
 # EMAIL_PROVIDER=brevo
 # BREVO_API_KEY=your_key
@@ -208,6 +212,8 @@ In Vercel Project Settings > Environment Variables, add:
 | `ENCRYPTION_KEY`     | `<openssl rand -hex 32>`                | Production  |
 | `CRON_SECRET`        | `<openssl rand -hex 16>`                | Production  |
 | `SELF_HOSTED`        | `true`                                  | Production  |
+
+Public sign-up is closed by default. Leave `ALLOW_PUBLIC_SIGNUP` unset unless you intend to let anyone create an organization at `/register` (SaaS).
 
 Optional email vars:
 

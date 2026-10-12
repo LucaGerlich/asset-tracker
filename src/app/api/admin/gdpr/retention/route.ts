@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireSuperAdmin,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { getGDPRSettings, saveGDPRSettings } from "@/lib/gdpr-settings";
 import { logger } from "@/lib/logger";
 
 /**
  * GET /api/admin/gdpr/retention
  * Returns current GDPR retention settings (or defaults if none exist).
+ * Readable by any org admin: the same values are already part of the
+ * compliance report. Only the write is platform-level (see PUT).
  */
 export async function GET() {
   try {
@@ -13,13 +21,9 @@ export async function GET() {
     const settings = getGDPRSettings();
     return NextResponse.json(settings);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/admin/gdpr/retention error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to get retention settings" },
       { status: 500 },
@@ -29,14 +33,17 @@ export async function GET() {
 
 /**
  * PUT /api/admin/gdpr/retention
- * Updates GDPR retention settings.
+ * Updates GDPR retention settings. The settings file is shared by the whole
+ * deployment and the retention cron applies it to every organization's audit
+ * logs, so only a platform super-admin may change it.
  */
 export async function PUT(req: Request) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    await requireApiAdmin();
+    const user = await requireSuperAdmin();
+    await requireWritableOrg(user);
     const body = await req.json();
 
     const {
@@ -75,13 +82,9 @@ export async function PUT(req: Request) {
 
     return NextResponse.json(updated);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/admin/gdpr/retention error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to update retention settings" },
       { status: 500 },

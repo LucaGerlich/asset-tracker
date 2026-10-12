@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma, PrismaClient } from "@prisma/client";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { logger, logCatchError } from "@/lib/logger";
 import {
@@ -23,17 +28,18 @@ export async function GET(req: NextRequest) {
     const mine = searchParams.get("mine");
     const limit = searchParams.get("limit");
 
-    const where: Record<string, unknown> = {};
+    // A caller without an organization owns no requests. Never drop the
+    // filter: it would list every tenant's requests.
+    const orgId = user.organizationId;
+    if (!orgId) return NextResponse.json([]);
+
+    // Scope all requests to user's organization
+    const where: Record<string, unknown> = {
+      user: { organizationId: orgId },
+    };
 
     if (status && status !== "all") {
       where.status = status;
-    }
-
-    // Scope all requests to user's organization
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
-    if (orgId) {
-      where.user = { organizationId: orgId };
     }
 
     // Non-admins only see their own requests
@@ -134,9 +140,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(enriched);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/requests error", { error });
     return NextResponse.json(
       { error: "Failed to fetch requests" },
@@ -151,6 +156,7 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const body = await req.json();
     const { entityType, entityId, startDate, endDate, notes, quantity } = body;
@@ -228,9 +234,12 @@ export async function POST(req: NextRequest) {
 
           // Set item status to "Pending" while request is being reviewed
           if (initialStatus === "pending" && entityType === "asset") {
+            // The status must belong to the entity's organization: a lookup by
+            // name alone could pick another tenant's "Pending".
             const pendingStatus = await tx.statusType.findFirst({
               where: {
                 statustypename: { equals: "Pending", mode: "insensitive" },
+                organizationId: orgId ?? null,
               },
             });
             if (pendingStatus) {
@@ -308,9 +317,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(request, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/requests error", { error });
     return NextResponse.json(
       { error: "Failed to create request" },
@@ -325,6 +333,7 @@ export async function PUT(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const { id, status, notes, _expectedVersion } = await req.json();
 
@@ -423,6 +432,7 @@ export async function PUT(req: NextRequest) {
         const available = await tx.statusType.findFirst({
           where: {
             statustypename: { equals: "Available", mode: "insensitive" },
+            organizationId: orgId ?? null,
           },
         });
         if (available) {
@@ -443,6 +453,7 @@ export async function PUT(req: NextRequest) {
           existing.entityType,
           existing.entityId,
           existing.userId,
+          orgId ?? null,
         );
       }
 
@@ -454,6 +465,7 @@ export async function PUT(req: NextRequest) {
           existing.entityId,
           existing.userId,
           existing.quantity,
+          orgId ?? null,
         );
       }
 
@@ -521,9 +533,8 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ success: true, status });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/requests error", { error });
     return NextResponse.json(
       { error: "Failed to update request" },
@@ -584,6 +595,7 @@ async function autoAssignItem(
   entityId: string,
   userId: string,
   quantity: number,
+  organizationId: string | null,
 ): Promise<void> {
   switch (entityType) {
     case "asset": {
@@ -606,7 +618,10 @@ async function autoAssignItem(
 
       // Always ensure the asset status is "Active"
       const active = await tx.statusType.findFirst({
-        where: { statustypename: { equals: "Active", mode: "insensitive" } },
+        where: {
+          statustypename: { equals: "Active", mode: "insensitive" },
+          organizationId,
+        },
       });
       if (active) {
         await tx.asset.update({
@@ -672,6 +687,7 @@ async function unassignItem(
   entityType: string,
   entityId: string,
   userId: string,
+  organizationId: string | null,
 ): Promise<void> {
   switch (entityType) {
     case "asset": {
@@ -682,6 +698,7 @@ async function unassignItem(
       const available = await tx.statusType.findFirst({
         where: {
           statustypename: { equals: "Available", mode: "insensitive" },
+          organizationId,
         },
       });
       if (available) {

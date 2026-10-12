@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { getUserSessions } from "@/lib/session-tracking";
 import { logger } from "@/lib/logger";
 
@@ -19,14 +20,8 @@ export async function GET() {
 
     return NextResponse.json({ sessions });
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.startsWith("Forbidden")) {
-        return NextResponse.json({ error: error.message }, { status: 403 });
-      }
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Failed to fetch sessions", { error });
     return NextResponse.json(
       { error: "Failed to fetch sessions" },

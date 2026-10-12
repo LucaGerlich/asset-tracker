@@ -4,9 +4,18 @@ import { encrypt } from "@/lib/encryption";
 import {
   requireNotDemoMode,
   requireSuperAdmin,
-  requirePlanFeature,
+  requireWritableOrg,
 } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import {
+  isMaskedValue,
+  MASKED_VALUE,
+  partitionSettingKeys,
+  settingsPayloadSchema,
+} from "@/lib/settings-keys";
+
+const ENCRYPTED_KEYS = ["sso.clientSecret"];
 
 /**
  * GET /api/admin/settings/sso
@@ -16,18 +25,20 @@ export async function GET() {
   try {
     await requireSuperAdmin();
 
+    // sso.token.* rows are short-lived login tokens, not configuration.
     const settings = await prisma.system_settings.findMany({
       where: {
         settingKey: {
           startsWith: "sso.",
         },
+        NOT: { settingKey: { startsWith: "sso.token." } },
       },
     });
 
     const result = settings.map((s) => ({
       id: s.id,
       key: s.settingKey,
-      value: s.isEncrypted ? "********" : s.settingValue,
+      value: s.isEncrypted ? MASKED_VALUE : s.settingValue,
       type: s.settingType,
       description: s.description,
       isEncrypted: s.isEncrypted,
@@ -35,6 +46,8 @@ export async function GET() {
 
     return NextResponse.json(result);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/admin/settings/sso error", { error });
     return NextResponse.json(
       { error: "Failed to get SSO settings" },
@@ -53,34 +66,46 @@ export async function PUT(req: Request) {
     if (demoBlock) return demoBlock;
 
     const user = await requireSuperAdmin();
-    await requirePlanFeature(user, "sso");
+    await requireWritableOrg(user);
 
-    const body = await req.json();
-    const { settings } = body;
-
-    if (!Array.isArray(settings)) {
+    const parsed = settingsPayloadSchema.safeParse(
+      await req.json().catch(() => null),
+    );
+    if (!parsed.success) {
       return NextResponse.json(
         { error: "settings array is required" },
         { status: 400 },
       );
     }
 
-    const encryptedKeys = ["sso.clientSecret"];
+    const { rejected } = partitionSettingKeys(
+      "sso",
+      parsed.data.settings.map((setting) => setting.key),
+    );
+    if (rejected.length > 0) {
+      return NextResponse.json(
+        { error: "Unknown setting keys", keys: rejected },
+        { status: 400 },
+      );
+    }
+
+    // A masked value means "unchanged": never write the mask over a secret.
+    const changes = parsed.data.settings.filter(
+      (setting) => !isMaskedValue(setting.value),
+    );
 
     await prisma.$transaction(
-      settings.map((setting: { key: string; value: string }) => {
-        const isSensitive = encryptedKeys.includes(setting.key);
-        const isUnchanged = setting.value === "********";
-        const storedValue = isUnchanged
-          ? setting.value
-          : isSensitive
+      changes.map((setting) => {
+        const isSensitive = ENCRYPTED_KEYS.includes(setting.key);
+        const storedValue =
+          isSensitive && setting.value !== null
             ? encrypt(setting.value)
             : setting.value;
 
         return prisma.system_settings.upsert({
           where: { settingKey: setting.key },
           update: {
-            settingValue: isUnchanged ? undefined : storedValue,
+            settingValue: storedValue,
             updatedAt: new Date(),
           },
           create: {
@@ -97,6 +122,8 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/admin/settings/sso error", { error });
     return NextResponse.json(
       { error: "Failed to save SSO settings" },

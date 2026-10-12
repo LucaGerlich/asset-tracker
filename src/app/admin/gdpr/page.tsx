@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import Breadcrumb from "@/components/Breadcrumb";
+import prisma from "@/lib/prisma";
+import { isSuperAdmin } from "@/lib/super-admin";
 import GDPRDashboard from "./ui/GDPRDashboard";
 
 export const metadata = {
@@ -21,6 +23,17 @@ export default async function GDPRPage() {
     redirect("/dashboard");
   }
 
+  // Retention is one deployment-wide setting: only a platform super-admin may
+  // change it. The email comes from the database row, never from the session.
+  const adminUser = await prisma.user.findUnique({
+    where: { userid: session.user.id },
+    select: { email: true },
+  });
+  const canEditRetention = await isSuperAdmin({
+    id: session.user.id,
+    email: adminUser?.email,
+  });
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Breadcrumb
@@ -31,7 +44,7 @@ export default async function GDPRPage() {
         ]}
       />
       <div className="mt-6">
-        <GDPRDashboard />
+        <GDPRDashboard canEditRetention={canEditRetention} />
       </div>
     </div>
   );

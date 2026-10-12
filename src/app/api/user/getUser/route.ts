@@ -1,6 +1,8 @@
 import prisma from "../../../../lib/prisma";
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -21,12 +23,12 @@ export async function GET() {
     const users = await prisma.user.findMany({ where, take: 1000 });
     return NextResponse.json(users.map(stripPassword));
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
+    logger.error("GET /api/user/getUser error", { error });
+    return NextResponse.json(
+      { error: "Failed to fetch users" },
+      { status: 500 },
+    );
   }
 }

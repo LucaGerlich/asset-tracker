@@ -47,6 +47,7 @@ vi.mock("@/lib/pagination", () => ({
 import { GET, POST, PUT, DELETE } from "@/app/api/kits/route";
 import prisma from "@/lib/prisma";
 import { requirePermission } from "@/lib/api-auth";
+import { UnauthorizedError } from "@/lib/errors";
 
 const mockPrisma = vi.mocked(prisma, true);
 const mockRequirePermission = vi.mocked(requirePermission);
@@ -99,7 +100,7 @@ describe("GET /api/kits", () => {
   });
 
   it("returns 401 when unauthorized", async () => {
-    mockRequirePermission.mockRejectedValue(new Error("Unauthorized"));
+    mockRequirePermission.mockRejectedValue(new UnauthorizedError());
 
     const req = createMockRequest("/api/kits");
     const res = await GET(req);

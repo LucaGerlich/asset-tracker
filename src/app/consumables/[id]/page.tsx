@@ -17,6 +17,7 @@ import {
   getManufacturers,
   getSuppliers,
   getEntityHistory,
+  getUserOptions,
 } from "@/lib/data";
 import HistoryTimeline from "@/components/HistoryTimeline";
 import EntityAttachments from "@/components/EntityAttachments";
@@ -92,10 +93,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     },
   });
 
-  const users = await prisma.user.findMany({
-    select: { userid: true, firstname: true, lastname: true },
-    orderBy: { firstname: "asc" },
-  });
+  const users = await getUserOptions();
 
   const stockStatus = (() => {
     const qty = consumable.quantity ?? 0;

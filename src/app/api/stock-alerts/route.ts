@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { requireNotDemoMode } from "@/lib/api-auth";
 import {
-  getOrganizationContext,
-  scopeToOrganization,
-} from "@/lib/organization-context";
+  requireApiAdmin,
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
+import { scopeToOrganization } from "@/lib/organization-context";
 import { stockAlertSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -16,13 +17,7 @@ import { logger, logCatchError } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const orgCtx = await getOrganizationContext();
-    const orgId = orgCtx?.organization?.id;
+    const user = await requireApiAuth();
 
     const lowStockOnly =
       req.nextUrl.searchParams.get("lowStockOnly") === "true";
@@ -30,7 +25,7 @@ export async function GET(req: NextRequest) {
 
     const alerts = await prisma.stockAlert.findMany({
       where: {
-        consumable: scopeToOrganization({}, orgId),
+        consumable: scopeToOrganization({}, user.organizationId),
       },
       include: {
         consumable: {
@@ -60,6 +55,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(filteredAlerts);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching stock alerts", { error });
     return NextResponse.json(
       { error: "Failed to fetch stock alerts" },
@@ -73,17 +70,19 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
     const body = await req.json();
     const validated = stockAlertSchema.parse(body);
 
-    // Verify consumable exists
-    const consumable = await prisma.consumable.findUnique({
-      where: { consumableid: validated.consumableId },
+    // The consumable must belong to the caller's org (404 otherwise, so the
+    // existence of another org's consumables is not revealed).
+    const consumable = await prisma.consumable.findFirst({
+      where: scopeToOrganization(
+        { consumableid: validated.consumableId },
+        user.organizationId,
+      ),
     });
 
     if (!consumable) {
@@ -130,7 +129,7 @@ export async function POST(req: NextRequest) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: user.id!,
       action: AUDIT_ACTIONS.CREATE,
       entity: "StockAlert",
       entityId: alert.id,
@@ -142,6 +141,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(alert, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error creating stock alert", { error });
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
@@ -158,12 +159,13 @@ export async function PUT() {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
 
+    // Only the caller's org: this check updates lastAlertSentAt and fires
+    // webhooks / integrations for every alert it covers.
     const alerts = await prisma.stockAlert.findMany({
+      where: { consumable: scopeToOrganization({}, user.organizationId) },
       include: {
         consumable: {
           select: {
@@ -253,6 +255,8 @@ export async function PUT() {
       alerts: triggered,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error checking stock alerts", { error });
     return NextResponse.json(
       { error: "Failed to check stock alerts" },

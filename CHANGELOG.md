@@ -6,6 +6,236 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-11
+
+Phase 0 of the SaaS boundary work
+(`docs/superpowers/specs/2026-10-06-phase0-tenant-security-design.md`): closes the
+cross-tenant and privilege holes that exist independent of billing. The BetterAuth
+`update-user` mass-assignment fix shipped separately as 0.13.2. Self-hosted
+single-organization behaviour is unchanged. **Read the upgrade notes below before
+deploying a multi-organization instance.**
+
+### Security
+
+- **Workflows and custom fields belong to one organization.** Automation rules and
+  custom field definitions had no owner: any org admin could list, edit and delete
+  every organization's rules and definitions, and the nightly workflow run executed
+  every rule against every organization's assets, licences (including keys) and
+  consumables. Both tables now carry `organizationId` (migration
+  `20261007_scope_automation_custom_fields`). Routes, the settings page, asset
+  details, advanced search and `POST /api/custom-fields/values` see only the caller's
+  organization (404 across organizations; a user with no organization sees nothing).
+  The workflow engine runs an organization's own rules on its own data, skips
+  locked-out organizations, and constrains rule actions to the rule's organization
+  (status changes, notifications, tickets, webhooks). `triggerWebhook` without an
+  organization now reaches only global webhooks instead of every tenant's; every call
+  site passes the acting organization.
+- **Super-admin fails closed, and the address cannot be claimed.**
+  `requireSuperAdmin` let every org admin through when `SUPER_ADMIN_EMAILS` was unset.
+  Now, with the variable set, the address must match case-insensitively and be held by
+  exactly one user; unset, it works only while the database has at most one
+  organization. Emails are trimmed, lower-cased and checked for duplicates and
+  reserved addresses on the profile, add-user, register, CSV import, SCIM, LDAP sync
+  and invite-accept write paths. The OIDC and SAML callbacks, `/api/setup` and
+  BetterAuth's own OAuth sign-up are still open (`TECHNICAL_DEBT.md` items 54, 55, 61). Org admins receive only org-scoped settings data; the
+  platform tabs (General, Email, Freshdesk, Notifications, SSO, LDAP, Intune,
+  Integrations, Organizations, Rate Limits) are not rendered for them, including via
+  `?tab=`. Setting PUTs accept an allow-list of keys and never store the masked
+  placeholder. Freshdesk ticket routes, global webhooks, edits of global roles and
+  the rate-limit admin view are super-admin only; SSO and LDAP settings are
+  operator-level and no longer depend on a plan feature.
+- **Public sign-up is closed by default and invites are hardened.**
+  `POST /api/auth/register` created an organization and admin on every instance. It
+  now answers 404 (and `/register` redirects to `/login`) unless
+  `ALLOW_PUBLIC_SIGNUP=true`; BetterAuth's own sign-up is disabled as a second layer.
+  Invites can be accepted only while `pending`, the role must belong to the inviter's
+  organization or be a global role, the user limit is re-checked on accept, and an
+  existing user who accepts into another organization loses the admin flag, all of
+  their roles (global ones included) and their department.
+- **Suspension and lock are enforced.** An inactive organization is `locked_out`
+  first; a suspension is `read_only` for 14 days and `locked_out` afterwards.
+  `getAuthUser` loads the status with the user, so guards need no second query. Every
+  mutating route calls `requireWritableOrg` (403 `org_read_only`); a test compares, per
+  route file, the number of calls with the number of mutating exports and fails on a
+  shortfall unless the file is on the named allow-list (auth flows, sign-out,
+  change-password, own preferences, billing portal, checkout and webhook, setup, SCIM,
+  the SAML callback, invite accept, read-style POSTs such as label PDFs and connectivity
+  tests). Locked-out organizations get 403 `org_locked` from the API guards and from
+  the former raw-session routes. SCIM answers a SCIM-format 403 (no `code`) for a
+  locked-out organization and also blocks its non-GET requests while it is read-only.
+  Members are
+  redirected to `/suspended` on every page (sign-out, plus "Manage subscription" for
+  admins; the CSP allows the Stripe portal as a form target). Tenants can no longer
+  change their own `isActive`, and an organization update no longer silently sets it
+  to true. Billing: a cancellation sets only `suspendedAt` (`isActive` stays the
+  operator's lock), reactivation and a completed checkout clear it, and the billing
+  portal and checkout stay reachable for a suspended admin. Self-hosted instances are
+  always `active`.
+- **Denials are typed.** Guards throw `ForbiddenError` or `UnauthorizedError` with a
+  machine-readable `code` (`org_locked`, `org_read_only`, `not_admin`,
+  `not_super_admin`, `insufficient_permission`, `api_key_scope`, `request_permission`,
+  `feature_not_entitled`, and `unauthorized` on a 401). Routes answer 401 or 403 with `{ error, code }` instead of
+  a 500 or a bare "Forbidden", so clients can tell a denial from an outage.
+- **The offline queue keeps secrets out and no longer loses refused changes.** The
+  service worker never queues `/api/auth/*`, HEAD or OPTIONS, multipart bodies, the
+  credential-bearing routes (add user, setup, admin settings, SCIM, team invite) or
+  bodies with secret-looking fields, and stores only allow-listed headers. Queued
+  changes are stamped with the signed-in user, replay only for that user, and the
+  queue is cleared on sign-out. Replay no longer loops back through the service
+  worker. 2xx counts as synced; 400 and 404 are dropped and reported; 429 and 5xx are retried
+  (three attempts in total), stopping at the first 429; any other status (401, 403, 409
+  and 422, but also an unexpected 3xx or 405) is kept as blocked, listed in the
+  indicator with the server's code and message, and discardable. The toast reports synced, blocked and failed counts separately, and
+  the mobile sync service uses the same classification.
+- **More cross-tenant holes closed**, found while implementing the above: stock
+  alerts, roles (including `organizationId` mass assignment on role edits and
+  members of global roles), webhooks, tickets (assignee must belong to the
+  organization), departments (a body-supplied organization is ignored), users,
+  audit campaign completion and the asset-checkout and licence-seat record checks
+  are scoped to the caller's organization. Ten server-rendered pages loaded other
+  organizations' data (reports, admin tickets and users, consumable and component
+  details and pickers, user edit and settings, reservations, depreciation settings);
+  they are scoped now, and user lookups no longer send password, LDAP or SCIM fields
+  to the client. Organization-less admins fail closed.
+- **Raw error text is gone from responses.** Database, upstream (Freshdesk, storage,
+  Intune) and CSV-import row errors no longer reach the client; details go to the
+  server log and the client gets a fixed message.
+- **Case-insensitive email checks are exact.** They compare `lower(email)` as a bound
+  parameter instead of a pattern match, so `_` and `%` in an address are never
+  wildcards.
+- **The status workflow is per organization.** `status_transitions` has no owner of its
+  own, so the workflow admin routes, `GET /api/status-transitions` and the status
+  update read and wrote every tenant's transitions; one tenant defining a single
+  transition made `PUT /api/asset/updateStatus` answer 400 "not allowed" for every
+  other tenant, and a status could be set from another tenant's status type. Transitions
+  are now matched through the organization of both statuses, creating one requires both
+  statuses to be yours (400), deleting someone else's answers 404, the "is a workflow
+  defined" check counts only your own, and the target status (by ID or by name) must
+  belong to your organization.
+- **More ID-addressed writes are scoped.** Completing a maintenance schedule,
+  activating an audit campaign, commenting on a ticket (which emailed the ticket's
+  creator in another tenant) and re-pointing a user asset accepted any ID of any
+  tenant. They resolve the target through the caller's organization and answer 404
+  before writing or emailing. A maintenance assignee must belong to the organization,
+  and completing a schedule never emails an assignee of another one.
+  The request, approval, return and self-return flows set the Pending, Active and
+  Available status from the asset's organization instead of any tenant's.
+- **Callers without an organization get nothing.** The audit log list and revert, asset
+  attachment delete and patch, maintenance schedules, user asset and accessory lists,
+  requests and the user validation endpoint applied their organization filter only
+  when the caller had an organization, so an org-less user (LDAP, OIDC and SAML users
+  today) could read, revert, delete or edit every tenant's rows. They answer 404 or an
+  empty result without querying.
+- **GDPR retention is super-admin only.** The retention settings are one file for the
+  whole deployment and the cron applies them to every tenant's audit logs, yet any
+  org admin could write them (set 1 day and the next run erases every audit trail).
+  Org admins now see the values read-only.
+- **A CSV user import cannot create admins unless the importer is one.** A role with
+  `import:execute` could fill the `isadmin` column; the column is ignored for importers
+  who are not admins.
+- **The depreciation forecast no longer adds up other tenants' assets.**
+  `/api/reports/advanced` scopes the categories and the assets it includes.
+- **The stored webhook secret is never returned.** Webhook responses carry `hasSecret`
+  instead of the encrypted value (global webhooks are listed to every tenant). Editing a
+  webhook keeps its secret unless a new one is entered.
+
+### Changed
+
+- The destructive database tests (`scope-automation-migration`, `user-email-query.db`)
+  run only with `ALLOW_DESTRUCTIVE_DB_TESTS=1`, no longer on any localhost
+  `DATABASE_URL`; CI sets it for its throwaway Postgres.
+- Org admins can no longer edit global roles (those with no organization); only
+  super-admins can, and only super-admins can create global webhooks and roles.
+- Guarded routes answer 403 with `{ error, code }` where some used to answer a bare
+  "Forbidden" (for example the team invite route), so UI code that matches the old
+  body text needs a look.
+- An advanced-search filter on a custom field outside the organization's definitions
+  matches nothing instead of being ignored.
+- Custom field definitions accept the six field types the UI offers (`text`, `number`,
+  `date`, `checkbox`, `select`, `textarea`) and the entity types `asset`, `accessory`,
+  `consumable`, `licence`, `component` and `kit` (British spelling; `license` is
+  rejected). A full update that resends another type or entity type is rejected.
+- A change queued offline is still answered with HTTP 202, as before; callers treat
+  that as success (see `TECHNICAL_DEBT.md`, item 58).
+
+### Fixed
+
+- Editing a select custom field no longer blanks its options.
+- Automation rule names are capped at 200 characters (the column size) instead of
+  failing with a 500.
+
+**Upgrade notes**
+
+Before deploying:
+
+- Set `ALLOW_PUBLIC_SIGNUP=true` on every deployment that should keep public sign-up
+  (the hosted SaaS: "Start free" and the pricing buttons point at `/register`).
+  Without it `/register` redirects to `/login` and the register API answers 404.
+  Self-hosted installs need nothing.
+- Set `SUPER_ADMIN_EMAILS` on every multi-organization deployment. With the variable
+  unset and more than one organization nobody is a super-admin, and the platform
+  settings (SSO, LDAP, Freshdesk, integrations, organizations, rate limits) become
+  unreachable. Keep super-admin accounts in the operator organization, and make sure
+  no second account has the same address in a different case.
+- List the organizations migration `20261007b_reopen_billing_suspended_orgs` will
+  reopen, and confirm each was a billing lock:
+  `SELECT id, name FROM organizations WHERE "isActive" = false AND "suspendedAt" IS NOT NULL`.
+  The old Stripe webhook locked cancelled organizations that way; they follow the
+  14-day read-only rule afterwards (and are locked out again once it has passed).
+  Re-lock any organization an operator had switched off on purpose through
+  `isActive`.
+- Migration `20261007_scope_automation_custom_fields` backfills the new columns. With
+  one organization everything is assigned to it. With several, rules go to their
+  creator's organization, and **rules whose creator has no organization are
+  deactivated**. A custom field definition used by several organizations is cloned
+  per organization and its values repointed; **definitions that hold no values stay
+  unscoped and become invisible**. Their count is raised as a database notice
+  ("Custom field definitions left unscoped"); the Prisma CLI may not show server
+  notices, so also run the queries under "After deploying".
+- Check the custom field definitions against the accepted sets; a full update of any
+  definition outside them is rejected (400) until an admin fixes it:
+  `SELECT id, name, "entityType", "fieldType" FROM custom_field_definitions WHERE "fieldType" NOT IN ('text','number','date','checkbox','select','textarea') OR "entityType" NOT IN ('asset','accessory','consumable','licence','component','kit')`.
+- The status workflow is per organization now. Transitions between two statuses of one
+  organization keep working for that organization only; a transition whose statuses
+  belong to different organizations, or to none, is no longer enforced for anyone. List
+  them and delete or recreate them: `SELECT t.id, f."statustypename" AS "from", f."organizationId" AS "fromOrganization", g."statustypename" AS "to", g."organizationId" AS "toOrganization" FROM status_transitions t JOIN "statusType" f ON f."statustypeid" = t."fromStatusId" JOIN "statusType" g ON g."statustypeid" = t."toStatusId" WHERE f."organizationId" IS NULL OR g."organizationId" IS NULL OR f."organizationId" <> g."organizationId"`.
+  An organization with no transitions of its own is unrestricted, also when another
+  organization had defined some.
+- GDPR retention settings can only be changed by a super-admin. If an org admin changed
+  `data/gdpr-settings.json`, review it before the next retention cron run.
+- Rehearse `prisma migrate deploy` on a restored copy of production first. The
+  production database is shared with other applications: run `migrate deploy` only,
+  never `migrate reset` or `db push`. Preview deployments must not use the production
+  database.
+
+After deploying:
+
+- Check what the scoping migration left unowned and decide what to do with it:
+  `SELECT id, name, "entityType" FROM custom_field_definitions WHERE "organizationId" IS NULL`
+  (invisible to every organization) and
+  `SELECT id, name FROM automation_rules WHERE "organizationId" IS NULL` (deactivated;
+  they cannot run until reassigned).
+- Open `/suspended` with a locked test organization and check the sign-out and
+  billing portal buttons.
+- Queue entries written by an older service worker have no owner: they are kept as
+  blocked ("unknown owner") and each user discards them once; old entries for
+  `/api/auth/*` are removed automatically.
+- Workflow rules created in the UI are still not executable by the engine (a
+  pre-existing format mismatch, `TECHNICAL_DEBT.md`, item 67).
+
+## [0.13.2] - 2026-10-06
+
+### Security
+
+- **Users can no longer change their own admin flag, organization or account
+  status.** BetterAuth's `POST /api/auth/update-user` accepted the app's custom
+  user fields (`isadmin`, `canrequest`, `organizationId`, `departmentId`,
+  `authProvider`, `isActive`, `password`) from any signed-in user, so a user
+  could make themselves an admin or move into another organization. These
+  fields are now marked `input: false` and are written only by the app's own
+  routes and sign-in hooks. Users can still update their own username and last
+  name.
+
 ## [0.13.1] - 2026-10-05
 
 ### Fixed

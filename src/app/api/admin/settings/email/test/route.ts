@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { sendEmail } from "@/lib/email";
 import { logger } from "@/lib/logger";
 
@@ -42,6 +43,8 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/admin/settings/email/test error", { error });
     return NextResponse.json(
       { success: false, error: "Failed to send test email" },

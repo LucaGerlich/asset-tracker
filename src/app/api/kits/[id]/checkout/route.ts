@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
@@ -16,6 +21,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("kit:checkout");
+    await requireWritableOrg(authUser);
     const orgId = authUser.organizationId ?? null;
     const { id } = await params;
 
@@ -192,13 +198,17 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     });
 
     // Webhooks + integrations
-    triggerWebhook("kit.checked_out", {
-      kitId: id,
-      kitName: kit.name,
-      userId,
-      userName: `${targetUser.firstname} ${targetUser.lastname}`,
-      results,
-    }).catch(() => {});
+    triggerWebhook(
+      "kit.checked_out",
+      {
+        kitId: id,
+        kitName: kit.name,
+        userId,
+        userName: `${targetUser.firstname} ${targetUser.lastname}`,
+        results,
+      },
+      orgId,
+    ).catch(() => {});
     notifyIntegrations("kit.checked_out", {
       kitName: kit.name,
       userName: `${targetUser.firstname} ${targetUser.lastname}`,
@@ -206,13 +216,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ kitId: id, results }, { status: 201 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("POST /api/kits/[id]/checkout error", { error: e });
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to checkout kit" },
       { status: 500 },

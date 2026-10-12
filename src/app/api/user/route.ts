@@ -1,6 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
+import {
+  assertEmailAssignable,
+  EmailConflictError,
+} from "@/lib/email-ownership";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { hasPermission } from "@/lib/rbac";
 import {
   getOrganizationContext,
@@ -129,10 +139,9 @@ export async function GET(req: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/user error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch users" },
       { status: 500 },
@@ -148,6 +157,7 @@ export async function PUT(req: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const authUser = await requireApiAuth();
+    await requireWritableOrg(authUser);
     const body = await req.json();
     const { userid, password, _expectedVersion, ...data } = body || {};
 
@@ -158,41 +168,34 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    if (_expectedVersion) {
-      const current = await prisma.user.findUnique({
-        where: { userid },
-        select: { change_date: true },
-      });
-      if (
-        current?.change_date &&
-        new Date(_expectedVersion).getTime() !==
-          new Date(current.change_date).getTime()
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "This user was modified by another admin. Please refresh and try again.",
-          },
-          { status: 409 },
-        );
-      }
-    }
-
     if (!authUser.isAdmin && authUser.id !== userid) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Verify target user belongs to requester's org (skip for own profile)
-    if (authUser.id !== userid) {
-      const orgContext = await getOrganizationContext();
-      const orgId = orgContext?.organization?.id;
-      const targetUser = await prisma.user.findFirst({
-        where: scopeToOrganization({ userid }, orgId),
-        select: { userid: true },
-      });
-      if (!targetUser) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
+    // Resolve the target inside the caller's org before anything that could
+    // reveal whether the id exists elsewhere (such as the version check
+    // below): a foreign and a missing user must look the same.
+    const targetUser = await prisma.user.findFirst({
+      where: scopeToOrganization({ userid }, authUser.organizationId),
+      select: { change_date: true },
+    });
+    if (!targetUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (
+      _expectedVersion &&
+      targetUser.change_date &&
+      new Date(_expectedVersion).getTime() !==
+        new Date(targetUser.change_date).getTime()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This user was modified by another admin. Please refresh and try again.",
+        },
+        { status: 409 },
+      );
     }
 
     const schema = authUser.isAdmin
@@ -228,6 +231,14 @@ export async function PUT(req: NextRequest) {
     // Strip password from profile update — it goes to accounts.password via setUserPassword.
     const newPassword = updateData.password as string | undefined;
     delete updateData.password;
+
+    // Only an email that is actually being set needs an ownership check.
+    if (typeof updateData.email === "string") {
+      updateData.email = await assertEmailAssignable(updateData.email, {
+        excludeUserId: userid,
+        callerIsSuperAdmin: await isSuperAdmin(authUser),
+      });
+    }
 
     // Convert accessExpiresAt string to Date or null
     if ("accessExpiresAt" in updateData) {
@@ -275,26 +286,29 @@ export async function PUT(req: NextRequest) {
       await setUserPassword(userid, newPassword);
     }
 
-    triggerWebhook("user.updated", {
-      userId: userid,
-      changes: [
-        ...Object.keys(updateData),
-        ...(newPassword ? ["password"] : []),
-      ],
-    }).catch(() => {});
+    triggerWebhook(
+      "user.updated",
+      {
+        userId: userid,
+        changes: [
+          ...Object.keys(updateData),
+          ...(newPassword ? ["password"] : []),
+        ],
+      },
+      updated.organizationId,
+    ).catch(() => {});
 
     await invalidateCacheByPrefix("users").catch(() => {});
     await invalidateCacheByPrefix("user_count").catch(() => {});
 
     return NextResponse.json(stripPassword(updated), { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
+    if (error instanceof EmailConflictError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     logger.error("PUT /api/user error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to update user" },
       { status: 500 },

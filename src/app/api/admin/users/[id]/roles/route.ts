@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { logger } from "@/lib/logger";
 import {
@@ -49,18 +54,9 @@ export async function GET(req: Request, { params }: RouteParams) {
 
     return NextResponse.json(roles, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/admin/users/[id]/roles error", { error });
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json(
-          { error: "Forbidden: Admin access required" },
-          { status: 403 },
-        );
-      }
-    }
     return NextResponse.json(
       { error: "Failed to fetch user roles" },
       { status: 500 },
@@ -76,6 +72,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
     const { id } = await params;
     const body = await req.json();
     const { roleId } = body;
@@ -147,18 +144,9 @@ export async function POST(req: Request, { params }: RouteParams) {
 
     return NextResponse.json(userRole, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/admin/users/[id]/roles error", { error });
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json(
-          { error: "Forbidden: Admin access required" },
-          { status: 403 },
-        );
-      }
-    }
     // Handle unique constraint violation (role already assigned)
     if (
       typeof error === "object" &&
@@ -185,6 +173,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
     const { id } = await params;
     const body = await req.json();
     const { roleId } = body;
@@ -256,18 +245,9 @@ export async function DELETE(req: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("DELETE /api/admin/users/[id]/roles error", { error });
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json(
-          { error: "Forbidden: Admin access required" },
-          { status: 403 },
-        );
-      }
-    }
     return NextResponse.json(
       { error: "Failed to remove role from user" },
       { status: 500 },

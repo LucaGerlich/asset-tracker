@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
-import { getOrganizationContext } from "@/lib/organization-context";
-import { getStorage, getOrgStorage } from "@/lib/storage";
+import { getOrgStorage } from "@/lib/storage";
 import { deleteThumbnails } from "@/lib/storage/thumbnails";
 
 export async function DELETE(
@@ -12,17 +16,23 @@ export async function DELETE(
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requireApiAuth();
-    const orgCtx = await getOrganizationContext();
-    const orgId = orgCtx?.organization?.id;
+    const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const { id } = await params;
 
+    // A caller without an organization owns no attachments: never drop the
+    // filter, it would let the delete reach any tenant's file.
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Attachment not found" },
+        { status: 404 },
+      );
+    }
+
     const attachment = await prisma.asset_attachments.findFirst({
-      where: {
-        id,
-        ...(orgId ? { asset: { organizationId: orgId } } : {}),
-      },
+      where: { id, asset: { organizationId: orgId } },
     });
 
     if (!attachment) {
@@ -32,7 +42,7 @@ export async function DELETE(
       );
     }
 
-    const storage = orgId ? await getOrgStorage(orgId) : await getStorage();
+    const storage = await getOrgStorage(orgId);
     try {
       await storage.delete(attachment.filename);
       if (attachment.thumbnailPath) {
@@ -49,9 +59,8 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return NextResponse.json(
       { error: "Failed to delete attachment" },
       { status: 500 },
@@ -66,19 +75,23 @@ export async function PATCH(
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requireApiAuth();
-    const orgCtx2 = await getOrganizationContext();
-    const orgId2 = orgCtx2?.organization?.id;
+    const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const { id } = await params;
     const body = await req.json();
     const { isPrimary } = body;
 
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Attachment not found" },
+        { status: 404 },
+      );
+    }
+
     const attachment = await prisma.asset_attachments.findFirst({
-      where: {
-        id,
-        ...(orgId2 ? { asset: { organizationId: orgId2 } } : {}),
-      },
+      where: { id, asset: { organizationId: orgId } },
     });
 
     if (!attachment) {
@@ -102,9 +115,8 @@ export async function PATCH(
 
     return NextResponse.json(updated);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     return NextResponse.json(
       { error: "Failed to update attachment" },
       { status: 500 },

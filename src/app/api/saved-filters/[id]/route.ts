@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth } from "@/lib/api-auth";
+import { requireApiAuth, requireWritableOrg } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 interface RouteParams {
@@ -11,6 +12,7 @@ interface RouteParams {
 export async function PUT(req: Request, { params }: RouteParams) {
   try {
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const { id } = await params;
     const body = await req.json();
     const { name, filters, isDefault, isGlobal } = body;
@@ -50,10 +52,9 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
     return NextResponse.json(updated, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PUT /api/saved-filters/[id] error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to update filter" },
       { status: 500 },
@@ -65,6 +66,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
 export async function DELETE(req: Request, { params }: RouteParams) {
   try {
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const { id } = await params;
 
     const existing = await prisma.saved_filters.findUnique({ where: { id } });
@@ -76,10 +78,9 @@ export async function DELETE(req: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("DELETE /api/saved-filters/[id] error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to delete filter" },
       { status: 500 },

@@ -1,6 +1,30 @@
+import type { Prisma } from "@prisma/client";
 import prisma from "./prisma";
 import { cached } from "./cache";
 import { getOrganizationContext } from "./organization-context";
+
+/**
+ * Columns of a user row that are safe to hand to a Server Component's props
+ * (and therefore to the browser). Deliberately excludes the password hash and
+ * the LDAP / SCIM / SSO bookkeeping columns (ldapDN, externalId,
+ * scimProviderId, scimLastSync, lastSyncedAt, ...). Never spread a full user
+ * row into a client component: add the column here when a page needs it.
+ */
+export const publicUserSelect = {
+  userid: true,
+  username: true,
+  firstname: true,
+  lastname: true,
+  email: true,
+  isadmin: true,
+  canrequest: true,
+  lan: true,
+  organizationId: true,
+  departmentId: true,
+  accessExpiresAt: true,
+  creation_date: true,
+  change_date: true,
+} satisfies Prisma.userSelect;
 
 /**
  * Strict org-scoped where clause — throws when org context is missing.
@@ -99,6 +123,40 @@ export async function getUsers() {
       }),
     2 * 60 * 1000,
   );
+}
+
+/**
+ * Minimal user rows for a picker, scoped to the caller's organization. Unlike
+ * getUsers() this carries no email or role flags, so it is safe on pages that
+ * every member of the organization can open.
+ */
+export async function getUserOptions() {
+  const where = await strictOrgWhere();
+  return prisma.user.findMany({
+    where,
+    select: { userid: true, firstname: true, lastname: true },
+    orderBy: { firstname: "asc" },
+  });
+}
+
+/** Minimal asset rows for a picker, scoped to the caller's organization. */
+export async function getAssetOptions() {
+  const where = await strictOrgWhere();
+  return prisma.asset.findMany({
+    where,
+    select: { assetid: true, assetname: true, assettag: true },
+    orderBy: { assetname: "asc" },
+  });
+}
+
+/** Minimal location rows for a picker, scoped to the caller's organization. */
+export async function getLocationOptions() {
+  const where = await strictOrgWhere();
+  return prisma.location.findMany({
+    where,
+    select: { locationid: true, locationname: true },
+    orderBy: { locationname: "asc" },
+  });
 }
 
 export async function getAssets() {
@@ -384,15 +442,6 @@ export async function getUserAccessoires() {
   );
 }
 
-export async function updateUserAsset(user: string, asset: string) {
-  // DEPRECATED SIGNATURE: update by userAssetsId and new userId
-  const res = await prisma.userAssets.update({
-    where: { userassetsid: user },
-    data: { userid: asset, change_date: new Date() },
-  });
-  return res;
-}
-
 export async function getUserById(id: string) {
   if (!id) {
     throw new Error("Invalid ID parameter");
@@ -403,22 +452,13 @@ export async function getUserById(id: string) {
       userid: id,
       ...(await strictOrgWhere()),
     },
+    select: publicUserSelect,
   });
 
   if (!user) {
     throw new Error(`User with ID ${id} not found`);
   }
 
-  return user;
-}
-
-export async function updateUser(id: string, data: Record<string, unknown>) {
-  const user = await prisma.user.update({
-    where: {
-      userid: id,
-    },
-    data,
-  });
   return user;
 }
 

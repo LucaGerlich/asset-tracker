@@ -133,10 +133,9 @@ export default function SSOSettingsTab() {
       } else {
         settings.push(
           { key: "sso.clientId", value: clientId },
-          {
-            key: "sso.clientSecret",
-            value: clientSecret !== "********" ? clientSecret : "",
-          },
+          // The mask means "unchanged": the server skips it. Sending "" here
+          // would overwrite the stored secret with an empty one.
+          { key: "sso.clientSecret", value: clientSecret },
           { key: "sso.discoveryUrl", value: discoveryUrl },
           { key: "sso.authorizationUrl", value: authorizationUrl },
           { key: "sso.tokenUrl", value: tokenUrl },

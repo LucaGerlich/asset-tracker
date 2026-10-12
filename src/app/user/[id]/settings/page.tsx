@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import Breadcrumb from "@/components/Breadcrumb";
-import prisma from "@/lib/prisma";
+import { getOrganizationContext } from "@/lib/organization-context";
+import { loadUserSettings } from "./data";
 import UserSettingsClient from "./ui/UserSettingsClient";
 import MfaSettings from "./ui/MfaSettings";
 import NotificationPreferences from "./ui/NotificationPreferences";
@@ -24,44 +25,11 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     redirect("/dashboard");
   }
 
-  const [user, prefs] = await Promise.all([
-    prisma.user.findUnique({
-      where: { userid: params.id },
-      select: {
-        userid: true,
-        firstname: true,
-        lastname: true,
-        email: true,
-        twoFactorEnabled: true,
-        authProvider: true,
-      },
-    }),
-    prisma.user_preferences.findUnique({
-      where: { userId: params.id },
-    }),
-  ]);
-
-  if (!user) redirect("/user");
-
-  const preferences = prefs
-    ? {
-        theme: prefs.theme,
-        locale: prefs.locale,
-        timezone: prefs.timezone,
-        currency: prefs.currency,
-        dateFormat: prefs.dateFormat,
-        numberFormat: prefs.numberFormat,
-        pageSize: prefs.pageSize,
-      }
-    : {
-        theme: "system",
-        locale: "en",
-        timezone: "UTC",
-        currency: "USD",
-        dateFormat: "MM/DD/YYYY",
-        numberFormat: "1,234.56",
-        pageSize: 20,
-      };
+  const ctx = await getOrganizationContext();
+  const { user, preferences } = await loadUserSettings(
+    { id: session.user.id, organizationId: ctx?.organization?.id ?? null },
+    params.id,
+  );
 
   const breadcrumbOptions = [
     { label: "Home", href: "/" },

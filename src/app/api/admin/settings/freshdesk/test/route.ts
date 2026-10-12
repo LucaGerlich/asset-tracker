@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import { createFreshdeskClient } from "@/lib/freshdesk";
 import { decrypt } from "@/lib/encryption";
@@ -52,13 +53,11 @@ export async function POST(req: Request) {
       );
     }
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/admin/settings/freshdesk/test error", { error });
     return NextResponse.json(
-      {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Connection test failed",
-      },
+      { success: false, error: "Connection test failed" },
       { status: 500 },
     );
   }

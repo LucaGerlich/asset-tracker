@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireSuperAdmin,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import { roleSchema } from "@/lib/validation-organization";
 import { PERMISSIONS, getAllPermissions } from "@/lib/rbac";
@@ -18,26 +22,20 @@ const ROLE_SORT_FIELDS = ["name", "createdAt"];
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
 
     const searchParams = req.nextUrl.searchParams;
 
-    const user = await prisma.user.findUnique({
-      where: { userid: session.user.id! },
-      select: { organizationId: true },
-    });
-
-    const where: Record<string, unknown> = user?.organizationId
+    // Own org's roles plus global (system) roles. An admin without an org
+    // sees global roles only, never another org's roles.
+    const where: Record<string, unknown> = user.organizationId
       ? {
           OR: [
             { organizationId: user.organizationId },
             { organizationId: null }, // System roles
           ],
         }
-      : {};
+      : { organizationId: null };
 
     const include = {
       organization: {
@@ -85,6 +83,8 @@ export async function GET(req: NextRequest) {
       status: 200,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching roles", { error });
     return NextResponse.json(
       { error: "Failed to fetch roles" },
@@ -98,10 +98,12 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
+
+    // A role without an organization is global and visible to every tenant,
+    // so only a platform super-admin may create one.
+    if (!user.organizationId) await requireSuperAdmin();
 
     const body = await req.json();
     const validated = roleSchema.parse(body);
@@ -121,11 +123,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Force organization from admin's own org — never accept from request body
-    const adminUser = await prisma.user.findUnique({
-      where: { userid: session.user.id! },
-      select: { organizationId: true },
-    });
-    const organizationId = adminUser?.organizationId || null;
+    const organizationId = user.organizationId || null;
 
     const existingRole = await prisma.role.findFirst({
       where: {
@@ -152,7 +150,7 @@ export async function POST(req: NextRequest) {
     });
 
     await createAuditLog({
-      userId: session.user.id!,
+      userId: user.id!,
       action: AUDIT_ACTIONS.CREATE,
       entity: "Role",
       entityId: role.id,
@@ -161,6 +159,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(role, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error creating role", { error });
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });

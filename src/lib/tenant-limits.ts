@@ -2,15 +2,27 @@ import prisma from "@/lib/prisma";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { isSelfHosted } from "@/lib/deployment-mode";
 
-export async function checkAssetLimit(): Promise<{
+/**
+ * The org to check: an explicit `organizationId` wins (callers acting for an
+ * org other than the session's, e.g. accepting an invitation), otherwise the
+ * org of the current session.
+ */
+async function resolveOrgId(
+  organizationId?: string,
+): Promise<string | undefined> {
+  if (organizationId) return organizationId;
+  const ctx = await getOrganizationContext();
+  return ctx?.organization?.id;
+}
+
+export async function checkAssetLimit(organizationId?: string): Promise<{
   allowed: boolean;
   current: number;
   max: number;
 }> {
   if (isSelfHosted()) return { allowed: true, current: 0, max: -1 };
 
-  const ctx = await getOrganizationContext();
-  const orgId = ctx?.organization?.id;
+  const orgId = await resolveOrgId(organizationId);
   if (!orgId) return { allowed: true, current: 0, max: -1 };
 
   const org = await prisma.organization.findUnique({
@@ -24,15 +36,14 @@ export async function checkAssetLimit(): Promise<{
   return { allowed: count < org.maxAssets, current: count, max: org.maxAssets };
 }
 
-export async function checkUserLimit(): Promise<{
+export async function checkUserLimit(organizationId?: string): Promise<{
   allowed: boolean;
   current: number;
   max: number;
 }> {
   if (isSelfHosted()) return { allowed: true, current: 0, max: -1 };
 
-  const ctx = await getOrganizationContext();
-  const orgId = ctx?.organization?.id;
+  const orgId = await resolveOrgId(organizationId);
   if (!orgId) return { allowed: true, current: 0, max: -1 };
 
   const org = await prisma.organization.findUnique({

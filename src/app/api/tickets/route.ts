@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireSuperAdmin,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createFreshdeskClient, SUPPORTED_TICKET_TYPES } from "@/lib/freshdesk";
 import { decrypt } from "@/lib/encryption";
-import { getOrganizationContext } from "@/lib/organization-context";
 import {
   parsePaginationParams,
   buildPrismaArgs,
@@ -40,13 +43,22 @@ async function getLocalTickets(url: URL) {
     const user = await requireApiAuth();
     const searchParams = url.searchParams;
 
+    // An admin without an org owns no tickets: never widen the filter to
+    // every org.
+    if (user.isAdmin && !user.organizationId) {
+      return NextResponse.json(
+        searchParams.has("page")
+          ? buildPaginatedResponse([], 0, parsePaginationParams(searchParams))
+          : [],
+        { status: 200 },
+      );
+    }
+
     // Scope tickets to user's organization (through creator's org)
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
     const where: Record<string, unknown> = user.isAdmin
-      ? orgId
-        ? { user_tickets_createdByTouser: { organizationId: orgId } }
-        : {}
+      ? {
+          user_tickets_createdByTouser: { organizationId: user.organizationId },
+        }
       : { createdBy: user.id };
 
     const include = {
@@ -132,10 +144,9 @@ async function getLocalTickets(url: URL) {
       status: 200,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/tickets error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch tickets" },
       { status: 500 },
@@ -143,13 +154,11 @@ async function getLocalTickets(url: URL) {
   }
 }
 
-// Fetch tickets from Freshdesk API (admin-only)
+// Fetch tickets from Freshdesk API. The Freshdesk account is one shared,
+// platform-level integration, so only super-admins may read through it.
 async function getFreshdeskTickets(req: Request, url: URL) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    await requireSuperAdmin();
 
     const [domainSetting, apiKeySetting] = await Promise.all([
       prisma.system_settings.findUnique({
@@ -185,8 +194,13 @@ async function getFreshdeskTickets(req: Request, url: URL) {
     const result = await client.getTicketsByTypes(types, page);
 
     if (!result.success) {
+      // The client relays Freshdesk's or fetch's raw text (hosts, API
+      // descriptions); it stays in the log.
+      logger.error("GET /api/tickets (freshdesk) upstream error", {
+        error: result.error,
+      });
       return NextResponse.json(
-        { error: result.error || "Failed to fetch tickets" },
+        { error: "Failed to fetch tickets" },
         { status: 500 },
       );
     }
@@ -197,6 +211,8 @@ async function getFreshdeskTickets(req: Request, url: URL) {
       types: SUPPORTED_TICKET_TYPES,
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/tickets (freshdesk) error", { error });
     return NextResponse.json(
       { error: "Failed to fetch tickets" },
@@ -213,6 +229,7 @@ export async function POST(req: Request) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const body = await req.json();
 
     const { title, description, priority } = body || {};
@@ -255,10 +272,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(ticket, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/tickets error", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     return NextResponse.json(
       { error: "Failed to create ticket" },
       { status: 500 },

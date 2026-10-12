@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireApiAuth } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { transitionsOfOrganization } from "@/lib/status-transitions";
 
 /**
  * GET /api/status-transitions
  *
- * Returns all status transitions for use in status-change dropdowns.
+ * Returns the caller's organization's status transitions for use in
+ * status-change dropdowns (a caller without an organization gets none).
  * Available to any authenticated user (not admin-only) so the UI
  * can filter allowed status transitions.
  *
@@ -14,9 +17,13 @@ import { logger } from "@/lib/logger";
  */
 export async function GET() {
   try {
-    await requireApiAuth();
+    const user = await requireApiAuth();
+
+    const orgId = user.organizationId;
+    if (!orgId) return NextResponse.json([], { status: 200 });
 
     const transitions = await prisma.status_transitions.findMany({
+      where: transitionsOfOrganization(orgId),
       select: {
         fromStatusId: true,
         toStatusId: true,
@@ -25,9 +32,8 @@ export async function GET() {
 
     return NextResponse.json(transitions);
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/status-transitions error", { error });
     return NextResponse.json(
       { error: "Failed to fetch transitions" },

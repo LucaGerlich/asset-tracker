@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { departmentSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import {
@@ -74,13 +79,9 @@ export async function GET(req: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching departments", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch departments" },
       { status: 500 },
@@ -94,39 +95,35 @@ export async function POST(req: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const authUser = await requirePermission("dept:manage");
+    await requireWritableOrg(authUser);
 
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
+    // A department always belongs to the caller's own org; a caller without
+    // an org cannot create one.
+    const orgId = authUser.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "An organization is required to create departments" },
+        { status: 403 },
+      );
+    }
 
     const body = await req.json();
     const validated = departmentSchema.parse(body);
 
-    // If user has an org, ensure they can only create departments in their own org
-    if (orgId && validated.organizationId !== orgId) {
+    // The body organizationId is never used; if sent, it must be the caller's.
+    if (validated.organizationId && validated.organizationId !== orgId) {
       return NextResponse.json(
         { error: "Cannot create department in another organization" },
         { status: 403 },
       );
     }
 
-    // Verify organization exists
-    const organization = await prisma.organization.findUnique({
-      where: { id: validated.organizationId },
-    });
-
-    if (!organization) {
-      return NextResponse.json(
-        { error: "Organization not found" },
-        { status: 404 },
-      );
-    }
-
-    // If parent is specified, verify it exists and belongs to same organization
+    // If parent is specified, verify it exists and belongs to the same organization
     if (validated.parentId) {
       const parent = await prisma.department.findFirst({
         where: {
           id: validated.parentId,
-          organizationId: validated.organizationId,
+          organizationId: orgId,
         },
       });
 
@@ -142,7 +139,7 @@ export async function POST(req: NextRequest) {
       data: {
         name: validated.name,
         description: validated.description,
-        organizationId: validated.organizationId,
+        organizationId: orgId,
         parentId: validated.parentId || null,
       },
       include: {
@@ -165,13 +162,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(department, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error creating department", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }

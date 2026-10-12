@@ -8,7 +8,7 @@ import { vi } from "vitest";
  * soon as a route calls it. This provides every export with a sensible default
  * (authenticated admin) that a test overrides as needed, e.g.:
  *
- *   vi.mocked(requirePermission).mockRejectedValue(new Error("Unauthorized"));
+ *   vi.mocked(requirePermission).mockRejectedValue(new UnauthorizedError());
  */
 
 const defaultAuthUser = {
@@ -22,6 +22,7 @@ const defaultAuthUser = {
   lastname: "User",
   organizationId: "org-uuid-001",
   departmentId: null,
+  orgStatus: "active" as const,
 };
 
 // Mutations are not blocked in tests by default.
@@ -34,5 +35,6 @@ export const requireSuperAdmin = vi.fn().mockResolvedValue(defaultAuthUser);
 export const requireApiCanRequest = vi.fn().mockResolvedValue(defaultAuthUser);
 export const requirePermission = vi.fn().mockResolvedValue(defaultAuthUser);
 
+export const assertOrgNotLocked = vi.fn();
 export const requireWritableOrg = vi.fn().mockResolvedValue(undefined);
 export const requirePlanFeature = vi.fn().mockResolvedValue(undefined);

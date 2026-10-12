@@ -52,6 +52,9 @@ jobs:
     env:
       DATABASE_URL: "postgresql://test:test@localhost:5432/test"
       DB_SCHEMA: public
+      # The postgres service above is throwaway; the destructive DB tests
+      # (migration backfill, email query) only run with this explicit opt-in.
+      ALLOW_DESTRUCTIVE_DB_TESTS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2

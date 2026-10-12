@@ -1,7 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
 import { Prisma } from "@prisma/client";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   createLicenseSchema,
@@ -68,9 +73,10 @@ export async function GET(req: NextRequest) {
     if (params.search) {
       const tsQuery = params.search.trim().split(/\s+/).join(" & ");
       const matchingIds = await prisma
-        .$queryRawUnsafe<
-          Array<{ licenceid: string }>
-        >(`SELECT "licenceid" FROM "licence" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`, tsQuery)
+        .$queryRawUnsafe<Array<{ licenceid: string }>>(
+          `SELECT "licenceid" FROM "licence" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`,
+          tsQuery,
+        )
         .catch(() => null);
 
       if (matchingIds && matchingIds.length > 0) {
@@ -115,14 +121,9 @@ export async function GET(req: NextRequest) {
       { status: 200 },
     );
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/licence error", { error: e });
-
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e instanceof Error && e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to fetch licences" },
@@ -138,6 +139,7 @@ export async function POST(req: NextRequest) {
     if (demoBlock) return demoBlock;
     // Require license:create permission to create licences
     const admin = await requirePermission("license:create");
+    await requireWritableOrg(admin);
 
     const body = await req.json();
 
@@ -203,24 +205,23 @@ export async function POST(req: NextRequest) {
     });
 
     if (created.licenceduserid) {
-      triggerWebhook("license.assigned", {
-        licenceId: created.licenceid,
-        userId: created.licenceduserid,
-        licenceKey: created.licencekey,
-      }).catch(() => {});
+      triggerWebhook(
+        "license.assigned",
+        {
+          licenceId: created.licenceid,
+          userId: created.licenceduserid,
+          licenceKey: created.licencekey,
+        },
+        created.organizationId,
+      ).catch(() => {});
     }
 
     invalidateCacheByPrefix("licences_all").catch(() => {});
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("POST /api/licence error", { error: e });
-
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e instanceof Error && e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to create licence" },
@@ -236,6 +237,7 @@ export async function PUT(req: NextRequest) {
     if (demoBlock) return demoBlock;
     // Require license:edit permission to update licences
     const admin = await requirePermission("license:edit");
+    await requireWritableOrg(admin);
 
     const body = await req.json();
 
@@ -332,24 +334,24 @@ export async function PUT(req: NextRequest) {
     });
 
     if (licenceduserid !== undefined) {
-      triggerWebhook("license.assigned", {
-        licenceId: updated.licenceid,
-        userId: updated.licenceduserid,
-        licenceKey: updated.licencekey,
-      }).catch(() => {});
+      triggerWebhook(
+        "license.assigned",
+        {
+          licenceId: updated.licenceid,
+          userId: updated.licenceduserid,
+          licenceKey: updated.licencekey,
+        },
+        updated.organizationId,
+      ).catch(() => {});
     }
 
     invalidateCacheByPrefix("licences_all").catch(() => {});
     return NextResponse.json(updated, { status: 200 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("PUT /api/licence error", { error: e });
 
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e instanceof Error && e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json({ error: "Licence not found" }, { status: 404 });
     }
@@ -367,6 +369,7 @@ export async function DELETE(req: NextRequest) {
     if (demoBlock) return demoBlock;
     // Require license:delete permission to delete licences
     const admin = await requirePermission("license:delete");
+    await requireWritableOrg(admin);
 
     const body = await req.json();
     const { licenceid } = body;
@@ -410,14 +413,10 @@ export async function DELETE(req: NextRequest) {
       { status: 200 },
     );
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("DELETE /api/licence error", { error: e });
 
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e instanceof Error && e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json({ error: "Licence not found" }, { status: 404 });
     }

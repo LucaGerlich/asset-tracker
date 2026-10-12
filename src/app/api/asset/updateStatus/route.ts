@@ -1,11 +1,14 @@
 import type { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "../../../../lib/prisma";
 import { logger, logCatchError } from "@/lib/logger";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
 import {
-  getOrganizationContext,
-  scopeToOrganization,
-} from "@/lib/organization-context";
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
+import { transitionsOfOrganization } from "@/lib/status-transitions";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { invalidateCacheByPrefix } from "@/lib/cache";
@@ -19,9 +22,9 @@ export async function PUT(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requirePermission("asset:edit");
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
+    const user = await requirePermission("asset:edit");
+    await requireWritableOrg(user);
+    const orgId = user.organizationId;
 
     const { assetId, statusTypeId, statusName, _expectedVersion } =
       await req.json();
@@ -41,10 +44,50 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    let statusId = statusTypeId;
-    if (!statusId && statusName) {
+    // A caller without an organization owns no assets and no statuses.
+    if (!orgId) {
+      return new Response(JSON.stringify({ error: "Asset not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (
+      (statusTypeId != null && typeof statusTypeId !== "string") ||
+      (statusName != null && typeof statusName !== "string")
+    ) {
+      return new Response(
+        JSON.stringify({
+          error: "statusTypeId and statusName must be strings",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // The target status is resolved inside the caller's organization: neither
+    // an ID nor a name can select another tenant's status type.
+    let statusId: string;
+    if (statusTypeId) {
+      const own = await prisma.statusType.findFirst({
+        where: { statustypeid: statusTypeId, organizationId: orgId },
+        select: { statustypeid: true },
+      });
+      if (!own) {
+        return new Response(
+          JSON.stringify({
+            error: "Invalid status ID - status does not exist",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      statusId = own.statustypeid;
+    } else {
       const found = await prisma.statusType.findFirst({
-        where: { statustypename: { equals: statusName, mode: "insensitive" } },
+        where: {
+          statustypename: { equals: statusName, mode: "insensitive" },
+          organizationId: orgId,
+        },
+        select: { statustypeid: true },
       });
       if (!found) {
         logger.warn("PUT /api/asset/updateStatus - Status not found", {
@@ -60,7 +103,7 @@ export async function PUT(req: NextRequest) {
 
     // Verify asset belongs to user's organization before updating
     const existingAsset = await prisma.asset.findFirst({
-      where: scopeToOrganization({ assetid: assetId }, orgId),
+      where: { assetid: assetId, organizationId: orgId },
     });
 
     if (!existingAsset) {
@@ -88,15 +131,20 @@ export async function PUT(req: NextRequest) {
 
         // Enforce status workflow transitions (if any are defined)
         if (current.statustypeid && current.statustypeid !== statusId) {
-          const transitionCount = await tx.status_transitions.count();
+          // Only this organization's workflow counts: another tenant defining
+          // transitions must not lock this one's status changes.
+          const ownTransitions = transitionsOfOrganization(orgId);
+          const transitionCount = await tx.status_transitions.count({
+            where: ownTransitions,
+          });
           if (transitionCount > 0) {
-            const allowed = await tx.status_transitions.findUnique({
+            const allowed = await tx.status_transitions.findFirst({
               where: {
-                fromStatusId_toStatusId: {
-                  fromStatusId: current.statustypeid,
-                  toStatusId: statusId,
-                },
+                ...ownTransitions,
+                fromStatusId: current.statustypeid,
+                toStatusId: statusId,
               },
+              select: { id: true },
             });
             if (!allowed) {
               throw new Error("TRANSITION_NOT_ALLOWED");
@@ -162,45 +210,29 @@ export async function PUT(req: NextRequest) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     const duration = Date.now() - startTime;
     logger.apiError("PUT", "/api/asset/updateStatus", error, { duration });
 
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
+    // Only fixed messages leave the server; the details are logged above.
     let errorMessage = "Failed to update status";
     let statusCode = 500;
 
-    if (error.code === "P2025") {
-      errorMessage = "Asset not found";
-      statusCode = 404;
-    } else if (error.code === "P2003") {
-      errorMessage = "Invalid status ID - status does not exist";
-      statusCode = 400;
-    } else if (error.message) {
-      errorMessage = error.message;
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2025") {
+        errorMessage = "Asset not found";
+        statusCode = 404;
+      } else if (error.code === "P2003") {
+        errorMessage = "Invalid status ID - status does not exist";
+        statusCode = 400;
+      }
     }
 
-    return new Response(
-      JSON.stringify({
-        error: errorMessage,
-        code: error.code || "UNKNOWN",
-      }),
-      {
-        status: statusCode,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: statusCode,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
 

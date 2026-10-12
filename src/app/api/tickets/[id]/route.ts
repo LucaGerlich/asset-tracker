@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireSuperAdmin,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createFreshdeskClient } from "@/lib/freshdesk";
 import { logger } from "@/lib/logger";
-import { getOrganizationContext } from "@/lib/organization-context";
 import { decrypt } from "@/lib/encryption";
+import { z } from "zod";
 import {
   notifyTicketAssigned,
   notifyTicketStatusChanged,
@@ -18,14 +22,12 @@ interface RouteParams {
 
 /**
  * GET /api/tickets/[id]
- * Fetch a single ticket from Freshdesk
+ * Fetch a single ticket from Freshdesk. The Freshdesk account is one shared,
+ * platform-level integration, so only super-admins may read through it.
  */
 export async function GET(req: Request, { params }: RouteParams) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user?.isadmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    await requireSuperAdmin();
 
     const { id } = await params;
     const ticketId = parseInt(id, 10);
@@ -61,14 +63,21 @@ export async function GET(req: Request, { params }: RouteParams) {
     const result = await client.getTicket(ticketId);
 
     if (!result.success) {
+      // The client relays Freshdesk's or fetch's raw text (hosts, API
+      // descriptions); it stays in the log.
+      logger.error("GET /api/tickets/[id] upstream error", {
+        error: result.error,
+      });
       return NextResponse.json(
-        { error: result.error || "Failed to fetch ticket" },
+        { error: "Failed to fetch ticket" },
         { status: 500 },
       );
     }
 
     return NextResponse.json({ ticket: result.data });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("GET /api/tickets/[id] error", { error });
     return NextResponse.json(
       { error: "Failed to fetch ticket" },
@@ -85,28 +94,53 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const _user = await requireApiAdmin();
+    const user = await requireApiAdmin();
+    await requireWritableOrg(user);
     const { id } = await params;
     const body = await req.json();
 
     const { status, priority, assignedTo } = body || {};
 
-    // Fetch the existing ticket and verify it belongs to admin's org
-    const orgContext = await getOrganizationContext();
-    const orgId = orgContext?.organization?.id;
-
+    // Fetch the existing ticket and verify it belongs to admin's org. A user
+    // without an org owns no tickets: never widen the filter to every org.
+    if (!user.organizationId) {
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    }
     const existingTicket = await prisma.tickets.findFirst({
       where: {
         id,
-        ...(orgId
-          ? { user_tickets_createdByTouser: { organizationId: orgId } }
-          : {}),
+        user_tickets_createdByTouser: { organizationId: user.organizationId },
       },
       select: { status: true, assignedTo: true, title: true },
     });
 
     if (!existingTicket) {
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    }
+
+    // The assignee is notified and shown the ticket: it must be a user of the
+    // caller's org. `null` unassigns.
+    if (assignedTo !== undefined && assignedTo !== null) {
+      const assigneeId = z.string().uuid().safeParse(assignedTo);
+      if (!assigneeId.success) {
+        return NextResponse.json(
+          { error: "assignedTo must be a user id or null" },
+          { status: 400 },
+        );
+      }
+      const assignee = await prisma.user.findFirst({
+        where: {
+          userid: assigneeId.data,
+          organizationId: user.organizationId,
+        },
+        select: { userid: true },
+      });
+      if (!assignee) {
+        return NextResponse.json(
+          { error: "Assignee not found in your organization" },
+          { status: 400 },
+        );
+      }
     }
 
     const updateData: any = {
@@ -188,18 +222,9 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
     return NextResponse.json(ticket, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("PATCH /api/tickets/[id] error", { error });
-    if (error instanceof Error) {
-      if (error.message === "Unauthorized") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      if (error.message.includes("Forbidden")) {
-        return NextResponse.json(
-          { error: "Forbidden: Admin access required" },
-          { status: 403 },
-        );
-      }
-    }
     return NextResponse.json(
       { error: "Failed to update ticket" },
       { status: 500 },

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAdmin } from "@/lib/api-auth";
+import { requireApiAdmin, requireWritableOrg } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog } from "@/lib/audit-log";
-import { getOrganizationContext } from "@/lib/organization-context";
 
 /**
  * Map from the `entity` string stored in audit logs to the corresponding
@@ -100,17 +100,25 @@ export async function POST(
 ) {
   try {
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
     const { id } = await params;
 
-    // 1. Fetch the audit log entry, scoped to the caller's organization
-    const orgCtx = await getOrganizationContext();
-    const orgId = orgCtx?.organization?.id;
+    // 1. Fetch the audit log entry, scoped to the caller's organization. A
+    // caller without an organization owns no audit logs: never drop the
+    // filter, it would let the revert reach any tenant's entry.
+    const orgId = admin.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Audit log entry not found" },
+        { status: 404 },
+      );
+    }
 
     const auditLog = await prisma.audit_logs.findFirst({
       where: {
         id,
         // Scope through the user relation — audit_logs doesn't have organizationId directly
-        ...(orgId ? { user: { organizationId: orgId } } : {}),
+        user: { organizationId: orgId },
       },
     });
 
@@ -249,13 +257,9 @@ export async function POST(
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     console.error("POST /api/admin/audit-logs/[id]/revert error", error);
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.includes("Forbidden")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to revert change" },
       { status: 500 },

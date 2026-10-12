@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { queueEmail } from "@/lib/email/service";
 import {
@@ -51,11 +56,22 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
 
     const { id } = await params;
 
-    const schedule = await prisma.maintenance_schedules.findUnique({
-      where: { id },
+    // A schedule belongs to the organization of its asset. A caller without an
+    // organization owns none; never widen the lookup to every organization.
+    const orgId = user.organizationId;
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Maintenance schedule not found" },
+        { status: 404 },
+      );
+    }
+
+    const schedule = await prisma.maintenance_schedules.findFirst({
+      where: { id, asset: { organizationId: orgId } },
     });
 
     if (!schedule) {
@@ -106,14 +122,21 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
               firstname: true,
               lastname: true,
               email: true,
+              organizationId: true,
             },
           },
         },
       }),
     ]);
 
-    // Send notification to assigned user about completion and next due date
-    if (updatedSchedule.assignedTo && updatedSchedule.user?.email) {
+    // Send notification to assigned user about completion and next due date.
+    // A legacy schedule may still name an assignee of another organization
+    // (assignees were not checked before): never email that user.
+    if (
+      updatedSchedule.assignedTo &&
+      updatedSchedule.user?.email &&
+      updatedSchedule.user.organizationId === orgId
+    ) {
       const template = emailTemplates.maintenanceCompleted;
       const variables = {
         userName: `${updatedSchedule.user.firstname} ${updatedSchedule.user.lastname}`,
@@ -144,9 +167,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       { status: 201 },
     );
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error completing maintenance", { error });
     return NextResponse.json(
       { error: "Failed to complete maintenance" },

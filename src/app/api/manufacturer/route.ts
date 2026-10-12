@@ -5,7 +5,9 @@ import {
   requireApiAuth,
   requireApiAdmin,
   requireNotDemoMode,
+  requireWritableOrg,
 } from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   createManufacturerSchema,
   updateManufacturerSchema,
@@ -64,11 +66,9 @@ export async function GET(req: NextRequest) {
       status: 200,
     });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/manufacturer error", { error: e });
-
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     return NextResponse.json(
       { error: "Failed to fetch manufacturers" },
@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
     if (demoBlock) return demoBlock;
     // Only admins can create manufacturers
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
 
     const body = await req.json();
 
@@ -122,14 +123,9 @@ export async function POST(req: NextRequest) {
     invalidateCacheByPrefix("manufacturers").catch(() => {});
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("POST /api/manufacturer error", { error: e });
-
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e instanceof Error && e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to create manufacturer" },
@@ -145,6 +141,7 @@ export async function PUT(req: NextRequest) {
     if (demoBlock) return demoBlock;
     // Only admins can update manufacturers
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
 
     const body = await req.json();
 
@@ -202,14 +199,10 @@ export async function PUT(req: NextRequest) {
     invalidateCacheByPrefix("manufacturers").catch(() => {});
     return NextResponse.json(updated, { status: 200 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("PUT /api/manufacturer error", { error: e });
 
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e instanceof Error && e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json(
         { error: "Manufacturer not found" },
@@ -230,6 +223,7 @@ export async function DELETE(req: NextRequest) {
     if (demoBlock) return demoBlock;
     // Only admins can delete manufacturers
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
 
     const body = await req.json();
     const { manufacturerid } = body;
@@ -313,14 +307,10 @@ export async function DELETE(req: NextRequest) {
       { status: 200 },
     );
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("DELETE /api/manufacturer error", { error: e });
 
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e instanceof Error && e.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json(
         { error: "Manufacturer not found" },

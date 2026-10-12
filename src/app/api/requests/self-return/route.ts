@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -19,6 +24,7 @@ export async function POST(req: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const user = await requireApiAuth();
+    await requireWritableOrg(user);
     const { entityType, entityId, notes } = await req.json();
 
     if (!entityType || !entityId) {
@@ -111,6 +117,7 @@ export async function POST(req: NextRequest) {
           const available = await tx.statusType.findFirst({
             where: {
               statustypename: { equals: "Available", mode: "insensitive" },
+              organizationId: orgId ?? null,
             },
           });
           if (available) {
@@ -144,9 +151,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("POST /api/requests/self-return error", { error });
     return NextResponse.json(
       { error: "Failed to process return" },

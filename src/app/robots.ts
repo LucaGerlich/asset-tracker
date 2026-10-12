@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { getHostKind, getSplitOrigins } from "@/lib/host-routing";
+import { isPublicSignupEnabled } from "@/lib/signup";
 import { getMarketingUrl } from "@/lib/url";
 
 // The proxy reads the split env at runtime; render per request so a build
@@ -23,7 +24,14 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/login", "/register", "/pricing", "/terms", "/privacy"],
+        allow: [
+          "/",
+          "/login",
+          ...(isPublicSignupEnabled() ? ["/register"] : []),
+          "/pricing",
+          "/terms",
+          "/privacy",
+        ],
         disallow: [
           "/api/",
           "/admin/",

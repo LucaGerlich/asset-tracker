@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import { updateDepartmentSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
@@ -49,13 +54,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(department);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching department", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch department" },
       { status: 500 },
@@ -70,6 +71,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const authUser = await requirePermission("dept:manage");
+    await requireWritableOrg(authUser);
 
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
@@ -131,13 +133,9 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(department);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error updating department", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }
@@ -155,6 +153,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const authUser = await requirePermission("dept:manage");
+    await requireWritableOrg(authUser);
 
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
@@ -209,13 +208,9 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error deleting department", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to delete department" },
       { status: 500 },

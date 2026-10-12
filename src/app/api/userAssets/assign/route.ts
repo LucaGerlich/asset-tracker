@@ -1,7 +1,12 @@
 import type { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "../../../../lib/prisma";
-import { requireApiAdmin, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requireApiAdmin,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
@@ -10,6 +15,7 @@ export async function POST(req: NextRequest) {
     if (demoBlock) return demoBlock;
 
     const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
     const { assetId, userId } = await req.json();
 
     if (!assetId || !userId) {
@@ -98,17 +104,9 @@ export async function POST(req: NextRequest) {
       },
     );
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error assigning asset", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-      });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 403,
-      });
-    }
     if (
       error instanceof Error &&
       (error.message === "ASSET_NOT_FOUND" ||
@@ -123,9 +121,12 @@ export async function POST(req: NextRequest) {
       error instanceof Error &&
       error.message === "Status 'Active' not found in statusType"
     ) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-      });
+      return new Response(
+        JSON.stringify({
+          error: "The 'Active' status is not configured for this organization",
+        }),
+        { status: 500 },
+      );
     }
     return new Response(JSON.stringify({ error: "Error assigning asset" }), {
       status: 500,

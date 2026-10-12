@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getSplitOrigins } from "@/lib/host-routing";
+import { isPublicSignupEnabled } from "@/lib/signup";
 import { getMarketingUrl } from "@/lib/url";
 
 // The proxy reads the split env at runtime; render per request so a build
@@ -25,8 +26,13 @@ const ENTRIES: {
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = getMarketingUrl();
   const split = getSplitOrigins() !== null;
+  const signupOpen = isPublicSignupEnabled();
 
-  return ENTRIES.filter((e) => !(split && APP_ONLY.has(e.path))).map((e) => ({
+  return ENTRIES.filter(
+    (e) =>
+      !(split && APP_ONLY.has(e.path)) &&
+      !(e.path === "/register" && !signupOpen),
+  ).map((e) => ({
     url: `${baseUrl}${e.path}`,
     lastModified: new Date(),
     changeFrequency: e.changeFrequency,

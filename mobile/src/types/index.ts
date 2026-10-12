@@ -90,11 +90,14 @@ export interface ActivityItem {
 
 export interface SyncQueueItem {
   id: string;
-  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   endpoint: string;
   body?: Record<string, unknown>;
   createdAt: string;
   retryCount: number;
+  /** The server refused the change. It is kept, not retried, until reviewed. */
+  blocked?: boolean;
+  lastStatus?: number;
 }
 
 export type AuthState = {

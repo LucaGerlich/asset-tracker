@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, assignLicenceSeatSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -73,14 +78,9 @@ export async function GET(req: Request) {
       { status: 200 },
     );
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/licence/seats error", { error: e });
-
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to fetch seat assignments" },
@@ -95,6 +95,7 @@ export async function POST(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const admin = await requirePermission("license:assign");
+    await requireWritableOrg(admin);
 
     const body = await req.json();
 
@@ -195,14 +196,18 @@ export async function POST(req: Request) {
       },
     });
 
-    triggerWebhook("license.seat_assigned", {
-      assignmentId: assignment.id,
-      licenceId,
-      userId,
-      seatNumber: assignment.seatNumber,
-      userName:
-        `${assignment.user.firstname ?? ""} ${assignment.user.lastname ?? ""}`.trim(),
-    }).catch(() => {});
+    triggerWebhook(
+      "license.seat_assigned",
+      {
+        assignmentId: assignment.id,
+        licenceId,
+        userId,
+        seatNumber: assignment.seatNumber,
+        userName:
+          `${assignment.user.firstname ?? ""} ${assignment.user.lastname ?? ""}`.trim(),
+      },
+      admin.organizationId,
+    ).catch(() => {});
 
     // Slack/Teams notifications
     notifyIntegrations("license.seat_assigned", {
@@ -216,14 +221,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json(assignment, { status: 201 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("POST /api/licence/seats error", { error: e });
 
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.message === "Licence not found") {
       return NextResponse.json({ error: e.message }, { status: 404 });
     }

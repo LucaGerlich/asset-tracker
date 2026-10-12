@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
@@ -59,9 +64,10 @@ export async function GET(req: Request) {
     if (params.search) {
       const tsQuery = params.search.trim().split(/\s+/).join(" & ");
       const matchingIds = await prisma
-        .$queryRawUnsafe<
-          Array<{ id: string }>
-        >(`SELECT "id" FROM "components" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`, tsQuery)
+        .$queryRawUnsafe<Array<{ id: string }>>(
+          `SELECT "id" FROM "components" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`,
+          tsQuery,
+        )
         .catch(() => null);
 
       if (matchingIds && matchingIds.length > 0) {
@@ -96,14 +102,9 @@ export async function GET(req: Request) {
       status: 200,
     });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("GET /api/components error", { error: e });
-
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to fetch components" },
@@ -118,6 +119,7 @@ export async function POST(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("component:create");
+    await requireWritableOrg(authUser);
 
     const body = await req.json();
     const validated = validateBody(createComponentSchema, body);
@@ -165,10 +167,14 @@ export async function POST(req: Request) {
     });
 
     // Webhook + integrations
-    triggerWebhook("component.created", {
-      componentId: created.id,
-      componentName: created.name,
-    }).catch(() => {});
+    triggerWebhook(
+      "component.created",
+      {
+        componentId: created.id,
+        componentName: created.name,
+      },
+      created.organizationId,
+    ).catch(() => {});
     notifyIntegrations("component.created", {
       componentName: created.name,
     }).catch(logCatchError("Integration notification failed"));
@@ -179,14 +185,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(created, { status: 201 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("POST /api/components error", { error: e });
-
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
 
     return NextResponse.json(
       { error: "Failed to create component" },
@@ -201,6 +202,7 @@ export async function PUT(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("component:edit");
+    await requireWritableOrg(authUser);
 
     const body = await req.json();
     const { id, ...rest } = body;
@@ -280,11 +282,15 @@ export async function PUT(req: Request) {
     });
 
     // Webhook + integrations
-    triggerWebhook("component.updated", {
-      componentId: updated.id,
-      componentName: updated.name,
-      changes: Object.keys(data),
-    }).catch(() => {});
+    triggerWebhook(
+      "component.updated",
+      {
+        componentId: updated.id,
+        componentName: updated.name,
+        changes: Object.keys(data),
+      },
+      updated.organizationId,
+    ).catch(() => {});
     notifyIntegrations("component.updated", {
       componentName: updated.name,
     }).catch(logCatchError("Integration notification failed"));
@@ -293,14 +299,10 @@ export async function PUT(req: Request) {
 
     return NextResponse.json(updated, { status: 200 });
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("PUT /api/components error", { error: e });
 
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json(
         { error: "Component not found" },
@@ -320,6 +322,7 @@ export async function DELETE(req: Request) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("component:delete");
+    await requireWritableOrg(authUser);
 
     const body = await req.json();
     const { id } = body;
@@ -360,10 +363,14 @@ export async function DELETE(req: Request) {
     });
 
     // Webhook + integrations
-    triggerWebhook("component.deleted", {
-      componentId: id,
-      componentName: component.name,
-    }).catch(() => {});
+    triggerWebhook(
+      "component.deleted",
+      {
+        componentId: id,
+        componentName: component.name,
+      },
+      orgId,
+    ).catch(() => {});
     notifyIntegrations("component.deleted", {
       componentName: component.name,
     }).catch(logCatchError("Integration notification failed"));
@@ -375,14 +382,10 @@ export async function DELETE(req: Request) {
       { status: 200 },
     );
   } catch (e: any) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("DELETE /api/components error", { error: e });
 
-    if (e.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (e.message?.startsWith("Forbidden")) {
-      return NextResponse.json({ error: e.message }, { status: 403 });
-    }
     if (e.code === "P2025") {
       return NextResponse.json(
         { error: "Component not found" },

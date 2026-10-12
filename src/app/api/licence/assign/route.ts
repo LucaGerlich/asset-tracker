@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server";
 import prisma from "../../../../lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { apiErrorResponse } from "@/lib/errors";
 import { triggerWebhook } from "@/lib/webhooks";
 import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
@@ -15,7 +20,8 @@ export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    await requirePermission("license:assign");
+    const user = await requirePermission("license:assign");
+    await requireWritableOrg(user);
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
     const { licenceId, userId } = await req.json();
@@ -53,27 +59,23 @@ export async function POST(req: NextRequest) {
       data: { licenceduserid: userId, change_date: new Date() },
     });
 
-    triggerWebhook("license.assigned", {
-      licenceId,
-      userId,
-      licenceKey: updated.licencekey ? "***" : null,
-    }).catch(() => {});
+    triggerWebhook(
+      "license.assigned",
+      {
+        licenceId,
+        userId,
+        licenceKey: updated.licencekey ? "***" : null,
+      },
+      updated.organizationId,
+    ).catch(() => {});
 
     await invalidateCacheByPrefix("licences_all").catch(() => {});
 
     return new Response(JSON.stringify(updated), { status: 200 });
   } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
     logger.error("POST /api/licence/assign error", { error: e });
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-      });
-    }
-    if (e instanceof Error && e.message.startsWith("Forbidden")) {
-      return new Response(JSON.stringify({ error: e.message }), {
-        status: 403,
-      });
-    }
     return new Response(JSON.stringify({ error: "Failed to assign licence" }), {
       status: 500,
     });

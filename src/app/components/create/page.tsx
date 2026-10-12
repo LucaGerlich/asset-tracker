@@ -4,10 +4,10 @@ import { headers } from "next/headers";
 import ComponentCreateForm from "./ui/ComponentCreateForm";
 import {
   getComponentCategories,
+  getLocationOptions,
   getManufacturers,
   getSuppliers,
 } from "@/lib/data";
-import prisma from "@/lib/prisma";
 import Breadcrumb from "@/components/Breadcrumb";
 
 export const metadata = {
@@ -27,7 +27,7 @@ export default async function Page() {
     getComponentCategories(),
     getManufacturers(),
     getSuppliers(),
-    prisma.location.findMany({ orderBy: { locationname: "asc" } }),
+    getLocationOptions(),
   ]);
 
   return (

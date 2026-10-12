@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getUserById } from "@/lib/data";
 import { requireAuth } from "@/lib/auth-guards";
-import prisma from "@/lib/prisma";
+import { getUserEditOptions } from "./data";
 import UserEditForm from "./ui/UserEditForm";
 import Breadcrumb from "@/components/Breadcrumb";
 
@@ -11,29 +11,19 @@ export const metadata = {
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  // Fetched separately (not in the Promise.all below) so a scoped miss here
-  // maps to notFound() without risking swallowing requireAuth()'s redirect.
+  // Fetched in its own try/catch so a scoped miss maps to notFound() without
+  // risking swallowing requireAuth()'s redirect.
   let user;
   try {
     user = await getUserById(params.id);
   } catch {
     notFound();
   }
-  const [session, allRoles, userRoles, departments] = await Promise.all([
-    requireAuth(),
-    prisma.role.findMany({
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.userRole.findMany({
-      where: { userId: params.id },
-      include: { role: { select: { id: true, name: true } } },
-    }),
-    prisma.department.findMany({
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+  const session = await requireAuth();
+  const { allRoles, userRoles, departments } = await getUserEditOptions(
+    session.user.organizationId ?? null,
+    params.id,
+  );
   return (
     <>
       <Breadcrumb
@@ -47,7 +37,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         initial={user}
         isAdmin={!!session.user.isAdmin}
         initialRoles={allRoles}
-        initialUserRoles={userRoles.map((ur) => ur.role)}
+        initialUserRoles={userRoles}
         initialDepartments={departments}
       />
     </>

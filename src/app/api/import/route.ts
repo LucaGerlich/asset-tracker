@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { requirePermission, requireNotDemoMode } from "@/lib/api-auth";
+import {
+  requirePermission,
+  requireNotDemoMode,
+  requireWritableOrg,
+} from "@/lib/api-auth";
+import { AppError, apiErrorResponse } from "@/lib/errors";
+import { assertEmailAssignable } from "@/lib/email-ownership";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { importJobSchema } from "@/lib/validation-organization";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -10,6 +18,45 @@ import { logger, logCatchError } from "@/lib/logger";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+
+/**
+ * A problem with a row's own data or the import's setup, reported by this file.
+ * Its message is written for the user and is stored on the import job as is.
+ */
+class ImportRowError extends Error {}
+
+const ROW_FAILED_MESSAGE = "Row could not be imported";
+
+/**
+ * What a user may read about a failed row. Messages this code writes itself
+ * (ImportRowError) and typed application errors (email conflict, reserved
+ * address) pass through. Known Prisma errors map to a fixed sentence. Anything
+ * else (query text, table and column names, connection details) is replaced
+ * and only logged.
+ */
+function describeRowError(error: unknown): {
+  message: string;
+  unexpected: boolean;
+} {
+  if (error instanceof ImportRowError || error instanceof AppError) {
+    return { message: error.message, unexpected: false };
+  }
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      return {
+        message: "A record with the same unique value already exists",
+        unexpected: false,
+      };
+    }
+    if (error.code === "P2003") {
+      return {
+        message: "A referenced record does not exist",
+        unexpected: false,
+      };
+    }
+  }
+  return { message: ROW_FAILED_MESSAGE, unexpected: true };
+}
 
 // Entity field mappings for CSV import
 const ENTITY_FIELDS: Record<string, string[]> = {
@@ -65,13 +112,9 @@ export async function GET(_req: NextRequest) {
 
     return NextResponse.json(jobs);
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error fetching import jobs", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     return NextResponse.json(
       { error: "Failed to fetch import jobs" },
       { status: 500 },
@@ -85,6 +128,7 @@ export async function POST(req: NextRequest) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("import:execute");
+    await requireWritableOrg(authUser);
 
     const importUser = await prisma.user.findUnique({
       where: { userid: authUser.id! },
@@ -264,6 +308,16 @@ export async function POST(req: NextRequest) {
       licencecategorytypeid: defaultLicenceCategory?.licencecategorytypeid,
     };
 
+    // Imported users may only claim a reserved (super-admin) address when the
+    // importer is a super-admin themselves. Resolved once, not per row.
+    const callerIsSuperAdmin =
+      validatedInput.entityType === "user"
+        ? await isSuperAdmin(authUser)
+        : false;
+    // import:execute can be granted to a plain role; only an admin may mint
+    // admins from the file.
+    const callerIsAdmin = authUser.isAdmin === true;
+
     // Process rows (in a real app, this would be done asynchronously)
     const errors: { row: number; error: string }[] = [];
     let successCount = 0;
@@ -281,13 +335,20 @@ export async function POST(req: NextRequest) {
           authUser.id!,
           importOrgId,
           defaultRefs,
+          callerIsSuperAdmin,
+          callerIsAdmin,
         );
         successCount++;
       } catch (err) {
-        errors.push({
-          row: i + 1,
-          error: err instanceof Error ? err.message : "Unknown error",
-        });
+        const { message, unexpected } = describeRowError(err);
+        if (unexpected) {
+          logger.error("Import row failed", {
+            row: i + 1,
+            entityType: validatedInput.entityType,
+            error: err,
+          });
+        }
+        errors.push({ row: i + 1, error: message });
       }
 
       if (i % 10 === 0) {
@@ -332,13 +393,17 @@ export async function POST(req: NextRequest) {
     // Trigger webhook
     const webhookEvent =
       errors.length === lines.length - 1 ? "import.failed" : "import.completed";
-    await triggerWebhook(webhookEvent, {
-      jobId: job.id,
-      entityType: validatedInput.entityType,
-      totalRows: lines.length - 1,
-      successCount,
-      errorCount: errors.length,
-    });
+    await triggerWebhook(
+      webhookEvent,
+      {
+        jobId: job.id,
+        entityType: validatedInput.entityType,
+        totalRows: lines.length - 1,
+        successCount,
+        errorCount: errors.length,
+      },
+      importOrgId,
+    );
     notifyIntegrations(webhookEvent, {
       entityType: validatedInput.entityType,
       successCount,
@@ -348,13 +413,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(completedJob, { status: 201 });
   } catch (error) {
+    const denied = apiErrorResponse(error);
+    if (denied) return denied;
     logger.error("Error processing import", { error });
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof Error && error.message.startsWith("Forbidden")) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    }
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }
@@ -471,6 +532,8 @@ async function createEntity(
   userId: string,
   organizationId: string | null,
   defaultRefs: Record<string, string | undefined>,
+  callerIsSuperAdmin: boolean,
+  callerIsAdmin: boolean,
 ): Promise<void> {
   const now = new Date();
 
@@ -513,7 +576,7 @@ async function createEntity(
         !accSupplier ||
         !accModel
       ) {
-        throw new Error(
+        throw new ImportRowError(
           "Missing required reference data for accessory import. Ensure manufacturer, status type, accessory category, location, supplier, and model records exist.",
         );
       }
@@ -545,7 +608,7 @@ async function createEntity(
         data.consumablecategorytypeid || defaultRefs.consumablecategorytypeid;
       const conSupplier = data.supplierid || defaultRefs.supplierid;
       if (!conManufacturer || !conCategory || !conSupplier) {
-        throw new Error(
+        throw new ImportRowError(
           "Missing required reference data for consumable import. Ensure manufacturer, consumable category, and supplier records exist.",
         );
       }
@@ -574,7 +637,7 @@ async function createEntity(
         data.licencecategorytypeid || defaultRefs.licencecategorytypeid;
       const licSupplier = data.supplierid || defaultRefs.supplierid;
       if (!licManufacturer || !licCategory || !licSupplier) {
-        throw new Error(
+        throw new ImportRowError(
           "Missing required reference data for licence import. Ensure manufacturer, licence category, and supplier records exist.",
         );
       }
@@ -603,6 +666,10 @@ async function createEntity(
     }
 
     case "user": {
+      // A rejected address fails only this row; the import job records it.
+      const email = data.email
+        ? await assertEmailAssignable(data.email, { callerIsSuperAdmin })
+        : null;
       const randomPassword = await bcrypt.hash(
         crypto.randomBytes(32).toString("hex"),
         10,
@@ -610,11 +677,14 @@ async function createEntity(
       const newUser = await prisma.user.create({
         data: {
           username: data.username || null,
-          email: data.email || null,
+          email,
           firstname: data.firstname,
           lastname: data.lastname,
           password: randomPassword,
-          isadmin: data.isadmin === "true" || data.isadmin === "1",
+          // An importer without admin rights cannot create admins: the column
+          // is ignored for them.
+          isadmin:
+            callerIsAdmin && (data.isadmin === "true" || data.isadmin === "1"),
           canrequest: data.canrequest !== "false" && data.canrequest !== "0",
           creation_date: now,
           organizationId,
@@ -649,7 +719,9 @@ async function createEntity(
       break;
 
     default:
-      throw new Error(`Import not implemented for entity type: ${entityType}`);
+      throw new ImportRowError(
+        `Import not implemented for entity type: ${entityType}`,
+      );
   }
 }
 
