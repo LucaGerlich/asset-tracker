@@ -76,9 +76,41 @@ describe("POST /api/billing/webhook", () => {
         stripeSubscriptionId: "sub_1",
         maxAssets: 5000,
         maxUsers: 25,
+        entitlements: {
+          features: [
+            "api_keys",
+            "procurement",
+            "advanced_reports",
+            "tco_dashboard",
+            "custom_fields",
+            "workflow_automation",
+          ],
+          maxAssets: 5000,
+          maxUsers: 25,
+        },
         suspendedAt: null,
       });
       expect(args.data).not.toHaveProperty("isActive");
+    });
+
+    it("records unlimited enterprise entitlements", async () => {
+      receiveEvent("checkout.session.completed", {
+        subscription: "sub_1",
+        metadata: { organizationId: "org-1", plan: "enterprise" },
+      });
+
+      await POST(webhookRequest());
+
+      const args = mockPrisma.organization.update.mock.calls[0][0];
+      expect(args.data).toMatchObject({
+        maxAssets: 999999,
+        maxUsers: 999999,
+        entitlements: { maxAssets: null, maxUsers: null },
+      });
+      expect(
+        (args.data as { entitlements: { features: string[] } }).entitlements
+          .features,
+      ).toContain("scim");
     });
 
     it("ignores a session without organization or a known plan", async () => {
@@ -109,6 +141,7 @@ describe("POST /api/billing/webhook", () => {
         stripeSubscriptionId: null,
         maxAssets: 100,
         maxUsers: 3,
+        entitlements: { features: [], maxAssets: 100, maxUsers: 3 },
         suspendedAt: expect.any(Date),
       });
       expect(args?.data).not.toHaveProperty("isActive");
@@ -136,6 +169,18 @@ describe("POST /api/billing/webhook", () => {
         plan: "professional",
         maxAssets: 5000,
         maxUsers: 25,
+        entitlements: {
+          features: [
+            "api_keys",
+            "procurement",
+            "advanced_reports",
+            "tco_dashboard",
+            "custom_fields",
+            "workflow_automation",
+          ],
+          maxAssets: 5000,
+          maxUsers: 25,
+        },
         suspendedAt: null,
       });
       expect(args.data).not.toHaveProperty("isActive");
