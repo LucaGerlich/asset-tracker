@@ -1,6 +1,6 @@
 # Technical Debt
 
-Last updated: 2026-10-11 (v0.14.0 — Phase 0 tenant isolation; follow-ups in items 53–80)
+Last updated: 2026-10-12 (v0.15.0, SaaS boundary phase 1a)
 
 This document tracks issues found by whole-application audits. Items marked
 **FIXED** were resolved in the version noted; **DEFERRED** items are documented
@@ -233,6 +233,9 @@ table-name collision from any of the apps would damage the others. A database na
 app there (dump/restore `public` minus the Django tables, repoint `DATABASE_URL`
 in Vercel Production/Preview and local `.env`), then Preview can get its own
 database too (item 7).
+The phase 1a migration (`20261012_org_entitlements_locked_at`) is additive; a Preview
+deployment on the production database breaks on organization reads until production
+migrates (item 7).
 
 9. **User cascade deletes** (`schema.prisma`): `AssetCheckout`, `tickets`,
    `PurchaseRequest`, `GoodsReceipt`, `AssetReservation` cascade on user delete,

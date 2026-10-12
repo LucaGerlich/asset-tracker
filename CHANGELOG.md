@@ -6,6 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-12
+
+Phase 1a of the SaaS boundary (`docs/superpowers/specs/2026-10-05-saas-boundary-design.md`):
+the database gains the columns the control plane will drive, and the legacy billing code
+starts recording entitlements. Nothing reads them yet, so behaviour is unchanged.
+
+### Added
+
+- `organizations.entitlements` (JSONB) and `organizations.lockedAt` (timestamp), both
+  nullable, migration `20261012_org_entitlements_locked_at`.
+- The Stripe webhook, the trial cron and the register trial record `entitlements`
+  alongside `plan`, `maxAssets` and `maxUsers` while Stripe is configured.
+- `scripts/backfill-entitlements.ts` maps every organization's legacy plan to
+  entitlements (dry run by default).
+
+### Security
+
+- The organization routes (`GET`/`POST /api/organizations`, `GET`/`PUT
+/api/organizations/[id]`) return an allow-list of fields. They no longer send `plan`,
+  the Stripe customer and subscription ids, `trialEndsAt`, `maxAssets`, `maxUsers` or
+  `suspendedAt` to org admins, and never the new columns.
+
+**Upgrade notes**
+
+Before deploying:
+
+- The migration only adds two nullable columns. Preview deployments that share the
+  production database fail on organization reads from the moment they run 0.15.0 until
+  production has applied the migration; deploy production promptly or keep Preview off
+  the production database.
+
+After deploying (SaaS database only, never a self-hosted one):
+
+- Dry run, with the deployment's real `SELF_HOSTED` value:
+  `bun scripts/backfill-entitlements.ts --schema <schema> --deployment-self-hosted <true|false>`
+  It prints one JSON line per organization (`currentAccess`, `proposed`, `losesFeatures`,
+  usage, `overLimit`) and a summary. `losesFeatures` lists what the organization loses
+  when phase 1b switches enforcement on; through 0.15.0 only API keys and procurement
+  were enforced per plan. `--dry-run` is accepted and is the default. The script requires
+  `DATABASE_URL` to name host, port and database explicitly (no `?host=`, `?port=` or
+  `?dbname=` query parameters) and refuses to run otherwise, so the printed target always
+  matches the database it connects to.
+- Decide per organization, then apply with the printed target:
+  `bun scripts/backfill-entitlements.ts --schema <schema> --deployment-self-hosted <...> --apply --confirm "<target>"`
+  `--confirm` is rejected without `--apply`. Rows that already hold entitlements are never
+  changed; re-running is safe.
+- Gate to phase 1b: re-run the dry run right before deploying 1b; its summary must show
+  `"unset":0`.
+
 ## [0.14.0] - 2026-10-11
 
 Phase 0 of the SaaS boundary work
