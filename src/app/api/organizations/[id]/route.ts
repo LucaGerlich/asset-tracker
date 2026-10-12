@@ -20,6 +20,7 @@ import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { logger } from "@/lib/logger";
+import { organizationApiSelect } from "@/lib/organizations";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -62,7 +63,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     const organization = await prisma.organization.findUnique({
       where: { id },
-      include: {
+      select: {
+        ...organizationApiSelect,
         departments: {
           orderBy: { name: "asc" },
         },
@@ -165,6 +167,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const organization = await prisma.organization.update({
       where: { id },
       data: updateData,
+      select: organizationApiSelect,
     });
 
     await createAuditLog({

@@ -11,6 +11,10 @@ import {
 import { requireNotDemoMode } from "@/lib/api-auth";
 import { seedOrgDefaults } from "@/lib/org-defaults";
 import { isSelfHosted } from "@/lib/deployment-mode";
+import {
+  isLegacyBillingActive,
+  legacyPlanToEntitlements,
+} from "@/lib/legacy-billing";
 import { isPublicSignupEnabled } from "@/lib/signup";
 import { logger } from "@/lib/logger";
 import { ForbiddenError } from "@/lib/errors";
@@ -130,6 +134,16 @@ export async function POST(req: Request) {
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
           maxAssets: 5000,
           maxUsers: 25,
+          // Phase 1a dual-write: nothing reads it yet (SaaS boundary spec, section 7).
+          ...(isLegacyBillingActive()
+            ? {
+                entitlements: legacyPlanToEntitlements(
+                  "professional",
+                  5000,
+                  25,
+                ),
+              }
+            : {}),
         };
 
     const org = await prisma.organization.create({

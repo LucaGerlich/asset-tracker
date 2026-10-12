@@ -4,6 +4,10 @@ import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { PLANS } from "@/lib/stripe";
 import { logger } from "@/lib/logger";
+import {
+  isLegacyBillingActive,
+  legacyPlanToEntitlements,
+} from "@/lib/legacy-billing";
 
 /**
  * GET /api/cron/check-trials
@@ -44,6 +48,16 @@ export async function GET() {
         trialEndsAt: null,
         maxAssets: PLANS.starter.maxAssets,
         maxUsers: PLANS.starter.maxUsers,
+        // Phase 1a dual-write: nothing reads it yet (SaaS boundary spec, section 7).
+        ...(isLegacyBillingActive()
+          ? {
+              entitlements: legacyPlanToEntitlements(
+                "starter",
+                PLANS.starter.maxAssets,
+                PLANS.starter.maxUsers,
+              ),
+            }
+          : {}),
       },
     });
 

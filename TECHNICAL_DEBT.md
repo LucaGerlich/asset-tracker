@@ -1,6 +1,6 @@
 # Technical Debt
 
-Last updated: 2026-10-11 (v0.14.0 — Phase 0 tenant isolation; follow-ups in items 53–80)
+Last updated: 2026-10-12 (v0.15.0, SaaS boundary phase 1a)
 
 This document tracks issues found by whole-application audits. Items marked
 **FIXED** were resolved in the version noted; **DEFERRED** items are documented
@@ -20,6 +20,9 @@ with a recommended fix. The audits so far:
   the SaaS boundary spec plus a code investigation, implemented task by task (29
   commits, 317 files) with an independent review per task. See CHANGELOG 0.14.0. What
   it deliberately left open is items 53–80.
+- **2026-10-12 (v0.15.0)** — Phase 1a of the SaaS boundary (entitlement columns,
+  dual-write, the guarded backfill script, the organization-route allow-list) with a
+  review per task and a final whole-branch review. What it left open is item 81.
 
 ## Summary (as of 2026-09-07; the cross-tenant row updated 2026-10-11)
 
@@ -233,6 +236,9 @@ table-name collision from any of the apps would damage the others. A database na
 app there (dump/restore `public` minus the Django tables, repoint `DATABASE_URL`
 in Vercel Production/Preview and local `.env`), then Preview can get its own
 database too (item 7).
+The phase 1a migration (`20261012_org_entitlements_locked_at`) is additive; a Preview
+deployment on the production database breaks on organization reads until production
+migrates (item 7).
 
 9. **User cascade deletes** (`schema.prisma`): `AssetCheckout`, `tickets`,
    `PurchaseRequest`, `GoodsReceipt`, `AssetReservation` cascade on user delete,
@@ -670,6 +676,26 @@ toStatusId])` is global. _Recommended:_ add a nullable `organizationId`, backfil
     activate route is clean. Stash `stash@{0}` ("task-13 interrupted partial work") is
     obsolete once the release is merged; `stash@{1}` is unrelated.
     _Recommended:_ `unknown` plus `apiErrorResponse` in the routes, delete the stash.
+
+### Left open by the 0.15.0 reviews (SaaS boundary phase 1a)
+
+81. **Two verification gaps in 0.15.0 (medium)**
+    (`src/app/api/__tests__/organizations-list-create.test.ts`,
+    `src/app/api/__tests__/organizations-id.test.ts`,
+    `src/app/api/__tests__/org-select-assertions.ts`,
+    `src/lib/__tests__/organizations.test.ts`, `scripts/backfill-entitlements.ts`).
+    (a) The organization-route tests assert a deny-list over the mocked Prisma
+    arguments (the sensitive columns are absent from `select`), not the JSON response;
+    the exact key set of `organizationApiSelect` is pinned separately in
+    `organizations.test.ts`. A route that bypassed the constant, or a response built
+    from something other than the selected row, would still pass.
+    (b) The backfill script has never been executed under Bun against a real database:
+    the unit tests use a fake client, the DB-gated tests run only in CI through
+    Vitest, and CI bundles the script with `bun build` without running it.
+    _Recommended:_ for (a) a response-level test with a Prisma double that returns a
+    full row, asserting the JSON keys; for (b) one dry run against a disposable local
+    Postgres with an explicit-port URL (`postgres://...@localhost:5432/<db>`) before the
+    production run, and keep `ALLOW_DESTRUCTIVE_DB_TESTS` unset there.
 
 ## Repository loose ends (2026-09-07)
 

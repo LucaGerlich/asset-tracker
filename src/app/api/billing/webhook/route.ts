@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getStripe, PLANS, PlanKey } from "@/lib/stripe";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { legacyPlanToEntitlements } from "@/lib/legacy-billing";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -38,6 +39,12 @@ export async function POST(req: Request) {
               PLANS[plan].maxAssets === -1 ? 999999 : PLANS[plan].maxAssets,
             maxUsers:
               PLANS[plan].maxUsers === -1 ? 999999 : PLANS[plan].maxUsers,
+            // Phase 1a dual-write: nothing reads it yet (SaaS boundary spec, section 7).
+            entitlements: legacyPlanToEntitlements(
+              plan,
+              PLANS[plan].maxAssets,
+              PLANS[plan].maxUsers,
+            ),
             // Stripe does not guarantee event order: customer.subscription.updated
             // can arrive first, find no org (the subscription id is stored here)
             // and clear nothing. isActive is the operator's lock and is left alone.
@@ -66,6 +73,12 @@ export async function POST(req: Request) {
               plan: planKey,
               maxAssets: planCfg.maxAssets === -1 ? 999999 : planCfg.maxAssets,
               maxUsers: planCfg.maxUsers === -1 ? 999999 : planCfg.maxUsers,
+              // Phase 1a dual-write: nothing reads it yet (SaaS boundary spec, section 7).
+              entitlements: legacyPlanToEntitlements(
+                planKey,
+                planCfg.maxAssets,
+                planCfg.maxUsers,
+              ),
               // Clear the billing suspension. isActive is the operator's lock
               // and is deliberately left untouched here.
               suspendedAt: null,
@@ -84,6 +97,12 @@ export async function POST(req: Request) {
           stripeSubscriptionId: null,
           maxAssets: PLANS.starter.maxAssets,
           maxUsers: PLANS.starter.maxUsers,
+          // Phase 1a dual-write: nothing reads it yet (SaaS boundary spec, section 7).
+          entitlements: legacyPlanToEntitlements(
+            "starter",
+            PLANS.starter.maxAssets,
+            PLANS.starter.maxUsers,
+          ),
           // Start the read-only grace period; the org locks out by time (see
           // getOrgStatus). isActive stays untouched: it is the operator's lock.
           suspendedAt: new Date(),

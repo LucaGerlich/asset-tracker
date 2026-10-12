@@ -158,4 +158,67 @@ describe("POST /api/auth/register", () => {
     const res = await POST(req);
     expect(res.status).toBe(429);
   });
+
+  describe("trial entitlements (phase 1a dual-write)", () => {
+    beforeEach(() => {
+      mockPrisma.user.findFirst.mockResolvedValue(null);
+      mockPrisma.organization.create.mockResolvedValue({
+        id: "new-org-id",
+      } as never);
+      mockPrisma.user.create.mockResolvedValue({
+        userid: "new-user-id",
+      } as never);
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    async function register() {
+      await POST(
+        createMockRequest("/api/auth/register", {
+          method: "POST",
+          body: validBody,
+        }),
+      );
+      return mockPrisma.organization.create.mock.calls[0][0].data;
+    }
+
+    it("records the professional trial entitlements when legacy billing is active", async () => {
+      vi.stubEnv("SELF_HOSTED", "");
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_x");
+
+      const data = await register();
+
+      expect(data).toMatchObject({
+        plan: "professional",
+        entitlements: {
+          features: [
+            "api_keys",
+            "procurement",
+            "advanced_reports",
+            "tco_dashboard",
+            "custom_fields",
+            "workflow_automation",
+          ],
+          maxAssets: 5000,
+          maxUsers: 25,
+        },
+      });
+    });
+
+    it("writes no entitlements without legacy billing", async () => {
+      vi.stubEnv("SELF_HOSTED", "");
+      vi.stubEnv("STRIPE_SECRET_KEY", "");
+
+      expect(await register()).not.toHaveProperty("entitlements");
+    });
+
+    it("writes no entitlements when self-hosted", async () => {
+      vi.stubEnv("SELF_HOSTED", "true");
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_x");
+
+      expect(await register()).not.toHaveProperty("entitlements");
+    });
+  });
 });

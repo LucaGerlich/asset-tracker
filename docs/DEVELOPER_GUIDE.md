@@ -516,9 +516,18 @@ model Organization {
   stripeSubscriptionId String?
   maxAssets            Int     @default(100)
   maxUsers             Int     @default(3)
+  entitlements         Json?
+  lockedAt             DateTime?
   // ... relationships to all scoped tables
 }
 ```
+
+`entitlements` (JSONB, SaaS only) holds the features and limits an organization may use.
+SQL `NULL` means "not set" (a JSON `null` is never stored). The legacy billing code (Stripe
+webhook, trial cron, register trial) and `scripts/backfill-entitlements.ts` write it;
+nothing reads it before phase 1b of the SaaS boundary. `lockedAt` is the control-plane
+lock and is written only by the internal API, from phase 1b. Tenant-facing organization
+routes return `organizationApiSelect` (`src/lib/organizations.ts`) only, never the whole row.
 
 ### Key Files
 

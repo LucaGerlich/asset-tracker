@@ -29,6 +29,11 @@ model Organization {
 
   // Suspension
   suspendedAt DateTime? @db.Timestamp(6)
+  // Control-plane lock (SaaS only). Written only by the internal API.
+  lockedAt    DateTime? @db.Timestamp(6)
+
+  // Per-org entitlements (SaaS only). SQL NULL means "not set"; never store a JSON null.
+  entitlements Json?
 
   // Relationships
   users           user[]

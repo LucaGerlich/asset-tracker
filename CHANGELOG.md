@@ -6,6 +6,86 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-12
+
+Phase 1a of the SaaS boundary (`docs/superpowers/specs/2026-10-05-saas-boundary-design.md`):
+the database gains the columns the control plane will drive, and the legacy billing code
+starts recording entitlements. Nothing reads them yet, so enforcement is unchanged, apart
+from the API change under Security.
+
+### Added
+
+- `organizations.entitlements` (JSONB) and `organizations.lockedAt` (timestamp), both
+  nullable, migration `20261012_org_entitlements_locked_at`.
+- The Stripe webhook, the trial cron and the register trial record `entitlements`
+  alongside `plan`, `maxAssets` and `maxUsers` while Stripe is configured.
+- `scripts/backfill-entitlements.ts` maps every organization's legacy plan to
+  entitlements (dry run by default).
+
+### Security
+
+- The organization routes (`GET /api/organizations`, `POST /api/organizations`,
+  `GET /api/organizations/[id]` and `PUT /api/organizations/[id]`) return an allow-list
+  of fields. They no longer send `plan`, the Stripe customer and subscription ids,
+  `trialEndsAt`, `maxAssets`, `maxUsers` or `suspendedAt` to org admins, and never the
+  new columns.
+
+**Upgrade notes**
+
+Before deploying:
+
+- Mind the order. The migration only adds two nullable columns, and it reaches the shared
+  database only when the production (master) build runs `prisma migrate deploy`. Until
+  then, any 0.15.0 code against that database fails on organization reads (register,
+  setup, pages using `getOrganizationContext`, billing checkout). That covers a Preview
+  deployment of `development` or of this branch, and `next dev` with a `.env` that
+  points at the database. So release to production promptly after merging to
+  `development`, or apply the additive migration to the shared database first
+  (`prisma migrate deploy` from a trusted shell).
+
+After deploying (SaaS database only, never a self-hosted one):
+
+- Dry run, with the deployment's real `SELF_HOSTED` value:
+
+  ```bash
+  bun scripts/backfill-entitlements.ts --schema <schema> --deployment-self-hosted <true|false>
+  ```
+
+  It prints one JSON line per organization (`currentAccess`, `proposed`, `losesFeatures`,
+  usage, `overLimit`, `storedValid`) and a summary. `losesFeatures` lists what the
+  organization loses when phase 1b switches enforcement on; through 0.15.0 only API keys
+  and procurement were enforced per plan. The summary counts `unset` organizations
+  (what `--apply` fills) and `invalid` ones (a stored value that fails the entitlements
+  schema; it is reported and never overwritten). The script requires `DATABASE_URL` to be
+  a `postgres://` or `postgresql://` URL that names host, port and database explicitly,
+  with none of the `host`, `hostaddr`, `port`, `dbname` or `service` query parameters,
+  and refuses to run otherwise, so the printed target always matches the database it
+  connects to.
+
+- Decide per organization. An organization that needs different entitlements than its
+  legacy plan maps to gets them by SQL before `--apply`, in the SaaS schema, in the shape
+  of `proposed` (another shape shows up as `invalid`):
+  `UPDATE "<schema>"."organizations" SET "entitlements" = '<json>' WHERE "id" = '<uuid>'`.
+  The script never touches a row that already holds entitlements. Then apply with the
+  printed target:
+
+  ```bash
+  bun scripts/backfill-entitlements.ts --schema <schema> --deployment-self-hosted <true|false> --apply --confirm "<target>"
+  ```
+
+  Without `--apply` the script is a dry run (`--dry-run` says so explicitly), `--apply`
+  needs `--confirm` with the printed target, and `--confirm` without `--apply` is
+  rejected. Re-running is safe; a row whose plan changed after planning is skipped.
+
+- Gate to phase 1b (all of it, on the SaaS database):
+  - Record the production and Preview values of `SELF_HOSTED` and `STRIPE_*`.
+  - If production ran with `SELF_HOSTED=true`, its organizations were effectively
+    unrestricted: decide per organization in the dry-run output before applying.
+  - Re-run the apply right before the switch, then a dry run: its summary must show
+    `"unset":0` and `"invalid":0`.
+  - Preview has its own database or the full cloud environment.
+  - `SUPER_ADMIN_EMAILS` is set.
+
 ## [0.14.0] - 2026-10-11
 
 Phase 0 of the SaaS boundary work

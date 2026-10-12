@@ -17,6 +17,7 @@ import {
   buildPaginatedResponse,
 } from "@/lib/pagination";
 import { logger } from "@/lib/logger";
+import { organizationApiSelect } from "@/lib/organizations";
 
 const ORGANIZATION_SORT_FIELDS = ["name", "slug", "createdAt"];
 
@@ -31,7 +32,8 @@ export async function GET(req: NextRequest) {
       ? { id: authUser.organizationId }
       : {};
 
-    const include = {
+    const select = {
+      ...organizationApiSelect,
       _count: {
         select: { users: true, assets: true, departments: true },
       },
@@ -41,7 +43,7 @@ export async function GET(req: NextRequest) {
     if (!searchParams.has("page")) {
       const organizations = await prisma.organization.findMany({
         where: orgFilter,
-        include,
+        select,
         orderBy: { name: "asc" },
       });
       return NextResponse.json(organizations);
@@ -62,7 +64,7 @@ export async function GET(req: NextRequest) {
     }
 
     const [organizations, total] = await Promise.all([
-      prisma.organization.findMany({ where, include, ...prismaArgs }),
+      prisma.organization.findMany({ where, select, ...prismaArgs }),
       prisma.organization.count({ where }),
     ]);
 
@@ -112,6 +114,7 @@ export async function POST(req: NextRequest) {
           ? (validated.settings as Prisma.InputJsonValue)
           : Prisma.JsonNull,
       },
+      select: organizationApiSelect,
     });
 
     await createAuditLog({
