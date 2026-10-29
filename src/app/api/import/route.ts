@@ -749,6 +749,7 @@ async function createEntity(
           city: data.city || null,
           country: data.country || null,
           creation_date: now,
+          organizationId,
         },
       });
       break;
