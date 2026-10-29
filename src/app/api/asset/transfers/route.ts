@@ -7,6 +7,8 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { isSuperAdmin } from "@/lib/super-admin";
+import { validateBody, createTransferSchema } from "@/lib/validation";
 
 // Optional query: ?assetId=<uuid> to filter by asset
 export async function GET(req: Request) {
@@ -47,23 +49,10 @@ export async function POST(req: Request) {
     await requireWritableOrg(user);
 
     const transferredBy = user.id!;
-    const body = await req.json();
+    const validated = validateBody(createTransferSchema, await req.json());
+    if (validated instanceof NextResponse) return validated;
     const { assetId, transferType, toUserId, toLocationId, toOrgId, reason } =
-      body || {};
-
-    if (!assetId || !transferType) {
-      return NextResponse.json(
-        { error: "assetId and transferType are required" },
-        { status: 400 },
-      );
-    }
-
-    if (!["user", "location", "organization"].includes(transferType)) {
-      return NextResponse.json(
-        { error: "transferType must be 'user', 'location', or 'organization'" },
-        { status: 400 },
-      );
-    }
+      validated;
 
     // Validate that the target field is provided for the given type
     if (transferType === "user" && !toUserId) {
@@ -78,13 +67,6 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    if (transferType === "organization" && !toOrgId) {
-      return NextResponse.json(
-        { error: "toOrgId is required for organization transfers" },
-        { status: 400 },
-      );
-    }
-
     const orgId = user.organizationId ?? null;
 
     // The source asset must belong to the admin's organization.
@@ -96,9 +78,42 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
     }
 
-    // Validate that user/location transfer targets also belong to the org.
-    // (Organization transfers intentionally move the asset to another org.)
-    if (transferType === "user") {
+    // User/location targets must belong to the admin's organization. Moving an
+    // asset into another organization crosses tenants, so only a super-admin
+    // may do it, and only into an organization that exists.
+    if (transferType === "organization") {
+      if (!toOrgId) {
+        return NextResponse.json(
+          { error: "toOrgId is required for organization transfers" },
+          { status: 400 },
+        );
+      }
+      if (!(await isSuperAdmin(user))) {
+        return NextResponse.json(
+          {
+            error:
+              "Only platform administrators can transfer assets between organizations",
+          },
+          { status: 403 },
+        );
+      }
+      if (toOrgId === asset.organizationId) {
+        return NextResponse.json(
+          { error: "Asset already belongs to that organization" },
+          { status: 400 },
+        );
+      }
+      const target = await prisma.organization.findUnique({
+        where: { id: toOrgId },
+        select: { id: true },
+      });
+      if (!target) {
+        return NextResponse.json(
+          { error: "Target organization not found" },
+          { status: 404 },
+        );
+      }
+    } else if (transferType === "user") {
       const target = await prisma.user.findFirst({
         where: { userid: toUserId, organizationId: orgId },
         select: { userid: true },
