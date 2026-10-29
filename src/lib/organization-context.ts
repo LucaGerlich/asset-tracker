@@ -176,7 +176,7 @@ export async function verifyEntityOrgOwnership(
     accessory: { delegate: "accessories", idField: "accessorieid" },
     consumable: { delegate: "consumable", idField: "consumableid" },
     licence: { delegate: "licence", idField: "licenceid" },
-    component: { delegate: "Component", idField: "id" },
+    component: { delegate: "component", idField: "id" },
   };
 
   const config = modelMap[entityType];
