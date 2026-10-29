@@ -29,7 +29,11 @@ export async function GET(req: NextRequest) {
     const userId = searchParams.get("userId");
     const status = searchParams.get("status");
 
-    const where: Record<string, unknown> = {};
+    // Tenant isolation: AssetReservation has no organizationId column, so scope
+    // through the asset relation (like /api/asset/reservations).
+    const where: Record<string, unknown> = {
+      asset: { organizationId: authUser.organizationId ?? null },
+    };
 
     if (assetId) where.assetId = assetId;
     if (userId) where.userId = userId;
@@ -104,10 +108,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = assetReservationSchema.parse(body);
 
-    // Verify asset exists and is requestable
-    const asset = await prisma.asset.findUnique({
-      where: { assetid: validated.assetId },
-      include: { organization: true },
+    // Verify the asset belongs to the caller's organization and is requestable
+    const asset = await prisma.asset.findFirst({
+      where: {
+        assetid: validated.assetId,
+        organizationId: authUser.organizationId ?? null,
+      },
     });
 
     if (!asset) {

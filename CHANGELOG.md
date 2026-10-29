@@ -6,8 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.15.2] - 2026-10-30
+
+Closes the cross-tenant leftovers found by the 0.15.1 reviews (debt items 82 and 85–88).
+0.15.1 was not released on its own; it ships together with this release.
+
 ### Security
 
+- `/api/reservations` is scoped to the caller's organization (item 85). `POST` reserved
+  any tenant's asset by id and echoed its name and tag; it now answers 404 for a foreign
+  asset. `GET` listed every tenant's reservations, including the requesters' names and
+  emails, to any admin or `reservation:approve` holder; it now lists only reservations
+  of the caller's organization's assets.
+- Reverting an audit-log entry (`POST /api/admin/audit-logs/[id]/revert`) reads and
+  writes the target only within the caller's organization, and refuses a snapshot whose
+  references (location, supplier, category, …) belong to another organization (item 86).
+- Setting a default status (`POST`/`PUT /api/statusType`) clears the previous default
+  only within the caller's organization; it cleared every tenant's default (item 87).
+- CSV-imported locations belong to the importing organization; they were created
+  without one and never showed on the tenant's pages (item 88).
 - Write routes check every referenced id in the request body against the caller's
   organization before storing it (debt item 82, found by the 0.15.1 reviews). Until now
   a tenant holding another tenant's id could attach records to that tenant's rows, read
@@ -28,6 +45,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - New helper `findForeignReference()` in `src/lib/org-references.ts`: one `findMany`
   per referenced model, scoped like `scopeToOrganization` (an org-less caller matches
   only org-less rows).
+
+### Fixed
+
+- Reverting a component or kit change failed with 500, and `verifyEntityOrgOwnership`
+  never recognised a component (custom field values on components were refused): both
+  looked up the Prisma client as `Component`/`Kit` instead of `component`/`kit`.
 
 **Upgrade notes**
 

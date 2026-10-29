@@ -3,6 +3,12 @@ import prisma from "@/lib/prisma";
 import { requireApiAdmin, requireWritableOrg } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import { createAuditLog } from "@/lib/audit-log";
+import { logger } from "@/lib/logger";
+import {
+  findForeignReference,
+  foreignReferenceError,
+  type ReferenceKind,
+} from "@/lib/org-references";
 
 /**
  * Map from the `entity` string stored in audit logs to the corresponding
@@ -20,9 +26,43 @@ const entityModelMap: Record<string, { model: string; idField: string }> = {
   supplier: { model: "supplier", idField: "supplierid" },
   model: { model: "model", idField: "modelid" },
   status_type: { model: "statusType", idField: "statustypeid" },
-  component: { model: "Component", idField: "id" },
-  kit: { model: "Kit", idField: "id" },
+  component: { model: "component", idField: "id" },
+  kit: { model: "kit", idField: "id" },
 };
+
+/**
+ * Foreign-key columns a snapshot may write back, by the reference they hold.
+ * A revert must not re-point a record at another tenant's rows.
+ */
+const referenceColumns: Record<string, ReferenceKind> = {
+  modelid: "model",
+  assetcategorytypeid: "assetCategory",
+  statustypeid: "statusType",
+  supplierid: "supplier",
+  supplierId: "supplier",
+  locationid: "location",
+  locationId: "location",
+  parentId: "location",
+  manufacturerid: "manufacturer",
+  manufacturerId: "manufacturer",
+  accessoriecategorytypeid: "accessoryCategory",
+  consumablecategorytypeid: "consumableCategory",
+  licencecategorytypeid: "licenceCategory",
+  licenceduserid: "user",
+  departmentId: "department",
+  categoryId: "componentCategory",
+};
+
+function snapshotReferences(
+  data: Record<string, unknown>,
+): Partial<Record<ReferenceKind, string[]>> {
+  const refs: Partial<Record<ReferenceKind, string[]>> = {};
+  for (const [column, kind] of Object.entries(referenceColumns)) {
+    const value = data[column];
+    if (typeof value === "string") refs[kind] = [...(refs[kind] ?? []), value];
+  }
+  return refs;
+}
 
 /**
  * Fields that must never be written back during a revert because they are
@@ -192,15 +232,26 @@ export async function POST(
       );
     }
 
+    // A snapshot must not point the record at another tenant's rows.
+    const foreign = await findForeignReference(
+      orgId,
+      snapshotReferences(revertData),
+    );
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
+
     // 6. Fetch the current state so we can log the revert diff
     interface RevertableModel {
-      findUnique: (args: {
+      findFirst: (args: {
         where: Record<string, unknown>;
       }) => Promise<Record<string, unknown> | null>;
-      update: (args: {
+      updateMany: (args: {
         where: Record<string, unknown>;
         data: Record<string, unknown>;
-      }) => Promise<Record<string, unknown>>;
+      }) => Promise<{ count: number }>;
     }
     function getRevertableModel(name: string): RevertableModel | undefined {
       if (!(name in prisma)) return undefined;
@@ -208,8 +259,8 @@ export async function POST(
       if (
         delegate &&
         typeof delegate === "object" &&
-        "findUnique" in delegate &&
-        "update" in delegate
+        "findFirst" in delegate &&
+        "updateMany" in delegate
       ) {
         return delegate as RevertableModel;
       }
@@ -224,22 +275,27 @@ export async function POST(
       );
     }
 
-    const currentRecord = await prismaModel.findUnique({
-      where: { [mapping.idField]: auditLog.entityId },
-    });
-
-    if (!currentRecord) {
-      return NextResponse.json(
+    // The log is scoped through its author; the target must be scoped too, so
+    // a record that has since left the organization reads as gone.
+    const targetWhere = {
+      [mapping.idField]: auditLog.entityId,
+      organizationId: orgId,
+    };
+    const notFound = () =>
+      NextResponse.json(
         { error: "Cannot revert: the target record no longer exists" },
         { status: 404 },
       );
-    }
+
+    const currentRecord = await prismaModel.findFirst({ where: targetWhere });
+    if (!currentRecord) return notFound();
 
     // 7. Apply the revert
-    await prismaModel.update({
-      where: { [mapping.idField]: auditLog.entityId },
+    const { count } = await prismaModel.updateMany({
+      where: targetWhere,
       data: revertData,
     });
+    if (count === 0) return notFound();
 
     // 8. Create a REVERT audit log entry
     await createAuditLog({
@@ -259,7 +315,7 @@ export async function POST(
   } catch (error) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
-    console.error("POST /api/admin/audit-logs/[id]/revert error", error);
+    logger.error("POST /api/admin/audit-logs/[id]/revert error", { error });
     return NextResponse.json(
       { error: "Failed to revert change" },
       { status: 500 },

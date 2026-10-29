@@ -30,7 +30,7 @@ with a recommended fix. The audits so far:
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | CI (lint, typecheck, unit, build)  | green since 2026-09-07 (v0.9.5 fixed the lockfile/typings; the DB suites and the Build job first passed today) |
 | Production dependency advisories   | 0 (was 1 critical, 53 high)                                                                                    |
-| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69, 85–90                      |
+| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69, 89, 90                     |
 | MFA login enforcement              | functional since v0.10.0 (enrolment on BetterAuth twoFactor)                                                   |
 | SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                                                                    |
 | TypeScript strict mode             | off; 830 errors to clear (D3)                                                                                  |
@@ -39,6 +39,13 @@ with a recommended fix. The audits so far:
 | Unit coverage of auth/tenant layer | partial (api-auth, url-validation, org-suspension now tested)                                                  |
 
 ---
+
+## FIXED in v0.15.2 (2026-10-30)
+
+Released together with 0.15.1. Closes debt item 82 (referenced ids in write bodies, the
+sweep in PR #93) and items 85–88 found by that sweep: reservations, audit-log revert,
+default status reset, CSV-imported locations. Details in CHANGELOG 0.15.2; 89 and 90
+(low) remain open.
 
 ## FIXED in v0.15.1 (2026-10-29)
 
@@ -716,10 +723,10 @@ toStatusId])` is global. _Recommended:_ add a nullable `organizationId`, backfil
 
 ### Left open by the 0.15.1 reviews (external security report)
 
-82. **FIXED in [Unreleased] (referenced-id sweep): referenced ids in write bodies were
+82. **FIXED in v0.15.2 (referenced-id sweep): referenced ids in write bodies were
     not org-checked.** Every write route that stored one now resolves it in the caller's
     organization through `findForeignReference()` (`src/lib/org-references.ts`); see the
-    section below and CHANGELOG [Unreleased].
+    section below and CHANGELOG 0.15.2.
 83. **Organization transfers leave cross-org references behind (medium)**
     (`src/app/api/asset/transfers/route.ts`, organization branch; super-admin only
     since 0.15.1). The asset keeps the old organization's `locationid`, manufacturer,
@@ -744,24 +751,22 @@ that stored a referenced id unchecked now go through `findForeignReference()`
 checked its references inline. The sweep also found the gaps below, which are outside
 item 82 and still open:
 
-85. **Reservations accept a foreign asset (medium)** (`src/app/api/reservations/route.ts`
-    POST). The primary asset lookup is `findUnique({ where: { assetid } })` with no
-    organization filter, and so are the overlap check and the create. Any user with
-    `reservation:create` can reserve another tenant's asset and read its name and tag
-    back. (`/api/asset/reservations` is scoped.)
-    _Recommended:_ `findFirst` with `organizationId`, 404 like the sibling route.
-86. **Audit-log revert writes by primary key only (medium)**
-    (`src/app/api/admin/audit-logs/[id]/revert/route.ts`). The log is scoped through its
-    author's organization, but the target entity is read and updated by id alone, and
-    the `before` snapshot's foreign keys are written back unchecked.
-    _Recommended:_ scope the target lookup and update by `organizationId`, and run the
-    snapshot's reference columns through `findForeignReference()`.
-87. **Setting a default status clears every tenant's default (medium)**
-    (`src/app/api/statusType/route.ts` POST and PUT). The `isDefault` reset
-    `updateMany` has no organization filter.
-88. **CSV-imported locations have no organization (medium)**
-    (`src/app/api/import/route.ts`, `location` case). `location.create` omits
-    `organizationId`, unlike every other entity case.
+85. **FIXED in v0.15.2: reservations reached foreign assets.** `POST /api/reservations`
+    looks the asset up in the caller's organization (404 otherwise); `GET` lists only
+    reservations of the caller's organization's assets (the 0.15.2 security review
+    found the read side: it listed every tenant's reservations with user emails).
+86. **FIXED in v0.15.2: audit-log revert wrote by primary key only.** The target is
+    read and written with `organizationId` (`findFirst`/`updateMany`), and the
+    snapshot's reference columns go through `findForeignReference()`. The same change
+    fixed the `Component`/`Kit` delegate names (component and kit reverts answered 500).
+    _Left open (low):_ a `user` snapshot could restore privilege columns (`isadmin`,
+    `password`, …); nothing writes user before/after snapshots today, so no path
+    produces one. Allow-list writable columns per entity if one is ever added.
+87. **FIXED in v0.15.2: setting a default status cleared every tenant's default.**
+    Both `isDefault` resets in `src/app/api/statusType/route.ts` carry the organization.
+    (`label_templates` has the same reset but no `organizationId` column: item 57.)
+88. **FIXED in v0.15.2: CSV-imported locations had no organization.** The `location`
+    case stamps `organizationId` like every other case.
 89. **Soft references stored unchecked (low).** `kits` `items[].entityId`, audit
     campaign `scopeId` (POST and PUT) and approval `entityId` are plain uuid columns with
     no foreign key. They are org-scoped at use time (kit checkout, audit activation,
