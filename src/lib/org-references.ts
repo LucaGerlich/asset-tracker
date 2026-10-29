@@ -83,6 +83,22 @@ export async function findForeignReference(
   return null;
 }
 
+/** The reference columns shared by assets and asset templates. */
+export function assetReferences(
+  data: Record<string, unknown>,
+): Partial<Record<ReferenceKind, string | null>> {
+  const pick = (field: string) =>
+    typeof data[field] === "string" ? (data[field] as string) : null;
+  return {
+    model: pick("modelid"),
+    assetCategory: pick("assetcategorytypeid"),
+    statusType: pick("statustypeid"),
+    supplier: pick("supplierid"),
+    location: pick("locationid"),
+    manufacturer: pick("manufacturerid"),
+  };
+}
+
 /** 400 body for a foreign reference, matching tickets/[id] and team/invite. */
 export function foreignReferenceError(kind: ReferenceKind): { error: string } {
   return { error: `${REFERENCE_LABELS[kind]} not found in your organization` };

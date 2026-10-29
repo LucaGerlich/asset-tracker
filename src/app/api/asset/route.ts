@@ -7,6 +7,11 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  assetReferences,
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   getOrganizationContext,
@@ -179,6 +184,13 @@ export async function POST(req: NextRequest) {
     const d = validateBody(createAssetSchema, body);
     if (d instanceof NextResponse) return d;
 
+    const foreign = await findForeignReference(orgId, assetReferences(d));
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
+
     const created = await prisma.asset.create({
       data: {
         assetname: d.assetname,
@@ -265,6 +277,13 @@ export async function PUT(req: NextRequest) {
     // Optimistic concurrency check
     const conflict = conflictResponse(_expectedVersion, existing.change_date);
     if (conflict) return conflict;
+
+    const foreign = await findForeignReference(orgId, assetReferences(data));
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     // Normalize date types
     const updateData: Record<string, unknown> = { ...data };

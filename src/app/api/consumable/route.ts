@@ -7,6 +7,10 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   createConsumableSchema,
@@ -130,6 +134,17 @@ export async function POST(req: NextRequest) {
       quantity,
     } = validationResult.data;
 
+    const foreign = await findForeignReference(orgId, {
+      consumableCategory: consumablecategorytypeid,
+      manufacturer: manufacturerid,
+      supplier: supplierid,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
+
     const created = await prisma.consumable.create({
       data: {
         consumablename,
@@ -228,6 +243,17 @@ export async function PUT(req: NextRequest) {
       existingConsumable.change_date,
     );
     if (conflict) return conflict;
+
+    const foreign = await findForeignReference(orgId, {
+      consumableCategory: consumablecategorytypeid,
+      manufacturer: manufacturerid,
+      supplier: supplierid,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     const updated = await prisma.consumable.update({
       where: { consumableid: existingConsumable.consumableid },

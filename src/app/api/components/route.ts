@@ -7,6 +7,10 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
@@ -141,6 +145,18 @@ export async function POST(req: Request) {
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
+    const foreign = await findForeignReference(orgId, {
+      componentCategory: categoryId,
+      manufacturer: manufacturerId,
+      supplier: supplierId,
+      location: locationId,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
+
     const created = await prisma.component.create({
       data: {
         name,
@@ -232,6 +248,18 @@ export async function PUT(req: Request) {
     if (validated instanceof NextResponse) return validated;
 
     const data = validated;
+
+    const foreign = await findForeignReference(orgId, {
+      componentCategory: data.categoryId,
+      manufacturer: data.manufacturerId,
+      supplier: data.supplierId,
+      location: data.locationId,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     const updateData: Record<string, unknown> = {};
 
