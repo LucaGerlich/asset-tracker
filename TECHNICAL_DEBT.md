@@ -697,6 +697,43 @@ toStatusId])` is global. _Recommended:_ add a nullable `organizationId`, backfil
     Postgres with an explicit-port URL (`postgres://...@localhost:5432/<db>`) before the
     production run, and keep `ALLOW_DESTRUCTIVE_DB_TESTS` unset there.
 
+### Referenced-id sweep (2026-10-29, CHANGELOG [Unreleased])
+
+**Item 82 is fixed.** Item 82 ("Referenced ids in write bodies are not org-checked") was
+recorded on the 0.15.1 branch `fix/cross-tenant-report-2026-10`. When that branch is
+merged, remove item 82 there and drop it from the cross-tenant summary row. The sweep
+covered every POST/PUT/PATCH under `src/app/api/`. The routes that stored a referenced
+id unchecked now go through `findForeignReference()` (`src/lib/org-references.ts`); the
+list is in the CHANGELOG. Everything else already checked its references inline. The
+sweep also found the gaps below, which are outside item 82 and still open (numbered
+after the 0.15.1 items 82–84):
+
+85. **Reservations accept a foreign asset (medium)** (`src/app/api/reservations/route.ts`
+    POST). The primary asset lookup is `findUnique({ where: { assetid } })` with no
+    organization filter, and so are the overlap check and the create. Any user with
+    `reservation:create` can reserve another tenant's asset and read its name and tag
+    back. (`/api/asset/reservations` is scoped.)
+    _Recommended:_ `findFirst` with `organizationId`, 404 like the sibling route.
+86. **Audit-log revert writes by primary key only (medium)**
+    (`src/app/api/admin/audit-logs/[id]/revert/route.ts`). The log is scoped through its
+    author's organization, but the target entity is read and updated by id alone, and
+    the `before` snapshot's foreign keys are written back unchecked.
+    _Recommended:_ scope the target lookup and update by `organizationId`, and run the
+    snapshot's reference columns through `findForeignReference()`.
+87. **Setting a default status clears every tenant's default (medium)**
+    (`src/app/api/statusType/route.ts` POST and PUT). The `isDefault` reset
+    `updateMany` has no organization filter.
+88. **CSV-imported locations have no organization (medium)**
+    (`src/app/api/import/route.ts`, `location` case). `location.create` omits
+    `organizationId`, unlike every other entity case.
+89. **Soft references stored unchecked (low).** `kits` `items[].entityId`, audit
+    campaign `scopeId` (POST and PUT) and approval `entityId` are plain uuid columns with
+    no foreign key. They are org-scoped at use time (kit checkout, audit activation,
+    approval lookup by requester), so a foreign id does nothing today but is stored.
+90. **Smaller cross-tenant leftovers (low).** Global saved filters (`isGlobal`) are
+    returned to every tenant, since `saved_filters` has no `organizationId`. SCIM user
+    creation calls `checkUserLimit()` without the token's organization.
+
 ## Repository loose ends (2026-09-07)
 
 - **GitHub issue #86** (quick start fails with P1014 on the baseline migration):
