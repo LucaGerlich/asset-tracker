@@ -19,8 +19,11 @@ import { logger } from "@/lib/logger";
 export async function GET() {
   try {
     await requirePermission("component:view");
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
 
     const categories = await prisma.componentCategory.findMany({
+      where: { organizationId: orgId ?? null },
       orderBy: { name: "asc" },
     });
 
@@ -44,6 +47,8 @@ export async function POST(req: Request) {
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("component:create");
     await requireWritableOrg(authUser);
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
 
     const body = await req.json();
     const validated = validateBody(createComponentCategorySchema, body);
@@ -52,7 +57,7 @@ export async function POST(req: Request) {
     const { name } = validated;
 
     const created = await prisma.componentCategory.create({
-      data: { name },
+      data: { name, organizationId: orgId ?? null },
     });
 
     await createAuditLog({
@@ -85,6 +90,8 @@ export async function PUT(req: Request) {
     if (demoBlock) return demoBlock;
     const authUser = await requirePermission("component:edit");
     await requireWritableOrg(authUser);
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
 
     const body = await req.json();
     const { id } = body;
@@ -100,6 +107,19 @@ export async function PUT(req: Request) {
     if (validated instanceof NextResponse) return validated;
 
     const { name } = validated;
+
+    // Scope the lookup so foreign-org categories read as "not found".
+    const existing = await prisma.componentCategory.findFirst({
+      where: { id, organizationId: orgId ?? null },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Component category not found" },
+        { status: 404 },
+      );
+    }
 
     const updated = await prisma.componentCategory.update({
       where: { id },

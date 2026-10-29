@@ -30,7 +30,7 @@ with a recommended fix. The audits so far:
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | CI (lint, typecheck, unit, build)  | green since 2026-09-07 (v0.9.5 fixed the lockfile/typings; the DB suites and the Build job first passed today) |
 | Production dependency advisories   | 0 (was 1 critical, 53 high)                                                                                    |
-| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69 (see "Phase 0 follow-ups")  |
+| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69, 85–90                      |
 | MFA login enforcement              | functional since v0.10.0 (enrolment on BetterAuth twoFactor)                                                   |
 | SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                                                                    |
 | TypeScript strict mode             | off; 830 errors to clear (D3)                                                                                  |
@@ -39,6 +39,19 @@ with a recommended fix. The audits so far:
 | Unit coverage of auth/tenant layer | partial (api-auth, url-validation, org-suspension now tested)                                                  |
 
 ---
+
+## FIXED in v0.15.1 (2026-10-29)
+
+An external security report (received 2026-10-29, not disclosed) listed cross-tenant
+gaps in five route groups, a fail-open super-admin fallback and the OIDC flow. Checked
+against `development`: everything had been fixed in 0.9.4–0.14.0 except two routes.
+Those are closed here (details in CHANGELOG 0.15.1):
+
+- `/api/componentCategory` `GET`/`PUT`/`POST` scoped to the caller's organization.
+- Organization transfers in `POST /api/asset/transfers` are super-admin only, into an
+  existing, different organization; the body is validated with `createTransferSchema`.
+
+What the reviews of this fix left open is listed as items 82–84.
 
 ## FIXED in v0.10.0 (2026-09-08)
 
@@ -176,6 +189,10 @@ _Recommended:_ replace the custom flow with BetterAuth's `@better-auth/sso` plug
 (OIDC + SAML, per-organization). Cheaper interim: establish the session server-side in
 `/api/auth/sso-login` via BetterAuth's internal adapter and assign the org from the SSO
 settings. Either way, decide which org SSO users belong to.
+_Also (external report, 2026-10-29):_ the OIDC/SAML callbacks link an existing user
+by `externalId` or verified email across all organizations
+(`src/app/api/auth/callback/oidc/route.ts`, `.../saml/route.ts`). Scope that lookup to
+the SSO configuration's organization when the flow is finished.
 
 **D3. TypeScript strict mode (user standard: strict everywhere).** 830 errors as of
 2026-09-07, measured with
@@ -697,16 +714,35 @@ toStatusId])` is global. _Recommended:_ add a nullable `organizationId`, backfil
     Postgres with an explicit-port URL (`postgres://...@localhost:5432/<db>`) before the
     production run, and keep `ALLOW_DESTRUCTIVE_DB_TESTS` unset there.
 
+### Left open by the 0.15.1 reviews (external security report)
+
+82. **FIXED in [Unreleased] (referenced-id sweep): referenced ids in write bodies were
+    not org-checked.** Every write route that stored one now resolves it in the caller's
+    organization through `findForeignReference()` (`src/lib/org-references.ts`); see the
+    section below and CHANGELOG [Unreleased].
+83. **Organization transfers leave cross-org references behind (medium)**
+    (`src/app/api/asset/transfers/route.ts`, organization branch; super-admin only
+    since 0.15.1). The asset keeps the old organization's `locationid`, manufacturer,
+    supplier, model, status and category, and its `userAssets` row; its transfer
+    history follows the asset to the new organization.
+    _Recommended:_ decide the semantics (clear or remap the references, end the
+    assignment) before anyone relies on the feature.
+84. **Check-then-write races in the touched routes (low).** `componentCategory` PUT
+    and the transfer branches check the organization, then write `where: { id }`
+    outside (or before) the transaction; the user transfer reads the current
+    assignment outside its transaction. Not exploitable today (ids are primary keys
+    and organizations don't change under a request), but `updateMany` with the
+    organization filter inside the transaction would make it structural. The asset
+    page also runs two to three extra queries for the super-admin check; exposing
+    `email` on `getOrganizationContext()` would save one.
+
 ### Referenced-id sweep (2026-10-29, CHANGELOG [Unreleased])
 
-**Item 82 is fixed.** Item 82 ("Referenced ids in write bodies are not org-checked") was
-recorded on the 0.15.1 branch `fix/cross-tenant-report-2026-10`. When that branch is
-merged, remove item 82 there and drop it from the cross-tenant summary row. The sweep
-covered every POST/PUT/PATCH under `src/app/api/`. The routes that stored a referenced
-id unchecked now go through `findForeignReference()` (`src/lib/org-references.ts`); the
-list is in the CHANGELOG. Everything else already checked its references inline. The
-sweep also found the gaps below, which are outside item 82 and still open (numbered
-after the 0.15.1 items 82–84):
+Fixes item 82. The sweep covered every POST/PUT/PATCH under `src/app/api/`. The routes
+that stored a referenced id unchecked now go through `findForeignReference()`
+(`src/lib/org-references.ts`); the list is in the CHANGELOG. Everything else already
+checked its references inline. The sweep also found the gaps below, which are outside
+item 82 and still open:
 
 85. **Reservations accept a foreign asset (medium)** (`src/app/api/reservations/route.ts`
     POST). The primary asset lookup is `findUnique({ where: { assetid } })` with no

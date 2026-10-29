@@ -33,8 +33,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - No migration. A record that still points at a legacy reference row without an
   organization (for example a component category created through the API before
-  0.15.1) answers 400 when an edit re-sends that id. Count such rows read-only before
-  deploying if in doubt.
+  0.15.1) answers 400 when an edit re-sends that id. The read-only count query in the
+  0.15.1 upgrade notes finds those categories.
+
+## [0.15.1] - 2026-10-29
+
+Closes the cross-tenant gaps that were still open from an external security report
+received 2026-10-29. The report's other items (approvals, licence seats, user-asset
+assignment, the source-asset lookup in transfers, the super-admin fallback, the OIDC
+signature check) were already fixed in 0.9.4–0.14.0.
+
+### Security
+
+- `/api/componentCategory` is scoped to the caller's organization. `GET` listed every
+  tenant's categories, `PUT` renamed any category by id (a foreign id now answers 404),
+  and `POST` created categories without an organization, so they never showed on the
+  tenant's own pages.
+- `POST /api/asset/transfers` with `transferType: "organization"` is super-admin only
+  and requires an existing target organization that differs from the asset's current
+  one. Any tenant admin could push their own assets into a foreign or nonexistent
+  organization. The body is now validated with `createTransferSchema` (UUIDs, transfer
+  type); a malformed body answers 400 `Validation failed`.
+
+### Changed
+
+- The asset detail page offers the "Organization" transfer type to super-admins only.
+
+**Upgrade notes**
+
+- No migration. Component categories created through the API before this release have
+  `organizationId = NULL` and no longer appear in the API either (the pages never
+  showed them). Count them read-only before deciding on a backfill:
+  ```sql
+  SELECT cc.id, cc.name, count(c.id) AS components,
+         array_agg(DISTINCT c."organizationId") AS component_orgs
+  FROM component_categories cc
+  LEFT JOIN components c ON c."categoryId" = cc.id
+  WHERE cc."organizationId" IS NULL
+  GROUP BY cc.id, cc.name;
+  ```
 
 ## [0.15.0] - 2026-10-12
 

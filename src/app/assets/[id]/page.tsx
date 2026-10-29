@@ -36,6 +36,7 @@ import {
   labelBgColor,
 } from "@/lib/health-score";
 import { getOrganizationContext } from "@/lib/organization-context";
+import { isSuperAdmin } from "@/lib/super-admin";
 import AssetDetailHeader from "./ui/AssetDetailHeader";
 import AssetAttachments from "@/components/AssetAttachments";
 import AssetLifecycle from "./ui/AssetLifecycle";
@@ -280,6 +281,21 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     { label: "Assets", href: "/assets" },
     { label: asset.assetname, href: `/assets/${asset.assetid}` },
   ];
+
+  // Cross-organization transfers are super-admin only (enforced by
+  // /api/asset/transfers). The email comes from the database row, never from
+  // the session.
+  let canTransferOrganization = false;
+  if (isAdmin && ctx) {
+    const viewer = await prisma.user.findUnique({
+      where: { userid: ctx.userId },
+      select: { email: true },
+    });
+    canTransferOrganization = await isSuperAdmin({
+      id: ctx.userId,
+      email: viewer?.email,
+    });
+  }
 
   return (
     <>
@@ -590,6 +606,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
                 currentUserId={userByAsset?.userid}
                 currentLocationId={asset.locationid ?? undefined}
                 currentOrgId={asset.organizationId ?? undefined}
+                canTransferOrganization={canTransferOrganization}
               />
             </section>
           )}

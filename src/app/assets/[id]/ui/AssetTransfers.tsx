@@ -37,6 +37,8 @@ interface AssetTransfersProps {
   currentUserId?: string;
   currentLocationId?: string;
   currentOrgId?: string;
+  /** Only super-admins may move an asset into another organization. */
+  canTransferOrganization?: boolean;
 }
 
 interface Transfer {
@@ -92,6 +94,7 @@ export default function AssetTransfers({
   currentUserId,
   currentLocationId,
   currentOrgId,
+  canTransferOrganization = false,
 }: AssetTransfersProps) {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -396,7 +399,9 @@ export default function AssetTransfers({
                   <SelectContent>
                     <SelectItem value="user">User</SelectItem>
                     <SelectItem value="location">Location</SelectItem>
-                    <SelectItem value="organization">Organization</SelectItem>
+                    {canTransferOrganization && (
+                      <SelectItem value="organization">Organization</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
