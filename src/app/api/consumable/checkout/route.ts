@@ -6,6 +6,10 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, consumableCheckoutSchema } from "@/lib/validation";
 import { invalidateCacheByPrefix } from "@/lib/cache";
@@ -81,6 +85,13 @@ export async function POST(req: Request) {
     const { consumableId, userId, quantity, notes } = validated;
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
+
+    const foreign = await findForeignReference(orgId, { user: userId });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     // Entire checkout flow in a single transaction: verify, check stock, decrement, create record
     const result = await prisma.$transaction(async (tx) => {

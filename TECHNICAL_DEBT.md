@@ -30,7 +30,7 @@ with a recommended fix. The audits so far:
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | CI (lint, typecheck, unit, build)  | green since 2026-09-07 (v0.9.5 fixed the lockfile/typings; the DB suites and the Build job first passed today) |
 | Production dependency advisories   | 0 (was 1 critical, 53 high)                                                                                    |
-| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69, 82                         |
+| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69, 85–90                      |
 | MFA login enforcement              | functional since v0.10.0 (enrolment on BetterAuth twoFactor)                                                   |
 | SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                                                                    |
 | TypeScript strict mode             | off; 830 errors to clear (D3)                                                                                  |
@@ -716,15 +716,10 @@ toStatusId])` is global. _Recommended:_ add a nullable `organizationId`, backfil
 
 ### Left open by the 0.15.1 reviews (external security report)
 
-82. **Referenced ids in write bodies are not org-checked (medium)**
-    (`src/app/api/components/route.ts` POST/PUT, `src/app/api/components/[id]/route.ts`
-    PUT, likely the accessory/consumable/licence/asset write routes too). `categoryId`,
-    `manufacturerId`, `supplierId` and `locationId` are stored as sent. A tenant that
-    knows a foreign category id can attach its component to it; when the owning tenant
-    deletes that category, `Component.category` (`onDelete: Cascade`) deletes the other
-    tenant's component. Needs a leaked UUID.
-    _Recommended:_ one sweep over every write route that accepts a referenced id,
-    checking each against the caller's organization before the write.
+82. **FIXED in [Unreleased] (referenced-id sweep): referenced ids in write bodies were
+    not org-checked.** Every write route that stored one now resolves it in the caller's
+    organization through `findForeignReference()` (`src/lib/org-references.ts`); see the
+    section below and CHANGELOG [Unreleased].
 83. **Organization transfers leave cross-org references behind (medium)**
     (`src/app/api/asset/transfers/route.ts`, organization branch; super-admin only
     since 0.15.1). The asset keeps the old organization's `locationid`, manufacturer,
@@ -740,6 +735,40 @@ toStatusId])` is global. _Recommended:_ add a nullable `organizationId`, backfil
     organization filter inside the transaction would make it structural. The asset
     page also runs two to three extra queries for the super-admin check; exposing
     `email` on `getOrganizationContext()` would save one.
+
+### Referenced-id sweep (2026-10-29, CHANGELOG [Unreleased])
+
+Fixes item 82. The sweep covered every POST/PUT/PATCH under `src/app/api/`. The routes
+that stored a referenced id unchecked now go through `findForeignReference()`
+(`src/lib/org-references.ts`); the list is in the CHANGELOG. Everything else already
+checked its references inline. The sweep also found the gaps below, which are outside
+item 82 and still open:
+
+85. **Reservations accept a foreign asset (medium)** (`src/app/api/reservations/route.ts`
+    POST). The primary asset lookup is `findUnique({ where: { assetid } })` with no
+    organization filter, and so are the overlap check and the create. Any user with
+    `reservation:create` can reserve another tenant's asset and read its name and tag
+    back. (`/api/asset/reservations` is scoped.)
+    _Recommended:_ `findFirst` with `organizationId`, 404 like the sibling route.
+86. **Audit-log revert writes by primary key only (medium)**
+    (`src/app/api/admin/audit-logs/[id]/revert/route.ts`). The log is scoped through its
+    author's organization, but the target entity is read and updated by id alone, and
+    the `before` snapshot's foreign keys are written back unchecked.
+    _Recommended:_ scope the target lookup and update by `organizationId`, and run the
+    snapshot's reference columns through `findForeignReference()`.
+87. **Setting a default status clears every tenant's default (medium)**
+    (`src/app/api/statusType/route.ts` POST and PUT). The `isDefault` reset
+    `updateMany` has no organization filter.
+88. **CSV-imported locations have no organization (medium)**
+    (`src/app/api/import/route.ts`, `location` case). `location.create` omits
+    `organizationId`, unlike every other entity case.
+89. **Soft references stored unchecked (low).** `kits` `items[].entityId`, audit
+    campaign `scopeId` (POST and PUT) and approval `entityId` are plain uuid columns with
+    no foreign key. They are org-scoped at use time (kit checkout, audit activation,
+    approval lookup by requester), so a foreign id does nothing today but is stored.
+90. **Smaller cross-tenant leftovers (low).** Global saved filters (`isGlobal`) are
+    returned to every tenant, since `saved_filters` has no `organizationId`. SCIM user
+    creation calls `checkUserLimit()` without the token's organization.
 
 ## Repository loose ends (2026-09-07)
 

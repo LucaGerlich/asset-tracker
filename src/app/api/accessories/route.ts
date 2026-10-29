@@ -28,6 +28,10 @@ import {
   AUDIT_ENTITIES,
 } from "@/lib/audit-log";
 import { conflictResponse } from "@/lib/concurrency";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 
 const ACCESSORY_SORT_FIELDS = ["accessoriename", "creation_date"];
 
@@ -181,6 +185,20 @@ export async function POST(req: NextRequest) {
       requestable,
     } = validationResult.data;
 
+    const foreign = await findForeignReference(orgId, {
+      manufacturer: manufacturerid,
+      statusType: statustypeid,
+      accessoryCategory: accessoriecategorytypeid,
+      location: locationid,
+      supplier: supplierid,
+      model: modelid,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
+
     const created = await prisma.accessories.create({
       data: {
         accessoriename,
@@ -271,6 +289,21 @@ export async function PUT(req: NextRequest) {
         },
         { status: 400 },
       );
+    }
+
+    const refs = validationResult.data;
+    const foreign = await findForeignReference(orgId, {
+      manufacturer: refs.manufacturerid,
+      statusType: refs.statustypeid,
+      accessoryCategory: refs.accessoriecategorytypeid,
+      location: refs.locationid,
+      supplier: refs.supplierid,
+      model: refs.modelid,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
     }
 
     const updateData = { ...validationResult.data } as Record<string, unknown>;

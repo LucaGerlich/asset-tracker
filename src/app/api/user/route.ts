@@ -7,6 +7,10 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
+import {
   assertEmailAssignable,
   EmailConflictError,
 } from "@/lib/email-ownership";
@@ -225,6 +229,17 @@ export async function PUT(req: NextRequest) {
         { error: "Validation failed", details: validationResult.error.issues },
         { status: 400 },
       );
+    }
+
+    // departmentId is admin-only; the non-admin schema omits it.
+    const foreign = await findForeignReference(authUser.organizationId, {
+      department: (validationResult.data as { departmentId?: string | null })
+        .departmentId,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
     }
 
     const updateData = { ...validationResult.data } as Record<string, unknown>;

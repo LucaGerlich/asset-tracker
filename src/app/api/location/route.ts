@@ -9,6 +9,10 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
+import {
   createLocationSchema,
   updateLocationSchema,
   uuidSchema,
@@ -116,6 +120,13 @@ export async function POST(req: NextRequest) {
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
+    const foreign = await findForeignReference(orgId, { location: parentId });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
+
     const created = await prisma.location.create({
       data: {
         locationname,
@@ -221,6 +232,20 @@ export async function PUT(req: NextRequest) {
         { error: "Location not found" },
         { status: 404 },
       );
+    }
+
+    if (parentId && parentId === locationid) {
+      return NextResponse.json(
+        { error: "A location cannot be its own parent" },
+        { status: 400 },
+      );
+    }
+
+    const foreign = await findForeignReference(orgId, { location: parentId });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
     }
 
     const updated = await prisma.location.update({

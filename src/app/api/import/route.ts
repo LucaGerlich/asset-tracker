@@ -15,6 +15,11 @@ import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { checkAssetLimit, checkUserLimit } from "@/lib/tenant-limits";
 import { logger, logCatchError } from "@/lib/logger";
+import {
+  findForeignReference,
+  foreignReferenceError,
+  type ReferenceKind,
+} from "@/lib/org-references";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -24,6 +29,18 @@ import crypto from "crypto";
  * Its message is written for the user and is stored on the import job as is.
  */
 class ImportRowError extends Error {}
+
+/**
+ * Reference ids a CSV row supplies must belong to the importing organization.
+ * The defaults the import falls back to are already looked up there.
+ */
+async function assertRowReferences(
+  organizationId: string | null,
+  refs: Partial<Record<ReferenceKind, string | undefined>>,
+): Promise<void> {
+  const foreign = await findForeignReference(organizationId, refs);
+  if (foreign) throw new ImportRowError(foreignReferenceError(foreign).error);
+}
 
 const ROW_FAILED_MESSAGE = "Row could not be imported";
 
@@ -580,6 +597,14 @@ async function createEntity(
           "Missing required reference data for accessory import. Ensure manufacturer, status type, accessory category, location, supplier, and model records exist.",
         );
       }
+      await assertRowReferences(organizationId, {
+        manufacturer: data.manufacturerid,
+        statusType: data.statustypeid,
+        accessoryCategory: data.accessoriecategorytypeid,
+        location: data.locationid,
+        supplier: data.supplierid,
+        model: data.modelid,
+      });
       await prisma.accessories.create({
         data: {
           accessoriename: data.accessoriename,
@@ -612,6 +637,11 @@ async function createEntity(
           "Missing required reference data for consumable import. Ensure manufacturer, consumable category, and supplier records exist.",
         );
       }
+      await assertRowReferences(organizationId, {
+        manufacturer: data.manufacturerid,
+        consumableCategory: data.consumablecategorytypeid,
+        supplier: data.supplierid,
+      });
       await prisma.consumable.create({
         data: {
           consumablename: data.consumablename,
@@ -641,6 +671,11 @@ async function createEntity(
           "Missing required reference data for licence import. Ensure manufacturer, licence category, and supplier records exist.",
         );
       }
+      await assertRowReferences(organizationId, {
+        manufacturer: data.manufacturerid,
+        licenceCategory: data.licencecategorytypeid,
+        supplier: data.supplierid,
+      });
       await prisma.licence.create({
         data: {
           licencekey: data.licencekey || null,

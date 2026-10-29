@@ -7,6 +7,10 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   createLicenseSchema,
@@ -177,6 +181,18 @@ export async function POST(req: NextRequest) {
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id ?? null;
 
+    const foreign = await findForeignReference(orgId, {
+      licenceCategory: licencecategorytypeid,
+      manufacturer: manufacturerid,
+      supplier: supplierid,
+      user: licenceduserid,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
+
     const created = await prisma.licence.create({
       data: {
         licencekey: licencekey ?? null,
@@ -293,6 +309,18 @@ export async function PUT(req: NextRequest) {
       existingLicence.change_date,
     );
     if (conflict) return conflict;
+
+    const foreign = await findForeignReference(putOrgId, {
+      licenceCategory: licencecategorytypeid,
+      manufacturer: manufacturerid,
+      supplier: supplierid,
+      user: licenceduserid,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     const updated = await prisma.licence.update({
       where: { licenceid },

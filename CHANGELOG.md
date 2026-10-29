@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+
+- Write routes check every referenced id in the request body against the caller's
+  organization before storing it (debt item 82, found by the 0.15.1 reviews). Until now
+  a tenant holding another tenant's id could attach records to that tenant's rows, read
+  them back through the response, and, for component categories (`onDelete: Cascade`),
+  lose its components when the other tenant deleted the category. A foreign id now
+  answers 400 `"<Thing> not found in your organization"`. Covered:
+  - accessories, assets (`/api/asset`, `/api/asset/addAsset`), asset templates,
+    components (`/api/components`, `/api/components/[id]`), consumables and licences:
+    manufacturer, supplier, location, model, status, category and licensed user;
+  - locations: parent location (a location can no longer be its own parent);
+  - consumable checkouts and licence seats: the target user (the seat response and its
+    webhook carried the foreign user's email);
+  - audit campaigns: auditors; audit scans: asset and location;
+  - `PUT /api/user`: department; purchase requests: department and item suppliers
+    (`generate-po` copied those suppliers onto the order);
+  - CSV import of accessories, consumables and licences: reference columns (the
+    defaults were already scoped).
+- New helper `findForeignReference()` in `src/lib/org-references.ts`: one `findMany`
+  per referenced model, scoped like `scopeToOrganization` (an org-less caller matches
+  only org-less rows).
+
+**Upgrade notes**
+
+- No migration. A record that still points at a legacy reference row without an
+  organization (for example a component category created through the API before
+  0.15.1) answers 400 when an edit re-sends that id. The read-only count query in the
+  0.15.1 upgrade notes finds those categories.
+
 ## [0.15.1] - 2026-10-29
 
 Closes the cross-tenant gaps that were still open from an external security report

@@ -7,6 +7,10 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, assignLicenceSeatSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -103,6 +107,15 @@ export async function POST(req: Request) {
     if (data instanceof NextResponse) return data;
 
     const { licenceId, userId, notes } = data;
+
+    const foreign = await findForeignReference(admin.organizationId, {
+      user: userId,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     // Serializable isolation prevents two concurrent assignments from both
     // passing the seat-count check (over-assignment) or computing the same
