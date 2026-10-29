@@ -111,6 +111,11 @@ describe("POST /api/audits", () => {
       cb(mockPrisma),
     );
     mockPrisma.auditCampaign.create.mockResolvedValue(mockCampaign as any);
+    // Both auditors belong to the caller's organization.
+    mockPrisma.user.findMany.mockResolvedValue([
+      { userid: "550e8400-e29b-41d4-a716-446655440001" },
+      { userid: "550e8400-e29b-41d4-a716-446655440002" },
+    ] as any);
 
     const req = createMockRequest("/api/audits", {
       method: "POST",

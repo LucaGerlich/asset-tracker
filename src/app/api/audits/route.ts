@@ -6,6 +6,10 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, createAuditCampaignSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -100,6 +104,13 @@ export async function POST(req: Request) {
 
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
+
+    const foreign = await findForeignReference(orgId, { user: auditorIds });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     const campaign = await prisma.$transaction(async (tx) => {
       const created = await tx.auditCampaign.create({
