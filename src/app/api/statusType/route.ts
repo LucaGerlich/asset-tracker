@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
     // If setting as default, unset others
     if (isDefault) {
       await prisma.statusType.updateMany({
-        where: { isDefault: true },
+        where: { isDefault: true, organizationId: orgId ?? null },
         data: { isDefault: false },
       });
     }
@@ -203,7 +203,11 @@ export async function PUT(req: NextRequest) {
     // If setting as default, unset others
     if (isDefault) {
       await prisma.statusType.updateMany({
-        where: { isDefault: true, statustypeid: { not: statustypeid } },
+        where: {
+          isDefault: true,
+          statustypeid: { not: statustypeid },
+          organizationId: orgId ?? null,
+        },
         data: { isDefault: false },
       });
     }
