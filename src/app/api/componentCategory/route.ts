@@ -122,7 +122,7 @@ export async function PUT(req: Request) {
     }
 
     const updated = await prisma.componentCategory.update({
-      where: { id },
+      where: { id, organizationId: orgId ?? null },
       data: {
         ...(name !== undefined && { name }),
       },
