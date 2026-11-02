@@ -36,9 +36,6 @@ interface AssetTransfersProps {
   assetId: string;
   currentUserId?: string;
   currentLocationId?: string;
-  currentOrgId?: string;
-  /** Only super-admins may move an asset into another organization. */
-  canTransferOrganization?: boolean;
 }
 
 interface Transfer {
@@ -93,8 +90,6 @@ export default function AssetTransfers({
   assetId,
   currentUserId,
   currentLocationId,
-  currentOrgId,
-  canTransferOrganization = false,
 }: AssetTransfersProps) {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,7 +104,6 @@ export default function AssetTransfers({
   // Options for selectors
   const [users, setUsers] = useState<UserOption[]>([]);
   const [locations, setLocations] = useState<LocationOption[]>([]);
-  const [orgs, setOrgs] = useState<OrgOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
   // Lookup maps for display names
@@ -166,7 +160,6 @@ export default function AssetTransfers({
 
       if (orgsRes.ok) {
         const orgData: OrgOption[] = await orgsRes.json();
-        setOrgs(orgData);
         const oMap: Record<string, string> = {};
         for (const o of orgData) {
           oMap[o.id] = o.name;
@@ -192,9 +185,6 @@ export default function AssetTransfers({
       } else if (type === "location") {
         const res = await fetch("/api/location");
         if (res.ok) setLocations(await res.json());
-      } else if (type === "organization") {
-        const res = await fetch("/api/organizations");
-        if (res.ok) setOrgs(await res.json());
       }
     } catch (err) {
       console.error("Failed to load options", err);
@@ -226,7 +216,6 @@ export default function AssetTransfers({
 
       if (transferType === "user") payload.toUserId = targetId;
       else if (transferType === "location") payload.toLocationId = targetId;
-      else if (transferType === "organization") payload.toOrgId = targetId;
 
       const res = await fetch("/api/asset/transfers", {
         method: "POST",
@@ -342,28 +331,6 @@ export default function AssetTransfers({
       );
     }
 
-    if (transferType === "organization") {
-      return (
-        <div className="space-y-2">
-          <Label htmlFor="target-org">Target Organization</Label>
-          <Select value={targetId} onValueChange={setTargetId}>
-            <SelectTrigger id="target-org">
-              <SelectValue placeholder="Select an organization" />
-            </SelectTrigger>
-            <SelectContent>
-              {orgs
-                .filter((o) => o.id !== currentOrgId)
-                .map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        </div>
-      );
-    }
-
     return null;
   };
 
@@ -385,8 +352,7 @@ export default function AssetTransfers({
             <DialogHeader>
               <DialogTitle>Transfer Asset</DialogTitle>
               <DialogDescription>
-                Transfer this asset to a different user, location, or
-                organization.
+                Transfer this asset to a different user or location.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -399,9 +365,6 @@ export default function AssetTransfers({
                   <SelectContent>
                     <SelectItem value="user">User</SelectItem>
                     <SelectItem value="location">Location</SelectItem>
-                    {canTransferOrganization && (
-                      <SelectItem value="organization">Organization</SelectItem>
-                    )}
                   </SelectContent>
                 </Select>
               </div>
