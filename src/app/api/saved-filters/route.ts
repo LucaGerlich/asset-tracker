@@ -21,7 +21,20 @@ export async function GET(req: Request) {
     const filters = await prisma.saved_filters.findMany({
       where: {
         entity,
-        OR: [{ userId: user.id! }, { isGlobal: true }],
+        // "Global" means shared within the caller's organization:
+        // saved_filters has no organizationId, so scope through the author.
+        // A caller without an organization shares with nobody.
+        OR: [
+          { userId: user.id! },
+          ...(user.organizationId
+            ? [
+                {
+                  isGlobal: true,
+                  user: { organizationId: user.organizationId },
+                },
+              ]
+            : []),
+        ],
       },
       orderBy: [{ isDefault: "desc" }, { name: "asc" }],
     });
