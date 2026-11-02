@@ -86,6 +86,36 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/**
+ * Whether the entity an approval request points at belongs to the caller's
+ * organization. None of these models has its own organizationId, so each is
+ * scoped through its asset or its requesting user.
+ */
+async function approvalEntityInOrg(
+  entityType: "reservation" | "asset_request" | "transfer",
+  id: string,
+  organizationId: string | null | undefined,
+): Promise<boolean> {
+  const orgId = organizationId ?? null;
+  const select = { id: true } as const;
+  const found =
+    entityType === "reservation"
+      ? await prisma.assetReservation.findFirst({
+          where: { id, asset: { organizationId: orgId } },
+          select,
+        })
+      : entityType === "transfer"
+        ? await prisma.assetTransfer.findFirst({
+            where: { id, asset: { organizationId: orgId } },
+            select,
+          })
+        : await prisma.itemRequest.findFirst({
+            where: { id, user: { organizationId: orgId } },
+            select,
+          });
+  return found !== null;
+}
+
 // POST /api/approvals - Create a new approval request
 export async function POST(req: NextRequest) {
   try {
@@ -100,6 +130,12 @@ export async function POST(req: NextRequest) {
     if (validated instanceof NextResponse) return validated;
 
     const { entityType, entityId, notes } = validated;
+
+    if (
+      !(await approvalEntityInOrg(entityType, entityId, user.organizationId))
+    ) {
+      return NextResponse.json({ error: "Entity not found" }, { status: 404 });
+    }
 
     const approval = await prisma.approvalRequest.create({
       data: {
