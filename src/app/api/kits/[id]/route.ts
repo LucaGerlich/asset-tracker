@@ -6,6 +6,11 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+  kitItemReferences,
+} from "@/lib/org-references";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, updateKitSchema } from "@/lib/validation";
 import { logger } from "@/lib/logger";
@@ -70,6 +75,13 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     if (validated instanceof NextResponse) return validated;
 
     const { name, description, isActive, items } = validated;
+
+    const foreign = await findForeignReference(orgId, kitItemReferences(items));
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     const kit = await prisma.$transaction(async (tx) => {
       const updateData: Record<string, unknown> = {};

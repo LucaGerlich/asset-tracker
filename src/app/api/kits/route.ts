@@ -6,6 +6,11 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+  kitItemReferences,
+} from "@/lib/org-references";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import {
   validateBody,
@@ -98,6 +103,13 @@ export async function POST(req: Request) {
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
+    const foreign = await findForeignReference(orgId, kitItemReferences(items));
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
+
     const kit = await prisma.$transaction(async (tx) => {
       const created = await tx.kit.create({
         data: {
@@ -183,6 +195,13 @@ export async function PUT(req: Request) {
 
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
+
+    const foreign = await findForeignReference(orgId, kitItemReferences(items));
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     const kit = await prisma.$transaction(async (tx) => {
       // Verify the kit belongs to the caller's organization before mutating.
