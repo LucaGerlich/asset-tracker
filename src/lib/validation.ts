@@ -548,7 +548,11 @@ export const createAuditCampaignSchema = z.object({
   auditorIds: z.array(uuidField).optional(),
 });
 
-export const updateAuditCampaignSchema = createAuditCampaignSchema.partial();
+// partial() keeps scopeType's default, which reset every edited campaign's scope
+// to "all"; an update must leave the scope alone unless it is sent.
+export const updateAuditCampaignSchema = createAuditCampaignSchema
+  .partial()
+  .extend({ scopeType: z.enum(["all", "location", "category"]).optional() });
 
 export const auditScanSchema = z.object({
   assetId: uuidField,
