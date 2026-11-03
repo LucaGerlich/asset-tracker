@@ -113,7 +113,7 @@ describe.each(cases)("DELETE /api/$name", (c) => {
     mockPrisma[c.model].findFirst.mockResolvedValue({
       [c.nameField]: "Laptops",
     } as never);
-    mockPrisma[c.item].count.mockResolvedValue(0);
+    mockPrisma[c.item].findFirst.mockResolvedValue(null);
     mockPrisma[c.model].delete.mockResolvedValue({} as never);
   });
 
@@ -150,12 +150,23 @@ describe.each(cases)("DELETE /api/$name", (c) => {
   });
 
   it("returns 409 while items still reference the category", async () => {
-    mockPrisma[c.item].count.mockResolvedValue(3);
+    mockPrisma[c.item].findFirst.mockResolvedValue({
+      [c.idField]: CATEGORY_ID,
+    } as never);
     const { status, body } = await parseResponse<{ error: string }>(
       await call({ [c.idField]: CATEGORY_ID }),
     );
     expect(status).toBe(409);
-    expect(body.error).toContain("3");
+    expect(body.error).toBe(
+      "Category is still in use. Reassign its items first.",
+    );
+    expect(body.error).not.toMatch(/\d/);
+    expect(mockPrisma[c.item].count).not.toHaveBeenCalled();
+    // The reference check must not be org-scoped (NoAction FKs block any tenant).
+    expect(mockPrisma[c.item].findFirst).toHaveBeenCalledWith({
+      where: { [c.idField]: CATEGORY_ID },
+      select: { [c.idField]: true },
+    });
     expect(mockPrisma[c.model].delete).not.toHaveBeenCalled();
     expect(createAuditLog).not.toHaveBeenCalled();
   });

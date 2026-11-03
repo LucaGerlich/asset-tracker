@@ -252,12 +252,16 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const inUse = await prisma.asset.count({ where: { assetcategorytypeid } });
-    if (inUse > 0) {
+    // Deliberately unscoped by organization: the FKs are NoAction, so a row
+    // from any tenant would block the delete. Only existence is reported, never
+    // a count, so nothing about other tenants leaks.
+    const inUse = await prisma.asset.findFirst({
+      where: { assetcategorytypeid },
+      select: { assetcategorytypeid: true },
+    });
+    if (inUse) {
       return NextResponse.json(
-        {
-          error: `Asset category is still used by ${inUse} assets. Reassign them first.`,
-        },
+        { error: "Category is still in use. Reassign its items first." },
         { status: 409 },
       );
     }

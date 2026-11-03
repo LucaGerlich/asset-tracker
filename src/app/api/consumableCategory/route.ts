@@ -252,14 +252,16 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const inUse = await prisma.consumable.count({
+    // Deliberately unscoped by organization: the FKs are NoAction, so a row
+    // from any tenant would block the delete. Only existence is reported, never
+    // a count, so nothing about other tenants leaks.
+    const inUse = await prisma.consumable.findFirst({
       where: { consumablecategorytypeid },
+      select: { consumablecategorytypeid: true },
     });
-    if (inUse > 0) {
+    if (inUse) {
       return NextResponse.json(
-        {
-          error: `Consumable category is still used by ${inUse} consumables. Reassign them first.`,
-        },
+        { error: "Category is still in use. Reassign its items first." },
         { status: 409 },
       );
     }

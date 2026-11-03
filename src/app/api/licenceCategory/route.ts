@@ -252,14 +252,16 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const inUse = await prisma.licence.count({
+    // Deliberately unscoped by organization: the FKs are NoAction, so a row
+    // from any tenant would block the delete. Only existence is reported, never
+    // a count, so nothing about other tenants leaks.
+    const inUse = await prisma.licence.findFirst({
       where: { licencecategorytypeid },
+      select: { licencecategorytypeid: true },
     });
-    if (inUse > 0) {
+    if (inUse) {
       return NextResponse.json(
-        {
-          error: `Licence category is still used by ${inUse} licences. Reassign them first.`,
-        },
+        { error: "Category is still in use. Reassign its items first." },
         { status: 409 },
       );
     }
