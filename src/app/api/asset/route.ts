@@ -50,6 +50,18 @@ const ASSET_SORT_FIELDS = [
   "purchaseprice",
 ];
 
+const DUPLICATE_ASSET_MESSAGE =
+  "An asset with this asset tag or serial number already exists";
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2002"
+  );
+}
+
 // Optional query: ?id=<assetid>
 // Pagination: ?page=1&pageSize=25&sortBy=assetname&sortOrder=asc&search=keyword&statusId=<id>
 export async function GET(req: NextRequest) {
@@ -242,6 +254,12 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
+    if (isUniqueViolation(error)) {
+      return NextResponse.json(
+        { error: DUPLICATE_ASSET_MESSAGE },
+        { status: 409 },
+      );
+    }
     logger.error("POST /api/asset error", { error });
     return NextResponse.json(
       { error: "Failed to create asset" },
@@ -331,6 +349,12 @@ export async function PUT(req: NextRequest) {
   } catch (error) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
+    if (isUniqueViolation(error)) {
+      return NextResponse.json(
+        { error: DUPLICATE_ASSET_MESSAGE },
+        { status: 409 },
+      );
+    }
     logger.error("PUT /api/asset error", { error });
     return NextResponse.json(
       { error: "Failed to update asset" },

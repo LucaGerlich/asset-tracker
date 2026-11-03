@@ -237,3 +237,45 @@ describe("PUT /api/asset", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("duplicate assettag / serialnumber", () => {
+  const uniqueViolation = () =>
+    Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+
+  it("POST maps a unique-constraint violation to 409", async () => {
+    mockPrisma.asset.create.mockRejectedValue(uniqueViolation());
+
+    const res = await POST(
+      createMockRequest("/api/asset", {
+        method: "POST",
+        body: {
+          assetname: "Dup",
+          assettag: "DUP-001",
+          serialnumber: "SN-DUP-001",
+        },
+      }),
+    );
+    const { status, body } = await parseResponse<{ error: string }>(res);
+
+    expect(status).toBe(409);
+    expect(body.error).toMatch(/already exists/);
+  });
+
+  it("PUT maps a unique-constraint violation to 409", async () => {
+    const assetUuid = "550e8400-e29b-41d4-a716-446655440000";
+    mockPrisma.asset.findFirst.mockResolvedValue({
+      ...mockAsset,
+      assetid: assetUuid,
+    } as any);
+    mockPrisma.asset.update.mockRejectedValue(uniqueViolation());
+
+    const res = await PUT(
+      createMockRequest("/api/asset", {
+        method: "PUT",
+        body: { assetid: assetUuid, assettag: "TAKEN-001" },
+      }),
+    );
+
+    expect(res.status).toBe(409);
+  });
+});
