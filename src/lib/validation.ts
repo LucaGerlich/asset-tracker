@@ -603,3 +603,40 @@ export const auditScanSchema = z.object({
   status: z.enum(["found", "missing", "moved"]).default("found"),
   notes: optionalString,
 });
+
+const parseableDate = z
+  .string()
+  .refine((value) => !Number.isNaN(Date.parse(value)), "Must be a valid date");
+
+/** Fields of POST /api/requests that need more than a presence check. */
+export const createItemRequestSchema = z
+  .object({
+    quantity: z.number().int().positive().max(1_000_000).optional(),
+    startDate: parseableDate.optional().nullable(),
+    endDate: parseableDate.optional().nullable(),
+    notes: z.string().max(5000).optional().nullable(),
+  })
+  .refine(
+    (data) =>
+      !data.startDate ||
+      !data.endDate ||
+      Date.parse(data.endDate) >= Date.parse(data.startDate),
+    { message: "endDate must not be before startDate", path: ["endDate"] },
+  );
+
+/** Statuses an item request can be moved to through PUT /api/requests. */
+export const ITEM_REQUEST_TARGET_STATUSES = [
+  "approved",
+  "rejected",
+  "cancelled",
+  "returned",
+] as const;
+
+export const updateItemRequestSchema = z.object({
+  id: z.string().min(1, "Required"),
+  status: z.enum(ITEM_REQUEST_TARGET_STATUSES, {
+    message: `Must be one of: ${ITEM_REQUEST_TARGET_STATUSES.join(", ")}`,
+  }),
+  notes: z.string().max(5000).nullable().optional(),
+  _expectedVersion: z.string().optional(),
+});

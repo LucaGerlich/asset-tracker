@@ -7,6 +7,11 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  validateBody,
+  createItemRequestSchema,
+  updateItemRequestSchema,
+} from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { logger, logCatchError } from "@/lib/logger";
 import {
@@ -19,6 +24,20 @@ import {
 type TxClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Allowed status moves for PUT /api/requests: current status -> targets.
+ * Terminal statuses (rejected, cancelled, returned) have no way out, and an
+ * approved request can only be returned, never re-approved or cancelled.
+ */
+const REQUEST_TRANSITIONS: Record<string, readonly string[]> = {
+  pending: ["approved", "rejected", "cancelled"],
+  approved: ["returned"],
+  return_pending: ["returned", "cancelled"],
+};
+
+/** Thrown inside the PUT transaction when another writer changed the status. */
+const STATUS_CONFLICT = "REQUEST_STATUS_CONFLICT";
 
 export async function GET(req: NextRequest) {
   try {
@@ -159,7 +178,7 @@ export async function POST(req: NextRequest) {
     await requireWritableOrg(user);
 
     const body = await req.json();
-    const { entityType, entityId, startDate, endDate, notes, quantity } = body;
+    const { entityType, entityId } = body;
     const initialStatus =
       body.status === "return_pending" ? "return_pending" : "pending";
 
@@ -177,6 +196,10 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+
+    const details = validateBody(createItemRequestSchema, body);
+    if (details instanceof NextResponse) return details;
+    const { startDate, endDate, notes, quantity } = details;
 
     // Verify the target entity belongs to the requester's organization
     const orgContext = await getOrganizationContext();
@@ -335,14 +358,16 @@ export async function PUT(req: NextRequest) {
     const user = await requireApiAuth();
     await requireWritableOrg(user);
 
-    const { id, status, notes, _expectedVersion } = await req.json();
-
-    if (!id || !status) {
+    const body = await req.json();
+    if (!body?.id || !body?.status) {
       return NextResponse.json(
         { error: "id and status required" },
         { status: 400 },
       );
     }
+    const validated = validateBody(updateItemRequestSchema, body);
+    if (validated instanceof NextResponse) return validated;
+    const { id, status, notes, _expectedVersion } = validated;
 
     const existing = await prisma.itemRequest.findUnique({ where: { id } });
     if (!existing) {
@@ -401,6 +426,17 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // Only moves the transition table allows. This also stops a second
+    // approval from decrementing a consumable again.
+    if (!REQUEST_TRANSITIONS[existing.status]?.includes(status)) {
+      return NextResponse.json(
+        {
+          error: `A request with status "${existing.status}" cannot be set to "${status}"`,
+        },
+        { status: 409 },
+      );
+    }
+
     await prisma.$transaction(async (tx) => {
       const updateData: Record<string, unknown> = {
         status,
@@ -418,10 +454,13 @@ export async function PUT(req: NextRequest) {
         updateData.returnedAt = new Date();
       }
 
-      await tx.itemRequest.update({
-        where: { id },
+      // Compare-and-set on the status we validated against: if another request
+      // already moved it, none of the side effects below may run.
+      const moved = await tx.itemRequest.updateMany({
+        where: { id, status: existing.status },
         data: updateData,
       });
+      if (moved.count !== 1) throw new Error(STATUS_CONFLICT);
 
       // On reject/cancel, revert asset status to "Available"
       if (
@@ -535,6 +574,15 @@ export async function PUT(req: NextRequest) {
   } catch (error) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
+    if (error instanceof Error && error.message === STATUS_CONFLICT) {
+      return NextResponse.json(
+        {
+          error:
+            "This request was modified by another user. Please refresh and try again.",
+        },
+        { status: 409 },
+      );
+    }
     logger.error("PUT /api/requests error", { error });
     return NextResponse.json(
       { error: "Failed to update request" },
