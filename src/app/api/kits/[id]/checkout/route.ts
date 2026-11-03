@@ -10,6 +10,7 @@ import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger, logCatchError } from "@/lib/logger";
+import { assignLicenceSeat } from "@/lib/licence-seats";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -144,25 +145,41 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
           const licence = await tx.licence.findFirst({
             where: { licenceid: item.entityId, organizationId: orgId },
             include: {
-              seatAssignments: { where: { unassignedAt: null } },
+              seatAssignments: {
+                where: { unassignedAt: null },
+                select: { userId: true, seatNumber: true },
+              },
             },
           });
 
-          if (licence && licence.seatAssignments.length < licence.seatCount) {
-            const nextSeat = licence.seatAssignments.length + 1;
-            await tx.licenceSeatAssignment.create({
-              data: {
-                licenceId: licence.licenceid,
-                userId,
-                seatNumber: nextSeat,
-                assignedBy: authUser.id,
-              },
+          if (!licence) {
+            results.push({
+              entityType: item.entityType,
+              entityId: item.entityId,
+              status: "unavailable",
+              detail: "Licence not found",
+            });
+          } else if (
+            licence.seatAssignments.some((seat) => seat.userId === userId)
+          ) {
+            // The (licenceId, userId) pair is unique: re-inserting would abort
+            // the whole kit checkout, so report the existing seat instead.
+            results.push({
+              entityType: item.entityType,
+              entityId: licence.licenceid,
+              status: "already_assigned",
+            });
+          } else if (licence.seatAssignments.length < licence.seatCount) {
+            const seat = await assignLicenceSeat(tx, {
+              licenceId: licence.licenceid,
+              userId,
+              assignedBy: authUser.id,
             });
             results.push({
               entityType: item.entityType,
               entityId: licence.licenceid,
               status: "assigned",
-              detail: `Seat ${nextSeat}`,
+              detail: `Seat ${seat.seatNumber}`,
             });
           } else {
             results.push({
