@@ -3,17 +3,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/prisma");
 vi.mock("@/lib/logger");
 vi.mock("@/lib/email", () => ({ queueEmail: vi.fn() }));
-vi.mock("@/lib/report-generator", () => ({
-  generateReportBuffer: vi.fn(),
-}));
+vi.mock("@/lib/url", () => ({ getBaseUrl: () => "https://app.example.com" }));
 
 import { processScheduledReports } from "@/lib/scheduled-reports";
 import prisma from "@/lib/prisma";
 import { queueEmail } from "@/lib/email";
-import { generateReportBuffer } from "@/lib/report-generator";
 
 const mockPrisma = vi.mocked(prisma, true);
-const mockGenerate = vi.mocked(generateReportBuffer);
 const mockQueueEmail = vi.mocked(queueEmail);
 
 function schedule(scheduleOrg: string | null, userOrg: string | null) {
@@ -38,12 +34,6 @@ function schedule(scheduleOrg: string | null, userOrg: string | null) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGenerate.mockResolvedValue({
-    buffer: Buffer.from("a,b"),
-    mimeType: "text/csv",
-    extension: "csv",
-    filename: "assets-report.csv",
-  } as never);
 });
 
 describe("processScheduledReports organization binding", () => {
@@ -55,8 +45,20 @@ describe("processScheduledReports organization binding", () => {
     const result = await processScheduledReports();
 
     expect(result).toEqual({ processed: 1, succeeded: 1, failed: 0 });
-    expect(mockGenerate).toHaveBeenCalledWith("assets", "csv", "org-a");
     expect(mockQueueEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("links into the app instead of embedding the file as a data: URI", async () => {
+    mockPrisma.reportSchedule.findMany.mockResolvedValue([
+      schedule("org-a", "org-a"),
+    ] as never);
+
+    await processScheduledReports();
+
+    const html = mockQueueEmail.mock.calls[0][4];
+    expect(html).toContain('href="https://app.example.com/reports"');
+    expect(html).not.toContain("data:");
+    expect(html).not.toContain("base64");
   });
 
   it("deactivates and skips a schedule whose user moved to another org", async () => {
@@ -67,7 +69,6 @@ describe("processScheduledReports organization binding", () => {
     const result = await processScheduledReports();
 
     expect(result.succeeded).toBe(0);
-    expect(mockGenerate).not.toHaveBeenCalled();
     expect(mockQueueEmail).not.toHaveBeenCalled();
     expect(mockPrisma.reportSchedule.update).toHaveBeenCalledWith({
       where: { id: "sched-1" },
@@ -82,7 +83,6 @@ describe("processScheduledReports organization binding", () => {
 
     await processScheduledReports();
 
-    expect(mockGenerate).not.toHaveBeenCalled();
     expect(mockQueueEmail).not.toHaveBeenCalled();
   });
 });
