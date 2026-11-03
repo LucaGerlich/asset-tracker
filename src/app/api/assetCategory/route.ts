@@ -12,7 +12,9 @@ import { apiErrorResponse } from "@/lib/errors";
 import {
   createAssetCategoryTypeSchema,
   updateAssetCategoryTypeSchema,
+  deleteAssetCategoryTypeSchema,
   uuidSchema,
+  validateBody,
 } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { getOrganizationContext } from "@/lib/organization-context";
@@ -216,6 +218,83 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(
       { error: "Failed to update asset category" },
+      { status: 500 },
+    );
+  }
+}
+
+// DELETE /api/assetCategory
+export async function DELETE(req: NextRequest) {
+  try {
+    const demoBlock = requireNotDemoMode();
+    if (demoBlock) return demoBlock;
+    // Only admins can delete asset categories
+    const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
+
+    const body = await req.json();
+    const validated = validateBody(deleteAssetCategoryTypeSchema, body);
+    if (validated instanceof NextResponse) return validated;
+    const { assetcategorytypeid } = validated;
+
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+
+    // Scope the lookup so foreign-org categories read as "not found".
+    const category = await prisma.assetCategoryType.findFirst({
+      where: { assetcategorytypeid, organizationId: orgId ?? null },
+      select: { assetcategorytypename: true },
+    });
+    if (!category) {
+      return NextResponse.json(
+        { error: "Asset category not found" },
+        { status: 404 },
+      );
+    }
+
+    const inUse = await prisma.asset.count({ where: { assetcategorytypeid } });
+    if (inUse > 0) {
+      return NextResponse.json(
+        {
+          error: `Asset category is still used by ${inUse} assets. Reassign them first.`,
+        },
+        { status: 409 },
+      );
+    }
+
+    await prisma.assetCategoryType.delete({ where: { assetcategorytypeid } });
+
+    await createAuditLog({
+      userId: admin.id,
+      action: AUDIT_ACTIONS.DELETE,
+      entity: AUDIT_ENTITIES.ASSET_CATEGORY,
+      entityId: assetcategorytypeid,
+      details: { assetcategorytypename: category.assetcategorytypename },
+    });
+
+    await invalidateCacheByPrefix("categories").catch(() => {});
+
+    return NextResponse.json(
+      { message: "Asset category deleted successfully" },
+      { status: 200 },
+    );
+  } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
+    logger.error("DELETE /api/assetCategory error", { error: e });
+
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2025"
+    ) {
+      return NextResponse.json(
+        { error: "Asset category not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Failed to delete asset category" },
       { status: 500 },
     );
   }

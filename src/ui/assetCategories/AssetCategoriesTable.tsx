@@ -48,7 +48,11 @@ export default function AssetCategoriesTable({ items }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assetcategorytypeid: id }),
       });
-      if (!res.ok) throw new Error("Delete failed");
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        toast.error(data?.error ?? "Failed to delete");
+        return;
+      }
       toast.success("Deleted successfully");
       router.refresh();
     } catch (err) {

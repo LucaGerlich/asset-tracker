@@ -12,7 +12,9 @@ import { apiErrorResponse } from "@/lib/errors";
 import {
   createAccessoryCategoryTypeSchema,
   updateAccessoryCategoryTypeSchema,
+  deleteAccessoryCategoryTypeSchema,
   uuidSchema,
+  validateBody,
 } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { getOrganizationContext } from "@/lib/organization-context";
@@ -216,6 +218,89 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(
       { error: "Failed to update accessory category" },
+      { status: 500 },
+    );
+  }
+}
+
+// DELETE /api/accessoryCategory
+export async function DELETE(req: NextRequest) {
+  try {
+    const demoBlock = requireNotDemoMode();
+    if (demoBlock) return demoBlock;
+    // Only admins can delete accessory categories
+    const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
+
+    const body = await req.json();
+    const validated = validateBody(deleteAccessoryCategoryTypeSchema, body);
+    if (validated instanceof NextResponse) return validated;
+    const { accessoriecategorytypeid } = validated;
+
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+
+    // Scope the lookup so foreign-org categories read as "not found".
+    const category = await prisma.accessorieCategoryType.findFirst({
+      where: { accessoriecategorytypeid, organizationId: orgId ?? null },
+      select: { accessoriecategorytypename: true },
+    });
+    if (!category) {
+      return NextResponse.json(
+        { error: "Accessory category not found" },
+        { status: 404 },
+      );
+    }
+
+    const inUse = await prisma.accessories.count({
+      where: { accessoriecategorytypeid },
+    });
+    if (inUse > 0) {
+      return NextResponse.json(
+        {
+          error: `Accessory category is still used by ${inUse} accessories. Reassign them first.`,
+        },
+        { status: 409 },
+      );
+    }
+
+    await prisma.accessorieCategoryType.delete({
+      where: { accessoriecategorytypeid },
+    });
+
+    await createAuditLog({
+      userId: admin.id,
+      action: AUDIT_ACTIONS.DELETE,
+      entity: AUDIT_ENTITIES.ACCESSORY_CATEGORY,
+      entityId: accessoriecategorytypeid,
+      details: {
+        accessoriecategorytypename: category.accessoriecategorytypename,
+      },
+    });
+
+    await invalidateCacheByPrefix("accessory_categories").catch(() => {});
+
+    return NextResponse.json(
+      { message: "Accessory category deleted successfully" },
+      { status: 200 },
+    );
+  } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
+    logger.error("DELETE /api/accessoryCategory error", { error: e });
+
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2025"
+    ) {
+      return NextResponse.json(
+        { error: "Accessory category not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Failed to delete accessory category" },
       { status: 500 },
     );
   }
