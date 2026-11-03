@@ -3,6 +3,7 @@ import { requireApiAuth, requireNotDemoMode } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import { revokeSession } from "@/lib/session-tracking";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { scopeToOrganization } from "@/lib/organization-context";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
@@ -28,9 +29,13 @@ export async function DELETE(
 
     // If admin, allow revoking any session; otherwise only own sessions
     if (user.isAdmin) {
-      // Admin: find the session to get its userId for audit logging
-      const session = await prisma.sessions.findUnique({
-        where: { id: sessionId },
+      // Admin: only sessions of users in the admin's own organization; a
+      // foreign session looks exactly like a missing one.
+      const session = await prisma.sessions.findFirst({
+        where: {
+          id: sessionId,
+          user: scopeToOrganization({}, user.organizationId),
+        },
         select: { userId: true, deviceName: true, ipAddress: true },
       });
 
