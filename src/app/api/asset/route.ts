@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
+import { searchIdsByFullText } from "@/lib/fulltext-search";
 import { Prisma } from "@prisma/client";
 import {
   requirePermission,
@@ -98,16 +99,10 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search") ?? undefined;
     if (search) {
       // Use PostgreSQL full-text search via the generated search_vector column
-      const tsQuery = search.trim().split(/\s+/).join(" & ");
-      const matchingIds = await prisma
-        .$queryRawUnsafe<Array<{ assetid: string }>>(
-          `SELECT "assetid" FROM "asset" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`,
-          tsQuery,
-        )
-        .catch(() => null);
+      const matchingIds = await searchIdsByFullText("asset", orgId, search);
 
       if (matchingIds && matchingIds.length > 0) {
-        where.assetid = { in: matchingIds.map((r) => r.assetid) };
+        where.assetid = { in: matchingIds };
       } else if (matchingIds) {
         // tsvector returned no results — empty set
         where.assetid = { in: [] };

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { searchIdsByFullText } from "@/lib/fulltext-search";
 import { Prisma } from "@prisma/client";
 import {
   requirePermission,
@@ -66,16 +67,14 @@ export async function GET(req: Request) {
 
     // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      const tsQuery = params.search.trim().split(/\s+/).join(" & ");
-      const matchingIds = await prisma
-        .$queryRawUnsafe<Array<{ id: string }>>(
-          `SELECT "id" FROM "components" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`,
-          tsQuery,
-        )
-        .catch(() => null);
+      const matchingIds = await searchIdsByFullText(
+        "components",
+        orgId,
+        params.search,
+      );
 
       if (matchingIds && matchingIds.length > 0) {
-        where.id = { in: matchingIds.map((r) => r.id) };
+        where.id = { in: matchingIds };
       } else if (matchingIds) {
         // tsvector returned no results — empty set
         where.id = { in: [] };

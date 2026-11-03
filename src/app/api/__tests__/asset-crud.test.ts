@@ -238,6 +238,24 @@ describe("PUT /api/asset", () => {
   });
 });
 
+describe("GET /api/asset full-text search", () => {
+  it("scopes the raw tsvector query to the caller's organization and limits it", async () => {
+    mockPrisma.$queryRawUnsafe.mockResolvedValue([{ assetid: "a-1" }]);
+    mockPrisma.asset.findMany.mockResolvedValue([mockAsset] as any);
+
+    const res = await GET(createMockRequest("/api/asset?search=laptop") as any);
+
+    expect(res.status).toBe(200);
+    const [sql, ...params] = mockPrisma.$queryRawUnsafe.mock.calls[0] as [
+      string,
+      ...unknown[],
+    ];
+    expect(sql).toContain('"organizationId" = $2');
+    expect(sql).toContain("LIMIT 1000");
+    expect(params).toEqual(["laptop", "org-uuid-001"]);
+  });
+});
+
 describe("duplicate assettag / serialnumber", () => {
   const uniqueViolation = () =>
     Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
