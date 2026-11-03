@@ -21,7 +21,10 @@ import {
   getOrganizationContext,
   scopeToOrganization,
 } from "@/lib/organization-context";
-import { applyDepartmentScopeToUsers } from "@/lib/department-access";
+import {
+  applyDepartmentScopeToUsers,
+  getVisibleDepartmentIds,
+} from "@/lib/department-access";
 import { updateUserSchema } from "@/lib/validation";
 import { setUserPassword } from "@/lib/auth-utils";
 import {
@@ -149,6 +152,12 @@ export async function GET(req: NextRequest) {
 
     const where = await applyDepartmentScopeToUsers(baseWhere, authUser);
 
+    // The cap applies to the org-wide match set, before the department scope
+    // narrows it. A department-scoped caller must not learn that more than
+    // 1000 users match organization-wide.
+    const truncated =
+      searchTruncated && (await getVisibleDepartmentIds(authUser)) === null;
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({ where, ...prismaArgs, ...listSelect }),
       prisma.user.count({ where }),
@@ -156,7 +165,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(
       buildPaginatedResponse(users.map(stripPassword), total, params, {
-        truncated: searchTruncated,
+        truncated,
       }),
       { status: 200 },
     );
