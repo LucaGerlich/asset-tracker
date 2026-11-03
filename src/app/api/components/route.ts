@@ -270,11 +270,19 @@ export async function PUT(req: Request) {
     if (data.totalQuantity !== undefined)
       updateData.totalQuantity = data.totalQuantity;
     // Keep the invariant remainingQuantity <= totalQuantity. If the caller sends
-    // an explicit remainingQuantity, use it; otherwise when totalQuantity changes
-    // reconcile remaining so the currently-checked-out amount is preserved.
-    const explicitRemaining = (body as Record<string, unknown>)
-      .remainingQuantity;
+    // an explicit remainingQuantity (validated as an int >= 0 by the schema and
+    // capped at the resulting total below), use it; otherwise when totalQuantity
+    // changes reconcile remaining so the currently-checked-out amount is
+    // preserved.
+    const explicitRemaining = data.remainingQuantity;
     if (explicitRemaining !== undefined) {
+      const effectiveTotal = data.totalQuantity ?? existing.totalQuantity;
+      if (explicitRemaining > effectiveTotal) {
+        return NextResponse.json(
+          { error: "remainingQuantity cannot exceed totalQuantity" },
+          { status: 400 },
+        );
+      }
       updateData.remainingQuantity = explicitRemaining;
     } else if (data.totalQuantity !== undefined) {
       const checkedOut = existing.totalQuantity - existing.remainingQuantity;
