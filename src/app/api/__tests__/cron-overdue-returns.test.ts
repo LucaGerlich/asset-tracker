@@ -67,6 +67,37 @@ describe("GET /api/cron/overdue-returns", () => {
     });
   });
 
+  it("notifies only active admins of the requester's own organization", async () => {
+    mockPrisma.itemRequest.findMany.mockResolvedValue([
+      overdueRequest("1", "org-1"),
+    ] as never);
+
+    await GET(cronRequest());
+
+    expect(mockPrisma.user.findMany.mock.calls[0][0]?.where).toEqual({
+      isadmin: true,
+      isActive: true,
+      organizationId: "org-1",
+    });
+  });
+
+  it("notifies no admin when the requester has no organization", async () => {
+    mockPrisma.itemRequest.findMany.mockResolvedValue([
+      overdueRequest("1", null),
+    ] as never);
+
+    const res = await GET(cronRequest());
+
+    expect(await res.json()).toMatchObject({ notified: 1 });
+    expect(mockPrisma.user.findMany).not.toHaveBeenCalled();
+    const types = mockPrisma.notification_queue.create.mock.calls.map(
+      (call) => call[0].data.type,
+    );
+    // The borrower is still reminded; nobody else on the platform is told.
+    expect(types).toEqual(["overdue_return"]);
+    expect(mockPrisma.itemRequest.update).toHaveBeenCalledTimes(1);
+  });
+
   it("writes the notifications and the status change in one transaction", async () => {
     mockPrisma.itemRequest.findMany.mockResolvedValue([
       overdueRequest("1"),

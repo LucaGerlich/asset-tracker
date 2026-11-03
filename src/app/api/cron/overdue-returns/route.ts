@@ -74,18 +74,19 @@ async function processOverdueRequest(
 
   const entityName = await getEntityName(request.entityType, request.entityId);
 
-  // BUG 2 fix: Only notify admins within the same organization
-  const adminWhere: Record<string, unknown> = {
-    isadmin: true,
-    isActive: true,
-  };
-  if (request.user.organizationId) {
-    adminWhere.organizationId = request.user.organizationId;
-  }
-  const admins = await prisma.user.findMany({
-    where: adminWhere,
-    select: { userid: true, email: true },
-  });
+  // Only notify admins within the requester's organization. Fail closed: a
+  // requester without an organization notifies nobody (dropping the filter
+  // would mail every admin on the platform).
+  const admins = request.user.organizationId
+    ? await prisma.user.findMany({
+        where: {
+          isadmin: true,
+          isActive: true,
+          organizationId: request.user.organizationId,
+        },
+        select: { userid: true, email: true },
+      })
+    : [];
 
   // All mails and the status change land together: a crash in between must
   // neither re-notify on the next run nor mark the request without mails.
