@@ -29,7 +29,7 @@ with a recommended fix. The audits so far:
 | Area                               | Status                                                                                                         |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | CI (lint, typecheck, unit, build)  | green since 2026-09-07 (v0.9.5 fixed the lockfile/typings; the DB suites and the Build job first passed today) |
-| Production dependency advisories   | 0 (was 1 critical, 53 high)                                                                                    |
+| Production dependency advisories   | none reachable (2026-11-03: better-auth 1.6 and maplibre-gl listed, items 91–93)                               |
 | Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69                             |
 | MFA login enforcement              | functional since v0.10.0 (enrolment on BetterAuth twoFactor)                                                   |
 | SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                                                                    |
@@ -39,6 +39,12 @@ with a recommended fix. The audits so far:
 | Unit coverage of auth/tenant layer | partial (api-auth, url-validation, org-suspension now tested)                                                  |
 
 ---
+
+## FIXED in v0.16.0 (2026-11-03)
+
+Full audit by six parallel reviews plus a dependency refresh; roughly 70 findings fixed
+(details in CHANGELOG 0.16.0). What the audit deliberately left open is listed as items
+91–110.
 
 ## FIXED in v0.15.3 (2026-11-02)
 
@@ -776,6 +782,64 @@ item 82 and still open:
 90. **FIXED in v0.15.3: smaller cross-tenant leftovers.** Global saved filters are
     scoped through the author's organization (an org-less caller shares none); SCIM user
     creation passes the token's organization to `checkUserLimit()`.
+
+### Left open by the 2026-11-03 audit (v0.16.0)
+
+91. **better-auth 1.7 migration (medium).** 1.6.x carries advisories GHSA-965c-763c-88jm
+    (critical), GHSA-r4xp-prcw-77qf and GHSA-q84f-53jg-9ppm; none reaches this app (they
+    need the Magic Link, OAuth Proxy or device-authorization plugins). 1.7 drops
+    `genericOAuthClient` (`signIn.oauth2` → `signIn.social`), moves the callback from
+    `/api/auth/oauth2/callback/:id` to `/api/auth/callback/:id` (the Entra app
+    registration needs the new redirect URI, and the `/oauth2/callback/` hook in
+    `auth-server.ts` must follow), keys Microsoft accounts on `oid` (data migration) and
+    types `mapProfileToUser` profiles as `unknown`. Plan it with a staging SSO test.
+92. **maplibre-gl 5 → 6 (low).** GHSA (DOM.sanitize bypass, critical) is fixed only in 6.x;
+    the app no longer calls `setHTML`, so it is unreachable. Upgrade is a major version.
+93. **Moderate transitive advisories (low):** glob, minimatch, protocol-buffers-schema,
+    uuid, ajv. Also `package-lock.json` is stale (CI and Vercel use `bun.lock`), so
+    `npm audit` reports wrong versions; delete it or keep it in sync.
+94. **React Compiler lint findings (medium).** `eslint-plugin-react-hooks` 7.1 reports 64
+    errors in ~30 components (setState in effects, refs and impure calls during render);
+    pinned to 7.0.x in `package.json` overrides until they are cleaned up.
+95. **API key lookup is a CPU DoS (medium)** (`src/lib/api-keys.ts:21,38`). The stored
+    prefix is always `at_live_`, so every request bcrypt-compares against every active key
+    on the platform. Needs a key-format change (a lookup id or a SHA-256 digest).
+96. **Plaintext secrets at rest (medium):** password-reset and set-password tokens
+    (`verification.value`) and SCIM bearer tokens (`scim_tokens`, all loaded and compared
+    per request). Hash them; SCIM tokens then have to be re-issued.
+97. **Globally unique business keys (medium):** `PurchaseOrder.poNumber` is `@unique`
+    while the sequence is per org (a tenant's first PO of a month can collide and 500);
+    `licencekey @unique` is a cross-tenant existence oracle. Needs
+    `@@unique([organizationId, …])` migrations (same family as item 14).
+98. **FIXED in v0.16.0:** `PUT /api/user` with `isadmin:false` now goes through the
+    last-admin and self-demotion guard.
+99. **Kit items need an entity picker (low)** (`KitCreateForm.tsx`): users paste UUIDs.
+100.  **Scheduled reports embed the file as a `data:` URI (low)**; mail clients block it.
+      Use an attachment or a signed download link.
+101.  **Notification follow-ups (low):** low-stock alerts are not de-duplicated; the 30h
+      access-expiry window sends the 7-day warning about every other day.
+102.  **Cache:** the asset assign/unassign routes don't bust `assets_all` (low).
+103.  **Maintenance has no permission of its own (low);** writes use `asset:edit`.
+
+104.  **Admin demotion race (low)** (`src/lib/admin-demotion.ts`): the last-admin check
+      counts, then updates, outside a transaction; two admins demoting each other at the
+      same moment can both pass. Use a Serializable transaction or row locks.
+105.  **Malformed-JSON mapping is broad (low)** (`src/lib/errors.ts`): any `SyntaxError`
+      mentioning JSON becomes a 400, including a `JSON.parse` of corrupt stored data.
+      Narrow it to request-body parsing.
+106.  **Org-less items notify nobody (low)** (`src/lib/notifications.ts`): the fail-closed
+      admin lookup returns no recipients when `organizationId` is null. Check that no
+      self-hosted install still has org-less assets before relying on reminders there.
+107.  **Full-text search is capped at 1000 ids (low)** (`src/lib/fulltext-search.ts`); broad
+      searches are truncated silently.
+108.  **"Return item" from My Requests is broken (medium, pre-existing)**
+      (`src/components/ReturnItemButton.tsx`): `MyItemRequestsClient` passes `requestId`
+      but no `entityId`, so `POST /api/requests` answers 400.
+109.  **Per-request DNS lookup for org storage (low):** `getOrgStorage` validates the stored
+      endpoint (with DNS) on every call; cache the result per org for a few minutes. DNS
+      rebinding between validation and use remains item 1.
+110.  **Webhook endpoints that redirect fail permanently (low, by design):** deliveries use
+      `redirect: "manual"`; document that the URL must be the final one.
 
 ## Repository loose ends (2026-09-07)
 

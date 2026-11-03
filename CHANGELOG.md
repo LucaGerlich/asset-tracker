@@ -6,6 +6,76 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-03
+
+A full audit (six parallel reviews: auth, tenant isolation, billing and jobs, untrusted
+input, UI, business logic) plus a dependency refresh. 0.15.1–0.15.3 were not released on
+their own; they ship with this release.
+
+### Security
+
+- Dependencies: `next` 16.2.6 → 16.4.4 (unauthenticated RCE in image optimization,
+  `use cache` and `next/og`; proxy bypass; SSRF), `@sentry/nextjs` → 10.78 (tunnel-route
+  middleware bypass), `sharp` → 0.35.5 (libvips, libheif, librsvg), `zod` → 4.6.7, and
+  bounded overrides for the transitive `@xmldom/xmldom`, `brace-expansion`,
+  `browserslist`, `fast-uri` and `source-map-js`. No high advisory is left that reaches
+  the app (see the debt register for better-auth and maplibre-gl).
+- The asset map popup is built from DOM nodes; a location name was rendered through
+  maplibre's `setHTML`, whose sanitizer has a published bypass (stored XSS).
+- SSRF: webhook delivery no longer follows redirects; IPv6 addresses (including
+  IPv4-mapped, NAT64 and 6to4 forms) are classified with `node:net`; the per-org S3
+  endpoint is validated on save, on test and when the client is built; the integration
+  test route reuses the same validation.
+- Microsoft account linking is trusted only when `MICROSOFT_TENANT_ID` is a tenant GUID
+  (with `common`, any Entra tenant could assert an existing user's email).
+- `PUT /api/user` no longer changes the caller's own password or email (use Settings →
+  Change password); password reset and set-password revoke the user's sessions; the
+  session cookie cache is 60 seconds; usernames can't contain `@` and login prefers an
+  exact email match; admins can't demote themselves or the last admin; admin session
+  revocation is scoped to the organization; OIDC userinfo can't override the verified
+  ID-token `sub`, `email` or `email_verified`.
+- Permissions: data export requires the entity's view permission; report schedules need
+  `report:view` and their updates are validated; attachment upload, update and delete
+  need the entity's edit permission; maintenance schedule writes need `asset:edit`;
+  non-admins get only public user columns from `GET /api/user`.
+- Tenant isolation: the compliance export counted every tenant's audit log; the
+  asset-tag suggestion read foreign names by id; full-text search id lookups are scoped
+  and capped; org-less callers no longer list every organization; overdue-return mails
+  for an org-less user no longer go to every admin on the platform; invite accept and SSO
+  sign-up refuse locked organizations.
+- Limits: CSV import is capped at 5 MB and 5000 rows; label PDFs at 200 assets; thumbnail
+  generation at 40 megapixels.
+
+### Fixed
+
+- Billing: a checkout grants the plan only when paid (async payment methods are handled);
+  a second checkout for a subscribed org answers 409; `past_due`, `unpaid` and
+  `incomplete_expired` subscriptions start the suspension grace period; expired-trial
+  downgrades re-check their filter.
+- Notifications: expiry emails are de-duplicated per window and go to active admins
+  only; the email queue drains within a time budget each run instead of 10 per day;
+  overdue-return failures are isolated per item; scheduled reports stop for users who
+  left the schedule's organization.
+- Inventory: editing a component no longer resets its quantities (zod `.partial()` kept
+  the create defaults); concurrent checkouts can't oversell components or consumables;
+  double check-ins and double checkouts answer 409; released licence seats are reused and
+  seat numbers no longer collide; item requests and reservations follow a transition
+  table with owner checks; maintenance due dates advance from completion, once.
+- Malformed JSON bodies answer 400 instead of 500; duplicate asset tags or serial
+  numbers answer 409; cached lists refresh after assignments, requests, audits and kits.
+- UI: the depreciation settings, the four item-category deletes and the invitation role
+  list had no working API behind them; non-admin dashboards no longer switch to the admin
+  widgets; widgets and the billing tab no longer crash on an API error; admin breadcrumbs
+  pointed at a 404.
+
+**Upgrade notes**
+
+- No migration.
+- Microsoft SSO on a `common`/`organizations` tenant no longer links a sign-in to an
+  existing local account by email; set `MICROSOFT_TENANT_ID` to your tenant GUID.
+- API clients that changed their own password or email through `PUT /api/user`, or sent
+  usernames containing `@`, now get a 400.
+
 ## [0.15.3] - 2026-11-02
 
 Closes the last open cross-tenant items from the 0.15.1 reviews (debt items 83, 84, 89
