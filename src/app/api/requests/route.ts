@@ -14,6 +14,7 @@ import {
 } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import { logger, logCatchError } from "@/lib/logger";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   getOrganizationContext,
   verifyEntityOrgOwnership,
@@ -34,6 +35,13 @@ const REQUEST_TRANSITIONS: Record<string, readonly string[]> = {
   pending: ["approved", "rejected", "cancelled"],
   approved: ["returned"],
   return_pending: ["returned", "cancelled"],
+};
+
+/** Cached list (src/lib/data.ts) that an approval or return of each entity type changes. */
+const REQUEST_ENTITY_CACHE_KEYS: Record<string, string> = {
+  asset: "user_assets_all",
+  accessory: "user_accessoires_all",
+  consumable: "consumables_all",
 };
 
 /** Thrown inside the PUT transaction when another writer changed the status. */
@@ -520,6 +528,13 @@ export async function PUT(req: NextRequest) {
         },
       });
     });
+
+    // The decision changes who holds the item (or its stock): bust the cached
+    // list of the entity type that was assigned, returned or decremented.
+    const staleKey = REQUEST_ENTITY_CACHE_KEYS[existing.entityType];
+    if (staleKey) {
+      await invalidateCacheByPrefix(staleKey).catch(() => {});
+    }
 
     // Audit log for status change
     const actionMap: Record<string, string> = {

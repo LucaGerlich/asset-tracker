@@ -8,6 +8,7 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 
 // POST /api/userAccessoires/assign
 // Body: { userId, accessorieId }
@@ -63,6 +64,8 @@ export async function POST(req: NextRequest) {
 
       return { record: created, idempotent: false };
     });
+
+    await invalidateCacheByPrefix("user_accessoires_all").catch(() => {});
 
     return new Response(
       JSON.stringify({

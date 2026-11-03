@@ -6,6 +6,7 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
@@ -200,6 +201,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         }
       }
     });
+
+    await invalidateCacheByPrefix("user_accessoires_all").catch(() => {});
 
     await createAuditLog({
       userId: authUser.id,

@@ -6,6 +6,7 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { logger } from "@/lib/logger";
 
@@ -77,6 +78,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         skipDuplicates: true,
       }),
     ]);
+
+    await invalidateCacheByPrefix("audit_campaigns_all").catch(() => {});
 
     await createAuditLog({
       userId: authUser.id,

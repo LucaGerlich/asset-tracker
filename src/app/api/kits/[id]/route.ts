@@ -14,6 +14,7 @@ import {
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, updateKitSchema } from "@/lib/validation";
 import { logger } from "@/lib/logger";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -110,6 +111,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       return tx.kit.findUnique({ where: { id }, include: { items: true } });
     });
 
+    await invalidateCacheByPrefix("kits_all").catch(() => {});
+
     await createAuditLog({
       userId: authUser.id,
       action: AUDIT_ACTIONS.UPDATE,
@@ -155,6 +158,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     }
 
     await prisma.kit.delete({ where: { id } });
+
+    await invalidateCacheByPrefix("kits_all").catch(() => {});
 
     await createAuditLog({
       userId: authUser.id,
