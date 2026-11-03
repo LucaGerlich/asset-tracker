@@ -62,17 +62,32 @@ interface QueuedEmailKey {
   recipient: string;
   type: string;
   subject: string;
-  /** Unescaped entity identifier that appears in the rendered body. */
+  /** Reminder marker (see reminderMarker) that appears in the queued body. */
   marker: string;
   windowDays: number;
+}
+
+/**
+ * Marker that identifies one reminder: the entity AND the due/expiry date it
+ * is about. Entity ids are fixed-length UUIDs and the date is ISO, so one
+ * marker is never a substring of another, and a recurring item (such as a
+ * daily maintenance schedule) gets a fresh marker for each cycle.
+ */
+function reminderMarker(entityId: string, dueDate: Date): string {
+  return `ref:${entityId}:${new Date(dueDate).toISOString().slice(0, 10)}`;
+}
+
+/** Append the marker to the mail as an invisible HTML comment. */
+function withMarker(html: string, marker: string): string {
+  return `${html}\n<!-- ${marker} -->`;
 }
 
 /**
  * Whether an email for this recipient, type and entity was already queued
  * within the notification window. The cron re-evaluates every item inside its
  * 30-/7-day window daily; without this check each item mailed once per run.
- * The queue has no entity column, so the entity is identified by subject plus
- * an identifier that the rendered body contains.
+ * The queue has no entity column, so the reminder is identified by subject
+ * plus a marker (see reminderMarker) that the queued body contains.
  */
 async function wasAlreadyQueued(key: QueuedEmailKey): Promise<boolean> {
   const existing = await prisma.notification_queue.findFirst({
@@ -276,12 +291,13 @@ export async function checkExpiringLicenses(): Promise<number> {
       licenseName: license.licenceCategoryType.licencecategorytypename,
     });
 
+    const marker = reminderMarker(license.licenceid, license.expirationdate!);
     if (
       await wasAlreadyQueued({
         recipient: license.user.email,
         type: "license_expiry",
         subject,
-        marker: license.licencekey || "N/A",
+        marker,
         windowDays: defaultDays,
       })
     ) {
@@ -293,7 +309,7 @@ export async function checkExpiringLicenses(): Promise<number> {
       "license_expiry",
       license.user.email,
       subject,
-      html,
+      withMarker(html, marker),
     );
     notified++;
   }
@@ -348,19 +364,26 @@ export async function checkMaintenanceDue(): Promise<number> {
       assetName: maintenance.asset.assetname,
     });
 
+    const marker = reminderMarker(maintenance.id, maintenance.nextDueDate);
     if (
       await wasAlreadyQueued({
         recipient: user.email,
         type: "maintenance",
         subject,
-        marker: maintenance.title,
+        marker,
         windowDays: defaultDays,
       })
     ) {
       continue;
     }
 
-    await queueEmail(user.userid, "maintenance", user.email, subject, html);
+    await queueEmail(
+      user.userid,
+      "maintenance",
+      user.email,
+      subject,
+      withMarker(html, marker),
+    );
     notified++;
   }
 
@@ -464,12 +487,13 @@ export async function checkExpiringWarranties(): Promise<number> {
         assetName: asset.assetname,
       });
 
+      const marker = reminderMarker(asset.assetid, asset.warrantyExpires!);
       if (
         await wasAlreadyQueued({
           recipient: admin.email,
           type: "warranty_expiry",
           subject,
-          marker: asset.assettag,
+          marker,
           windowDays: defaultDays,
         })
       ) {
@@ -481,7 +505,7 @@ export async function checkExpiringWarranties(): Promise<number> {
         "warranty_expiry",
         admin.email,
         subject,
-        html,
+        withMarker(html, marker),
       );
       notified++;
     }
