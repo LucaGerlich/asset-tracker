@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import {
   requirePermission,
@@ -12,6 +13,7 @@ import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger, logCatchError } from "@/lib/logger";
 import { assignLicenceSeat } from "@/lib/licence-seats";
+import { ACTIVE_CHECKOUT_STATUSES } from "@/lib/asset-checkout";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -70,137 +72,145 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       detail?: string;
     }[] = [];
 
-    await prisma.$transaction(async (tx) => {
-      for (const item of kit.items) {
-        if (item.entityType === "asset_category") {
-          // Find an available asset in this category
-          const asset = await tx.asset.findFirst({
-            where: {
-              assetcategorytypeid: item.entityId,
-              organizationId: orgId,
-              checkouts: { none: { status: "checked_out" } },
-            },
-          });
+    // Serializable isolation stops two concurrent kit checkouts from picking
+    // the same asset or seat; PostgreSQL aborts one of them (P2034), which is
+    // surfaced as 409 below.
+    await prisma.$transaction(
+      async (tx) => {
+        for (const item of kit.items) {
+          if (item.entityType === "asset_category") {
+            // Find an available asset in this category
+            const asset = await tx.asset.findFirst({
+              where: {
+                assetcategorytypeid: item.entityId,
+                organizationId: orgId,
+                checkouts: {
+                  none: { status: { in: ACTIVE_CHECKOUT_STATUSES } },
+                },
+              },
+            });
 
-          if (asset) {
-            await tx.assetCheckout.create({
-              data: {
-                assetId: asset.assetid,
-                checkedOutToType: "user",
-                checkedOutTo: userId,
-                checkedOutBy: authUser.id,
-                notes: notes || `Kit checkout: ${kit.name}`,
+            if (asset) {
+              await tx.assetCheckout.create({
+                data: {
+                  assetId: asset.assetid,
+                  checkedOutToType: "user",
+                  checkedOutTo: userId,
+                  checkedOutBy: authUser.id,
+                  notes: notes || `Kit checkout: ${kit.name}`,
+                  status: "checked_out",
+                },
+              });
+              results.push({
+                entityType: item.entityType,
+                entityId: asset.assetid,
                 status: "checked_out",
-              },
+                detail: asset.assetname,
+              });
+            } else {
+              results.push({
+                entityType: item.entityType,
+                entityId: item.entityId,
+                status: "unavailable",
+                detail: "No available asset in category",
+              });
+            }
+          } else if (item.entityType === "accessory") {
+            // Verify the accessory belongs to the org before assigning.
+            const accessory = await tx.accessories.findFirst({
+              where: { accessorieid: item.entityId, organizationId: orgId },
+              select: { accessorieid: true },
             });
-            results.push({
-              entityType: item.entityType,
-              entityId: asset.assetid,
-              status: "checked_out",
-              detail: asset.assetname,
+            if (!accessory) {
+              results.push({
+                entityType: item.entityType,
+                entityId: item.entityId,
+                status: "unavailable",
+                detail: "Accessory not found",
+              });
+              continue;
+            }
+            // Idempotent assign — don't create a duplicate row.
+            const existing = await tx.userAccessoires.findFirst({
+              where: { userid: userId, accessorieid: item.entityId },
+              select: { useraccessoiresid: true },
             });
-          } else {
+            if (!existing) {
+              await tx.userAccessoires.create({
+                data: {
+                  userid: userId,
+                  accessorieid: item.entityId,
+                  creation_date: new Date(),
+                },
+              });
+            }
             results.push({
               entityType: item.entityType,
               entityId: item.entityId,
-              status: "unavailable",
-              detail: "No available asset in category",
+              status: existing ? "already_assigned" : "assigned",
             });
-          }
-        } else if (item.entityType === "accessory") {
-          // Verify the accessory belongs to the org before assigning.
-          const accessory = await tx.accessories.findFirst({
-            where: { accessorieid: item.entityId, organizationId: orgId },
-            select: { accessorieid: true },
-          });
-          if (!accessory) {
-            results.push({
-              entityType: item.entityType,
-              entityId: item.entityId,
-              status: "unavailable",
-              detail: "Accessory not found",
-            });
-            continue;
-          }
-          // Idempotent assign — don't create a duplicate row.
-          const existing = await tx.userAccessoires.findFirst({
-            where: { userid: userId, accessorieid: item.entityId },
-            select: { useraccessoiresid: true },
-          });
-          if (!existing) {
-            await tx.userAccessoires.create({
-              data: {
-                userid: userId,
-                accessorieid: item.entityId,
-                creation_date: new Date(),
+          } else if (item.entityType === "licence") {
+            // Assign a licence seat
+            const licence = await tx.licence.findFirst({
+              where: { licenceid: item.entityId, organizationId: orgId },
+              include: {
+                seatAssignments: {
+                  where: { unassignedAt: null },
+                  select: { userId: true, seatNumber: true },
+                },
               },
             });
-          }
-          results.push({
-            entityType: item.entityType,
-            entityId: item.entityId,
-            status: existing ? "already_assigned" : "assigned",
-          });
-        } else if (item.entityType === "licence") {
-          // Assign a licence seat
-          const licence = await tx.licence.findFirst({
-            where: { licenceid: item.entityId, organizationId: orgId },
-            include: {
-              seatAssignments: {
-                where: { unassignedAt: null },
-                select: { userId: true, seatNumber: true },
-              },
-            },
-          });
 
-          if (!licence) {
+            if (!licence) {
+              results.push({
+                entityType: item.entityType,
+                entityId: item.entityId,
+                status: "unavailable",
+                detail: "Licence not found",
+              });
+            } else if (
+              licence.seatAssignments.some((seat) => seat.userId === userId)
+            ) {
+              // The (licenceId, userId) pair is unique: re-inserting would abort
+              // the whole kit checkout, so report the existing seat instead.
+              results.push({
+                entityType: item.entityType,
+                entityId: licence.licenceid,
+                status: "already_assigned",
+              });
+            } else if (licence.seatAssignments.length < licence.seatCount) {
+              const seat = await assignLicenceSeat(tx, {
+                licenceId: licence.licenceid,
+                userId,
+                assignedBy: authUser.id,
+              });
+              results.push({
+                entityType: item.entityType,
+                entityId: licence.licenceid,
+                status: "assigned",
+                detail: `Seat ${seat.seatNumber}`,
+              });
+            } else {
+              results.push({
+                entityType: item.entityType,
+                entityId: item.entityId,
+                status: "unavailable",
+                detail: "No available licence seats",
+              });
+            }
+          } else if (item.entityType === "component") {
+            // Checkout component quantity — needs an asset target, skip for kit checkout to user
             results.push({
               entityType: item.entityType,
               entityId: item.entityId,
-              status: "unavailable",
-              detail: "Licence not found",
-            });
-          } else if (
-            licence.seatAssignments.some((seat) => seat.userId === userId)
-          ) {
-            // The (licenceId, userId) pair is unique: re-inserting would abort
-            // the whole kit checkout, so report the existing seat instead.
-            results.push({
-              entityType: item.entityType,
-              entityId: licence.licenceid,
-              status: "already_assigned",
-            });
-          } else if (licence.seatAssignments.length < licence.seatCount) {
-            const seat = await assignLicenceSeat(tx, {
-              licenceId: licence.licenceid,
-              userId,
-              assignedBy: authUser.id,
-            });
-            results.push({
-              entityType: item.entityType,
-              entityId: licence.licenceid,
-              status: "assigned",
-              detail: `Seat ${seat.seatNumber}`,
-            });
-          } else {
-            results.push({
-              entityType: item.entityType,
-              entityId: item.entityId,
-              status: "unavailable",
-              detail: "No available licence seats",
+              status: "skipped",
+              detail: "Components require asset target",
             });
           }
-        } else if (item.entityType === "component") {
-          // Checkout component quantity — needs an asset target, skip for kit checkout to user
-          results.push({
-            entityType: item.entityType,
-            entityId: item.entityId,
-            status: "skipped",
-            detail: "Components require asset target",
-          });
         }
-      }
-    });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
     await invalidateCacheByPrefix("user_accessoires_all").catch(() => {});
 
@@ -238,6 +248,15 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   } catch (e: any) {
     const denied = apiErrorResponse(e);
     if (denied) return denied;
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      (e.code === "P2002" || e.code === "P2034")
+    ) {
+      return NextResponse.json(
+        { error: "Kit checkout conflict, please retry" },
+        { status: 409 },
+      );
+    }
     logger.error("POST /api/kits/[id]/checkout error", { error: e });
     return NextResponse.json(
       { error: "Failed to checkout kit" },
