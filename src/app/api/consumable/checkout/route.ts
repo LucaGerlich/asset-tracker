@@ -117,15 +117,23 @@ export async function POST(req: Request) {
         };
       }
 
-      // Atomically decrement the consumable quantity
-      await tx.consumable.update({
-        where: { consumableid: consumableId },
+      // Atomically decrement the consumable quantity. The stock guard lives in
+      // the update itself: the read above can be stale under concurrency.
+      const reserved = await tx.consumable.updateMany({
+        where: { consumableid: consumableId, quantity: { gte: quantity } },
         data: {
           quantity: {
             decrement: quantity,
           },
         },
       });
+      if (reserved.count !== 1) {
+        return {
+          error: "stock_conflict" as const,
+          consumable,
+          checkout: null,
+        };
+      }
 
       const created = await tx.consumable_checkouts.create({
         data: {
@@ -152,6 +160,13 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Consumable not found" },
         { status: 404 },
+      );
+    }
+
+    if (result.error === "stock_conflict") {
+      return NextResponse.json(
+        { error: "Stock changed during checkout. Please retry." },
+        { status: 409 },
       );
     }
 
