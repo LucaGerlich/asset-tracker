@@ -45,6 +45,21 @@ export async function getStorage(): Promise<StorageProvider> {
   return initPromise;
 }
 
+/**
+ * A successful endpoint validation (which includes a DNS lookup) is reused for
+ * a few minutes per organization and endpoint, instead of resolving DNS on
+ * every storage call. Failures are never cached, and a changed endpoint is a
+ * different key, so it is always validated. DNS rebinding between validation
+ * and use is a separate, open hardening item.
+ */
+export const ORG_STORAGE_VALIDATION_TTL_MS = 5 * 60 * 1000;
+const validatedEndpoints = new Map<string, number>();
+
+/** Test helper: forget every cached validation. */
+export function resetOrgStorageValidationCache(): void {
+  validatedEndpoints.clear();
+}
+
 export async function getOrgStorage(orgId: string): Promise<StorageProvider> {
   const prisma = (await import("@/lib/prisma")).default;
   const config = await prisma.organizationStorageConfig.findUnique({
@@ -56,16 +71,26 @@ export async function getOrgStorage(orgId: string): Promise<StorageProvider> {
   // Endpoints stored before save-time validation existed (or whose DNS changed
   // since) may point at internal hosts. Fail closed: falling back to the
   // default provider would put this org's files in the shared bucket.
-  const { validateStorageEndpoint } = await import("@/lib/url-validation");
-  const endpointCheck = await validateStorageEndpoint(config.endpoint);
-  if (!endpointCheck.valid) {
-    const { logger } = await import("@/lib/logger");
-    logger.error("Org storage endpoint rejected by SSRF validation", {
-      organizationId: orgId,
-      endpoint: config.endpoint,
-      reason: endpointCheck.error,
-    });
-    throw new Error("Organization storage endpoint failed validation");
+  const cacheKey = `${orgId}|${config.endpoint}`;
+  const now = Date.now();
+  const validUntil = validatedEndpoints.get(cacheKey);
+  if (validUntil === undefined || validUntil <= now) {
+    const { validateStorageEndpoint } = await import("@/lib/url-validation");
+    const endpointCheck = await validateStorageEndpoint(config.endpoint);
+    if (!endpointCheck.valid) {
+      validatedEndpoints.delete(cacheKey);
+      const { logger } = await import("@/lib/logger");
+      logger.error("Org storage endpoint rejected by SSRF validation", {
+        organizationId: orgId,
+        endpoint: config.endpoint,
+        reason: endpointCheck.error,
+      });
+      throw new Error("Organization storage endpoint failed validation");
+    }
+    for (const [key, expiry] of validatedEndpoints) {
+      if (expiry <= now) validatedEndpoints.delete(key);
+    }
+    validatedEndpoints.set(cacheKey, now + ORG_STORAGE_VALIDATION_TTL_MS);
   }
 
   const { decrypt } = await import("@/lib/encryption");
