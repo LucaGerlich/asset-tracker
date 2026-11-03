@@ -31,8 +31,17 @@ import {
 import { logger } from "@/lib/logger";
 import { triggerWebhook } from "@/lib/webhooks";
 import { invalidateCacheByPrefix } from "@/lib/cache";
+import { memberUserSelect } from "@/lib/user-select";
+import type { Prisma } from "@prisma/client";
 
 const USER_SORT_FIELDS = ["firstname", "lastname", "email", "creation_date"];
+
+/**
+ * Non-admins see colleagues with public columns only: no SCIM/SSO
+ * bookkeeping, auth provider, 2FA state or access-expiry dates.
+ */
+const viewerSelect = (isAdmin: boolean): { select?: Prisma.userSelect } =>
+  isAdmin ? {} : { select: memberUserSelect };
 
 const stripPassword = (user) => {
   if (!user) return user;
@@ -59,7 +68,8 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Scope to organization (except for own profile)
+      // Scope to organization (except for own profile). Colleagues are shown
+      // to non-admins with public columns only.
       let user;
       if (authUser.id === id) {
         user = await prisma.user.findUnique({ where: { userid: id } });
@@ -68,6 +78,7 @@ export async function GET(req: NextRequest) {
         const orgId = orgContext?.organization?.id;
         user = await prisma.user.findFirst({
           where: scopeToOrganization({ userid: id }, orgId),
+          ...viewerSelect(Boolean(authUser.isAdmin)),
         });
       }
 
@@ -90,12 +101,13 @@ export async function GET(req: NextRequest) {
 
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
+    const listSelect = viewerSelect(Boolean(authUser.isAdmin));
 
     // If no `page` param, return all results for backward compatibility
     if (!searchParams.has("page")) {
       const baseWhere = scopeToOrganization({}, orgId);
       const where = await applyDepartmentScopeToUsers(baseWhere, authUser);
-      const users = await prisma.user.findMany({ where });
+      const users = await prisma.user.findMany({ where, ...listSelect });
       return NextResponse.json(users.map(stripPassword), { status: 200 });
     }
 
@@ -134,7 +146,7 @@ export async function GET(req: NextRequest) {
     const where = await applyDepartmentScopeToUsers(baseWhere, authUser);
 
     const [users, total] = await Promise.all([
-      prisma.user.findMany({ where, ...prismaArgs }),
+      prisma.user.findMany({ where, ...prismaArgs, ...listSelect }),
       prisma.user.count({ where }),
     ]);
 
