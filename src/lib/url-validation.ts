@@ -184,3 +184,22 @@ export async function validateOutboundUrl(
     };
   }
 }
+
+/**
+ * Like {@link validateOutboundUrl}, but additionally requires https.
+ * Used for endpoints that receive credentials (e.g. per-org S3 storage).
+ */
+export async function validateHttpsOutboundUrl(
+  url: string,
+): Promise<UrlValidationResult> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { valid: false, error: "Invalid URL format" };
+  }
+  if (parsed.protocol !== "https:") {
+    return { valid: false, error: "Only https URLs are allowed" };
+  }
+  return validateOutboundUrl(url);
+}

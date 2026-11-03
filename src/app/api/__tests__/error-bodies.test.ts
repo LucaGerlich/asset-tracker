@@ -35,6 +35,10 @@ vi.mock("@/lib/freshdesk", () => ({
   createFreshdeskClient: vi.fn(),
   SUPPORTED_TICKET_TYPES: ["Hardware Request", "Problem"],
 }));
+vi.mock("@/lib/url-validation", () => ({
+  validateHttpsOutboundUrl: vi.fn().mockResolvedValue({ valid: true }),
+  validateOutboundUrl: vi.fn().mockResolvedValue({ valid: true }),
+}));
 vi.mock("@/lib/notifications", () => ({
   notifyTicketAssigned: vi.fn(),
   notifyTicketStatusChanged: vi.fn(),
