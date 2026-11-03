@@ -96,12 +96,19 @@ export default function AssetMap({
       const popupText = isDark ? "#e5e5e5" : "#111";
       const popupSub = isDark ? "#a3a3a3" : "#666";
 
-      const popup = new maplibregl.Popup({ offset: 25 }).setHTML(
-        `<div style="font-family:system-ui,sans-serif;padding:4px 2px;background:${popupBg};color:${popupText};border-radius:6px;">
-          <strong style="font-size:14px;">${loc.name ?? "Unknown"}</strong>
-          <br/><span style="color:${popupSub};font-size:12px;">${loc.assetCount} asset${loc.assetCount !== 1 ? "s" : ""} at this location</span>
-        </div>`,
-      );
+      // Built from DOM nodes: the location name is user input and must never
+      // be parsed as HTML (maplibre's setHTML sanitizer has known bypasses).
+      const content = document.createElement("div");
+      content.style.cssText = `font-family:system-ui,sans-serif;padding:4px 2px;background:${popupBg};color:${popupText};border-radius:6px;`;
+      const title = document.createElement("strong");
+      title.style.fontSize = "14px";
+      title.textContent = loc.name ?? "Unknown";
+      const count = document.createElement("span");
+      count.style.cssText = `display:block;color:${popupSub};font-size:12px;`;
+      count.textContent = `${loc.assetCount} asset${loc.assetCount !== 1 ? "s" : ""} at this location`;
+      content.append(title, count);
+
+      const popup = new maplibregl.Popup({ offset: 25 }).setDOMContent(content);
 
       new maplibregl.Marker({ element: el })
         .setLngLat([loc.longitude, loc.latitude])
