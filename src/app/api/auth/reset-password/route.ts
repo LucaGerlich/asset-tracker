@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { hashPassword, setUserPasswordHashed } from "@/lib/auth-utils";
 import { requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
+import { hashToken } from "@/lib/token-hash";
 
 export async function POST(req: Request) {
   try {
@@ -32,7 +33,10 @@ export async function POST(req: Request) {
     // Atomic transaction: find token, validate, update password (both user + accounts), delete token
     const result = await prisma.$transaction(async (tx) => {
       const verificationToken = await tx.verification.findFirst({
-        where: { identifier: normalizedEmail, value: token },
+        where: {
+          identifier: normalizedEmail,
+          value: hashToken(String(token)),
+        },
       });
 
       if (!verificationToken) {
