@@ -17,94 +17,21 @@ export async function GET(req: NextRequest) {
     const now = new Date();
 
     // Find approved requests with endDate in the past that haven't been returned
-    const overdueRequests = await prisma.itemRequest.findMany({
-      where: {
-        status: "approved",
-        endDate: { lt: now },
-        returnedAt: null,
-      },
-      include: {
-        user: {
-          select: {
-            userid: true,
-            firstname: true,
-            lastname: true,
-            email: true,
-            organizationId: true,
-          },
-        },
-      },
-    });
+    const overdueRequests = await findOverdueRequests(now);
 
     let notified = 0;
 
     for (const request of overdueRequests) {
-      // BUG 19 fix: Verify the item is still actually assigned to the user
-      // before sending notifications. Skip if no longer assigned.
-      const stillAssigned = await isItemStillAssigned(
-        request.entityType,
-        request.entityId,
-        request.user.userid,
-      );
-      if (!stillAssigned) {
-        // Item was already returned or unassigned; mark as overdue silently
-        await prisma.itemRequest.update({
-          where: { id: request.id },
-          data: { status: "overdue", updatedAt: new Date() },
-        });
-        continue;
-      }
-
-      const entityName = await getEntityName(
-        request.entityType,
-        request.entityId,
-      );
-
-      // Notify the user to return the item
-      await prisma.notification_queue.create({
-        data: {
-          userId: request.user.userid,
-          type: "overdue_return",
-          recipient: request.user.email || "",
-          subject: `Overdue: Please return ${entityName}`,
-          body: `Your loan of ${entityName} was due on ${request.endDate?.toLocaleDateString()}. Please return it as soon as possible.`,
-          status: "pending",
-        },
-      });
-
-      // BUG 2 fix: Only notify admins within the same organization
-      const adminWhere: Record<string, unknown> = {
-        isadmin: true,
-        isActive: true,
-      };
-      if (request.user.organizationId) {
-        adminWhere.organizationId = request.user.organizationId;
-      }
-      const admins = await prisma.user.findMany({
-        where: adminWhere,
-        select: { userid: true, email: true },
-      });
-
-      for (const admin of admins) {
-        await prisma.notification_queue.create({
-          data: {
-            userId: admin.userid,
-            type: "overdue_return_admin",
-            recipient: admin.email || "",
-            subject: `Overdue item: ${entityName}`,
-            body: `${request.user.firstname} ${request.user.lastname} has not returned ${entityName} (due ${request.endDate?.toLocaleDateString()}). Please follow up.`,
-            status: "pending",
-          },
+      // One failing item must not abort the run: it stays "approved" and is
+      // retried by the next run.
+      try {
+        if (await processOverdueRequest(request)) notified++;
+      } catch (error) {
+        logger.error("Overdue returns: item failed", {
+          requestId: request.id,
+          error,
         });
       }
-
-      // Mark request as overdue to avoid re-notifying
-      await prisma.itemRequest.update({
-        where: { id: request.id },
-        data: { status: "overdue", updatedAt: new Date() },
-      });
-
-      notified++;
     }
 
     logger.info("Overdue returns cron completed", {
@@ -121,6 +48,102 @@ export async function GET(req: NextRequest) {
     logger.error("Overdue returns cron error", { error });
     return NextResponse.json({ error: "Cron job failed" }, { status: 500 });
   }
+}
+
+type OverdueRequest = Awaited<ReturnType<typeof findOverdueRequests>>[number];
+
+/** Returns true when notifications were queued for the request. */
+async function processOverdueRequest(
+  request: OverdueRequest,
+): Promise<boolean> {
+  // BUG 19 fix: Verify the item is still actually assigned to the user
+  // before sending notifications. Skip if no longer assigned.
+  const stillAssigned = await isItemStillAssigned(
+    request.entityType,
+    request.entityId,
+    request.user.userid,
+  );
+  if (!stillAssigned) {
+    // Item was already returned or unassigned; mark as overdue silently
+    await prisma.itemRequest.update({
+      where: { id: request.id },
+      data: { status: "overdue", updatedAt: new Date() },
+    });
+    return false;
+  }
+
+  const entityName = await getEntityName(request.entityType, request.entityId);
+
+  // BUG 2 fix: Only notify admins within the same organization
+  const adminWhere: Record<string, unknown> = {
+    isadmin: true,
+    isActive: true,
+  };
+  if (request.user.organizationId) {
+    adminWhere.organizationId = request.user.organizationId;
+  }
+  const admins = await prisma.user.findMany({
+    where: adminWhere,
+    select: { userid: true, email: true },
+  });
+
+  // All mails and the status change land together: a crash in between must
+  // neither re-notify on the next run nor mark the request without mails.
+  await prisma.$transaction(async (tx) => {
+    // Notify the user to return the item
+    await tx.notification_queue.create({
+      data: {
+        userId: request.user.userid,
+        type: "overdue_return",
+        recipient: request.user.email || "",
+        subject: `Overdue: Please return ${entityName}`,
+        body: `Your loan of ${entityName} was due on ${request.endDate?.toLocaleDateString()}. Please return it as soon as possible.`,
+        status: "pending",
+      },
+    });
+
+    for (const admin of admins) {
+      await tx.notification_queue.create({
+        data: {
+          userId: admin.userid,
+          type: "overdue_return_admin",
+          recipient: admin.email || "",
+          subject: `Overdue item: ${entityName}`,
+          body: `${request.user.firstname} ${request.user.lastname} has not returned ${entityName} (due ${request.endDate?.toLocaleDateString()}). Please follow up.`,
+          status: "pending",
+        },
+      });
+    }
+
+    // Mark request as overdue to avoid re-notifying
+    await tx.itemRequest.update({
+      where: { id: request.id },
+      data: { status: "overdue", updatedAt: new Date() },
+    });
+  });
+
+  return true;
+}
+
+function findOverdueRequests(now: Date) {
+  return prisma.itemRequest.findMany({
+    where: {
+      status: "approved",
+      endDate: { lt: now },
+      returnedAt: null,
+    },
+    include: {
+      user: {
+        select: {
+          userid: true,
+          firstname: true,
+          lastname: true,
+          email: true,
+          organizationId: true,
+        },
+      },
+    },
+  });
 }
 
 async function isItemStillAssigned(
