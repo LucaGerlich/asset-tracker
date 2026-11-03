@@ -203,19 +203,27 @@ export async function queueEmail(
 }
 
 const DEFAULT_QUEUE_BATCH_SIZE = 25;
-// Stays below the 60s maxDuration of the notifications cron route.
-const DEFAULT_QUEUE_TIME_BUDGET_MS = 50_000;
+// Fallback when the caller passes no deadline. Stays well below the 60s
+// maxDuration of the notifications cron route.
+const DEFAULT_QUEUE_TIME_BUDGET_MS = 45_000;
 
 interface ProcessEmailQueueOptions {
   batchSize?: number;
-  timeBudgetMs?: number;
+  /**
+   * Epoch milliseconds after which no further email is started. Callers that
+   * run under a hard function timeout derive it from when the function
+   * started, so earlier work in the same run counts against the budget.
+   */
+  deadline?: number;
 }
 
 /**
  * Process pending emails in the queue. Drains the queue in batches until it is
- * empty or the time budget is spent (the budget is checked between batches).
- * An email is attempted at most once per run so a failing one cannot burn its
- * remaining attempts back to back.
+ * empty or the deadline passes; the deadline is checked before EACH email so a
+ * run is never killed between the provider accepting a mail and the row being
+ * marked sent (which would send it twice on the next run). An email is
+ * attempted at most once per run so a failing one cannot burn its remaining
+ * attempts back to back.
  */
 export async function processEmailQueue(
   options: ProcessEmailQueueOptions = {},
@@ -225,14 +233,15 @@ export async function processEmailQueue(
   failed: number;
 }> {
   const batchSize = options.batchSize ?? DEFAULT_QUEUE_BATCH_SIZE;
-  const timeBudgetMs = options.timeBudgetMs ?? DEFAULT_QUEUE_TIME_BUDGET_MS;
-  const startedAt = Date.now();
+  const deadline =
+    options.deadline ?? Date.now() + DEFAULT_QUEUE_TIME_BUDGET_MS;
   const attemptedIds: string[] = [];
 
   let succeeded = 0;
   let failed = 0;
+  let outOfTime = false;
 
-  while (true) {
+  while (!outOfTime) {
     const pendingEmails = await prisma.notification_queue.findMany({
       where: {
         status: "pending",
@@ -245,6 +254,10 @@ export async function processEmailQueue(
     });
 
     for (const email of pendingEmails) {
+      if (Date.now() >= deadline) {
+        outOfTime = true;
+        break;
+      }
       attemptedIds.push(email.id);
       if (await deliverQueuedEmail(email)) {
         succeeded++;
@@ -253,8 +266,7 @@ export async function processEmailQueue(
       }
     }
 
-    const queueDrained = pendingEmails.length < batchSize;
-    if (queueDrained || Date.now() - startedAt >= timeBudgetMs) break;
+    if (pendingEmails.length < batchSize) break;
   }
 
   return {

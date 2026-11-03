@@ -11,7 +11,13 @@ import { logger } from "@/lib/logger";
  * Usage: GET /api/cron/notifications
  * Header: Authorization: Bearer <CRON_SECRET>
  */
+// The mail deadline is measured from the start of the request: the whole run
+// (checks + mails) must finish inside maxDuration, with headroom for the
+// in-flight send and the bookkeeping write after it.
+const MAIL_DEADLINE_MS = 45_000;
+
 export async function GET(req: Request) {
+  const startedAt = Date.now();
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
@@ -22,7 +28,9 @@ export async function GET(req: Request) {
   try {
     // Sequential: mails queued by the checks go out in the same run.
     const notifications = await runNotificationChecks();
-    const emailQueue = await processEmailQueue();
+    const emailQueue = await processEmailQueue({
+      deadline: startedAt + MAIL_DEADLINE_MS,
+    });
 
     return NextResponse.json(
       {

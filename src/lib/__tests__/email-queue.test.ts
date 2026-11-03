@@ -61,7 +61,7 @@ describe("processEmailQueue", () => {
     expect(secondWhere.id.notIn).toEqual(["a", "b"]);
   });
 
-  it("stops after the current batch once the time budget is spent", async () => {
+  it("sends nothing once the deadline has passed", async () => {
     mockPrisma.notification_queue.findMany.mockResolvedValue([
       queued("a"),
       queued("b"),
@@ -69,11 +69,37 @@ describe("processEmailQueue", () => {
 
     const result = await processEmailQueue({
       batchSize: 2,
-      timeBudgetMs: 0,
+      deadline: Date.now() - 1,
     });
 
-    expect(result.processed).toBe(2);
-    expect(mockPrisma.notification_queue.findMany).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ processed: 0, succeeded: 0, failed: 0 });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("checks the deadline before each email, not only between batches", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-11-03T10:00:00Z"));
+      const deadline = Date.now() + 1000;
+      mockPrisma.notification_queue.findMany.mockResolvedValue([
+        queued("a"),
+        queued("b"),
+        queued("c"),
+      ] as never);
+      // The first send eats the remaining budget.
+      send.mockImplementationOnce(async () => {
+        vi.setSystemTime(deadline + 1);
+        return { success: true };
+      });
+
+      const result = await processEmailQueue({ batchSize: 3, deadline });
+
+      expect(result).toEqual({ processed: 1, succeeded: 1, failed: 0 });
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.notification_queue.findMany).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("sends more than ten emails per run by default", async () => {
