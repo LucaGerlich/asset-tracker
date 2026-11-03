@@ -21,6 +21,7 @@ import {
   type ReferenceKind,
 } from "@/lib/org-references";
 import { z } from "zod";
+import { isValidUsername, USERNAME_AT_SIGN_MESSAGE } from "@/lib/username";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -701,6 +702,9 @@ async function createEntity(
     }
 
     case "user": {
+      if (data.username && !isValidUsername(data.username)) {
+        throw new Error(USERNAME_AT_SIGN_MESSAGE);
+      }
       // A rejected address fails only this row; the import job records it.
       const email = data.email
         ? await assertEmailAssignable(data.email, { callerIsSuperAdmin })

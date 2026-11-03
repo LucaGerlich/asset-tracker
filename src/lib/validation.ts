@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { getEntitiesWithCustomFields } from "@/lib/entity-registry";
+import { usernameSchema } from "@/lib/username";
 
 /**
  * Validate request body against a Zod schema.
@@ -52,7 +53,7 @@ export const loginSchema = z.object({
 });
 
 export const createUserSchema = z.object({
-  username: z.string().min(3).max(50),
+  username: usernameSchema,
   email: z.string().email().nullable().optional(),
   firstname: z.string().min(1).max(100),
   lastname: z.string().min(1).max(100),
@@ -69,7 +70,7 @@ export const createUserSchema = z.object({
 });
 
 export const updateUserSchema = z.object({
-  username: z.string().min(3).max(50).optional(),
+  username: usernameSchema.optional(),
   email: z.string().email().optional().nullable(),
   firstname: z.string().min(1).max(100).optional(),
   lastname: z.string().min(1).max(100).optional(),
