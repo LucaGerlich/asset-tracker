@@ -11,6 +11,7 @@
 CREATE UNIQUE INDEX IF NOT EXISTS "purchase_orders_organizationId_poNumber_key"
   ON "public"."purchase_orders"("organizationId", "poNumber");
 ALTER TABLE "public"."purchase_orders" DROP CONSTRAINT IF EXISTS "purchase_orders_poNumber_key";
+DROP INDEX IF EXISTS "public"."purchase_orders_poNumber_key";
 
 CREATE UNIQUE INDEX IF NOT EXISTS "licence_organizationId_licencekey_key"
   ON "public"."licence"("organizationId", "licencekey");
