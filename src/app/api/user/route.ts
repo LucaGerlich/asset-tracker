@@ -24,6 +24,7 @@ import {
 import { applyDepartmentScopeToUsers } from "@/lib/department-access";
 import { updateUserSchema } from "@/lib/validation";
 import { setUserPassword } from "@/lib/auth-utils";
+import { findAdminDemotionViolation } from "@/lib/admin-demotion";
 import {
   parsePaginationParams,
   buildPrismaArgs,
@@ -192,7 +193,7 @@ export async function PUT(req: NextRequest) {
     // below): a foreign and a missing user must look the same.
     const targetUser = await prisma.user.findFirst({
       where: scopeToOrganization({ userid }, authUser.organizationId),
-      select: { change_date: true, email: true },
+      select: { change_date: true, email: true, username: true },
     });
     if (!targetUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -216,7 +217,8 @@ export async function PUT(req: NextRequest) {
     // A user's own password and email are credentials: they change through
     // /api/auth/change-password (current password, rate limit, session
     // revocation) and the email-change flow, not through this profile route.
-    // The edit form echoes the unchanged email back, which stays allowed.
+    // The edit form echoes the unchanged email back, which stays allowed. A
+    // user without a stored email may set one, since there is nothing to protect.
     const isSelf = authUser.id === userid;
     if (isSelf) {
       if (typeof password === "string" && password.length > 0) {
@@ -229,9 +231,10 @@ export async function PUT(req: NextRequest) {
         );
       }
       if (
+        targetUser.email &&
         typeof data.email === "string" &&
         data.email !== "" &&
-        data.email.toLowerCase() !== (targetUser.email ?? "").toLowerCase()
+        data.email.toLowerCase() !== targetUser.email.toLowerCase()
       ) {
         return NextResponse.json(
           {
@@ -257,6 +260,12 @@ export async function PUT(req: NextRequest) {
     for (const [key, value] of Object.entries(data)) {
       cleanedData[key] = value === "" ? undefined : value;
     }
+    // Invite, SSO and SCIM users have their email as username, which the
+    // no-"@" username policy rejects. The edit form echoes it back unchanged,
+    // so the policy only applies when the username actually changes.
+    if (cleanedData.username === targetUser.username) {
+      delete cleanedData.username;
+    }
 
     const validationResult = schema.strict().safeParse({
       ...cleanedData,
@@ -270,6 +279,19 @@ export async function PUT(req: NextRequest) {
         { error: "Validation failed", details: validationResult.error.issues },
         { status: 400 },
       );
+    }
+
+    // Removing admin rights goes through the same guard as the permissions
+    // routes: no self-demotion and never the org's last active admin.
+    if ((validationResult.data as { isadmin?: boolean }).isadmin === false) {
+      const violation = await findAdminDemotionViolation({
+        callerId: authUser.id,
+        targetUserIds: [userid],
+        organizationId: authUser.organizationId,
+      });
+      if (violation) {
+        return NextResponse.json({ error: violation }, { status: 400 });
+      }
     }
 
     // departmentId is admin-only; the non-admin schema omits it.
@@ -288,8 +310,9 @@ export async function PUT(req: NextRequest) {
     const newPassword = updateData.password as string | undefined;
     delete updateData.password;
 
-    // Own email is never written here (see above); an echoed value is dropped.
-    if (isSelf) delete updateData.email;
+    // A stored own email is never rewritten here (see above); an echoed value
+    // is dropped. Only a missing email can be set.
+    if (isSelf && targetUser.email) delete updateData.email;
 
     // Only an email that is actually being set needs an ownership check.
     if (typeof updateData.email === "string") {
