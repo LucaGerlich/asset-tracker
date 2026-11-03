@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import {
   createMockRequest,
   parseResponse,
@@ -56,7 +57,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(requireApiAuth).mockResolvedValue(admin as never);
   mockPrisma.itemRequest.updateMany.mockResolvedValue({ count: 1 } as never);
-  mockPrisma.consumable.findUnique.mockResolvedValue({ quantity: 10 } as never);
+  mockPrisma.consumable.updateMany.mockResolvedValue({ count: 1 } as never);
 });
 
 describe("PUT /api/requests status validation and transitions", () => {
@@ -81,7 +82,23 @@ describe("PUT /api/requests status validation and transitions", () => {
       where: { id: "req-1", status: "pending" },
       data: expect.objectContaining({ status: "approved" }),
     });
-    expect(mockPrisma.consumable.update).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.consumable.updateMany).toHaveBeenCalledWith({
+      where: { consumableid: "cons-1", quantity: { gte: 2 } },
+      data: { quantity: { decrement: 2 } },
+    });
+    expect(mockPrisma.consumable_checkouts.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("answers 409 and creates no checkout when the stock is too low", async () => {
+    mockPrisma.itemRequest.findUnique.mockResolvedValue(
+      stored("pending") as never,
+    );
+    mockPrisma.consumable.updateMany.mockResolvedValue({ count: 0 } as never);
+    const res = await put({ status: "approved" });
+    const { body } = await parseResponse<{ error: string }>(res);
+    expect(res.status).toBe(409);
+    expect(body.error).toMatch(/stock/i);
+    expect(mockPrisma.consumable_checkouts.create).not.toHaveBeenCalled();
   });
 
   it("refuses to approve an already approved request", async () => {
@@ -90,7 +107,7 @@ describe("PUT /api/requests status validation and transitions", () => {
     );
     const res = await put({ status: "approved" });
     expect(res.status).toBe(409);
-    expect(mockPrisma.consumable.update).not.toHaveBeenCalled();
+    expect(mockPrisma.consumable.updateMany).not.toHaveBeenCalled();
     expect(mockPrisma.itemRequest.updateMany).not.toHaveBeenCalled();
   });
 
@@ -126,7 +143,7 @@ describe("PUT /api/requests status validation and transitions", () => {
     mockPrisma.itemRequest.updateMany.mockResolvedValue({ count: 0 } as never);
     const res = await put({ status: "approved" });
     expect(res.status).toBe(409);
-    expect(mockPrisma.consumable.update).not.toHaveBeenCalled();
+    expect(mockPrisma.consumable.updateMany).not.toHaveBeenCalled();
   });
 
   it("lets the requester cancel their own pending request", async () => {
@@ -194,6 +211,17 @@ describe("POST /api/requests input validation", () => {
       expect(mockPrisma.itemRequest.create).not.toHaveBeenCalled();
     },
   );
+
+  it("answers 409 when the serializable transaction is aborted (P2034)", async () => {
+    mockPrisma.itemRequest.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("conflict", {
+        code: "P2034",
+        clientVersion: "test",
+      }),
+    );
+    const res = await post({});
+    expect(res.status).toBe(409);
+  });
 
   it("rejects unparseable dates", async () => {
     const res = await post({ startDate: "not-a-date" });

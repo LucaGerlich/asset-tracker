@@ -47,6 +47,14 @@ const REQUEST_ENTITY_CACHE_KEYS: Record<string, string> = {
 /** Thrown inside the PUT transaction when another writer changed the status. */
 const STATUS_CONFLICT = "REQUEST_STATUS_CONFLICT";
 
+/** Thrown inside the PUT transaction when a consumable has too little stock. */
+const INSUFFICIENT_STOCK = "REQUEST_INSUFFICIENT_STOCK";
+
+/** True for the Prisma error raised when a Serializable transaction is aborted. */
+const isSerializationFailure = (error: unknown): boolean =>
+  error instanceof Prisma.PrismaClientKnownRequestError &&
+  error.code === "P2034";
+
 export async function GET(req: NextRequest) {
   try {
     const user = await requireApiAuth();
@@ -302,6 +310,13 @@ export async function POST(req: NextRequest) {
             { status: 409 },
           );
         }
+      }
+      // A concurrent request aborted this Serializable transaction.
+      if (isSerializationFailure(error)) {
+        return NextResponse.json(
+          { error: "Request conflict, please retry" },
+          { status: 409 },
+        );
       }
       throw error;
     }
@@ -598,6 +613,12 @@ export async function PUT(req: NextRequest) {
         { status: 409 },
       );
     }
+    if (error instanceof Error && error.message === INSUFFICIENT_STOCK) {
+      return NextResponse.json(
+        { error: "Not enough stock to approve this request" },
+        { status: 409 },
+      );
+    }
     logger.error("PUT /api/requests error", { error });
     return NextResponse.json(
       { error: "Failed to update request" },
@@ -713,18 +734,16 @@ async function autoAssignItem(
       break;
     }
     case "consumable": {
-      // Check current quantity before decrementing to prevent going negative
-      const consumable = await tx.consumable.findUnique({
-        where: { consumableid: entityId },
-        select: { quantity: true },
-      });
-      if (!consumable || consumable.quantity < quantity) {
-        throw new Error("Insufficient consumable quantity");
-      }
-      await tx.consumable.update({
-        where: { consumableid: entityId },
+      // The stock guard lives in the WHERE clause so the check and the
+      // decrement are one atomic statement: concurrent approvals cannot
+      // both pass a stale read and drive the quantity negative.
+      const reserved = await tx.consumable.updateMany({
+        where: { consumableid: entityId, quantity: { gte: quantity } },
         data: { quantity: { decrement: quantity } },
       });
+      if (reserved.count === 0) {
+        throw new Error(INSUFFICIENT_STOCK);
+      }
       await tx.consumable_checkouts.create({
         data: { consumableId: entityId, userId, quantity },
       });
