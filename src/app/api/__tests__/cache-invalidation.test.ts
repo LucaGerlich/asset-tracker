@@ -179,9 +179,7 @@ describe("request decisions bust the lists of the assigned entity", () => {
       updatedAt: new Date(),
     } as never);
     mockPrisma.itemRequest.updateMany.mockResolvedValue({ count: 1 } as never);
-    mockPrisma.consumable.findUnique.mockResolvedValue({
-      quantity: 5,
-    } as never);
+    mockPrisma.consumable.updateMany.mockResolvedValue({ count: 1 } as never);
     return decideRequest(
       createMockRequest("/x", {
         method: "PUT",
