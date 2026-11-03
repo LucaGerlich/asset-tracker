@@ -48,3 +48,36 @@ describe("apiErrorResponse", () => {
     expect(apiErrorResponse(null)).toBeNull();
   });
 });
+
+describe("apiErrorResponse malformed JSON bodies", () => {
+  const malformedBody = async () => {
+    const req = new Request("http://localhost/api/x", {
+      method: "POST",
+      body: "{not json",
+    });
+    try {
+      await req.json();
+    } catch (error) {
+      return error;
+    }
+    throw new Error("expected req.json() to reject");
+  };
+
+  it("maps the SyntaxError from req.json() to 400 Invalid JSON body", async () => {
+    const res = apiErrorResponse(await malformedBody());
+    expect(res?.status).toBe(400);
+    await expect(res?.json()).resolves.toEqual({ error: "Invalid JSON body" });
+  });
+
+  it("maps an empty body the same way", async () => {
+    const req = new Request("http://localhost/api/x", { method: "POST" });
+    const error = await req.json().catch((e: unknown) => e);
+    expect(apiErrorResponse(error)?.status).toBe(400);
+  });
+
+  it("leaves SyntaxErrors that are not about JSON to the caller", () => {
+    expect(
+      apiErrorResponse(new SyntaxError("Invalid regular expression")),
+    ).toBeNull();
+  });
+});
