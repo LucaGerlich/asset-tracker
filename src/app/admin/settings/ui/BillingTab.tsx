@@ -48,7 +48,11 @@ export default function BillingTab() {
 
   useEffect(() => {
     fetch("/api/billing/usage")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok)
+          throw new Error(`Billing usage request failed: ${res.status}`);
+        return res.json() as Promise<UsageData>;
+      })
       .then(setData)
       .catch((err) => {
         console.error("Failed to load billing data", err);
