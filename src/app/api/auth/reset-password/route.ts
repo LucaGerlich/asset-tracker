@@ -63,6 +63,9 @@ export async function POST(req: Request) {
       // Writes both user.password AND accounts.password — BetterAuth verifies against accounts.
       await setUserPasswordHashed(user.userid, hashedPassword, tx);
 
+      // Whoever held the old password (or a stolen session) must not stay in.
+      await tx.sessions.deleteMany({ where: { userId: user.userid } });
+
       await tx.verification.deleteMany({
         where: {
           identifier: verificationToken.identifier,
