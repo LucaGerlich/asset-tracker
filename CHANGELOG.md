@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-11-03
+
+Follow-up to the 0.16.0 audit: most of the items it left open (TECHNICAL_DEBT 91–110).
+
+### Security
+
+- API keys: new keys store a 16-character lookup prefix, so a request costs one bcrypt
+  compare instead of one per active key on the platform (debt 95). Existing keys keep
+  working through a bounded legacy fallback; rotate them to drop it.
+- Password-reset and set-password tokens and SCIM bearer tokens are stored as SHA-256
+  digests (debt 96). Legacy plaintext SCIM rows are rehashed on first use.
+- Purchase-order numbers and licence keys are unique per organization instead of
+  globally (debt 97): no more PO-number collisions across tenants, and the licence key is
+  no longer a cross-tenant existence oracle. A duplicate key answers 409, not 500.
+- The last-admin check and the demotion run in one Serializable transaction (debt 104).
+- The full-text `truncated` flag is only reported to callers without a department scope.
+
+### Fixed
+
+- "Return item" from My Requests sends the entity id and works again (debt 108).
+- Scheduled report emails link to the reports page instead of a `data:` URI that mail
+  clients block (debt 100).
+- Low-stock alerts are de-duplicated; the 7-day access-expiry warning is sent once
+  (debt 101).
+- Asset assign/unassign invalidate the `assets_all` cache (debt 102).
+- Search responses carry `truncated: true` when the 1000-result cap was hit (debt 107).
+- Kit items are picked from a list instead of pasting UUIDs (debt 99).
+- Webhook docs say the URL must be final, because redirects aren't followed (debt 110).
+- `Dockerfile.dev` installs with bun from `bun.lock`; the stale `package-lock.json` is gone;
+  `protocol-buffers-schema` override (debt 93, partly).
+
+### Upgrade notes
+
+- Two migrations: `20261103_api_key_lookup_prefix` widens `api_keys."keyPrefix"` to 16;
+  `20261103b_org_scoped_business_keys` swaps the global unique indexes on
+  `purchase_orders."poNumber"` and `licence."licencekey"` for per-organization ones. Both
+  are non-destructive.
+- Reset and set-password links sent before the deploy stop working; users request new ones.
+- New `scim_tokens` rows must be inserted as `sha256:` + the SHA-256 hex of the token
+  (a plaintext insert still works and is upgraded on first use).
+- Org-less licences (self-hosted without organizations) no longer get a duplicate-key check.
+
 ## [0.16.0] - 2026-11-03
 
 A full audit (six parallel reviews: auth, tenant isolation, billing and jobs, untrusted
