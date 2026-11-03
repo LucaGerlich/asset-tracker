@@ -10,13 +10,19 @@ vi.mock("@/lib/audit-log", () => ({
   AUDIT_ACTIONS: { CREATE: "CREATE" },
 }));
 
+vi.mock("@/lib/super-admin", () => ({ isSuperAdmin: vi.fn() }));
+
 import { GET, POST } from "@/app/api/organizations/route";
 import prisma from "@/lib/prisma";
+import { requirePermission } from "@/lib/api-auth";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 const mockPrisma = vi.mocked(prisma, true);
+const mockIsSuperAdmin = vi.mocked(isSuperAdmin);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockIsSuperAdmin.mockResolvedValue(false);
   mockPrisma.organization.findMany.mockResolvedValue([]);
   mockPrisma.organization.count.mockResolvedValue(0);
   mockPrisma.organization.findUnique.mockResolvedValue(null);
@@ -46,6 +52,46 @@ describe("GET /api/organizations", () => {
     expect(args.select._count).toEqual({
       select: { users: true, assets: true, departments: true },
     });
+  });
+});
+
+describe("GET /api/organizations for an org-less caller", () => {
+  beforeEach(() => {
+    vi.mocked(requirePermission).mockResolvedValueOnce({
+      id: "user-1",
+      email: "orgless@test.com",
+      organizationId: null,
+    } as never);
+  });
+
+  it("returns an empty list instead of every tenant", async () => {
+    const res = await GET(createMockRequest("/api/organizations"));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([]);
+    expect(mockPrisma.organization.findMany).not.toHaveBeenCalled();
+  });
+
+  it("returns an empty page when paginated", async () => {
+    const res = await GET(createMockRequest("/api/organizations?page=1"));
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.organization.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.organization.count).not.toHaveBeenCalled();
+  });
+
+  it("lists all organizations for a super-admin", async () => {
+    mockIsSuperAdmin.mockResolvedValue(true);
+
+    await GET(createMockRequest("/api/organizations"));
+
+    expect(mockIsSuperAdmin).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "orgless@test.com" }),
+    );
+    expect(mockPrisma.organization.findMany).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.organization.findMany.mock.calls[0][0]?.where).toEqual(
+      {},
+    );
   });
 });
 
