@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   requireApiAuth,
+  requirePermission,
   requireNotDemoMode,
   requireWritableOrg,
 } from "@/lib/api-auth";
@@ -10,6 +11,7 @@ import { getOrganizationContext } from "@/lib/organization-context";
 import { basename, extname } from "path";
 import crypto from "crypto";
 import { getOrgStorage } from "@/lib/storage";
+import { ATTACHMENT_EDIT_PERMISSION } from "@/lib/attachment-permissions";
 import { isImageMimeType, generateThumbnails } from "@/lib/storage/thumbnails";
 
 type EntityType = "accessory" | "consumable" | "component";
@@ -194,6 +196,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    await requirePermission(ATTACHMENT_EDIT_PERMISSION[entityType]);
     if (!entityId) {
       return NextResponse.json(
         { error: "entityId is required" },
