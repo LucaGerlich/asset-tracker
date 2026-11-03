@@ -1134,7 +1134,7 @@ model ApiKey {
   userId     String    @db.Uuid
   user       user      @relation(fields: [userId], references: [userid], onDelete: Cascade)
   name       String    @db.VarChar(100)
-  keyPrefix  String    @db.VarChar(8)
+  keyPrefix  String    @db.VarChar(16)
   keyHash    String    @db.VarChar(255)
   scopes     String[]  @default([])
   lastUsedAt DateTime? @db.Timestamp(6)
