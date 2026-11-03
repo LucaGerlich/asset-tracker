@@ -11,6 +11,8 @@ import {
   getOrganizationContext,
   scopeToOrganization,
 } from "@/lib/organization-context";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { findAdminDemotionViolation } from "@/lib/admin-demotion";
 
 // PATCH /api/admin/users/[id]/permissions
 export async function PATCH(
@@ -84,6 +86,17 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    if (updateData.isadmin === false) {
+      const violation = await findAdminDemotionViolation({
+        callerId: user.id,
+        targetUserIds: [id],
+        organizationId: orgId,
+      });
+      if (violation) {
+        return NextResponse.json({ error: violation }, { status: 400 });
+      }
+    }
+
     const updatedUser = await prisma.user.update({
       where: { userid: id },
       data: updateData,
@@ -95,6 +108,24 @@ export async function PATCH(
         email: true,
         isadmin: true,
         canrequest: true,
+      },
+    });
+
+    await createAuditLog({
+      userId: user.id ?? null,
+      action: AUDIT_ACTIONS.UPDATE,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: id,
+      details: {
+        type: "permission_update",
+        changes: {
+          ...(updateData.isadmin !== undefined && {
+            isadmin: updateData.isadmin,
+          }),
+          ...(updateData.canrequest !== undefined && {
+            canrequest: updateData.canrequest,
+          }),
+        },
       },
     });
 
