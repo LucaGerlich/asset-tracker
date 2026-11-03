@@ -15,9 +15,9 @@ describe("searchIdsByFullText", () => {
   it("filters by organization, limits the result and parameterises input", async () => {
     mockPrisma.$queryRawUnsafe.mockResolvedValue([{ assetid: "a-1" }]);
 
-    const ids = await searchIdsByFullText("asset", "org-1", "red laptop");
+    const result = await searchIdsByFullText("asset", "org-1", "red laptop");
 
-    expect(ids).toEqual(["a-1"]);
+    expect(result).toEqual({ ids: ["a-1"], truncated: false });
     const [sql, ...params] = mockPrisma.$queryRawUnsafe.mock.calls[0] as [
       string,
       ...unknown[],
@@ -25,7 +25,8 @@ describe("searchIdsByFullText", () => {
     expect(sql).toContain('FROM "asset"');
     expect(sql).toContain("websearch_to_tsquery('english', $1)");
     expect(sql).toContain('"organizationId" = $2');
-    expect(sql).toContain(`LIMIT ${FULLTEXT_RESULT_LIMIT}`);
+    // One extra row is requested to detect that the cap was hit.
+    expect(sql).toContain(`LIMIT ${FULLTEXT_RESULT_LIMIT + 1}`);
     expect(FULLTEXT_RESULT_LIMIT).toBe(1000);
     // The user's text never reaches the SQL string.
     expect(sql).not.toContain("laptop");
@@ -48,11 +49,35 @@ describe("searchIdsByFullText", () => {
 
   it("maps each table to its id column", async () => {
     mockPrisma.$queryRawUnsafe.mockResolvedValue([{ id: "c-1" }]);
-    expect(await searchIdsByFullText("components", "org-1", "ram")).toEqual([
-      "c-1",
-    ]);
+    expect(await searchIdsByFullText("components", "org-1", "ram")).toEqual({
+      ids: ["c-1"],
+      truncated: false,
+    });
     const [sql] = mockPrisma.$queryRawUnsafe.mock.calls[0] as [string];
     expect(sql).toContain('SELECT "id" FROM "components"');
+  });
+
+  it("flags truncation and drops the probe row when the cap is exceeded", async () => {
+    const rows = Array.from({ length: FULLTEXT_RESULT_LIMIT + 1 }, (_, i) => ({
+      assetid: `a-${i}`,
+    }));
+    mockPrisma.$queryRawUnsafe.mockResolvedValue(rows);
+
+    const result = await searchIdsByFullText("asset", "org-1", "laptop");
+
+    expect(result?.truncated).toBe(true);
+    expect(result?.ids).toHaveLength(FULLTEXT_RESULT_LIMIT);
+  });
+
+  it("does not flag a result that exactly fills the cap", async () => {
+    const rows = Array.from({ length: FULLTEXT_RESULT_LIMIT }, (_, i) => ({
+      assetid: `a-${i}`,
+    }));
+    mockPrisma.$queryRawUnsafe.mockResolvedValue(rows);
+
+    const result = await searchIdsByFullText("asset", "org-1", "laptop");
+
+    expect(result?.truncated).toBe(false);
   });
 
   it("returns null when the query fails so callers can fall back", async () => {

@@ -124,13 +124,12 @@ export async function GET(req: NextRequest) {
 
     const baseWhere: Record<string, unknown> = scopeToOrganization({}, orgId);
 
+    let searchTruncated = false;
     // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      const matchingIds = await searchIdsByFullText(
-        "user",
-        orgId,
-        params.search,
-      );
+      const fullText = await searchIdsByFullText("user", orgId, params.search);
+      const matchingIds = fullText?.ids ?? null;
+      searchTruncated = fullText?.truncated ?? false;
 
       if (matchingIds && matchingIds.length > 0) {
         baseWhere.userid = { in: matchingIds };
@@ -156,7 +155,9 @@ export async function GET(req: NextRequest) {
     ]);
 
     return NextResponse.json(
-      buildPaginatedResponse(users.map(stripPassword), total, params),
+      buildPaginatedResponse(users.map(stripPassword), total, params, {
+        truncated: searchTruncated,
+      }),
       { status: 200 },
     );
   } catch (error) {

@@ -131,6 +131,17 @@ describe("buildPaginatedResponse", () => {
     expect(result.data).toEqual(data);
   });
 
+  it("adds truncated only when the search hit its cap", () => {
+    const base = { page: 1, pageSize: 25 };
+    expect(buildPaginatedResponse([], 0, base)).not.toHaveProperty("truncated");
+    expect(
+      buildPaginatedResponse([], 0, base, { truncated: false }),
+    ).not.toHaveProperty("truncated");
+    expect(
+      buildPaginatedResponse([], 0, base, { truncated: true }).truncated,
+    ).toBe(true);
+  });
+
   it("handles zero total", () => {
     const result = buildPaginatedResponse([], 0, { page: 1, pageSize: 25 });
     expect(result.totalPages).toBe(0);

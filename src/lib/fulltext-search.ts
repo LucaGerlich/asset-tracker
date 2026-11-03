@@ -24,14 +24,22 @@ export type FullTextTable = keyof typeof FULLTEXT_ID_COLUMNS;
  * another tenant's matches would fill the result list. A null/undefined
  * `organizationId` matches only org-less rows, like `scopeToOrganization`.
  *
+ * `truncated` is true when more rows matched than the cap, so callers can tell
+ * the user the list is incomplete instead of truncating silently.
+ *
  * Resolves to null when the query fails (e.g. the migration adding
  * `search_vector` has not been applied) so callers can fall back to ILIKE.
  */
+export interface FullTextResult {
+  ids: string[];
+  truncated: boolean;
+}
+
 export async function searchIdsByFullText(
   table: FullTextTable,
   organizationId: string | null | undefined,
   search: string,
-): Promise<string[] | null> {
+): Promise<FullTextResult | null> {
   const idColumn = FULLTEXT_ID_COLUMNS[table];
   const tsQuery = search.trim().split(/\s+/).join(" & ");
   const orgFilter = organizationId
@@ -41,10 +49,15 @@ export async function searchIdsByFullText(
 
   try {
     const rows = await prisma.$queryRawUnsafe<Array<Record<string, string>>>(
-      `SELECT "${idColumn}" FROM "${table}" WHERE "search_vector" @@ websearch_to_tsquery('english', $1) AND ${orgFilter} LIMIT ${FULLTEXT_RESULT_LIMIT}`,
+      `SELECT "${idColumn}" FROM "${table}" WHERE "search_vector" @@ websearch_to_tsquery('english', $1) AND ${orgFilter} LIMIT ${FULLTEXT_RESULT_LIMIT + 1}`,
       ...params,
     );
-    return rows.map((row) => row[idColumn]);
+    // One extra row is requested only to learn whether the cap was exceeded.
+    const truncated = rows.length > FULLTEXT_RESULT_LIMIT;
+    return {
+      ids: rows.slice(0, FULLTEXT_RESULT_LIMIT).map((row) => row[idColumn]),
+      truncated,
+    };
   } catch {
     return null;
   }
