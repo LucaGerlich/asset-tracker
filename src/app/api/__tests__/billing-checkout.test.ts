@@ -86,6 +86,24 @@ describe("POST /api/billing/checkout", () => {
     expect(await response.json()).toEqual({ url: CHECKOUT_URL });
   });
 
+  it("rejects checkout with 409 when the org already has a subscription", async () => {
+    mockPrisma.organization.findUnique.mockResolvedValue({
+      id: "org-1",
+      name: "Acme",
+      stripeCustomerId: "cus_123",
+      stripeSubscriptionId: "sub_1",
+    } as never);
+
+    const response = await POST(checkoutRequest());
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      code: "subscription_exists",
+      error: expect.stringContaining("billing portal"),
+    });
+    expect(createCheckoutSession).not.toHaveBeenCalled();
+  });
+
   it("rejects a non-admin with 403 not_admin", async () => {
     mockPrisma.user.findUnique.mockResolvedValue(
       dbUser({ isadmin: false }) as never,
