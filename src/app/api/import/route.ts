@@ -43,6 +43,16 @@ async function assertRowReferences(
   if (foreign) throw new ImportRowError(foreignReferenceError(foreign).error);
 }
 
+/** Upper bounds that keep a single import request from exhausting the server. */
+const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_IMPORT_ROWS = 5000;
+
+/** Field name → CSV column index; -1 marks a field the user left unmapped. */
+const columnMappingSchema = z.record(
+  z.string().min(1).max(100),
+  z.number().int().min(-1).max(1000),
+);
+
 const ROW_FAILED_MESSAGE = "Row could not be imported";
 
 /**
@@ -169,14 +179,32 @@ export async function POST(req: NextRequest) {
     // Parse column mapping if provided (field name → CSV column index)
     let columnMapping: Record<string, number> | null = null;
     if (columnMappingRaw) {
+      let parsedMapping: unknown;
       try {
-        columnMapping = JSON.parse(columnMappingRaw);
+        parsedMapping = JSON.parse(columnMappingRaw);
       } catch {
         return NextResponse.json(
           { error: "Invalid columnMapping JSON" },
           { status: 400 },
         );
       }
+      const mappingResult = columnMappingSchema.safeParse(parsedMapping);
+      if (!mappingResult.success) {
+        return NextResponse.json(
+          { error: "Invalid columnMapping" },
+          { status: 400 },
+        );
+      }
+      columnMapping = mappingResult.data;
+    }
+
+    if (file.size > MAX_IMPORT_FILE_BYTES) {
+      return NextResponse.json(
+        {
+          error: `File too large. Maximum size is ${MAX_IMPORT_FILE_BYTES / (1024 * 1024)} MB`,
+        },
+        { status: 400 },
+      );
     }
 
     const validatedInput = importJobSchema.parse({
@@ -192,6 +220,15 @@ export async function POST(req: NextRequest) {
     if (lines.length < 2) {
       return NextResponse.json(
         { error: "CSV must have a header row and at least one data row" },
+        { status: 400 },
+      );
+    }
+
+    if (lines.length - 1 > MAX_IMPORT_ROWS) {
+      return NextResponse.json(
+        {
+          error: `Too many rows. Maximum is ${MAX_IMPORT_ROWS} data rows per import`,
+        },
         { status: 400 },
       );
     }
