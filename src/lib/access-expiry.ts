@@ -163,13 +163,17 @@ export async function processAccessExpiry(): Promise<ExpiryResult> {
 
 /**
  * Check if a notification of this type was already sent to the user recently
- * (within the last 24 hours) to avoid duplicate warnings.
+ * (within the last 30 hours) to avoid duplicate warnings. The window is wider
+ * than the 24h cron period so a run that fires slightly early still sees the
+ * previous run's row.
  */
+const RECENT_NOTIFICATION_WINDOW_MS = 30 * 60 * 60 * 1000;
+
 async function hasRecentNotification(
   userId: string,
   type: string,
 ): Promise<boolean> {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const cutoff = new Date(Date.now() - RECENT_NOTIFICATION_WINDOW_MS);
   const existing = await prisma.notification_queue.findFirst({
     where: {
       userId,
