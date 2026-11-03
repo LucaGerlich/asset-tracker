@@ -3,14 +3,17 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# bun.lock is the committed lockfile (package-lock.json is gitignored)
+RUN npm install -g bun@1
+
 # Install dependencies first
-COPY package.json package-lock.json* bun.lockb* ./
+COPY package.json bun.lock ./
 COPY prisma ./prisma/
 
-RUN npm ci
+RUN bun install --frozen-lockfile
 
 # Generate Prisma client
-RUN npx prisma generate
+RUN bunx prisma generate
 
 # Copy source files
 COPY . .
