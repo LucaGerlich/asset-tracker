@@ -287,6 +287,9 @@ accept an allow-list of keys, and the masked placeholder is never stored.
   type, an assignee, a target user).
 - Never return a stored secret, even encrypted: webhook responses carry `hasSecret`
   (`src/lib/webhook-response.ts`).
+- Webhook deliveries use `redirect: "manual"`, so a redirect is never followed (it
+  would bypass the SSRF check on the stored URL). The configured URL must be the final
+  endpoint; the settings form and the help page say so.
 - Never trust an `organizationId` from a request body; compare it with the caller's or
   ignore it.
 - Server-rendered pages follow the same rule as routes. `src/app/__tests__/` has the
