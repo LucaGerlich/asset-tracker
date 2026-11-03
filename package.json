@@ -154,6 +154,7 @@
     "browserslist": "^4.29.5",
     "fast-uri": "^3.1.9",
     "source-map-js": "^1.2.2",
+    "eslint-plugin-react-hooks": "~7.0.1",
     "@types/react": "19.2.14"
   }
 }
