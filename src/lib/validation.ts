@@ -430,24 +430,36 @@ export function isGuid(value: unknown): value is string {
   return guid.safeParse(value).success;
 }
 
-export const createComponentSchema = z.object({
+/**
+ * Component fields without create defaults. zod 4's `.partial()` re-applies
+ * `.default()`, so the update schema is derived from this default-free base:
+ * otherwise renaming a component would reset its stock levels to 0.
+ */
+const componentFields = z.object({
   name: trimmedString,
   serialNumber: optionalString,
   categoryId: uuidField,
-  totalQuantity: z.number().int().nonnegative("Must be >= 0").default(0),
+  totalQuantity: z.number().int().nonnegative("Must be >= 0"),
   purchasePrice: z.coerce
     .number()
     .nonnegative("Must be >= 0")
     .optional()
     .nullable(),
   purchaseDate: z.string().optional().nullable(),
-  minQuantity: z.number().int().nonnegative().default(0),
+  minQuantity: z.number().int().nonnegative(),
   manufacturerId: optionalUuid,
   supplierId: optionalUuid,
   locationId: optionalUuid,
 });
 
-export const updateComponentSchema = createComponentSchema.partial();
+export const createComponentSchema = componentFields.extend({
+  totalQuantity: z.number().int().nonnegative("Must be >= 0").default(0),
+  minQuantity: z.number().int().nonnegative().default(0),
+});
+
+export const updateComponentSchema = componentFields.partial().extend({
+  remainingQuantity: z.number().int().nonnegative("Must be >= 0").optional(),
+});
 
 export const componentCheckoutSchema = z.object({
   componentId: uuidField,
@@ -569,20 +581,21 @@ export const kitCheckoutSchema = z.object({
   notes: optionalString,
 });
 
-export const createAuditCampaignSchema = z.object({
+/** Default-free base for the update schema, see `componentFields`. */
+const auditCampaignFields = z.object({
   name: trimmedString,
   description: optionalString,
   dueDate: z.string().optional().nullable(),
-  scopeType: z.enum(["all", "location", "category"]).default("all"),
+  scopeType: z.enum(["all", "location", "category"]),
   scopeId: optionalUuid,
   auditorIds: z.array(uuidField).optional(),
 });
 
-// partial() keeps scopeType's default, which reset every edited campaign's scope
-// to "all"; an update must leave the scope alone unless it is sent.
-export const updateAuditCampaignSchema = createAuditCampaignSchema
-  .partial()
-  .extend({ scopeType: z.enum(["all", "location", "category"]).optional() });
+export const createAuditCampaignSchema = auditCampaignFields.extend({
+  scopeType: z.enum(["all", "location", "category"]).default("all"),
+});
+
+export const updateAuditCampaignSchema = auditCampaignFields.partial();
 
 export const auditScanSchema = z.object({
   assetId: uuidField,
