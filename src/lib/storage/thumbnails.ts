@@ -34,7 +34,7 @@ export async function generateThumbnails(
   const variants = Object.entries(THUMB_SIZES) as [ThumbVariant, number][];
   await Promise.all(
     variants.map(async ([variant, width]) => {
-      const thumb = await sharp(buffer)
+      const thumb = await sharp(buffer, { limitInputPixels: 40_000_000 })
         .resize(width, undefined, { withoutEnlargement: true })
         .webp({ quality: 80 })
         .toBuffer();
