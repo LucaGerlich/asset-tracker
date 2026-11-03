@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createMockRequest } from "../../../../tests/setup/test-helpers";
 
 vi.mock("@/lib/prisma");
@@ -26,6 +26,7 @@ import { PUT } from "@/app/api/user/route";
 import prisma from "@/lib/prisma";
 import { requireApiAuth, requireWritableOrg } from "@/lib/api-auth";
 import { ForbiddenError } from "@/lib/errors";
+import { setUserPassword } from "@/lib/auth-utils";
 
 const mockPrisma = vi.mocked(prisma, true);
 
@@ -44,10 +45,16 @@ interface UserRow {
   userid: string;
   organizationId: string | null;
   change_date: Date;
+  email?: string;
 }
 
 const users: UserRow[] = [
-  { userid: admin.id, organizationId: OWN_ORG, change_date: LOADED_AT },
+  {
+    userid: admin.id,
+    organizationId: OWN_ORG,
+    change_date: LOADED_AT,
+    email: "admin@example.com",
+  },
   { userid: "user-own", organizationId: OWN_ORG, change_date: LOADED_AT },
   {
     userid: "user-foreign",
@@ -211,5 +218,100 @@ describe("PUT /api/user", () => {
 
     expect(res.status).toBe(403);
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  describe("self-service credentials", () => {
+    const member = {
+      ...admin,
+      id: "member-uuid-001",
+      isAdmin: false,
+    };
+
+    beforeEach(() => {
+      users.push({
+        userid: member.id,
+        organizationId: OWN_ORG,
+        change_date: LOADED_AT,
+        email: "member@example.com",
+      });
+      vi.mocked(requireApiAuth).mockResolvedValue(member as never);
+    });
+
+    afterEach(() => {
+      users.splice(
+        users.findIndex((u) => u.userid === member.id),
+        1,
+      );
+    });
+
+    it("refuses a user setting their own password here", async () => {
+      const res = await put({
+        userid: member.id,
+        password: "a-very-long-new-password",
+      });
+
+      expect(res.status).toBe(400);
+      expect(setUserPassword).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it("refuses an admin setting their own password here", async () => {
+      vi.mocked(requireApiAuth).mockResolvedValue(admin as never);
+
+      const res = await put({
+        userid: admin.id,
+        password: "a-very-long-new-password",
+      });
+
+      expect(res.status).toBe(400);
+      expect(setUserPassword).not.toHaveBeenCalled();
+    });
+
+    it("refuses a user changing their own email here", async () => {
+      const res = await put({
+        userid: member.id,
+        email: "attacker@example.com",
+      });
+
+      expect(res.status).toBe(400);
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it("accepts the unchanged own email the edit form always sends", async () => {
+      mockPrisma.user.update.mockResolvedValue({
+        userid: member.id,
+        organizationId: OWN_ORG,
+      } as never);
+
+      const res = await put({
+        userid: member.id,
+        email: "Member@Example.com",
+        firstname: "Changed",
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockPrisma.user.update).toHaveBeenCalledTimes(1);
+      const data = mockPrisma.user.update.mock.calls[0][0].data as Record<
+        string,
+        unknown
+      >;
+      expect(data).not.toHaveProperty("email");
+    });
+
+    it("still lets an admin set another user's password and email", async () => {
+      vi.mocked(requireApiAuth).mockResolvedValue(admin as never);
+
+      const res = await put({
+        userid: "user-own",
+        password: "a-very-long-new-password",
+        email: "new@example.com",
+      });
+
+      expect(res.status).toBe(200);
+      expect(setUserPassword).toHaveBeenCalledWith(
+        "user-own",
+        "a-very-long-new-password",
+      );
+    });
   });
 });

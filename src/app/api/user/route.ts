@@ -181,7 +181,7 @@ export async function PUT(req: NextRequest) {
     // below): a foreign and a missing user must look the same.
     const targetUser = await prisma.user.findFirst({
       where: scopeToOrganization({ userid }, authUser.organizationId),
-      select: { change_date: true },
+      select: { change_date: true, email: true },
     });
     if (!targetUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -200,6 +200,36 @@ export async function PUT(req: NextRequest) {
         },
         { status: 409 },
       );
+    }
+
+    // A user's own password and email are credentials: they change through
+    // /api/auth/change-password (current password, rate limit, session
+    // revocation) and the email-change flow, not through this profile route.
+    // The edit form echoes the unchanged email back, which stays allowed.
+    const isSelf = authUser.id === userid;
+    if (isSelf) {
+      if (typeof password === "string" && password.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Use the change password flow in your account settings to change your own password",
+          },
+          { status: 400 },
+        );
+      }
+      if (
+        typeof data.email === "string" &&
+        data.email !== "" &&
+        data.email.toLowerCase() !== (targetUser.email ?? "").toLowerCase()
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Your own email address cannot be changed here. Ask an administrator.",
+          },
+          { status: 400 },
+        );
+      }
     }
 
     const schema = authUser.isAdmin
@@ -246,6 +276,9 @@ export async function PUT(req: NextRequest) {
     // Strip password from profile update — it goes to accounts.password via setUserPassword.
     const newPassword = updateData.password as string | undefined;
     delete updateData.password;
+
+    // Own email is never written here (see above); an echoed value is dropped.
+    if (isSelf) delete updateData.email;
 
     // Only an email that is actually being set needs an ownership check.
     if (typeof updateData.email === "string") {
