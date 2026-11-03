@@ -7,6 +7,7 @@
  */
 
 import dns from "dns/promises";
+import { BlockList, isIP } from "node:net";
 import { logger } from "@/lib/logger";
 
 /**
@@ -53,23 +54,44 @@ function isPrivateIPv4(ip: string): boolean {
   return false;
 }
 
+const blockedIPv6 = new BlockList();
+for (const [network, prefix] of [
+  ["::", 128], // unspecified
+  ["::1", 128], // loopback
+  ["::", 96], // IPv4-compatible (deprecated), embeds an IPv4 address
+  ["::ffff:0:0", 96], // IPv4-mapped
+  ["64:ff9b::", 96], // NAT64, embeds an IPv4 address
+  ["64:ff9b:1::", 48], // local-use NAT64
+  ["100::", 64], // discard-only
+  ["2001:db8::", 32], // documentation
+  ["2002::", 16], // 6to4, embeds an IPv4 address
+  ["fc00::", 7], // unique local
+  ["fe80::", 10], // link-local
+  ["fec0::", 10], // site-local (deprecated)
+  ["ff00::", 8], // multicast
+] as const) {
+  blockedIPv6.addSubnet(network, prefix, "ipv6");
+}
+
 /**
- * Check whether an IPv6 address is loopback, link-local, or otherwise private.
+ * Check whether an IPv6 address is loopback, link-local, site-local,
+ * multicast, or embeds an IPv4 address (mapped, compatible, NAT64, 6to4).
+ * Anything that is not a valid IPv6 address is treated as private.
  */
 function isPrivateIPv6(ip: string): boolean {
-  const normalized = ip.toLowerCase();
+  const address = ip.split("%")[0]; // drop any zone id
+  if (isIP(address) !== 6) return true;
+  return blockedIPv6.check(address, "ipv6");
+}
 
-  if (normalized === "::1") return true;
-  if (normalized === "::") return true;
-  if (normalized.startsWith("fe80:")) return true; // link-local
-  if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true; // unique local
-  if (normalized.startsWith("::ffff:")) {
-    // IPv4-mapped IPv6 — extract the IPv4 part and check that
-    const v4 = normalized.slice(7);
-    if (v4.includes(".")) return isPrivateIPv4(v4);
-  }
-
-  return false;
+/**
+ * Classify an IP literal (without brackets) as private/reserved.
+ */
+function isPrivateIp(ip: string): boolean {
+  const version = isIP(ip);
+  if (version === 4) return isPrivateIPv4(ip);
+  if (version === 6) return isPrivateIPv6(ip);
+  return true; // Not a valid IP → block
 }
 
 export interface UrlValidationResult {
@@ -127,7 +149,7 @@ export async function validateOutboundUrl(
     parsed.hostname.startsWith("[")
   ) {
     const ip = parsed.hostname.replace(/^\[|\]$/g, "");
-    if (isPrivateIPv4(ip) || isPrivateIPv6(ip)) {
+    if (isPrivateIp(ip)) {
       return {
         valid: false,
         error: "URLs pointing to private/internal networks are not allowed",
@@ -141,12 +163,7 @@ export async function validateOutboundUrl(
     const results = await dns.lookup(hostname, { all: true });
 
     for (const result of results) {
-      const isPrivate =
-        result.family === 4
-          ? isPrivateIPv4(result.address)
-          : isPrivateIPv6(result.address);
-
-      if (isPrivate) {
+      if (isPrivateIp(result.address)) {
         logger.warn("SSRF attempt blocked: hostname resolves to private IP", {
           url,
           hostname,

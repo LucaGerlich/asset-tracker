@@ -84,3 +84,44 @@ describe("validateOutboundUrl", () => {
     expect(mockLookup).not.toHaveBeenCalled();
   });
 });
+
+describe("validateOutboundUrl IPv6 literals", () => {
+  const blocked = [
+    "http://[::ffff:127.0.0.1]/",
+    "http://[::ffff:169.254.169.254]/",
+    "http://[::ffff:10.0.0.1]/",
+    "http://[::127.0.0.1]/",
+    "http://[::7f00:1]/",
+    "http://[64:ff9b::7f00:1]/",
+    "http://[64:ff9b::a9fe:a9fe]/",
+    "http://[fec0::1]/",
+    "http://[fe80::1]/",
+    "http://[fd00::1]/",
+    "http://[fc00::1]/",
+    "http://[::]/",
+    "http://[2002:7f00:1::]/",
+  ];
+
+  it.each(blocked)("rejects %s", async (url) => {
+    const result = await validateOutboundUrl(url);
+
+    expect(result.valid).toBe(false);
+    expect(mockLookup).not.toHaveBeenCalled();
+  });
+
+  it("accepts a public IPv6 literal", async () => {
+    const result = await validateOutboundUrl("http://[2606:4700:4700::1111]/");
+
+    expect(result.valid).toBe(true);
+  });
+
+  it("rejects a hostname resolving to an IPv4-mapped loopback address", async () => {
+    mockLookup.mockResolvedValue([
+      { address: "::ffff:7f00:1", family: 6 },
+    ] as never);
+
+    const result = await validateOutboundUrl("https://evil.example.com");
+
+    expect(result.valid).toBe(false);
+  });
+});
