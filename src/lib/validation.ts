@@ -114,6 +114,13 @@ export const deleteLicenceCategoryTypeSchema = z.object({
   licencecategorytypeid: z.string().uuid(),
 });
 
+export const updateReportScheduleSchema = z.object({
+  id: z.string().uuid(),
+  isActive: z.boolean().optional(),
+  frequency: createReportScheduleSchema.shape.frequency.optional(),
+  format: createReportScheduleSchema.shape.format.optional(),
+});
+
 export const createAssetSchema = z.object({
   assetname: trimmedString.max(255),
   assettag: trimmedString.max(50),
