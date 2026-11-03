@@ -4,6 +4,16 @@ import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { legacyPlanToEntitlements } from "@/lib/legacy-billing";
 
+const PAYMENT_FAILED_STATUSES: ReadonlySet<string> = new Set([
+  "past_due",
+  "unpaid",
+  "incomplete_expired",
+]);
+
+function isSessionSettled(paymentStatus: string | null | undefined): boolean {
+  return paymentStatus === "paid" || paymentStatus === "no_payment_required";
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const sig = req.headers.get("stripe-signature");
@@ -25,8 +35,18 @@ export async function POST(req: Request) {
   }
 
   switch (event.type) {
-    case "checkout.session.completed": {
+    case "checkout.session.completed":
+    case "checkout.session.async_payment_succeeded": {
       const session = event.data.object;
+      // A delayed payment method completes the session as "unpaid"; the plan is
+      // only granted once the money is in (here or on async_payment_succeeded).
+      if (!isSessionSettled(session.payment_status)) {
+        logger.info("Checkout session completed without payment", {
+          sessionId: session.id,
+          paymentStatus: session.payment_status,
+        });
+        break;
+      }
       const orgId = session.metadata?.organizationId;
       const plan = session.metadata?.plan as PlanKey;
       if (orgId && plan && PLANS[plan]) {
@@ -52,6 +72,14 @@ export async function POST(req: Request) {
           },
         });
       }
+      break;
+    }
+    case "checkout.session.async_payment_failed": {
+      const session = event.data.object;
+      logger.warn("Checkout async payment failed; plan not granted", {
+        sessionId: session.id,
+        organizationId: session.metadata?.organizationId,
+      });
       break;
     }
     case "customer.subscription.updated": {
@@ -85,6 +113,15 @@ export async function POST(req: Request) {
             },
           });
         }
+      }
+      if (org && PAYMENT_FAILED_STATUSES.has(sub.status)) {
+        // Same read-only grace period as a deleted subscription, but the plan
+        // and subscription id stay so a successful retry reactivates the org.
+        // An already running grace period is never restarted.
+        await prisma.organization.updateMany({
+          where: { stripeSubscriptionId: sub.id, suspendedAt: null },
+          data: { suspendedAt: new Date() },
+        });
       }
       break;
     }
