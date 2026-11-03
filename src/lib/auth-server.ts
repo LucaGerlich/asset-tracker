@@ -269,7 +269,8 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24,
     cookieCache: {
       enabled: true,
-      maxAge: 5 * 60,
+      // Short: a revoked session keeps working until its cached cookie expires.
+      maxAge: 60,
     },
   },
 
