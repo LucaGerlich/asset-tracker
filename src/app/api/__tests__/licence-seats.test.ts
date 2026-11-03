@@ -50,6 +50,8 @@ describe("POST /api/licence/seats", () => {
       seatCount: 5,
     } as never);
     mockPrisma.licenceSeatAssignment.count.mockResolvedValue(1);
+    // The assignee belongs to the caller's organization (findForeignReference).
+    mockPrisma.user.findMany.mockResolvedValue([{ userid: USER_ID }] as never);
     mockPrisma.licenceSeatAssignment.findUniqueOrThrow.mockResolvedValue({
       id: "seat-1",
       seatNumber: 2,

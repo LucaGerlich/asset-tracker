@@ -115,6 +115,8 @@ describe("POST /api/consumable/checkout stock decrement", () => {
   });
 
   it("decrements with a stock guard in the update itself", async () => {
+    // The assignee belongs to the caller's organization (findForeignReference).
+    mockPrisma.user.findMany.mockResolvedValue([{ userid: USER_ID }] as never);
     mockPrisma.consumable.updateMany.mockResolvedValue({ count: 1 } as never);
     const res = await post();
     expect(res.status).toBe(201);
