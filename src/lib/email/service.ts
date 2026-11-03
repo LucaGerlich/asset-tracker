@@ -36,8 +36,7 @@ async function getEmailConfig(): Promise<EmailConfig | null> {
     );
 
     const provider = configMap.get("email_provider") as
-      | EmailProvider
-      | undefined;
+      EmailProvider | undefined;
     const apiKey = configMap.get("email_api_key");
     const fromEmail = configMap.get("email_from");
     const fromName = configMap.get("email_from_name");
@@ -203,71 +202,113 @@ export async function queueEmail(
   });
 }
 
+const DEFAULT_QUEUE_BATCH_SIZE = 25;
+// Stays below the 60s maxDuration of the notifications cron route.
+const DEFAULT_QUEUE_TIME_BUDGET_MS = 50_000;
+
+interface ProcessEmailQueueOptions {
+  batchSize?: number;
+  timeBudgetMs?: number;
+}
+
 /**
- * Process pending emails in the queue
+ * Process pending emails in the queue. Drains the queue in batches until it is
+ * empty or the time budget is spent (the budget is checked between batches).
+ * An email is attempted at most once per run so a failing one cannot burn its
+ * remaining attempts back to back.
  */
-export async function processEmailQueue(batchSize: number = 10): Promise<{
+export async function processEmailQueue(
+  options: ProcessEmailQueueOptions = {},
+): Promise<{
   processed: number;
   succeeded: number;
   failed: number;
 }> {
-  const pendingEmails = await prisma.notification_queue.findMany({
-    where: {
-      status: "pending",
-      scheduledAt: { lte: new Date() },
-      attempts: { lt: 3 }, // Max 3 attempts
-    },
-    take: batchSize,
-    orderBy: { scheduledAt: "asc" },
-  });
+  const batchSize = options.batchSize ?? DEFAULT_QUEUE_BATCH_SIZE;
+  const timeBudgetMs = options.timeBudgetMs ?? DEFAULT_QUEUE_TIME_BUDGET_MS;
+  const startedAt = Date.now();
+  const attemptedIds: string[] = [];
 
   let succeeded = 0;
   let failed = 0;
 
-  for (const email of pendingEmails) {
-    const result = await sendEmail({
-      to: email.recipient,
-      subject: email.subject,
-      html: email.body,
+  while (true) {
+    const pendingEmails = await prisma.notification_queue.findMany({
+      where: {
+        status: "pending",
+        scheduledAt: { lte: new Date() },
+        attempts: { lt: 3 }, // Max 3 attempts
+        ...(attemptedIds.length > 0 ? { id: { notIn: attemptedIds } } : {}),
+      },
+      take: batchSize,
+      orderBy: { scheduledAt: "asc" },
     });
 
-    if (result.success) {
-      await prisma.notification_queue.update({
-        where: { id: email.id },
-        data: {
-          status: "sent",
-          sentAt: new Date(),
-        },
-      });
-      succeeded++;
-    } else {
-      await prisma.notification_queue.update({
-        where: { id: email.id },
-        data: {
-          attempts: email.attempts + 1,
-          lastError: result.error,
-          status: email.attempts + 1 >= 3 ? "failed" : "pending",
-        },
-      });
-      if (email.attempts + 1 >= 3) {
-        logger.error("Email permanently failed after 3 attempts", {
-          type: "email_dead_letter",
-          emailId: email.id,
-          recipient: email.recipient,
-          subject: email.subject,
-          emailType: email.type,
-          lastError: result.error,
-        });
+    for (const email of pendingEmails) {
+      attemptedIds.push(email.id);
+      if (await deliverQueuedEmail(email)) {
+        succeeded++;
+      } else {
+        failed++;
       }
-      failed++;
     }
+
+    const queueDrained = pendingEmails.length < batchSize;
+    if (queueDrained || Date.now() - startedAt >= timeBudgetMs) break;
   }
 
   return {
-    processed: pendingEmails.length,
+    processed: attemptedIds.length,
     succeeded,
     failed,
   };
+}
+
+/** Send one queued email and record the outcome. Returns true on success. */
+async function deliverQueuedEmail(email: {
+  id: string;
+  recipient: string;
+  subject: string;
+  body: string;
+  type: string;
+  attempts: number;
+}): Promise<boolean> {
+  const result = await sendEmail({
+    to: email.recipient,
+    subject: email.subject,
+    html: email.body,
+  });
+
+  if (result.success) {
+    await prisma.notification_queue.update({
+      where: { id: email.id },
+      data: {
+        status: "sent",
+        sentAt: new Date(),
+      },
+    });
+    return true;
+  }
+
+  await prisma.notification_queue.update({
+    where: { id: email.id },
+    data: {
+      attempts: email.attempts + 1,
+      lastError: result.error,
+      status: email.attempts + 1 >= 3 ? "failed" : "pending",
+    },
+  });
+  if (email.attempts + 1 >= 3) {
+    logger.error("Email permanently failed after 3 attempts", {
+      type: "email_dead_letter",
+      emailId: email.id,
+      recipient: email.recipient,
+      subject: email.subject,
+      emailType: email.type,
+      lastError: result.error,
+    });
+  }
+  return false;
 }
 
 /**

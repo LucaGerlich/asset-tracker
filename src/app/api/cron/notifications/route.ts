@@ -20,10 +20,9 @@ export async function GET(req: Request) {
   }
 
   try {
-    const [notifications, emailQueue] = await Promise.all([
-      runNotificationChecks(),
-      processEmailQueue(),
-    ]);
+    // Sequential: mails queued by the checks go out in the same run.
+    const notifications = await runNotificationChecks();
+    const emailQueue = await processEmailQueue();
 
     return NextResponse.json(
       {
@@ -43,3 +42,4 @@ export async function GET(req: Request) {
 }
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
