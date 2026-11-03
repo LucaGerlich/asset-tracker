@@ -62,25 +62,36 @@ describe("getOrgStorage endpoint validation", () => {
     "https://127.0.0.1:9000",
     "https://[::ffff:7f00:1]",
   ])(
-    "does not build a client for the stored endpoint %s and logs it",
+    "fails closed for the stored endpoint %s instead of using the shared bucket",
     async (endpoint) => {
       mockPrisma.organizationStorageConfig.findUnique.mockResolvedValue(
         storedConfig(endpoint),
       );
 
-      const storage = await getOrgStorage(ORG_ID);
-
-      // Same fallback as an org without a custom config: the default provider.
-      expect(s3.ctor).not.toHaveBeenCalledWith(
-        expect.objectContaining({ endpoint }),
+      // Falling back to the default provider would put this org's files in
+      // the platform bucket and hide its existing ones.
+      await expect(getOrgStorage(ORG_ID)).rejects.toThrow(
+        "Organization storage endpoint failed validation",
       );
-      expect(storage).toBeDefined();
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(s3.ctor).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
         "Org storage endpoint rejected by SSRF validation",
         expect.objectContaining({ organizationId: ORG_ID }),
       );
     },
   );
+
+  it("accepts an internal http endpoint on a self-hosted install", async () => {
+    vi.stubEnv("SELF_HOSTED", "true");
+    mockPrisma.organizationStorageConfig.findUnique.mockResolvedValue(
+      storedConfig("http://minio:9000"),
+    );
+
+    const storage = await getOrgStorage(ORG_ID);
+
+    expect(storage).toEqual({ kind: "org-s3" });
+    vi.unstubAllEnvs();
+  });
 
   it("rejects a stored hostname that now resolves to a private address", async () => {
     lookup.mockResolvedValue([{ address: "10.0.0.5", family: 4 }]);
@@ -88,10 +99,7 @@ describe("getOrgStorage endpoint validation", () => {
       storedConfig("https://s3.example.test"),
     );
 
-    await getOrgStorage(ORG_ID);
-
-    expect(s3.ctor).not.toHaveBeenCalledWith(
-      expect.objectContaining({ endpoint: "https://s3.example.test" }),
-    );
+    await expect(getOrgStorage(ORG_ID)).rejects.toThrow();
+    expect(s3.ctor).not.toHaveBeenCalled();
   });
 });

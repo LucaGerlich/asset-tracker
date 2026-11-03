@@ -10,7 +10,7 @@ import { apiErrorResponse } from "@/lib/errors";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { maskSecret } from "@/lib/secrets";
 import { logger } from "@/lib/logger";
-import { validateHttpsOutboundUrl } from "@/lib/url-validation";
+import { validateStorageEndpoint } from "@/lib/url-validation";
 
 /**
  * Categorize a storage-config failure into an actionable response. Full details
@@ -141,7 +141,7 @@ export async function PUT(req: Request) {
 
     // SSRF protection: the server connects to this endpoint with the stored
     // credentials, so it must be a public https URL.
-    const endpointCheck = await validateHttpsOutboundUrl(endpoint);
+    const endpointCheck = await validateStorageEndpoint(endpoint);
     if (!endpointCheck.valid) {
       return NextResponse.json(
         { error: `Invalid endpoint: ${endpointCheck.error}` },

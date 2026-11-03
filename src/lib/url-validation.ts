@@ -6,6 +6,7 @@
  * outbound requests (webhooks, Slack/Teams notifications, etc.).
  */
 
+import { isSelfHosted } from "@/lib/deployment-mode";
 import dns from "dns/promises";
 import { BlockList, isIP } from "node:net";
 import { logger } from "@/lib/logger";
@@ -202,4 +203,25 @@ export async function validateHttpsOutboundUrl(
     return { valid: false, error: "Only https URLs are allowed" };
   }
   return validateOutboundUrl(url);
+}
+
+/**
+ * Validates a per-organization S3 endpoint. On the multi-tenant service it must
+ * be a public https URL. A self-hosted operator owns the network, so any http(s)
+ * URL is accepted there (e.g. an internal MinIO at http://minio:9000).
+ */
+export async function validateStorageEndpoint(
+  url: string,
+): Promise<UrlValidationResult> {
+  if (!isSelfHosted()) return validateHttpsOutboundUrl(url);
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { valid: false, error: "Invalid URL format" };
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return { valid: false, error: "Only http and https URLs are allowed" };
+  }
+  return { valid: true };
 }

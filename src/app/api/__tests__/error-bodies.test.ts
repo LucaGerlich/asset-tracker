@@ -37,6 +37,7 @@ vi.mock("@/lib/freshdesk", () => ({
 }));
 vi.mock("@/lib/url-validation", () => ({
   validateHttpsOutboundUrl: vi.fn().mockResolvedValue({ valid: true }),
+  validateStorageEndpoint: vi.fn().mockResolvedValue({ valid: true }),
   validateOutboundUrl: vi.fn().mockResolvedValue({ valid: true }),
 }));
 vi.mock("@/lib/notifications", () => ({

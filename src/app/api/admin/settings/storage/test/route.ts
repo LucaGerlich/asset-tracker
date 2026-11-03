@@ -6,7 +6,7 @@ import { S3StorageProvider } from "@/lib/storage/s3";
 import { decrypt } from "@/lib/encryption";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
-import { validateHttpsOutboundUrl } from "@/lib/url-validation";
+import { validateStorageEndpoint } from "@/lib/url-validation";
 import crypto from "crypto";
 
 export async function POST(req: Request) {
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     }
 
     // SSRF protection: never connect to private/internal or non-https endpoints
-    const endpointCheck = await validateHttpsOutboundUrl(endpoint);
+    const endpointCheck = await validateStorageEndpoint(endpoint);
     if (!endpointCheck.valid) {
       return NextResponse.json(
         {
