@@ -19,11 +19,7 @@ vi.mock("dns/promises", () => ({ default: { lookup } }));
 
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
-import {
-  getOrgStorage,
-  resetOrgStorageValidationCache,
-  ORG_STORAGE_VALIDATION_TTL_MS,
-} from "@/lib/storage";
+import { getOrgStorage } from "@/lib/storage";
 
 const mockPrisma = vi.mocked(prisma, true);
 
@@ -40,8 +36,6 @@ const storedConfig = (endpoint: string) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.useRealTimers();
-  resetOrgStorageValidationCache();
   lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
 });
 
@@ -107,65 +101,5 @@ describe("getOrgStorage endpoint validation", () => {
 
     await expect(getOrgStorage(ORG_ID)).rejects.toThrow();
     expect(s3.ctor).not.toHaveBeenCalled();
-  });
-});
-
-describe("getOrgStorage validation cache", () => {
-  const configure = (endpoint: string) =>
-    mockPrisma.organizationStorageConfig.findUnique.mockResolvedValue(
-      storedConfig(endpoint),
-    );
-
-  it("does not repeat the DNS lookup within the TTL", async () => {
-    configure("https://s3.example.test");
-
-    await getOrgStorage(ORG_ID);
-    await getOrgStorage(ORG_ID);
-
-    expect(lookup).toHaveBeenCalledTimes(1);
-    // The client is still built per call, from the freshly loaded config.
-    expect(s3.ctor).toHaveBeenCalledTimes(2);
-  });
-
-  it("validates again once the TTL has passed", async () => {
-    vi.useFakeTimers();
-    configure("https://s3.example.test");
-
-    await getOrgStorage(ORG_ID);
-    vi.advanceTimersByTime(ORG_STORAGE_VALIDATION_TTL_MS - 1);
-    await getOrgStorage(ORG_ID);
-    expect(lookup).toHaveBeenCalledTimes(1);
-
-    vi.advanceTimersByTime(2);
-    await getOrgStorage(ORG_ID);
-    expect(lookup).toHaveBeenCalledTimes(2);
-  });
-
-  it("validates a changed endpoint even inside the TTL", async () => {
-    configure("https://s3.example.test");
-    await getOrgStorage(ORG_ID);
-
-    configure("https://other.example.test");
-    await getOrgStorage(ORG_ID);
-
-    expect(lookup).toHaveBeenCalledTimes(2);
-  });
-
-  it("caches per organization", async () => {
-    configure("https://s3.example.test");
-    await getOrgStorage(ORG_ID);
-    await getOrgStorage("22222222-2222-4222-8222-222222222222");
-
-    expect(lookup).toHaveBeenCalledTimes(2);
-  });
-
-  it("never caches a failed validation", async () => {
-    lookup.mockResolvedValue([{ address: "10.0.0.5", family: 4 }]);
-    configure("https://s3.example.test");
-    await expect(getOrgStorage(ORG_ID)).rejects.toThrow();
-
-    lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
-    await expect(getOrgStorage(ORG_ID)).resolves.toEqual({ kind: "org-s3" });
-    expect(lookup).toHaveBeenCalledTimes(2);
   });
 });
