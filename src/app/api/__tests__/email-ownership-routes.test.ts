@@ -440,7 +440,12 @@ describe("POST /api/team/invite/[token]", () => {
       status: "pending",
       expiresAt: new Date(Date.now() + 60_000),
       invitedBy: "admin-uuid-001",
-      organization: { id: "org-uuid-001", name: "Test Org" },
+      organization: {
+        id: "org-uuid-001",
+        name: "Test Org",
+        isActive: true,
+        suspendedAt: null,
+      },
       role: null,
       inviter: { firstname: "A", lastname: "B" },
     }) as never;
