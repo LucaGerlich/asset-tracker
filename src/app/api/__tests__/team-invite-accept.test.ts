@@ -38,11 +38,13 @@ function invitation(overrides: {
   status?: InviteStatus;
   expired?: boolean;
   roleOrganizationId?: string | null;
+  organization?: { isActive: boolean; suspendedAt: Date | null };
 }) {
   const {
     status = "pending",
     expired = false,
     roleOrganizationId = INVITE_ORG,
+    organization = { isActive: true, suspendedAt: null },
   } = overrides;
   return {
     id: "invitation-uuid-1",
@@ -52,7 +54,7 @@ function invitation(overrides: {
     invitedBy: "admin-uuid-b",
     expiresAt: new Date(Date.now() + (expired ? -1 : 1) * 60 * 60 * 1000),
     createdAt: new Date(),
-    organization: { id: INVITE_ORG, name: "Org B" },
+    organization: { id: INVITE_ORG, name: "Org B", ...organization },
     role: {
       id: "role-b-uuid",
       name: "Technician",
@@ -189,6 +191,68 @@ describe("invitation status validation", () => {
 
     expect(status).toBe(200);
     expect(body.role).toEqual({ id: "role-b-uuid", name: "Technician" });
+  });
+
+  it("does not expose the organization's lock state on lookup", async () => {
+    const res = await GET(
+      createMockRequest(`/api/team/invite/${TOKEN}`),
+      params,
+    );
+    const { body } = await parseResponse<{
+      organization: Record<string, unknown>;
+    }>(res);
+
+    expect(body.organization).toEqual({ id: INVITE_ORG, name: "Org B" });
+  });
+
+  describe("organization lock state", () => {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const states = {
+      "operator-locked": { isActive: false, suspendedAt: null },
+      "billing read-only": {
+        isActive: true,
+        suspendedAt: new Date(Date.now() - 2 * DAY_MS),
+      },
+      "billing locked-out": {
+        isActive: true,
+        suspendedAt: new Date(Date.now() - 30 * DAY_MS),
+      },
+    };
+
+    it.each(Object.entries(states))(
+      "rejects accepting an invitation into a %s organization with 403",
+      async (_label, organization) => {
+        mockPrisma.teamInvitation.findUnique.mockResolvedValue(
+          invitation({ organization }) as never,
+        );
+
+        const { status } = await parseResponse(
+          await accept({
+            firstname: "New",
+            lastname: "User",
+            password: "a-very-long-password",
+          }),
+        );
+
+        expect(status).toBe(403);
+        expect(mockPrisma.user.create).not.toHaveBeenCalled();
+        expect(mockPrisma.user.update).not.toHaveBeenCalled();
+        expect(mockPrisma.teamInvitation.update).not.toHaveBeenCalled();
+      },
+    );
+
+    it("rejects the lookup for an unavailable organization too", async () => {
+      mockPrisma.teamInvitation.findUnique.mockResolvedValue(
+        invitation({ organization: states["operator-locked"] }) as never,
+      );
+
+      const res = await GET(
+        createMockRequest(`/api/team/invite/${TOKEN}`),
+        params,
+      );
+
+      expect(res.status).toBe(403);
+    });
   });
 
   it("returns 404 for an unknown token", async () => {
