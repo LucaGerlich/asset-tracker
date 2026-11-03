@@ -30,6 +30,7 @@ import {
 import { checkRateLimit } from "@/lib/rate-limit";
 import { resolveSsoUserData } from "@/lib/sso-provisioning";
 import { USER_ADDITIONAL_FIELDS } from "@/lib/auth-user-fields";
+import { getTrustedProviders } from "@/lib/auth-trusted-providers";
 import { parseDeviceName, parseBrowser } from "@/lib/session-tracking";
 import {
   recordLoginAttempt,
@@ -232,7 +233,7 @@ export const auth = betterAuth({
   account: {
     accountLinking: {
       enabled: true,
-      trustedProviders: ["microsoft"],
+      trustedProviders: getTrustedProviders(process.env.MICROSOFT_TENANT_ID),
     },
     modelName: "accounts",
     fields: {
