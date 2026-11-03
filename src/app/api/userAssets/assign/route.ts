@@ -94,6 +94,8 @@ export async function POST(req: NextRequest) {
     });
 
     await invalidateCacheByPrefix("user_assets_all").catch(() => {});
+    // The asset's status changed too; assets_all caches the asset rows.
+    await invalidateCacheByPrefix("assets_all").catch(() => {});
 
     return new Response(
       JSON.stringify({
