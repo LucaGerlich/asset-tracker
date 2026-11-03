@@ -135,6 +135,18 @@ export async function GET(req: NextRequest) {
   }
 }
 
+const DUPLICATE_LICENCE_KEY_MESSAGE =
+  "A licence with this key already exists in your organization";
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2002"
+  );
+}
+
 // POST /api/licence
 export async function POST(req: NextRequest) {
   try {
@@ -236,6 +248,12 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     const denied = apiErrorResponse(e);
     if (denied) return denied;
+    if (isUniqueViolation(e)) {
+      return NextResponse.json(
+        { error: DUPLICATE_LICENCE_KEY_MESSAGE },
+        { status: 409 },
+      );
+    }
     logger.error("POST /api/licence error", { error: e });
 
     return NextResponse.json(
@@ -377,6 +395,12 @@ export async function PUT(req: NextRequest) {
   } catch (e) {
     const denied = apiErrorResponse(e);
     if (denied) return denied;
+    if (isUniqueViolation(e)) {
+      return NextResponse.json(
+        { error: DUPLICATE_LICENCE_KEY_MESSAGE },
+        { status: 409 },
+      );
+    }
     logger.error("PUT /api/licence error", { error: e });
 
     if (e.code === "P2025") {

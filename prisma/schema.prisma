@@ -722,7 +722,7 @@ model label_templates {
 
 model licence {
   licenceid             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  licencekey            String?                 @unique @db.VarChar
+  licencekey            String?                 @db.VarChar
   licenceduserid        String?                 @db.Uuid
   licensedtoemail       String?                 @db.VarChar
   purchaseprice         Decimal?                @db.Decimal(10, 2)
@@ -751,6 +751,7 @@ model licence {
   @@index([licencecategorytypeid])
   @@index([expirationdate])
   @@index([organizationId, expirationdate])
+  @@unique([organizationId, licencekey])
   @@schema("public")
 }
 
@@ -1718,7 +1719,7 @@ model PurchaseOrder {
   id                   String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   purchaseRequestId    String?          @db.Uuid
   purchaseRequest      PurchaseRequest? @relation(fields: [purchaseRequestId], references: [id], onDelete: SetNull)
-  poNumber             String           @unique @db.VarChar(50)
+  poNumber             String           @db.VarChar(50)
   supplierId           String?          @db.Uuid
   supplier             supplier?        @relation(fields: [supplierId], references: [supplierid], onDelete: SetNull)
   organizationId       String           @db.Uuid
@@ -1736,6 +1737,7 @@ model PurchaseOrder {
   @@index([organizationId])
   @@index([status])
   @@index([purchaseRequestId])
+  @@unique([organizationId, poNumber])
   @@map("purchase_orders")
   @@schema("public")
 }
