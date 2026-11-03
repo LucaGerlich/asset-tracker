@@ -91,6 +91,28 @@ export const createReportScheduleSchema = z.object({
   format: z.enum(["csv", "xlsx"]),
 });
 
+export const updateDepreciationSettingsSchema = z.object({
+  method: z.enum(["straight_line", "declining_balance", "sum_of_years"]),
+  usefulLifeYears: z.number().int().min(1).max(100),
+  salvagePercent: z.number().min(0).max(100),
+});
+
+export const deleteAssetCategoryTypeSchema = z.object({
+  assetcategorytypeid: z.string().uuid(),
+});
+
+export const deleteAccessoryCategoryTypeSchema = z.object({
+  accessoriecategorytypeid: z.string().uuid(),
+});
+
+export const deleteConsumableCategoryTypeSchema = z.object({
+  consumablecategorytypeid: z.string().uuid(),
+});
+
+export const deleteLicenceCategoryTypeSchema = z.object({
+  licencecategorytypeid: z.string().uuid(),
+});
+
 export const createAssetSchema = z.object({
   assetname: trimmedString.max(255),
   assettag: trimmedString.max(50),
