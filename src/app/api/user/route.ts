@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
+import { searchIdsByFullText } from "@/lib/fulltext-search";
 import {
   requireApiAuth,
   requireNotDemoMode,
@@ -23,6 +24,7 @@ import {
 import { applyDepartmentScopeToUsers } from "@/lib/department-access";
 import { updateUserSchema } from "@/lib/validation";
 import { setUserPassword } from "@/lib/auth-utils";
+import { findAdminDemotionViolation } from "@/lib/admin-demotion";
 import {
   parsePaginationParams,
   buildPrismaArgs,
@@ -31,8 +33,17 @@ import {
 import { logger } from "@/lib/logger";
 import { triggerWebhook } from "@/lib/webhooks";
 import { invalidateCacheByPrefix } from "@/lib/cache";
+import { memberUserSelect } from "@/lib/user-select";
+import type { Prisma } from "@prisma/client";
 
 const USER_SORT_FIELDS = ["firstname", "lastname", "email", "creation_date"];
+
+/**
+ * Non-admins see colleagues with public columns only: no SCIM/SSO
+ * bookkeeping, auth provider, 2FA state or access-expiry dates.
+ */
+const viewerSelect = (isAdmin: boolean): { select?: Prisma.userSelect } =>
+  isAdmin ? {} : { select: memberUserSelect };
 
 const stripPassword = (user) => {
   if (!user) return user;
@@ -59,7 +70,8 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Scope to organization (except for own profile)
+      // Scope to organization (except for own profile). Colleagues are shown
+      // to non-admins with public columns only.
       let user;
       if (authUser.id === id) {
         user = await prisma.user.findUnique({ where: { userid: id } });
@@ -68,6 +80,7 @@ export async function GET(req: NextRequest) {
         const orgId = orgContext?.organization?.id;
         user = await prisma.user.findFirst({
           where: scopeToOrganization({ userid: id }, orgId),
+          ...viewerSelect(Boolean(authUser.isAdmin)),
         });
       }
 
@@ -90,12 +103,13 @@ export async function GET(req: NextRequest) {
 
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
+    const listSelect = viewerSelect(Boolean(authUser.isAdmin));
 
     // If no `page` param, return all results for backward compatibility
     if (!searchParams.has("page")) {
       const baseWhere = scopeToOrganization({}, orgId);
       const where = await applyDepartmentScopeToUsers(baseWhere, authUser);
-      const users = await prisma.user.findMany({ where });
+      const users = await prisma.user.findMany({ where, ...listSelect });
       return NextResponse.json(users.map(stripPassword), { status: 200 });
     }
 
@@ -107,16 +121,14 @@ export async function GET(req: NextRequest) {
 
     // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      const tsQuery = params.search.trim().split(/\s+/).join(" & ");
-      const matchingIds = await prisma
-        .$queryRawUnsafe<Array<{ userid: string }>>(
-          `SELECT "userid" FROM "user" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`,
-          tsQuery,
-        )
-        .catch(() => null);
+      const matchingIds = await searchIdsByFullText(
+        "user",
+        orgId,
+        params.search,
+      );
 
       if (matchingIds && matchingIds.length > 0) {
-        baseWhere.userid = { in: matchingIds.map((r) => r.userid) };
+        baseWhere.userid = { in: matchingIds };
       } else if (matchingIds) {
         // tsvector returned no results — empty set
         baseWhere.userid = { in: [] };
@@ -134,7 +146,7 @@ export async function GET(req: NextRequest) {
     const where = await applyDepartmentScopeToUsers(baseWhere, authUser);
 
     const [users, total] = await Promise.all([
-      prisma.user.findMany({ where, ...prismaArgs }),
+      prisma.user.findMany({ where, ...prismaArgs, ...listSelect }),
       prisma.user.count({ where }),
     ]);
 
@@ -181,7 +193,7 @@ export async function PUT(req: NextRequest) {
     // below): a foreign and a missing user must look the same.
     const targetUser = await prisma.user.findFirst({
       where: scopeToOrganization({ userid }, authUser.organizationId),
-      select: { change_date: true },
+      select: { change_date: true, email: true, username: true },
     });
     if (!targetUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -202,6 +214,38 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // A user's own password and email are credentials: they change through
+    // /api/auth/change-password (current password, rate limit, session
+    // revocation) and the email-change flow, not through this profile route.
+    // The edit form echoes the unchanged email back, which stays allowed. A
+    // user without a stored email may set one, since there is nothing to protect.
+    const isSelf = authUser.id === userid;
+    if (isSelf) {
+      if (typeof password === "string" && password.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Use the change password flow in your account settings to change your own password",
+          },
+          { status: 400 },
+        );
+      }
+      if (
+        targetUser.email &&
+        typeof data.email === "string" &&
+        data.email !== "" &&
+        data.email.toLowerCase() !== targetUser.email.toLowerCase()
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Your own email address cannot be changed here. Ask an administrator.",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     const schema = authUser.isAdmin
       ? updateUserSchema
       : updateUserSchema.omit({
@@ -216,6 +260,12 @@ export async function PUT(req: NextRequest) {
     for (const [key, value] of Object.entries(data)) {
       cleanedData[key] = value === "" ? undefined : value;
     }
+    // Invite, SSO and SCIM users have their email as username, which the
+    // no-"@" username policy rejects. The edit form echoes it back unchanged,
+    // so the policy only applies when the username actually changes.
+    if (cleanedData.username === targetUser.username) {
+      delete cleanedData.username;
+    }
 
     const validationResult = schema.strict().safeParse({
       ...cleanedData,
@@ -229,6 +279,19 @@ export async function PUT(req: NextRequest) {
         { error: "Validation failed", details: validationResult.error.issues },
         { status: 400 },
       );
+    }
+
+    // Removing admin rights goes through the same guard as the permissions
+    // routes: no self-demotion and never the org's last active admin.
+    if ((validationResult.data as { isadmin?: boolean }).isadmin === false) {
+      const violation = await findAdminDemotionViolation({
+        callerId: authUser.id,
+        targetUserIds: [userid],
+        organizationId: authUser.organizationId,
+      });
+      if (violation) {
+        return NextResponse.json({ error: violation }, { status: 400 });
+      }
     }
 
     // departmentId is admin-only; the non-admin schema omits it.
@@ -246,6 +309,10 @@ export async function PUT(req: NextRequest) {
     // Strip password from profile update — it goes to accounts.password via setUserPassword.
     const newPassword = updateData.password as string | undefined;
     delete updateData.password;
+
+    // A stored own email is never rewritten here (see above); an echoed value
+    // is dropped. Only a missing email can be set.
+    if (isSelf && targetUser.email) delete updateData.email;
 
     // Only an email that is actually being set needs an ownership check.
     if (typeof updateData.email === "string") {

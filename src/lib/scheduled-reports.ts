@@ -37,6 +37,7 @@ export async function processScheduledReports(): Promise<ProcessResult> {
           lastname: true,
           email: true,
           isActive: true,
+          organizationId: true,
         },
       },
     },
@@ -52,6 +53,19 @@ export async function processScheduledReports(): Promise<ProcessResult> {
     // Skip if user is inactive or has no email
     if (!schedule.user.isActive || !schedule.user.email) {
       await updateNextRun(schedule.id, schedule.frequency, now);
+      continue;
+    }
+
+    // The schedule was created for the user's organization at that time. If the
+    // user moved on, the report would leak the old tenant's data to them.
+    if (schedule.organizationId !== schedule.user.organizationId) {
+      logger.warn("Deactivating scheduled report: user left its organization", {
+        scheduleId: schedule.id,
+      });
+      await prisma.reportSchedule.update({
+        where: { id: schedule.id },
+        data: { isActive: false },
+      });
       continue;
     }
 

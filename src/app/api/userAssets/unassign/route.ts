@@ -7,6 +7,7 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 
 export async function DELETE(req: NextRequest) {
   try {
@@ -68,6 +69,8 @@ export async function DELETE(req: NextRequest) {
 
       return deleted;
     });
+
+    await invalidateCacheByPrefix("user_assets_all").catch(() => {});
 
     return new Response(
       JSON.stringify({

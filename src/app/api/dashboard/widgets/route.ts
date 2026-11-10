@@ -13,6 +13,37 @@ import {
 } from "@/components/dashboard/WidgetRegistry";
 import { logger } from "@/lib/logger";
 
+interface DefaultWidget {
+  widgetType: string;
+  position: number;
+}
+
+/** Admins and regular users start from different default dashboards. */
+function getDefaultWidgetSet(isAdmin: boolean): DefaultWidget[] {
+  return isAdmin ? DEFAULT_WIDGETS : DEFAULT_USER_WIDGETS;
+}
+
+/** Persist the caller's default dashboard when they have no widgets yet. */
+async function persistDefaultsIfEmpty(
+  userId: string,
+  isAdmin: boolean,
+): Promise<void> {
+  const count = await prisma.dashboardWidget.count({ where: { userId } });
+  if (count > 0) return;
+  await Promise.all(
+    getDefaultWidgetSet(isAdmin).map((dw) =>
+      prisma.dashboardWidget.create({
+        data: {
+          userId,
+          widgetType: dw.widgetType,
+          position: dw.position,
+          visible: true,
+        },
+      }),
+    ),
+  );
+}
+
 // GET /api/dashboard/widgets — return user's widgets ordered by position
 export async function GET() {
   try {
@@ -24,8 +55,7 @@ export async function GET() {
     });
 
     if (widgets.length === 0) {
-      const defaultSet = user.isAdmin ? DEFAULT_WIDGETS : DEFAULT_USER_WIDGETS;
-      const defaults = defaultSet.map((w, i) => ({
+      const defaults = getDefaultWidgetSet(user.isAdmin).map((w, i) => ({
         id: `default-${i}`,
         userId: user.id,
         widgetType: w.widgetType,
@@ -75,7 +105,7 @@ export async function PUT(req: NextRequest) {
 
     if (hasDefaults) {
       const defaultWidgetMap = new Map(
-        DEFAULT_WIDGETS.map((dw, i) => [`default-${i}`, dw]),
+        getDefaultWidgetSet(user.isAdmin).map((dw, i) => [`default-${i}`, dw]),
       );
 
       const createPromises = widgets
@@ -165,25 +195,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Ensure default widgets are persisted before adding a new one
-    const existingWidgets = await prisma.dashboardWidget.findMany({
-      where: { userId: user.id },
-    });
-
-    if (existingWidgets.length === 0) {
-      // Persist default widgets first
-      await Promise.all(
-        DEFAULT_WIDGETS.map((dw) =>
-          prisma.dashboardWidget.create({
-            data: {
-              userId: user.id!,
-              widgetType: dw.widgetType,
-              position: dw.position,
-              visible: true,
-            },
-          }),
-        ),
-      );
-    }
+    await persistDefaultsIfEmpty(user.id, user.isAdmin);
 
     // Find max position
     const maxPositionResult = await prisma.dashboardWidget.findFirst({
@@ -238,8 +250,22 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // If it's a default widget that hasn't been persisted, just return success
+    // A default widget has no row yet: persist the defaults first so the
+    // removal sticks instead of the default reappearing on the next load.
     if (id.startsWith("default-")) {
+      const def = getDefaultWidgetSet(user.isAdmin)[
+        Number(id.slice("default-".length))
+      ];
+      if (!def) {
+        return NextResponse.json(
+          { error: "Widget not found" },
+          { status: 404 },
+        );
+      }
+      await persistDefaultsIfEmpty(user.id, user.isAdmin);
+      await prisma.dashboardWidget.deleteMany({
+        where: { userId: user.id, widgetType: def.widgetType },
+      });
       return NextResponse.json({ success: true });
     }
 

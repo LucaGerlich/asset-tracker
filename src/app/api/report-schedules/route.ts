@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth, requireWritableOrg } from "@/lib/api-auth";
+import {
+  requireApiAuth,
+  requirePermission,
+  requireWritableOrg,
+} from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import { getOrganizationContext } from "@/lib/organization-context";
-import { createReportScheduleSchema } from "@/lib/validation";
+import {
+  createReportScheduleSchema,
+  updateReportScheduleSchema,
+} from "@/lib/validation";
 import { computeNextRunAt } from "@/lib/scheduled-reports";
 import { logger } from "@/lib/logger";
 
@@ -38,7 +45,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireApiAuth();
+    const user = await requirePermission("report:view");
     await requireWritableOrg(user);
     const orgCtx = await getOrganizationContext();
     const userId = orgCtx?.userId;
@@ -98,7 +105,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const user = await requireApiAuth();
+    const user = await requirePermission("report:view");
     await requireWritableOrg(user);
     const orgCtx = await getOrganizationContext();
     const userId = orgCtx?.userId;
@@ -108,16 +115,16 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { id, isActive, frequency, format } = body as {
-      id: string;
-      isActive?: boolean;
-      frequency?: string;
-      format?: string;
-    };
+    const validation = updateReportScheduleSchema.safeParse(body);
 
-    if (!id) {
-      return NextResponse.json({ error: "id required" }, { status: 400 });
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: validation.error.issues },
+        { status: 400 },
+      );
     }
+
+    const { id, isActive, frequency, format } = validation.data;
 
     // Ensure the schedule belongs to the user
     const existing = await prisma.reportSchedule.findFirst({

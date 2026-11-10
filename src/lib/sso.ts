@@ -292,10 +292,17 @@ export async function exchangeOidcCode(code: string): Promise<OidcUserProfile> {
         headers: { Authorization: `Bearer ${tokens.access_token}` },
       });
       if (uiRes.ok) {
-        const userinfo = await uiRes.json();
-        claims = { ...claims, ...userinfo };
+        const userinfo = (await uiRes.json()) as Record<string, unknown>;
+        claims = mergeUserinfoClaims(claims, userinfo, [
+          "sub",
+          "email",
+          "email_verified",
+          settings.attrEmail,
+        ]);
       }
     } catch (err) {
+      // A sub mismatch must abort the login, not fall back to unverified data.
+      if (err instanceof UserinfoSubMismatchError) throw err;
       logger.warn("Failed to fetch OIDC userinfo", { error: err });
     }
   }
@@ -318,6 +325,39 @@ export async function exchangeOidcCode(code: string): Promise<OidcUserProfile> {
       ? (claims[settings.attrGroups] as string[] | undefined)
       : undefined,
   };
+}
+
+class UserinfoSubMismatchError extends Error {
+  constructor() {
+    super("OIDC userinfo sub does not match the ID token sub");
+    this.name = "UserinfoSubMismatchError";
+  }
+}
+
+/**
+ * Merge userinfo claims into the signature-verified ID token claims. The ID
+ * token wins for identity-defining claims, so a userinfo response can add
+ * profile data but never rewrite who the user is (OIDC Core 5.3.2: the
+ * userinfo sub MUST match the ID token sub).
+ */
+function mergeUserinfoClaims(
+  idTokenClaims: Record<string, unknown>,
+  userinfo: Record<string, unknown>,
+  protectedKeys: string[],
+): Record<string, unknown> {
+  if (
+    typeof idTokenClaims.sub === "string" &&
+    typeof userinfo.sub === "string" &&
+    idTokenClaims.sub !== userinfo.sub
+  ) {
+    throw new UserinfoSubMismatchError();
+  }
+
+  const merged: Record<string, unknown> = { ...idTokenClaims, ...userinfo };
+  for (const key of protectedKeys) {
+    if (key in idTokenClaims) merged[key] = idTokenClaims[key];
+  }
+  return merged;
 }
 
 interface OidcDiscovery {

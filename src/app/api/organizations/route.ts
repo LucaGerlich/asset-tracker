@@ -17,6 +17,7 @@ import {
   buildPaginatedResponse,
 } from "@/lib/pagination";
 import { logger } from "@/lib/logger";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { organizationApiSelect } from "@/lib/organizations";
 
 const ORGANIZATION_SORT_FIELDS = ["name", "slug", "createdAt"];
@@ -27,10 +28,19 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
 
-    // Scope to the user's own organization to prevent enumeration
-    const orgFilter: Record<string, unknown> = authUser.organizationId
-      ? { id: authUser.organizationId }
-      : {};
+    // Scope to the user's own organization to prevent enumeration. A caller
+    // without an organization sees nothing unless they are a super-admin
+    // (an empty filter would list every tenant).
+    let orgFilter: Record<string, unknown> = {};
+    if (authUser.organizationId) {
+      orgFilter = { id: authUser.organizationId };
+    } else if (!(await isSuperAdmin(authUser))) {
+      if (!searchParams.has("page")) return NextResponse.json([]);
+      return NextResponse.json(
+        buildPaginatedResponse([], 0, parsePaginationParams(searchParams)),
+        { status: 200 },
+      );
+    }
 
     const select = {
       ...organizationApiSelect,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   requireApiAuth,
+  requirePermission,
   requireNotDemoMode,
   requireWritableOrg,
 } from "@/lib/api-auth";
@@ -125,7 +126,7 @@ export async function POST(req: NextRequest) {
   try {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
-    const user = await requireApiAuth();
+    const user = await requirePermission("asset:edit");
     await requireWritableOrg(user);
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;

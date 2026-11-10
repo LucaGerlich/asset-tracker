@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { getEntitiesWithCustomFields } from "@/lib/entity-registry";
+import { usernameSchema } from "@/lib/username";
 
 /**
  * Validate request body against a Zod schema.
@@ -52,7 +53,7 @@ export const loginSchema = z.object({
 });
 
 export const createUserSchema = z.object({
-  username: z.string().min(3).max(50),
+  username: usernameSchema,
   email: z.string().email().nullable().optional(),
   firstname: z.string().min(1).max(100),
   lastname: z.string().min(1).max(100),
@@ -69,7 +70,7 @@ export const createUserSchema = z.object({
 });
 
 export const updateUserSchema = z.object({
-  username: z.string().min(3).max(50).optional(),
+  username: usernameSchema.optional(),
   email: z.string().email().optional().nullable(),
   firstname: z.string().min(1).max(100).optional(),
   lastname: z.string().min(1).max(100).optional(),
@@ -89,6 +90,35 @@ export const createReportScheduleSchema = z.object({
   reportType: z.enum(["summary", "depreciation", "warranty", "tco"]),
   frequency: z.enum(["daily", "weekly", "monthly"]),
   format: z.enum(["csv", "xlsx"]),
+});
+
+export const updateDepreciationSettingsSchema = z.object({
+  method: z.enum(["straight_line", "declining_balance", "sum_of_years"]),
+  usefulLifeYears: z.number().int().min(1).max(100),
+  salvagePercent: z.number().min(0).max(100),
+});
+
+export const deleteAssetCategoryTypeSchema = z.object({
+  assetcategorytypeid: z.string().uuid(),
+});
+
+export const deleteAccessoryCategoryTypeSchema = z.object({
+  accessoriecategorytypeid: z.string().uuid(),
+});
+
+export const deleteConsumableCategoryTypeSchema = z.object({
+  consumablecategorytypeid: z.string().uuid(),
+});
+
+export const deleteLicenceCategoryTypeSchema = z.object({
+  licencecategorytypeid: z.string().uuid(),
+});
+
+export const updateReportScheduleSchema = z.object({
+  id: z.string().uuid(),
+  isActive: z.boolean().optional(),
+  frequency: createReportScheduleSchema.shape.frequency.optional(),
+  format: createReportScheduleSchema.shape.format.optional(),
 });
 
 export const createAssetSchema = z.object({
@@ -400,24 +430,36 @@ export function isGuid(value: unknown): value is string {
   return guid.safeParse(value).success;
 }
 
-export const createComponentSchema = z.object({
+/**
+ * Component fields without create defaults. zod 4's `.partial()` re-applies
+ * `.default()`, so the update schema is derived from this default-free base:
+ * otherwise renaming a component would reset its stock levels to 0.
+ */
+const componentFields = z.object({
   name: trimmedString,
   serialNumber: optionalString,
   categoryId: uuidField,
-  totalQuantity: z.number().int().nonnegative("Must be >= 0").default(0),
+  totalQuantity: z.number().int().nonnegative("Must be >= 0"),
   purchasePrice: z.coerce
     .number()
     .nonnegative("Must be >= 0")
     .optional()
     .nullable(),
   purchaseDate: z.string().optional().nullable(),
-  minQuantity: z.number().int().nonnegative().default(0),
+  minQuantity: z.number().int().nonnegative(),
   manufacturerId: optionalUuid,
   supplierId: optionalUuid,
   locationId: optionalUuid,
 });
 
-export const updateComponentSchema = createComponentSchema.partial();
+export const createComponentSchema = componentFields.extend({
+  totalQuantity: z.number().int().nonnegative("Must be >= 0").default(0),
+  minQuantity: z.number().int().nonnegative().default(0),
+});
+
+export const updateComponentSchema = componentFields.partial().extend({
+  remainingQuantity: z.number().int().nonnegative("Must be >= 0").optional(),
+});
 
 export const componentCheckoutSchema = z.object({
   componentId: uuidField,
@@ -539,24 +581,62 @@ export const kitCheckoutSchema = z.object({
   notes: optionalString,
 });
 
-export const createAuditCampaignSchema = z.object({
+/** Default-free base for the update schema, see `componentFields`. */
+const auditCampaignFields = z.object({
   name: trimmedString,
   description: optionalString,
   dueDate: z.string().optional().nullable(),
-  scopeType: z.enum(["all", "location", "category"]).default("all"),
+  scopeType: z.enum(["all", "location", "category"]),
   scopeId: optionalUuid,
   auditorIds: z.array(uuidField).optional(),
 });
 
-// partial() keeps scopeType's default, which reset every edited campaign's scope
-// to "all"; an update must leave the scope alone unless it is sent.
-export const updateAuditCampaignSchema = createAuditCampaignSchema
-  .partial()
-  .extend({ scopeType: z.enum(["all", "location", "category"]).optional() });
+export const createAuditCampaignSchema = auditCampaignFields.extend({
+  scopeType: z.enum(["all", "location", "category"]).default("all"),
+});
+
+export const updateAuditCampaignSchema = auditCampaignFields.partial();
 
 export const auditScanSchema = z.object({
   assetId: uuidField,
   locationId: optionalUuid,
   status: z.enum(["found", "missing", "moved"]).default("found"),
   notes: optionalString,
+});
+
+const parseableDate = z
+  .string()
+  .refine((value) => !Number.isNaN(Date.parse(value)), "Must be a valid date");
+
+/** Fields of POST /api/requests that need more than a presence check. */
+export const createItemRequestSchema = z
+  .object({
+    quantity: z.number().int().positive().max(1_000_000).optional(),
+    startDate: parseableDate.optional().nullable(),
+    endDate: parseableDate.optional().nullable(),
+    notes: z.string().max(5000).optional().nullable(),
+  })
+  .refine(
+    (data) =>
+      !data.startDate ||
+      !data.endDate ||
+      Date.parse(data.endDate) >= Date.parse(data.startDate),
+    { message: "endDate must not be before startDate", path: ["endDate"] },
+  );
+
+/** Statuses an item request can be moved to through PUT /api/requests. */
+export const ITEM_REQUEST_TARGET_STATUSES = [
+  "approved",
+  "rejected",
+  "cancelled",
+  "returned",
+] as const;
+
+export const updateItemRequestSchema = z.object({
+  id: z.string().min(1, "Required"),
+  status: z.enum(ITEM_REQUEST_TARGET_STATUSES, {
+    message: `Must be one of: ${ITEM_REQUEST_TARGET_STATUSES.join(", ")}`,
+  }),
+  notes: z.string().max(5000).nullable().optional(),
+  _expectedVersion: z.string().optional(),
 });

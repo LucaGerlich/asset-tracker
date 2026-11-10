@@ -10,6 +10,7 @@ import { apiErrorResponse } from "@/lib/errors";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { maskSecret } from "@/lib/secrets";
 import { logger } from "@/lib/logger";
+import { validateStorageEndpoint } from "@/lib/url-validation";
 
 /**
  * Categorize a storage-config failure into an actionable response. Full details
@@ -131,9 +132,19 @@ export async function PUT(req: Request) {
       secretKey: string;
     };
 
-    if (!endpoint || !bucket) {
+    if (typeof endpoint !== "string" || !endpoint || !bucket) {
       return NextResponse.json(
         { error: "endpoint and bucket are required" },
+        { status: 400 },
+      );
+    }
+
+    // SSRF protection: the server connects to this endpoint with the stored
+    // credentials, so it must be a public https URL.
+    const endpointCheck = await validateStorageEndpoint(endpoint);
+    if (!endpointCheck.valid) {
+      return NextResponse.json(
+        { error: `Invalid endpoint: ${endpointCheck.error}` },
         { status: 400 },
       );
     }

@@ -138,4 +138,72 @@ describe("GET /api/user", () => {
     const res = await GET(req);
     expect(res.status).toBe(200);
   });
+
+  describe("column exposure to non-admins", () => {
+    const leakyColumns = [
+      "externalId",
+      "scimProviderId",
+      "authProvider",
+      "twoFactorEnabled",
+      "accessExpiresAt",
+      "password",
+      "ldapDN",
+    ];
+
+    const expectPublicSelect = (args: unknown) => {
+      const select = (args as { select?: Record<string, unknown> }).select;
+      expect(select).toBeDefined();
+      expect(select).toHaveProperty("userid", true);
+      expect(select).toHaveProperty("firstname", true);
+      for (const column of leakyColumns) {
+        expect(select?.[column] ?? false).toBe(false);
+      }
+    };
+
+    beforeEach(() => {
+      mockRequireAuth.mockResolvedValue(regularUser as any);
+      vi.mocked(hasPermission).mockResolvedValue(true);
+    });
+
+    it("lists colleagues with public columns only", async () => {
+      mockPrisma.user.findMany.mockResolvedValue([]);
+
+      const res = await GET(createMockRequest("/api/user"));
+
+      expect(res.status).toBe(200);
+      expectPublicSelect(mockPrisma.user.findMany.mock.calls[0][0]);
+    });
+
+    it("lists the paginated directory with public columns only", async () => {
+      mockPrisma.user.findMany.mockResolvedValue([]);
+      mockPrisma.user.count.mockResolvedValue(0);
+
+      const res = await GET(createMockRequest("/api/user?page=1&pageSize=10"));
+
+      expect(res.status).toBe(200);
+      expectPublicSelect(mockPrisma.user.findMany.mock.calls[0][0]);
+    });
+
+    it("returns a colleague by id with public columns only", async () => {
+      mockPrisma.user.findFirst.mockResolvedValue({
+        userid: "someone-else",
+      } as any);
+
+      const res = await GET(createMockRequest("/api/user?id=someone-else"));
+
+      expect(res.status).toBe(200);
+      expectPublicSelect(mockPrisma.user.findFirst.mock.calls[0][0]);
+    });
+
+    it("still gives admins the full row", async () => {
+      mockRequireAuth.mockResolvedValue(adminUser as any);
+      mockPrisma.user.findMany.mockResolvedValue([]);
+
+      await GET(createMockRequest("/api/user"));
+
+      expect(mockPrisma.user.findMany.mock.calls[0][0]).not.toHaveProperty(
+        "select",
+      );
+    });
+  });
 });

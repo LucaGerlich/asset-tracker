@@ -6,6 +6,7 @@ import { S3StorageProvider } from "@/lib/storage/s3";
 import { decrypt } from "@/lib/encryption";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { validateStorageEndpoint } from "@/lib/url-validation";
 import crypto from "crypto";
 
 export async function POST(req: Request) {
@@ -24,9 +25,21 @@ export async function POST(req: Request) {
       secretKey?: string;
     };
 
-    if (!endpoint || !bucket) {
+    if (typeof endpoint !== "string" || !endpoint || !bucket) {
       return NextResponse.json(
         { success: false, error: "endpoint and bucket are required" },
+        { status: 400 },
+      );
+    }
+
+    // SSRF protection: never connect to private/internal or non-https endpoints
+    const endpointCheck = await validateStorageEndpoint(endpoint);
+    if (!endpointCheck.valid) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Invalid endpoint: ${endpointCheck.error}`,
+        },
         { status: 400 },
       );
     }

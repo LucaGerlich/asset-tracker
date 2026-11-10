@@ -134,6 +134,8 @@ describe("POST /api/consumable/checkout", () => {
   });
 
   it("checks the user inside the caller's organization, then checks out", async () => {
+    // The stock guard lives in the update itself and reports one matched row.
+    mockPrisma.consumable.updateMany.mockResolvedValue({ count: 1 } as never);
     const res = await checkoutConsumable(post(body));
 
     expect(res.status).toBe(201);
@@ -159,6 +161,15 @@ describe("POST /api/licence/seats", () => {
   });
 
   it("checks the user inside the caller's organization, then assigns", async () => {
+    // First seat for this user: the next number comes from max(seatNumber).
+    mockPrisma.licenceSeatAssignment.aggregate.mockResolvedValue({
+      _max: { seatNumber: null },
+    } as never);
+    mockPrisma.licenceSeatAssignment.findUniqueOrThrow.mockResolvedValue({
+      id: "seat-1",
+      seatNumber: 1,
+      user: { firstname: "Ada", lastname: "Lovelace" },
+    } as never);
     const res = await assignSeat(post(body));
 
     expect(res.status).toBe(201);

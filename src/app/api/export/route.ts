@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { requireApiAuth } from "@/lib/api-auth";
+import { requirePermission } from "@/lib/api-auth";
+import type { Permission } from "@/lib/rbac";
 import { apiErrorResponse } from "@/lib/errors";
 import {
   getOrganizationContext,
@@ -101,6 +102,16 @@ type EntityKey =
   | "accessories"
   | "consumables"
   | "depreciation";
+
+/** Permission required to export each entity (same as its list route). */
+const ENTITY_VIEW_PERMISSION: Record<EntityKey, Permission> = {
+  assets: "asset:view",
+  users: "user:view",
+  licences: "license:view",
+  accessories: "accessory:view",
+  consumables: "consumable:view",
+  depreciation: "asset:view",
+};
 
 interface EntityConfig {
   columns: ExportColumn[];
@@ -487,10 +498,6 @@ function buildDepreciationRows(
 
 export async function GET(req: NextRequest) {
   try {
-    await requireApiAuth();
-    const orgCtx = await getOrganizationContext();
-    const orgId = orgCtx?.organization?.id;
-
     const searchParams = req.nextUrl.searchParams;
     const entityParam = searchParams.get("entity") as EntityKey | null;
     const formatParam = (searchParams.get("format") || "csv") as ExportFormat;
@@ -512,6 +519,10 @@ export async function GET(req: NextRequest) {
     }
 
     const config = ENTITIES[entityParam];
+    await requirePermission(ENTITY_VIEW_PERMISSION[entityParam]);
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+
     const dateStr = new Date().toISOString().split("T")[0];
     const filename = `${entityParam}-export-${dateStr}`;
 

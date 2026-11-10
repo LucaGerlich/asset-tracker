@@ -34,7 +34,7 @@ export default async function TicketsPage() {
       <Breadcrumb
         options={[
           { label: "Home", href: "/" },
-          { label: "Admin", href: "/admin" },
+          { label: "Admin", href: "/admin/settings" },
           { label: "Tickets" },
         ]}
       />

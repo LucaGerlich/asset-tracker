@@ -10,7 +10,7 @@ export interface TemplateVariables {
 /**
  * Escape a value for safe interpolation into an HTML document body/attribute.
  */
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

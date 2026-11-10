@@ -8,6 +8,8 @@ import {
 import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getOrganizationContext } from "@/lib/organization-context";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import { findAdminDemotionViolation } from "@/lib/admin-demotion";
 
 // PATCH /api/admin/users/bulk-permissions
 export async function PATCH(req: NextRequest) {
@@ -18,7 +20,9 @@ export async function PATCH(req: NextRequest) {
     const user = await requireApiAdmin();
     await requireWritableOrg(user);
     const body = await req.json();
-    const { userIds, isadmin, canrequest } = body;
+    // The settings UI nests the fields under `updates`; flat bodies still work.
+    const { userIds } = body;
+    const { isadmin, canrequest } = body.updates ?? body;
 
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       return NextResponse.json(
@@ -55,12 +59,43 @@ export async function PATCH(req: NextRequest) {
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
 
+    if (updateData.isadmin === false) {
+      const violation = await findAdminDemotionViolation({
+        callerId: user.id,
+        targetUserIds: userIds,
+        organizationId: orgId,
+      });
+      if (violation) {
+        return NextResponse.json({ error: violation }, { status: 400 });
+      }
+    }
+
     const result = await prisma.user.updateMany({
       where: {
         userid: { in: userIds },
         organizationId: orgId ?? null,
       },
       data: updateData,
+    });
+
+    await createAuditLog({
+      userId: user.id ?? null,
+      action: AUDIT_ACTIONS.UPDATE,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: null,
+      details: {
+        type: "bulk_permission_update",
+        userIds,
+        changes: {
+          ...(updateData.isadmin !== undefined && {
+            isadmin: updateData.isadmin,
+          }),
+          ...(updateData.canrequest !== undefined && {
+            canrequest: updateData.canrequest,
+          }),
+        },
+        count: result.count,
+      },
     });
 
     return NextResponse.json(

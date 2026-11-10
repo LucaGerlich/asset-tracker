@@ -10,6 +10,7 @@ import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger, logCatchError } from "@/lib/logger";
+import { ACTIVE_CHECKOUT_STATUSES } from "@/lib/asset-checkout";
 import { getOrganizationContext } from "@/lib/organization-context";
 
 // GET /api/asset/checkout/[id]
@@ -115,8 +116,18 @@ export async function PUT(
       );
     }
 
+    if (!ACTIVE_CHECKOUT_STATUSES.includes(existing.status)) {
+      return NextResponse.json(
+        { error: "Asset has already been checked in" },
+        { status: 409 },
+      );
+    }
+
+    // Compare-and-set: a concurrent check-in that already flipped the status
+    // matches no row (P2025), so returnDate is not overwritten and the
+    // check-in webhook does not fire a second time.
     const updated = await prisma.assetCheckout.update({
-      where: { id },
+      where: { id, status: { in: ACTIVE_CHECKOUT_STATUSES } },
       data: {
         returnDate: new Date(),
         status: "returned",
@@ -157,6 +168,17 @@ export async function PUT(
   } catch (error: unknown) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2025"
+    ) {
+      return NextResponse.json(
+        { error: "Asset has already been checked in" },
+        { status: 409 },
+      );
+    }
     const message = error instanceof Error ? error.message : "Unknown error";
     logger.error("PUT /api/asset/checkout/[id] error", { error: message });
     return NextResponse.json(

@@ -22,12 +22,15 @@ const MIN_PASSWORD_LENGTH = 12;
 export default function UserEditForm({
   initial,
   isAdmin = false,
+  isSelf = false,
   initialRoles = [],
   initialUserRoles = [],
   initialDepartments = [],
 }: {
   initial: any;
   isAdmin?: boolean;
+  /** Editing one's own profile: email and password are managed elsewhere. */
+  isSelf?: boolean;
   initialRoles?: Array<{ id: string; name: string }>;
   initialUserRoles?: Array<{ id: string; name: string }>;
   initialDepartments?: Array<{ id: string; name: string }>;
@@ -226,6 +229,11 @@ export default function UserEditForm({
     try {
       const body: Record<string, unknown> = { ...form };
       if (!body.password) delete body.password;
+      if (isSelf) {
+        // Own credentials change via the account settings, not this form.
+        delete body.password;
+        delete body.email;
+      }
       if (!isAdmin) {
         delete body.isadmin;
         delete body.canrequest;
@@ -396,6 +404,7 @@ export default function UserEditForm({
                   type="email"
                   value={form.email}
                   onChange={onChange}
+                  readOnly={isSelf}
                   onBlur={async () => {
                     if (!form.email || form.email === (initial.email ?? ""))
                       return;
@@ -619,132 +628,134 @@ export default function UserEditForm({
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:gap-6">
-          <section className="border-default-200 rounded-lg border p-4">
-            <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
-              Security
-            </h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="password">Set New Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    value={form.password}
-                    onChange={onChange}
-                    placeholder="Leave blank to keep current"
-                    autoComplete="new-password"
-                    minLength={MIN_PASSWORD_LENGTH}
-                    className={`pr-10 ${passwordTooShort ? "border-destructive" : ""}`}
-                    aria-describedby="password-help"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    tabIndex={-1}
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                    className="absolute top-0 right-0 h-full px-3"
-                    onClick={() => setShowPassword((v) => !v)}
+        {!isSelf && (
+          <div className="grid grid-cols-1 gap-4 sm:gap-6">
+            <section className="border-default-200 rounded-lg border p-4">
+              <h2 className="text-foreground-600 mb-3 text-sm font-semibold">
+                Security
+              </h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="password">Set New Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      value={form.password}
+                      onChange={onChange}
+                      placeholder="Leave blank to keep current"
+                      autoComplete="new-password"
+                      minLength={MIN_PASSWORD_LENGTH}
+                      className={`pr-10 ${passwordTooShort ? "border-destructive" : ""}`}
+                      aria-describedby="password-help"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      tabIndex={-1}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                      className="absolute top-0 right-0 h-full px-3"
+                      onClick={() => setShowPassword((v) => !v)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <p
+                    id="password-help"
+                    className={`mt-1 text-xs ${
+                      !passwordEntered
+                        ? "text-muted-foreground"
+                        : form.password.length >= MIN_PASSWORD_LENGTH
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-destructive"
+                    }`}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                    {!passwordEntered ? (
+                      `Minimum ${MIN_PASSWORD_LENGTH} characters. Leave blank to keep current password.`
+                    ) : form.password.length >= MIN_PASSWORD_LENGTH ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        Meets {MIN_PASSWORD_LENGTH}-character minimum
+                      </span>
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      `${form.password.length} / ${MIN_PASSWORD_LENGTH} characters`
                     )}
-                  </Button>
+                  </p>
                 </div>
-                <p
-                  id="password-help"
-                  className={`mt-1 text-xs ${
-                    !passwordEntered
-                      ? "text-muted-foreground"
-                      : form.password.length >= MIN_PASSWORD_LENGTH
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-destructive"
-                  }`}
-                >
-                  {!passwordEntered ? (
-                    `Minimum ${MIN_PASSWORD_LENGTH} characters. Leave blank to keep current password.`
-                  ) : form.password.length >= MIN_PASSWORD_LENGTH ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Check className="h-3 w-3" />
-                      Meets {MIN_PASSWORD_LENGTH}-character minimum
-                    </span>
-                  ) : (
-                    `${form.password.length} / ${MIN_PASSWORD_LENGTH} characters`
-                  )}
-                </p>
-              </div>
 
-              <div>
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter the new password"
-                    autoComplete="new-password"
-                    minLength={MIN_PASSWORD_LENGTH}
-                    disabled={!passwordEntered}
-                    className={`pr-10 ${passwordsMismatch ? "border-destructive" : ""}`}
-                    aria-describedby="confirm-help"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    tabIndex={-1}
-                    aria-label={
-                      showConfirmPassword ? "Hide password" : "Show password"
-                    }
-                    className="absolute top-0 right-0 h-full px-3"
-                    disabled={!passwordEntered}
-                    onClick={() => setShowConfirmPassword((v) => !v)}
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter the new password"
+                      autoComplete="new-password"
+                      minLength={MIN_PASSWORD_LENGTH}
+                      disabled={!passwordEntered}
+                      className={`pr-10 ${passwordsMismatch ? "border-destructive" : ""}`}
+                      aria-describedby="confirm-help"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      tabIndex={-1}
+                      aria-label={
+                        showConfirmPassword ? "Hide password" : "Show password"
+                      }
+                      className="absolute top-0 right-0 h-full px-3"
+                      disabled={!passwordEntered}
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <p
+                    id="confirm-help"
+                    className={`mt-1 text-xs ${
+                      passwordsMismatch
+                        ? "text-destructive"
+                        : passwordEntered &&
+                            confirmPassword.length > 0 &&
+                            form.password === confirmPassword
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-muted-foreground"
+                    }`}
                   >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                    {passwordsMismatch ? (
+                      "Passwords do not match"
+                    ) : passwordEntered &&
+                      confirmPassword.length > 0 &&
+                      form.password === confirmPassword ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        Passwords match
+                      </span>
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      "Re-enter the password to confirm"
                     )}
-                  </Button>
+                  </p>
                 </div>
-                <p
-                  id="confirm-help"
-                  className={`mt-1 text-xs ${
-                    passwordsMismatch
-                      ? "text-destructive"
-                      : passwordEntered &&
-                          confirmPassword.length > 0 &&
-                          form.password === confirmPassword
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-muted-foreground"
-                  }`}
-                >
-                  {passwordsMismatch ? (
-                    "Passwords do not match"
-                  ) : passwordEntered &&
-                    confirmPassword.length > 0 &&
-                    form.password === confirmPassword ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Check className="h-3 w-3" />
-                      Passwords match
-                    </span>
-                  ) : (
-                    "Re-enter the password to confirm"
-                  )}
-                </p>
               </div>
-            </div>
-          </section>
-        </div>
+            </section>
+          </div>
+        )}
 
         {(error || usernameTaken || emailTaken) && (
           <p className="text-destructive text-sm" role="alert">

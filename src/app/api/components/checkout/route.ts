@@ -106,14 +106,19 @@ export async function POST(req: Request) {
         );
       }
 
-      await tx.component.update({
-        where: { id: componentId },
+      // The read above can be stale under concurrency, so the stock guard is
+      // repeated in the update itself: it only matches while enough is left.
+      const reserved = await tx.component.updateMany({
+        where: { id: componentId, remainingQuantity: { gte: quantity } },
         data: {
           remainingQuantity: {
             decrement: quantity,
           },
         },
       });
+      if (reserved.count !== 1) {
+        throw new Error("STOCK_CONFLICT");
+      }
 
       const created = await tx.componentCheckout.create({
         data: {
@@ -205,6 +210,12 @@ export async function POST(req: Request) {
     }
     if (message === "ASSET_NOT_FOUND") {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
+    }
+    if (message === "STOCK_CONFLICT") {
+      return NextResponse.json(
+        { error: "Stock changed during checkout. Please retry." },
+        { status: 409 },
+      );
     }
     if (message.startsWith("INSUFFICIENT_STOCK:")) {
       const [, available, requested] = message.split(":");

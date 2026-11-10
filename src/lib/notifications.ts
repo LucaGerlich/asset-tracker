@@ -10,6 +10,7 @@ import {
   renderTemplate,
   renderTextTemplate,
 } from "./email";
+import { escapeHtml } from "./email/templates";
 
 interface AssetNotificationData {
   assetId: string;
@@ -39,17 +40,67 @@ function orgAdminResolver(): (
 ) => Promise<OrgAdmin[]> {
   const cache = new Map<string | null, OrgAdmin[]>();
   return async (organizationId: string | null) => {
+    // Fail closed: an item without an organization has no admins to tell
+    // (matching `organizationId: null` would reach every org-less admin).
+    if (!organizationId) return [];
     if (!cache.has(organizationId)) {
       cache.set(
         organizationId,
         await prisma.user.findMany({
-          where: { isadmin: true, organizationId },
+          where: { isadmin: true, isActive: true, organizationId },
           select: { userid: true, email: true },
         }),
       );
     }
     return cache.get(organizationId)!;
   };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+interface QueuedEmailKey {
+  recipient: string;
+  type: string;
+  subject: string;
+  /** Reminder marker (see reminderMarker) that appears in the queued body. */
+  marker: string;
+  windowDays: number;
+}
+
+/**
+ * Marker that identifies one reminder: the entity AND the due/expiry date it
+ * is about. Entity ids are fixed-length UUIDs and the date is ISO, so one
+ * marker is never a substring of another, and a recurring item (such as a
+ * daily maintenance schedule) gets a fresh marker for each cycle.
+ */
+function reminderMarker(entityId: string, dueDate: Date): string {
+  return `ref:${entityId}:${new Date(dueDate).toISOString().slice(0, 10)}`;
+}
+
+/** Append the marker to the mail as an invisible HTML comment. */
+function withMarker(html: string, marker: string): string {
+  return `${html}\n<!-- ${marker} -->`;
+}
+
+/**
+ * Whether an email for this recipient, type and entity was already queued
+ * within the notification window. The cron re-evaluates every item inside its
+ * 30-/7-day window daily; without this check each item mailed once per run.
+ * The queue has no entity column, so the reminder is identified by subject
+ * plus a marker (see reminderMarker) that the queued body contains.
+ */
+async function wasAlreadyQueued(key: QueuedEmailKey): Promise<boolean> {
+  const existing = await prisma.notification_queue.findFirst({
+    where: {
+      recipient: key.recipient,
+      type: key.type,
+      subject: key.subject,
+      body: { contains: escapeHtml(key.marker) },
+      createdAt: { gte: new Date(Date.now() - key.windowDays * DAY_MS) },
+    },
+    select: { id: true },
+  });
+  return existing !== null;
 }
 
 /**
@@ -240,12 +291,25 @@ export async function checkExpiringLicenses(): Promise<number> {
       licenseName: license.licenceCategoryType.licencecategorytypename,
     });
 
+    const marker = reminderMarker(license.licenceid, license.expirationdate!);
+    if (
+      await wasAlreadyQueued({
+        recipient: license.user.email,
+        type: "license_expiry",
+        subject,
+        marker,
+        windowDays: defaultDays,
+      })
+    ) {
+      continue;
+    }
+
     await queueEmail(
       license.user.userid,
       "license_expiry",
       license.user.email,
       subject,
-      html,
+      withMarker(html, marker),
     );
     notified++;
   }
@@ -300,7 +364,26 @@ export async function checkMaintenanceDue(): Promise<number> {
       assetName: maintenance.asset.assetname,
     });
 
-    await queueEmail(user.userid, "maintenance", user.email, subject, html);
+    const marker = reminderMarker(maintenance.id, maintenance.nextDueDate);
+    if (
+      await wasAlreadyQueued({
+        recipient: user.email,
+        type: "maintenance",
+        subject,
+        marker,
+        windowDays: defaultDays,
+      })
+    ) {
+      continue;
+    }
+
+    await queueEmail(
+      user.userid,
+      "maintenance",
+      user.email,
+      subject,
+      withMarker(html, marker),
+    );
     notified++;
   }
 
@@ -404,12 +487,25 @@ export async function checkExpiringWarranties(): Promise<number> {
         assetName: asset.assetname,
       });
 
+      const marker = reminderMarker(asset.assetid, asset.warrantyExpires!);
+      if (
+        await wasAlreadyQueued({
+          recipient: admin.email,
+          type: "warranty_expiry",
+          subject,
+          marker,
+          windowDays: defaultDays,
+        })
+      ) {
+        continue;
+      }
+
       await queueEmail(
         admin.userid,
         "warranty_expiry",
         admin.email,
         subject,
-        html,
+        withMarker(html, marker),
       );
       notified++;
     }

@@ -2,31 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-
-function isInternalUrl(urlString: string): boolean {
-  try {
-    const url = new URL(urlString);
-    if (url.protocol !== "https:") return true;
-    const hostname = url.hostname.toLowerCase();
-    // Block localhost, private IPs, link-local, metadata endpoints
-    if (
-      hostname === "localhost" ||
-      hostname === "[::1]" ||
-      /^127\./.test(hostname) ||
-      /^10\./.test(hostname) ||
-      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
-      /^192\.168\./.test(hostname) ||
-      /^169\.254\./.test(hostname) ||
-      hostname.endsWith(".internal") ||
-      hostname.endsWith(".local")
-    ) {
-      return true;
-    }
-    return false;
-  } catch {
-    return true;
-  }
-}
+import { validateHttpsOutboundUrl } from "@/lib/url-validation";
 
 export async function POST(req: Request) {
   try {
@@ -42,7 +18,11 @@ export async function POST(req: Request) {
       );
     }
 
-    if (isInternalUrl(webhookUrl)) {
+    const urlCheck =
+      typeof webhookUrl === "string"
+        ? await validateHttpsOutboundUrl(webhookUrl)
+        : { valid: false };
+    if (!urlCheck.valid) {
       return NextResponse.json(
         { error: "Webhook URL must be a public HTTPS URL" },
         { status: 400 },
@@ -91,12 +71,14 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      // The target was validated; a redirect target would not be
+      redirect: "manual",
     });
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "Unknown error");
+      // Only the status is reported: the upstream body may expose internal data
       return NextResponse.json(
-        { error: `Webhook returned ${response.status}: ${errorText}` },
+        { error: `Webhook returned status ${response.status}` },
         { status: 502 },
       );
     }
