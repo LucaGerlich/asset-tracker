@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import {
+  KIT_ENTITY_SOURCES,
+  toKitEntityOptions,
+  type KitEntityOption,
+  type KitEntityType,
+} from "@/lib/kit-entity-options";
+
+const KIT_ENTITY_TYPES = Object.keys(KIT_ENTITY_SOURCES) as KitEntityType[];
+
+type EntityOptions = Partial<Record<KitEntityType, KitEntityOption[]>>;
 
 interface KitItemInput {
   entityType: string;
@@ -44,6 +54,31 @@ export default function KitCreateForm({
   );
   const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
   const [items, setItems] = useState<KitItemInput[]>(initialData?.items || []);
+  const [entityOptions, setEntityOptions] = useState<EntityOptions>({});
+
+  // Load the pickable entities once (all four lists are org-scoped by the API).
+  useEffect(() => {
+    let cancelled = false;
+    async function load(type: KitEntityType) {
+      try {
+        const res = await fetch(KIT_ENTITY_SOURCES[type].endpoint);
+        const options = res.ok
+          ? toKitEntityOptions(type, await res.json())
+          : [];
+        if (!cancelled) {
+          setEntityOptions((current) => ({ ...current, [type]: options }));
+        }
+      } catch {
+        if (!cancelled) {
+          setEntityOptions((current) => ({ ...current, [type]: [] }));
+        }
+      }
+    }
+    KIT_ENTITY_TYPES.forEach((type) => void load(type));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function addItem() {
     setItems([
@@ -76,6 +111,10 @@ export default function KitCreateForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (items.some((item) => !item.entityId)) {
+      toast.error("Choose an item for every kit line");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -149,7 +188,16 @@ export default function KitCreateForm({
               <Label className="text-xs">Type</Label>
               <Select
                 value={item.entityType}
-                onValueChange={(value) => updateItem(i, "entityType", value)}
+                onValueChange={(value) =>
+                  // A different type has different ids: clear the selection.
+                  setItems(
+                    items.map((it, idx) =>
+                      idx === i
+                        ? { ...it, entityType: value, entityId: "" }
+                        : it,
+                    ),
+                  )
+                }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -163,12 +211,30 @@ export default function KitCreateForm({
               </Select>
             </div>
             <div className="flex-1 space-y-1">
-              <Label className="text-xs">Entity ID</Label>
-              <Input
+              <Label className="text-xs">Item</Label>
+              <Select
                 value={item.entityId}
-                onChange={(e) => updateItem(i, "entityId", e.target.value)}
-                placeholder="UUID"
-              />
+                onValueChange={(value) => updateItem(i, "entityId", value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue
+                    placeholder={
+                      entityOptions[item.entityType as KitEntityType]
+                        ? "Select..."
+                        : "Loading..."
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {(entityOptions[item.entityType as KitEntityType] ?? []).map(
+                    (option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.label}
+                      </SelectItem>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div className="w-20 space-y-1">
               <Label className="text-xs">Qty</Label>

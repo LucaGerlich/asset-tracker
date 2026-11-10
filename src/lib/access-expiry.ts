@@ -9,6 +9,7 @@ import prisma from "@/lib/prisma";
 import { queueEmail } from "@/lib/email";
 import { renderTemplate, emailTemplates } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
+import { reminderMarker, withMarker } from "@/lib/notifications";
 
 interface ExpiryResult {
   expired: number;
@@ -100,7 +101,17 @@ export async function processAccessExpiry(): Promise<ExpiryResult> {
   });
 
   for (const user of expiringIn1Day) {
-    if (await hasRecentNotification(user.userid, "access_expiry_1d")) continue;
+    const marker = reminderMarker(user.userid, user.accessExpiresAt!);
+    if (
+      await hasRecentNotification(
+        user.userid,
+        "access_expiry_1d",
+        marker,
+        ONE_DAY_WARNING_WINDOW_MS,
+      )
+    ) {
+      continue;
+    }
 
     if (user.email) {
       const html = renderTemplate(emailTemplates.accessExpiry1Day.html, {
@@ -112,7 +123,7 @@ export async function processAccessExpiry(): Promise<ExpiryResult> {
         "access_expiry_1d",
         user.email,
         emailTemplates.accessExpiry1Day.subject,
-        html,
+        withMarker(html, marker),
       );
     }
     notified1d++;
@@ -134,7 +145,17 @@ export async function processAccessExpiry(): Promise<ExpiryResult> {
   });
 
   for (const user of expiringIn7Days) {
-    if (await hasRecentNotification(user.userid, "access_expiry_7d")) continue;
+    const marker = reminderMarker(user.userid, user.accessExpiresAt!);
+    if (
+      await hasRecentNotification(
+        user.userid,
+        "access_expiry_7d",
+        marker,
+        SEVEN_DAY_WARNING_WINDOW_MS,
+      )
+    ) {
+      continue;
+    }
 
     if (user.email) {
       const html = renderTemplate(emailTemplates.accessExpiry7Day.html, {
@@ -146,7 +167,7 @@ export async function processAccessExpiry(): Promise<ExpiryResult> {
         "access_expiry_7d",
         user.email,
         emailTemplates.accessExpiry7Day.subject,
-        html,
+        withMarker(html, marker),
       );
     }
     notified7d++;
@@ -162,23 +183,29 @@ export async function processAccessExpiry(): Promise<ExpiryResult> {
 }
 
 /**
- * Check if a notification of this type was already sent to the user recently
- * (within the last 30 hours) to avoid duplicate warnings. The window is wider
- * than the 24h cron period so a run that fires slightly early still sees the
- * previous run's row.
+ * Warning de-duplication windows. A warning is identified by user, type and
+ * expiry date (see reminderMarker), so the window only has to outlast the band
+ * of days in which the user is selected:
+ * - 1-day band: one day wide; 30h also tolerates a cron run that fires early.
+ * - 7-day band: six days wide (more than 1 day, up to 7 days away); the window
+ *   covers the whole band so the warning goes out exactly once, not every
+ *   other day as a 30h window did.
  */
-const RECENT_NOTIFICATION_WINDOW_MS = 30 * 60 * 60 * 1000;
+const ONE_DAY_WARNING_WINDOW_MS = 30 * 60 * 60 * 1000;
+const SEVEN_DAY_WARNING_WINDOW_MS = 8 * 24 * 60 * 60 * 1000;
 
 async function hasRecentNotification(
   userId: string,
   type: string,
+  marker: string,
+  windowMs: number,
 ): Promise<boolean> {
-  const cutoff = new Date(Date.now() - RECENT_NOTIFICATION_WINDOW_MS);
   const existing = await prisma.notification_queue.findFirst({
     where: {
       userId,
       type,
-      createdAt: { gte: cutoff },
+      body: { contains: marker },
+      createdAt: { gte: new Date(Date.now() - windowMs) },
     },
     select: { id: true },
   });

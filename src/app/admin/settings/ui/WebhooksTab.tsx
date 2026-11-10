@@ -541,7 +541,8 @@ export default function WebhooksTab() {
               />
               <p className="text-muted-foreground text-xs">
                 The endpoint that will receive POST requests for subscribed
-                events
+                events. Use the final URL: redirects (301, 302, 307, 308) are
+                not followed, so a URL that redirects will fail every delivery.
               </p>
             </div>
 

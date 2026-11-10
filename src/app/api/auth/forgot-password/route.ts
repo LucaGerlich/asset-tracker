@@ -12,6 +12,7 @@ import { headers } from "next/headers";
 import { requireNotDemoMode } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
 import { getBaseUrl } from "@/lib/url";
+import { hashToken } from "@/lib/token-hash";
 
 export async function POST(req: Request) {
   try {
@@ -78,7 +79,8 @@ export async function POST(req: Request) {
       await prisma.verification.create({
         data: {
           identifier: user.email!,
-          value: token,
+          // Only the digest is stored; the plaintext goes out in the email.
+          value: hashToken(token),
           expiresAt,
         },
       });

@@ -40,6 +40,11 @@ with a recommended fix. The audits so far:
 
 ---
 
+## FIXED in v0.16.1 (2026-11-03)
+
+Items 93 (partly), 95–97, 99–102, 104, 107, 108 and 110 (details in CHANGELOG 0.16.1).
+Still open from that list: 91, 92, 93 (rest), 94, 103, 105, 106, 109.
+
 ## FIXED in v0.16.0 (2026-11-03)
 
 Full audit by six parallel reviews plus a dependency refresh; roughly 70 findings fixed
@@ -795,33 +800,33 @@ item 82 and still open:
     types `mapProfileToUser` profiles as `unknown`. Plan it with a staging SSO test.
 92. **maplibre-gl 5 → 6 (low).** GHSA (DOM.sanitize bypass, critical) is fixed only in 6.x;
     the app no longer calls `setHTML`, so it is unreachable. Upgrade is a major version.
-93. **Moderate transitive advisories (low):** glob, minimatch, protocol-buffers-schema,
+93. **FIXED in v0.16.1 (partly: stale `package-lock.json` removed, `Dockerfile.dev` on bun, `protocol-buffers-schema` overridden; glob, minimatch, uuid and ajv have no same-major patch):** **Moderate transitive advisories (low):** glob, minimatch, protocol-buffers-schema,
     uuid, ajv. Also `package-lock.json` is stale (CI and Vercel use `bun.lock`), so
     `npm audit` reports wrong versions; delete it or keep it in sync.
 94. **React Compiler lint findings (medium).** `eslint-plugin-react-hooks` 7.1 reports 64
     errors in ~30 components (setState in effects, refs and impure calls during render);
     pinned to 7.0.x in `package.json` overrides until they are cleaned up.
-95. **API key lookup is a CPU DoS (medium)** (`src/lib/api-keys.ts:21,38`). The stored
+95. **FIXED in v0.16.1 (16-char lookup prefix; legacy keys use a bounded fallback until rotated):** **API key lookup is a CPU DoS (medium)** (`src/lib/api-keys.ts:21,38`). The stored
     prefix is always `at_live_`, so every request bcrypt-compares against every active key
     on the platform. Needs a key-format change (a lookup id or a SHA-256 digest).
-96. **Plaintext secrets at rest (medium):** password-reset and set-password tokens
+96. **FIXED in v0.16.1 (SHA-256 digests; SCIM legacy rows rehashed on first use):** **Plaintext secrets at rest (medium):** password-reset and set-password tokens
     (`verification.value`) and SCIM bearer tokens (`scim_tokens`, all loaded and compared
     per request). Hash them; SCIM tokens then have to be re-issued.
-97. **Globally unique business keys (medium):** `PurchaseOrder.poNumber` is `@unique`
+97. **FIXED in v0.16.1 (`@@unique([organizationId, …])`; org-less licences lose the duplicate check):** **Globally unique business keys (medium):** `PurchaseOrder.poNumber` is `@unique`
     while the sequence is per org (a tenant's first PO of a month can collide and 500);
     `licencekey @unique` is a cross-tenant existence oracle. Needs
     `@@unique([organizationId, …])` migrations (same family as item 14).
 98. **FIXED in v0.16.0:** `PUT /api/user` with `isadmin:false` now goes through the
     last-admin and self-demotion guard.
-99. **Kit items need an entity picker (low)** (`KitCreateForm.tsx`): users paste UUIDs.
-100.  **Scheduled reports embed the file as a `data:` URI (low)**; mail clients block it.
+99. **FIXED in v0.16.1 (kit form picks items from a list):** **Kit items need an entity picker (low)** (`KitCreateForm.tsx`): users paste UUIDs.
+100.  **FIXED in v0.16.1 (email links to the reports page):** **Scheduled reports embed the file as a `data:` URI (low)**; mail clients block it.
       Use an attachment or a signed download link.
-101.  **Notification follow-ups (low):** low-stock alerts are not de-duplicated; the 30h
+101.  **FIXED in v0.16.1 (low-stock dedupe marker; 7-day expiry warning keyed by expiry date):** **Notification follow-ups (low):** low-stock alerts are not de-duplicated; the 30h
       access-expiry window sends the 7-day warning about every other day.
-102.  **Cache:** the asset assign/unassign routes don't bust `assets_all` (low).
+102.  **FIXED in v0.16.1 (assign/unassign bust `assets_all`):** **Cache:** the asset assign/unassign routes don't bust `assets_all` (low).
 103.  **Maintenance has no permission of its own (low);** writes use `asset:edit`.
 
-104.  **Admin demotion race (low)** (`src/lib/admin-demotion.ts`): the last-admin check
+104.  **FIXED in v0.16.1 (Serializable transaction, P2034 → 409):** **Admin demotion race (low)** (`src/lib/admin-demotion.ts`): the last-admin check
       counts, then updates, outside a transaction; two admins demoting each other at the
       same moment can both pass. Use a Serializable transaction or row locks.
 105.  **Malformed-JSON mapping is broad (low)** (`src/lib/errors.ts`): any `SyntaxError`
@@ -830,15 +835,15 @@ item 82 and still open:
 106.  **Org-less items notify nobody (low)** (`src/lib/notifications.ts`): the fail-closed
       admin lookup returns no recipients when `organizationId` is null. Check that no
       self-hosted install still has org-less assets before relying on reminders there.
-107.  **Full-text search is capped at 1000 ids (low)** (`src/lib/fulltext-search.ts`); broad
+107.  **FIXED in v0.16.1 (responses carry `truncated: true` (not shown in the UI: no client list uses the search APIs)):** **Full-text search is capped at 1000 ids (low)** (`src/lib/fulltext-search.ts`); broad
       searches are truncated silently.
-108.  **"Return item" from My Requests is broken (medium, pre-existing)**
+108.  **FIXED in v0.16.1 (`entityId` passed; button hidden without one):** **"Return item" from My Requests is broken (medium, pre-existing)**
       (`src/components/ReturnItemButton.tsx`): `MyItemRequestsClient` passes `requestId`
       but no `entityId`, so `POST /api/requests` answers 400.
-109.  **Per-request DNS lookup for org storage (low):** `getOrgStorage` validates the stored
+109.  **Per-request DNS lookup for org storage (low; kept on purpose in v0.16.1: caching a passed check turns the DNS-rebinding race of item 1 into a bypass that needs no race; fix item 1 first):** `getOrgStorage` validates the stored
       endpoint (with DNS) on every call; cache the result per org for a few minutes. DNS
       rebinding between validation and use remains item 1.
-110.  **Webhook endpoints that redirect fail permanently (low, by design):** deliveries use
+110.  **FIXED in v0.16.1 (documented in the webhook settings, Help FAQ and SECURITY_GUIDE):** **Webhook endpoints that redirect fail permanently (low, by design):** deliveries use
       `redirect: "manual"`; document that the URL must be the final one.
 
 ## Repository loose ends (2026-09-07)

@@ -12,6 +12,8 @@ export interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
   totalPages: number;
+  /** Present (true) when a capped full-text search left matches out. */
+  truncated?: boolean;
 }
 
 /**
@@ -32,8 +34,7 @@ export function parsePaginationParams(
   const sortBy = searchParams.get("sortBy") ?? undefined;
 
   const rawSortOrder = searchParams.get("sortOrder");
-  const sortOrder: "asc" | "desc" =
-    rawSortOrder === "desc" ? "desc" : "asc";
+  const sortOrder: "asc" | "desc" = rawSortOrder === "desc" ? "desc" : "asc";
 
   const search = searchParams.get("search") ?? undefined;
 
@@ -67,6 +68,7 @@ export function buildPaginatedResponse<T>(
   data: T[],
   total: number,
   params: PaginationParams,
+  extra: { truncated?: boolean } = {},
 ): PaginatedResponse<T> {
   return {
     data,
@@ -74,5 +76,6 @@ export function buildPaginatedResponse<T>(
     page: params.page,
     pageSize: params.pageSize,
     totalPages: Math.ceil(total / params.pageSize),
+    ...(extra.truncated ? { truncated: true } : {}),
   };
 }

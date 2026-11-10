@@ -139,6 +139,38 @@ describe("GET /api/user", () => {
     expect(res.status).toBe(200);
   });
 
+  describe("full-text truncation flag", () => {
+    const cappedRows = () =>
+      Array.from({ length: 1001 }, (_, i) => ({ userid: `u-${i}` }));
+    const url = "/api/user?page=1&pageSize=10&search=smith";
+
+    beforeEach(() => {
+      mockPrisma.$queryRawUnsafe.mockResolvedValue(cappedRows());
+      mockPrisma.user.findMany.mockResolvedValue([]);
+      mockPrisma.user.count.mockResolvedValue(0);
+    });
+
+    it("tells an org-wide viewer that the search was capped", async () => {
+      const res = await GET(createMockRequest(url));
+      const { body } = await parseResponse<any>(res);
+
+      expect(body.truncated).toBe(true);
+    });
+
+    it("hides the org-wide cap from a department-scoped caller", async () => {
+      mockRequireAuth.mockResolvedValue(regularUser as any);
+      vi.mocked(hasPermission).mockImplementation(
+        async (_id: string, permission: string) => permission !== "dept:view",
+      );
+
+      const res = await GET(createMockRequest(url));
+      const { status, body } = await parseResponse<any>(res);
+
+      expect(status).toBe(200);
+      expect(body).not.toHaveProperty("truncated");
+    });
+  });
+
   describe("column exposure to non-admins", () => {
     const leakyColumns = [
       "externalId",

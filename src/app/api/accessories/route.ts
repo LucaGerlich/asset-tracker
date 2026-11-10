@@ -102,13 +102,16 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
+    let searchTruncated = false;
     // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      const matchingIds = await searchIdsByFullText(
+      const fullText = await searchIdsByFullText(
         "accessories",
         orgId,
         params.search,
       );
+      const matchingIds = fullText?.ids ?? null;
+      searchTruncated = fullText?.truncated ?? false;
 
       if (matchingIds && matchingIds.length > 0) {
         where.accessorieid = { in: matchingIds };
@@ -129,9 +132,14 @@ export async function GET(req: NextRequest) {
       prisma.accessories.count({ where }),
     ]);
 
-    return NextResponse.json(buildPaginatedResponse(items, total, params), {
-      status: 200,
-    });
+    return NextResponse.json(
+      buildPaginatedResponse(items, total, params, {
+        truncated: searchTruncated,
+      }),
+      {
+        status: 200,
+      },
+    );
   } catch (e) {
     const denied = apiErrorResponse(e);
     if (denied) return denied;

@@ -100,7 +100,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     maintenanceSchedules,
     customFieldDefs,
     customFieldValues,
-    activeItemRequest,
     primaryPhoto,
   ] = await Promise.all([
     asset?.locationid ? getLocationById(asset.locationid) : null,
@@ -146,17 +145,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     prisma.custom_field_values.findMany({
       where: { entityId: params.id },
     }),
-    // Find an active (approved) item request for this asset+user, for the Return button
-    ctx?.userId
-      ? prisma.itemRequest.findFirst({
-          where: {
-            entityType: "asset",
-            entityId: params.id,
-            userId: ctx.userId,
-            status: "approved",
-          },
-        })
-      : null,
     // Primary image for the hero (primary flag first, else most recent image)
     prisma.asset_attachments.findFirst({
       where: { assetId: params.id, mimeType: { startsWith: "image/" } },
@@ -350,7 +338,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
               {!isAdmin && userByAsset?.userid === ctx?.userId && (
                 <ReturnItemButton
-                  requestId={activeItemRequest?.id}
                   entityId={asset.assetid}
                   entityName={asset.assetname}
                   entityType="asset"
