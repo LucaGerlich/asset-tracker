@@ -30,7 +30,7 @@ with a recommended fix. The audits so far:
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | CI (lint, typecheck, unit, build)  | green since 2026-09-07 (v0.9.5 fixed the lockfile/typings; the DB suites and the Build job first passed today) |
 | Production dependency advisories   | 0 (was 1 critical, 53 high)                                                                                    |
-| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69, 89, 90                     |
+| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69                             |
 | MFA login enforcement              | functional since v0.10.0 (enrolment on BetterAuth twoFactor)                                                   |
 | SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                                                                    |
 | TypeScript strict mode             | off; 830 errors to clear (D3)                                                                                  |
@@ -39,6 +39,13 @@ with a recommended fix. The audits so far:
 | Unit coverage of auth/tenant layer | partial (api-auth, url-validation, org-suspension now tested)                                                  |
 
 ---
+
+## FIXED in v0.15.3 (2026-11-02)
+
+Closes the last items the 0.15.1 reviews left open: 83 (organization transfers removed),
+84, 89 and 90. Details in CHANGELOG 0.15.3. The reviews of this release also found that
+editing an audit campaign reset its scope to "all" (fixed) and a legacy `PUT /api/kits`
+that skipped the new kit-item check (fixed).
 
 ## FIXED in v0.15.2 (2026-10-30)
 
@@ -727,21 +734,15 @@ toStatusId])` is global. _Recommended:_ add a nullable `organizationId`, backfil
     not org-checked.** Every write route that stored one now resolves it in the caller's
     organization through `findForeignReference()` (`src/lib/org-references.ts`); see the
     section below and CHANGELOG 0.15.2.
-83. **Organization transfers leave cross-org references behind (medium)**
-    (`src/app/api/asset/transfers/route.ts`, organization branch; super-admin only
-    since 0.15.1). The asset keeps the old organization's `locationid`, manufacturer,
-    supplier, model, status and category, and its `userAssets` row; its transfer
-    history follows the asset to the new organization.
-    _Recommended:_ decide the semantics (clear or remap the references, end the
-    assignment) before anyone relies on the feature.
-84. **Check-then-write races in the touched routes (low).** `componentCategory` PUT
-    and the transfer branches check the organization, then write `where: { id }`
-    outside (or before) the transaction; the user transfer reads the current
-    assignment outside its transaction. Not exploitable today (ids are primary keys
-    and organizations don't change under a request), but `updateMany` with the
-    organization filter inside the transaction would make it structural. The asset
-    page also runs two to three extra queries for the super-admin check; exposing
-    `email` on `getOrganizationContext()` would save one.
+83. **FIXED in v0.15.3 by removal: organization transfers left cross-org references
+    behind.** Moving an asset into another organization is gone (API, schema, UI); past
+    transfer records stay readable. The references, assignment, checkouts, reservations,
+    custom field values and per-org attachments made a clean move impractical.
+
+84. **FIXED in v0.15.3: check-then-write races in the touched routes.** The
+    componentCategory and audit campaign updates and the transfer writes carry
+    `organizationId` on the write; the user transfer reads the assignment inside its
+    transaction. The asset page's super-admin lookup went away with item 83.
 
 ### Referenced-id sweep (2026-10-29, CHANGELOG [Unreleased])
 
@@ -767,13 +768,14 @@ item 82 and still open:
     (`label_templates` has the same reset but no `organizationId` column: item 57.)
 88. **FIXED in v0.15.2: CSV-imported locations had no organization.** The `location`
     case stamps `organizationId` like every other case.
-89. **Soft references stored unchecked (low).** `kits` `items[].entityId`, audit
-    campaign `scopeId` (POST and PUT) and approval `entityId` are plain uuid columns with
-    no foreign key. They are org-scoped at use time (kit checkout, audit activation,
-    approval lookup by requester), so a foreign id does nothing today but is stored.
-90. **Smaller cross-tenant leftovers (low).** Global saved filters (`isGlobal`) are
-    returned to every tenant, since `saved_filters` has no `organizationId`. SCIM user
-    creation calls `checkUserLimit()` without the token's organization.
+89. **FIXED in v0.15.3: soft references stored unchecked.** Kit items (both kit PUT
+    routes and POST), audit campaign scopes and approval entities are checked against
+    the caller's organization before they are stored (`kitItemReferences`,
+    `auditScopeReferences` in `src/lib/org-references.ts`; `approvalEntityInOrg`).
+
+90. **FIXED in v0.15.3: smaller cross-tenant leftovers.** Global saved filters are
+    scoped through the author's organization (an org-less caller shares none); SCIM user
+    creation passes the token's organization to `checkUserLimit()`.
 
 ## Repository loose ends (2026-09-07)
 

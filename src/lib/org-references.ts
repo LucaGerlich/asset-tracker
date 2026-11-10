@@ -30,6 +30,9 @@ const REFERENCE_MODELS = {
   department: { delegate: "department", idField: "id" },
   user: { delegate: "user", idField: "userid" },
   asset: { delegate: "asset", idField: "assetid" },
+  accessory: { delegate: "accessories", idField: "accessorieid" },
+  licence: { delegate: "licence", idField: "licenceid" },
+  component: { delegate: "component", idField: "id" },
 } as const;
 
 export type ReferenceKind = keyof typeof REFERENCE_MODELS;
@@ -49,6 +52,9 @@ const REFERENCE_LABELS: Record<ReferenceKind, string> = {
   department: "Department",
   user: "User",
   asset: "Asset",
+  accessory: "Accessory",
+  licence: "Licence",
+  component: "Component",
 };
 
 interface ReferenceDelegate {
@@ -97,6 +103,36 @@ export function assetReferences(
     location: pick("locationid"),
     manufacturer: pick("manufacturerid"),
   };
+}
+
+/** Kit item entity types and the reference kind each one points at. */
+const KIT_ITEM_KINDS: Record<string, ReferenceKind> = {
+  asset_category: "assetCategory",
+  accessory: "accessory",
+  licence: "licence",
+  component: "component",
+};
+
+/** The ids a kit's items reference, grouped by kind. */
+export function kitItemReferences(
+  items: { entityType: string; entityId: string }[] | null | undefined,
+): Partial<Record<ReferenceKind, string[]>> {
+  const refs: Partial<Record<ReferenceKind, string[]>> = {};
+  for (const { entityType, entityId } of items ?? []) {
+    const kind = KIT_ITEM_KINDS[entityType];
+    if (kind) refs[kind] = [...(refs[kind] ?? []), entityId];
+  }
+  return refs;
+}
+
+/** The reference an audit campaign's scope points at, if any. */
+export function auditScopeReferences(
+  scopeType: string | null | undefined,
+  scopeId: string | null | undefined,
+): Partial<Record<ReferenceKind, string | null | undefined>> {
+  if (scopeType === "location") return { location: scopeId };
+  if (scopeType === "category") return { assetCategory: scopeId };
+  return {};
 }
 
 /** 400 body for a foreign reference, matching tickets/[id] and team/invite. */

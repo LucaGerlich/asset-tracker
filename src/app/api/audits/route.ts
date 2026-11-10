@@ -7,6 +7,7 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import {
+  auditScopeReferences,
   findForeignReference,
   foreignReferenceError,
 } from "@/lib/org-references";
@@ -105,7 +106,10 @@ export async function POST(req: Request) {
     const orgCtx = await getOrganizationContext();
     const orgId = orgCtx?.organization?.id;
 
-    const foreign = await findForeignReference(orgId, { user: auditorIds });
+    const foreign = await findForeignReference(orgId, {
+      user: auditorIds,
+      ...auditScopeReferences(scopeType, scopeId),
+    });
     if (foreign) {
       return NextResponse.json(foreignReferenceError(foreign), {
         status: 400,

@@ -291,19 +291,26 @@ export const resolveApprovalSchema = z.object({
   notes: optionalString,
 });
 
-export const createTransferSchema = z.object({
-  assetId: uuidField,
-  transferType: z.enum(["user", "location", "organization"], {
-    message: "Must be user, location, or organization",
-  }),
-  fromUserId: optionalUuid,
-  toUserId: optionalUuid,
-  fromLocationId: optionalUuid,
-  toLocationId: optionalUuid,
-  fromOrgId: optionalUuid,
-  toOrgId: optionalUuid,
-  reason: optionalString,
-});
+// Transfers stay inside the caller's organization. Moving an asset into another
+// organization was removed in 0.15.3: it left that organization's data behind.
+export const createTransferSchema = z.discriminatedUnion(
+  "transferType",
+  [
+    z.object({
+      transferType: z.literal("user"),
+      assetId: uuidField,
+      toUserId: uuidField,
+      reason: optionalString,
+    }),
+    z.object({
+      transferType: z.literal("location"),
+      assetId: uuidField,
+      toLocationId: uuidField,
+      reason: optionalString,
+    }),
+  ],
+  { message: "Must be user or location" },
+);
 
 export const createAutomationRuleSchema = z.object({
   name: trimmedString.max(200, "Too long"),
@@ -541,7 +548,11 @@ export const createAuditCampaignSchema = z.object({
   auditorIds: z.array(uuidField).optional(),
 });
 
-export const updateAuditCampaignSchema = createAuditCampaignSchema.partial();
+// partial() keeps scopeType's default, which reset every edited campaign's scope
+// to "all"; an update must leave the scope alone unless it is sent.
+export const updateAuditCampaignSchema = createAuditCampaignSchema
+  .partial()
+  .extend({ scopeType: z.enum(["all", "location", "category"]).optional() });
 
 export const auditScanSchema = z.object({
   assetId: uuidField,

@@ -133,7 +133,7 @@ describe("PUT /api/componentCategory", () => {
 
     expect(status).toBe(200);
     expect(mockPrisma.componentCategory.update).toHaveBeenCalledWith({
-      where: { id: CATEGORY_ID },
+      where: { id: CATEGORY_ID, organizationId: CALLER_ORG },
       data: { name: "Renamed" },
     });
   });

@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.15.3] - 2026-11-02
+
+Closes the last open cross-tenant items from the 0.15.1 reviews (debt items 83, 84, 89
+and 90). 0.15.1 and 0.15.2 were not released on their own; they ship with this release.
+
+### Removed
+
+- Moving an asset into another organization (`POST /api/asset/transfers` with
+  `transferType: "organization"`, super-admin only since 0.15.1). A moved asset kept the
+  old organization's location, model, supplier, manufacturer, status and category
+  (which also blocked that organization from deleting them), its user assignment, open
+  checkouts, reservations, custom field values, and attachments in the old
+  organization's storage. The request now answers 400; past organization transfers stay
+  visible in the asset's transfer history.
+
+### Security
+
+- Kits (`POST`/`PUT /api/kits`, `PUT /api/kits/[id]`), audit campaigns (`POST /api/audits`,
+  `PUT /api/audits/[id]`) and approval requests (`POST /api/approvals`) refuse items,
+  scopes and entities of another organization before storing them (item 89).
+- "Global" saved filters are shared within the author's organization only; they were
+  returned to every tenant (item 90).
+- SCIM user provisioning checks the user limit of the token's organization; without a
+  session it found no organization and always allowed (item 90).
+- The component category and audit campaign updates and the asset transfer writes carry
+  the organization filter on the write itself, and a user transfer reads the current
+  assignment inside its transaction (item 84).
+
+### Fixed
+
+- Editing an audit campaign without sending `scopeType` (a rename, a new due date) reset
+  its scope to "all". The update schema no longer applies the create default.
+
 ## [0.15.2] - 2026-10-30
 
 Closes the cross-tenant leftovers found by the 0.15.1 reviews (debt items 82 and 85–88).
