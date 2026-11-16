@@ -92,6 +92,8 @@ describe("user asset / accessory assignment busts the cached lists", () => {
     );
     expect(res.status).toBe(200);
     expect(invalidated()).toContain("user_assets_all");
+    // The assignment moves the asset's status, which the cached asset list holds.
+    expect(invalidated()).toContain("assets_all");
   });
 
   it("unassign asset -> user_assets_all", async () => {
@@ -103,6 +105,7 @@ describe("user asset / accessory assignment busts the cached lists", () => {
     );
     expect(res.status).toBe(200);
     expect(invalidated()).toContain("user_assets_all");
+    expect(invalidated()).toContain("assets_all");
   });
 
   it("update user asset -> user_assets_all", async () => {

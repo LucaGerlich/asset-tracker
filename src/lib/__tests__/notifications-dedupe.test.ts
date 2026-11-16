@@ -215,10 +215,13 @@ describe("admin recipient resolution", () => {
   it("only mails active admins of the item's own organization", async () => {
     mockPrisma.consumable.findMany.mockResolvedValue([
       {
+        consumableid: "con-1",
         consumablename: "Toner",
         quantity: 1,
         minQuantity: 5,
         organizationId: "org-1",
+        change_date: null,
+        creation_date: new Date("2026-01-01T00:00:00Z"),
       },
     ] as never);
     mockPrisma.user.findMany.mockResolvedValue([
@@ -246,5 +249,57 @@ describe("admin recipient resolution", () => {
 
     expect(await checkLowStock()).toBe(0);
     expect(mockPrisma.user.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("low-stock alert de-duplication", () => {
+  const changedAt = new Date("2026-10-01T10:00:00Z");
+  const toner = {
+    consumableid: "con-1",
+    consumablename: "Toner",
+    quantity: 1,
+    minQuantity: 5,
+    organizationId: "org-1",
+    change_date: changedAt,
+    creation_date: new Date("2026-01-01T00:00:00Z"),
+  };
+
+  beforeEach(() => {
+    mockPrisma.consumable.findMany.mockResolvedValue([toner] as never);
+    mockPrisma.user.findMany.mockResolvedValue([
+      { userid: "admin-1", email: "admin@example.com" },
+    ] as never);
+  });
+
+  it("queues the alert with a marker the first time", async () => {
+    mockPrisma.notification_queue.findFirst.mockResolvedValue(null);
+
+    expect(await checkLowStock()).toBe(1);
+    expect(mockQueueEmail.mock.calls[0][4]).toContain(
+      `<!-- ref:con-1:${isoDate(changedAt)} -->`,
+    );
+  });
+
+  it("skips an alert already queued for that admin and stock state", async () => {
+    mockPrisma.notification_queue.findFirst.mockResolvedValue({
+      id: "q-1",
+    } as never);
+
+    expect(await checkLowStock()).toBe(0);
+    expect(mockQueueEmail).not.toHaveBeenCalled();
+
+    const where = mockPrisma.notification_queue.findFirst.mock.calls[0][0]
+      ?.where as {
+      body: { contains: string };
+      createdAt: { gte: Date };
+    };
+    expect(where).toMatchObject({
+      recipient: "admin@example.com",
+      type: "low_stock",
+      body: { contains: `ref:con-1:${isoDate(changedAt)}` },
+    });
+    expect(Date.now() - where.createdAt.gte.getTime()).toBeGreaterThanOrEqual(
+      7 * DAY_MS,
+    );
   });
 });

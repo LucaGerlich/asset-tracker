@@ -15,6 +15,7 @@ import {
 import { Loader2, PackageOpen, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import ReturnItemButton from "@/components/ReturnItemButton";
+import { canRequestReturn } from "@/lib/return-eligibility";
 
 interface ItemRequest {
   id: string;
@@ -268,14 +269,13 @@ export default function MyItemRequestsClient() {
                           Cancel
                         </Button>
                       )}
-                      {r.status === "approved" &&
-                        r.entityType !== "consumable" && (
-                          <ReturnItemButton
-                            requestId={r.id}
-                            entityName={r.entityName}
-                            entityType={r.entityType}
-                          />
-                        )}
+                      {canRequestReturn(r) && r.entityId && (
+                        <ReturnItemButton
+                          entityId={r.entityId}
+                          entityName={r.entityName}
+                          entityType={r.entityType}
+                        />
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

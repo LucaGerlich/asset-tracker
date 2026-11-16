@@ -9,7 +9,10 @@ import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
-import { findAdminDemotionViolation } from "@/lib/admin-demotion";
+import {
+  demotionFailureResponse,
+  guardedAdminDemotion,
+} from "@/lib/admin-demotion";
 
 // PATCH /api/admin/users/bulk-permissions
 export async function PATCH(req: NextRequest) {
@@ -59,24 +62,28 @@ export async function PATCH(req: NextRequest) {
     const orgContext = await getOrganizationContext();
     const orgId = orgContext?.organization?.id;
 
-    if (updateData.isadmin === false) {
-      const violation = await findAdminDemotionViolation({
-        callerId: user.id,
-        targetUserIds: userIds,
-        organizationId: orgId,
+    const applyUpdate = (db: Pick<typeof prisma, "user">) =>
+      db.user.updateMany({
+        where: {
+          userid: { in: userIds },
+          organizationId: orgId ?? null,
+        },
+        data: updateData,
       });
-      if (violation) {
-        return NextResponse.json({ error: violation }, { status: 400 });
-      }
-    }
 
-    const result = await prisma.user.updateMany({
-      where: {
-        userid: { in: userIds },
-        organizationId: orgId ?? null,
-      },
-      data: updateData,
-    });
+    let result: { count: number };
+    if (updateData.isadmin === false) {
+      // Check and write share one Serializable transaction, so two admins
+      // demoting each other at once cannot both pass the last-admin check.
+      const outcome = await guardedAdminDemotion(
+        { callerId: user.id, targetUserIds: userIds, organizationId: orgId },
+        applyUpdate,
+      );
+      if (outcome.status !== "ok") return demotionFailureResponse(outcome);
+      result = outcome.result;
+    } else {
+      result = await applyUpdate(prisma);
+    }
 
     await createAuditLog({
       userId: user.id ?? null,

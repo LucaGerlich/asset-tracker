@@ -58,6 +58,9 @@ function orgAdminResolver(): (
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** How long a low-stock alert for an unchanged item stays suppressed. */
+const LOW_STOCK_REMINDER_DAYS = 7;
+
 interface QueuedEmailKey {
   recipient: string;
   type: string;
@@ -73,12 +76,12 @@ interface QueuedEmailKey {
  * marker is never a substring of another, and a recurring item (such as a
  * daily maintenance schedule) gets a fresh marker for each cycle.
  */
-function reminderMarker(entityId: string, dueDate: Date): string {
+export function reminderMarker(entityId: string, dueDate: Date): string {
   return `ref:${entityId}:${new Date(dueDate).toISOString().slice(0, 10)}`;
 }
 
 /** Append the marker to the mail as an invisible HTML comment. */
-function withMarker(html: string, marker: string): string {
+export function withMarker(html: string, marker: string): string {
   return `${html}\n<!-- ${marker} -->`;
 }
 
@@ -432,7 +435,31 @@ export async function checkLowStock(): Promise<number> {
         consumableName: item.consumablename,
       });
 
-      await queueEmail(admin.userid, "low_stock", admin.email, subject, html);
+      // Remind again after a week while the item stays low; a stock change
+      // (change_date moves) starts a fresh reminder.
+      const marker = reminderMarker(
+        item.consumableid,
+        item.change_date ?? item.creation_date,
+      );
+      if (
+        await wasAlreadyQueued({
+          recipient: admin.email,
+          type: "low_stock",
+          subject,
+          marker,
+          windowDays: LOW_STOCK_REMINDER_DAYS,
+        })
+      ) {
+        continue;
+      }
+
+      await queueEmail(
+        admin.userid,
+        "low_stock",
+        admin.email,
+        subject,
+        withMarker(html, marker),
+      );
       notified++;
     }
   }

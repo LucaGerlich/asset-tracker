@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/auth-utils";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { hashToken } from "@/lib/token-hash";
 
 const setPasswordSchema = z.object({
   token: z.string().uuid(),
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     const verification = await prisma.verification.findFirst({
       where: {
-        value: token,
+        value: hashToken(token),
         identifier: { startsWith: "set-password:" },
       },
     });

@@ -21,10 +21,16 @@ import {
   getOrganizationContext,
   scopeToOrganization,
 } from "@/lib/organization-context";
-import { applyDepartmentScopeToUsers } from "@/lib/department-access";
+import {
+  applyDepartmentScopeToUsers,
+  getVisibleDepartmentIds,
+} from "@/lib/department-access";
 import { updateUserSchema } from "@/lib/validation";
 import { setUserPassword } from "@/lib/auth-utils";
-import { findAdminDemotionViolation } from "@/lib/admin-demotion";
+import {
+  demotionFailureResponse,
+  guardedAdminDemotion,
+} from "@/lib/admin-demotion";
 import {
   parsePaginationParams,
   buildPrismaArgs,
@@ -53,6 +59,8 @@ const stripPassword = (user) => {
 
 // Optional query: ?id=<userid>
 // Pagination: ?page=1&pageSize=25&sortBy=lastname&sortOrder=asc&search=keyword
+const STALE_VERSION = Symbol("stale-version");
+
 export async function GET(req: NextRequest) {
   try {
     const authUser = await requireApiAuth();
@@ -119,13 +127,12 @@ export async function GET(req: NextRequest) {
 
     const baseWhere: Record<string, unknown> = scopeToOrganization({}, orgId);
 
+    let searchTruncated = false;
     // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      const matchingIds = await searchIdsByFullText(
-        "user",
-        orgId,
-        params.search,
-      );
+      const fullText = await searchIdsByFullText("user", orgId, params.search);
+      const matchingIds = fullText?.ids ?? null;
+      searchTruncated = fullText?.truncated ?? false;
 
       if (matchingIds && matchingIds.length > 0) {
         baseWhere.userid = { in: matchingIds };
@@ -145,13 +152,21 @@ export async function GET(req: NextRequest) {
 
     const where = await applyDepartmentScopeToUsers(baseWhere, authUser);
 
+    // The cap applies to the org-wide match set, before the department scope
+    // narrows it. A department-scoped caller must not learn that more than
+    // 1000 users match organization-wide.
+    const truncated =
+      searchTruncated && (await getVisibleDepartmentIds(authUser)) === null;
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({ where, ...prismaArgs, ...listSelect }),
       prisma.user.count({ where }),
     ]);
 
     return NextResponse.json(
-      buildPaginatedResponse(users.map(stripPassword), total, params),
+      buildPaginatedResponse(users.map(stripPassword), total, params, {
+        truncated,
+      }),
       { status: 200 },
     );
   } catch (error) {
@@ -281,19 +296,6 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Removing admin rights goes through the same guard as the permissions
-    // routes: no self-demotion and never the org's last active admin.
-    if ((validationResult.data as { isadmin?: boolean }).isadmin === false) {
-      const violation = await findAdminDemotionViolation({
-        callerId: authUser.id,
-        targetUserIds: [userid],
-        organizationId: authUser.organizationId,
-      });
-      if (violation) {
-        return NextResponse.json({ error: violation }, { status: 400 });
-      }
-    }
-
     // departmentId is admin-only; the non-admin schema omits it.
     const foreign = await findForeignReference(authUser.organizationId, {
       department: (validationResult.data as { departmentId?: string | null })
@@ -329,35 +331,58 @@ export async function PUT(req: NextRequest) {
         : null;
     }
 
-    let updated;
-    if (_expectedVersion) {
-      // Atomic optimistic-lock write: only update if change_date still matches
-      // the version the client loaded, closing the read-check → write window.
-      const result = await prisma.user.updateMany({
-        where: { userid, change_date: new Date(_expectedVersion) },
-        data: {
-          ...updateData,
-          change_date: new Date(),
-        },
-      });
-      if (result.count === 0) {
-        return NextResponse.json(
-          {
-            error:
-              "This user was modified by another admin. Please refresh and try again.",
+    const applyUpdate = async (db: Pick<typeof prisma, "user">) => {
+      if (_expectedVersion) {
+        // Atomic optimistic-lock write: only update if change_date still
+        // matches the version the client loaded, closing the read-check →
+        // write window.
+        const result = await db.user.updateMany({
+          where: { userid, change_date: new Date(_expectedVersion) },
+          data: {
+            ...updateData,
+            change_date: new Date(),
           },
-          { status: 409 },
-        );
+        });
+        if (result.count === 0) return STALE_VERSION;
+        return db.user.findUnique({ where: { userid } });
       }
-      updated = await prisma.user.findUnique({ where: { userid } });
-    } else {
-      updated = await prisma.user.update({
+      return db.user.update({
         where: { userid },
         data: {
           ...updateData,
           change_date: new Date(),
         },
       });
+    };
+
+    // Removing admin rights goes through the same guard as the permissions
+    // routes: no self-demotion and never the org's last active admin. The
+    // check and the write share one Serializable transaction so two admins
+    // demoting each other at once cannot both pass.
+    let updated: Awaited<ReturnType<typeof applyUpdate>>;
+    if ((validationResult.data as { isadmin?: boolean }).isadmin === false) {
+      const outcome = await guardedAdminDemotion(
+        {
+          callerId: authUser.id,
+          targetUserIds: [userid],
+          organizationId: authUser.organizationId,
+        },
+        applyUpdate,
+      );
+      if (outcome.status !== "ok") return demotionFailureResponse(outcome);
+      updated = outcome.result;
+    } else {
+      updated = await applyUpdate(prisma);
+    }
+
+    if (updated === STALE_VERSION) {
+      return NextResponse.json(
+        {
+          error:
+            "This user was modified by another admin. Please refresh and try again.",
+        },
+        { status: 409 },
+      );
     }
 
     if (!updated) {

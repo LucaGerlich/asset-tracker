@@ -231,7 +231,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         question: "How do webhooks work?",
         answer:
-          "Configure webhooks in Admin Settings > Webhooks. Choose which events to subscribe to (asset created, user updated, Intune sync completed, etc.). Webhook payloads are signed with HMAC-SHA256 for verification. Failed deliveries retry with exponential backoff.",
+          "Configure webhooks in Admin Settings > Webhooks. Choose which events to subscribe to (asset created, user updated, Intune sync completed, etc.). Webhook payloads are signed with HMAC-SHA256 for verification. Failed deliveries retry with exponential backoff. Enter the final endpoint URL: redirects are not followed, so a URL that redirects fails every delivery.",
         links: [{ label: "Webhook Settings", href: "/admin/settings" }],
       },
     ],

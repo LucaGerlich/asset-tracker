@@ -251,8 +251,36 @@ describe("GET /api/asset full-text search", () => {
       ...unknown[],
     ];
     expect(sql).toContain('"organizationId" = $2');
-    expect(sql).toContain("LIMIT 1000");
+    expect(sql).toContain("LIMIT 1001");
     expect(params).toEqual(["laptop", "org-uuid-001"]);
+  });
+
+  it("flags a paginated search whose matches were capped", async () => {
+    mockPrisma.$queryRawUnsafe.mockResolvedValue(
+      Array.from({ length: 1001 }, (_, i) => ({ assetid: `a-${i}` })),
+    );
+    mockPrisma.asset.findMany.mockResolvedValue([mockAsset] as any);
+    mockPrisma.asset.count.mockResolvedValue(1000);
+
+    const res = await GET(
+      createMockRequest("/api/asset?page=1&search=laptop") as any,
+    );
+    const { body } = await parseResponse<any>(res);
+
+    expect(body.truncated).toBe(true);
+  });
+
+  it("omits truncated for a complete search result", async () => {
+    mockPrisma.$queryRawUnsafe.mockResolvedValue([{ assetid: "a-1" }]);
+    mockPrisma.asset.findMany.mockResolvedValue([mockAsset] as any);
+    mockPrisma.asset.count.mockResolvedValue(1);
+
+    const res = await GET(
+      createMockRequest("/api/asset?page=1&search=laptop") as any,
+    );
+    const { body } = await parseResponse<any>(res);
+
+    expect(body).not.toHaveProperty("truncated");
   });
 });
 

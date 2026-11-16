@@ -16,16 +16,13 @@ import { toast } from "sonner";
 import { Undo2, Loader2 } from "lucide-react";
 
 interface ReturnItemButtonProps {
-  /** If present, updates the existing ItemRequest to "returned" status */
-  requestId?: string;
-  /** Required when no requestId — the entity ID to unassign via self-return */
-  entityId?: string;
+  /** The entity ID to return via a self-return request */
+  entityId: string;
   entityName: string;
   entityType: string;
 }
 
 export default function ReturnItemButton({
-  requestId: _requestId,
   entityId,
   entityName,
   entityType,
@@ -42,7 +39,7 @@ export default function ReturnItemButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           entityType,
-          entityId: entityId || undefined,
+          entityId,
           notes: notes || "Return request",
           status: "return_pending",
         }),

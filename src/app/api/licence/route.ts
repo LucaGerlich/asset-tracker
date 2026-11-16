@@ -74,13 +74,16 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
+    let searchTruncated = false;
     // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      const matchingIds = await searchIdsByFullText(
+      const fullText = await searchIdsByFullText(
         "licence",
         orgId,
         params.search,
       );
+      const matchingIds = fullText?.ids ?? null;
+      searchTruncated = fullText?.truncated ?? false;
 
       if (matchingIds && matchingIds.length > 0) {
         where.licenceid = { in: matchingIds };
@@ -120,7 +123,9 @@ export async function GET(req: NextRequest) {
     }));
 
     return NextResponse.json(
-      buildPaginatedResponse(itemsWithAvailability, total, params),
+      buildPaginatedResponse(itemsWithAvailability, total, params, {
+        truncated: searchTruncated,
+      }),
       { status: 200 },
     );
   } catch (e) {
@@ -133,6 +138,18 @@ export async function GET(req: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+const DUPLICATE_LICENCE_KEY_MESSAGE =
+  "A licence with this key already exists in your organization";
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2002"
+  );
 }
 
 // POST /api/licence
@@ -236,6 +253,12 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     const denied = apiErrorResponse(e);
     if (denied) return denied;
+    if (isUniqueViolation(e)) {
+      return NextResponse.json(
+        { error: DUPLICATE_LICENCE_KEY_MESSAGE },
+        { status: 409 },
+      );
+    }
     logger.error("POST /api/licence error", { error: e });
 
     return NextResponse.json(
@@ -377,6 +400,12 @@ export async function PUT(req: NextRequest) {
   } catch (e) {
     const denied = apiErrorResponse(e);
     if (denied) return denied;
+    if (isUniqueViolation(e)) {
+      return NextResponse.json(
+        { error: DUPLICATE_LICENCE_KEY_MESSAGE },
+        { status: 409 },
+      );
+    }
     logger.error("PUT /api/licence error", { error: e });
 
     if (e.code === "P2025") {

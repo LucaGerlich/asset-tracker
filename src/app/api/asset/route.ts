@@ -95,11 +95,14 @@ export async function GET(req: NextRequest) {
       where.statustypeid = statusId;
     }
 
+    let searchTruncated = false;
     // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     const search = searchParams.get("search") ?? undefined;
     if (search) {
       // Use PostgreSQL full-text search via the generated search_vector column
-      const matchingIds = await searchIdsByFullText("asset", orgId, search);
+      const fullText = await searchIdsByFullText("asset", orgId, search);
+      const matchingIds = fullText?.ids ?? null;
+      searchTruncated = fullText?.truncated ?? false;
 
       if (matchingIds && matchingIds.length > 0) {
         where.assetid = { in: matchingIds };
@@ -153,9 +156,14 @@ export async function GET(req: NextRequest) {
       prisma.asset.count({ where }),
     ]);
 
-    return NextResponse.json(buildPaginatedResponse(assets, total, params), {
-      status: 200,
-    });
+    return NextResponse.json(
+      buildPaginatedResponse(assets, total, params, {
+        truncated: searchTruncated,
+      }),
+      {
+        status: 200,
+      },
+    );
   } catch (error) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
