@@ -6,9 +6,15 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+  kitItemReferences,
+} from "@/lib/org-references";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, updateKitSchema } from "@/lib/validation";
 import { logger } from "@/lib/logger";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   getOrganizationContext,
   scopeToOrganization,
@@ -71,6 +77,13 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     const { name, description, isActive, items } = validated;
 
+    const foreign = await findForeignReference(orgId, kitItemReferences(items));
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
+
     const kit = await prisma.$transaction(async (tx) => {
       const updateData: Record<string, unknown> = {};
       if (name !== undefined) updateData.name = name;
@@ -97,6 +110,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
       return tx.kit.findUnique({ where: { id }, include: { items: true } });
     });
+
+    await invalidateCacheByPrefix("kits_all").catch(() => {});
 
     await createAuditLog({
       userId: authUser.id,
@@ -143,6 +158,8 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     }
 
     await prisma.kit.delete({ where: { id } });
+
+    await invalidateCacheByPrefix("kits_all").catch(() => {});
 
     await createAuditLog({
       userId: authUser.id,

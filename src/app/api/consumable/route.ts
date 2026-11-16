@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
+import { searchIdsByFullText } from "@/lib/fulltext-search";
 import { Prisma } from "@prisma/client";
 import {
   requirePermission,
@@ -7,6 +8,10 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { invalidateCacheByPrefix } from "@/lib/cache";
 import {
   createConsumableSchema,
@@ -54,18 +59,19 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
+    let searchTruncated = false;
     // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      const tsQuery = params.search.trim().split(/\s+/).join(" & ");
-      const matchingIds = await prisma
-        .$queryRawUnsafe<Array<{ consumableid: string }>>(
-          `SELECT "consumableid" FROM "consumable" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`,
-          tsQuery,
-        )
-        .catch(() => null);
+      const fullText = await searchIdsByFullText(
+        "consumable",
+        orgId,
+        params.search,
+      );
+      const matchingIds = fullText?.ids ?? null;
+      searchTruncated = fullText?.truncated ?? false;
 
       if (matchingIds && matchingIds.length > 0) {
-        where.consumableid = { in: matchingIds.map((r) => r.consumableid) };
+        where.consumableid = { in: matchingIds };
       } else if (matchingIds) {
         // tsvector returned no results — empty set
         where.consumableid = { in: [] };
@@ -80,9 +86,14 @@ export async function GET(req: NextRequest) {
       prisma.consumable.count({ where }),
     ]);
 
-    return NextResponse.json(buildPaginatedResponse(items, total, params), {
-      status: 200,
-    });
+    return NextResponse.json(
+      buildPaginatedResponse(items, total, params, {
+        truncated: searchTruncated,
+      }),
+      {
+        status: 200,
+      },
+    );
   } catch (e) {
     const denied = apiErrorResponse(e);
     if (denied) return denied;
@@ -129,6 +140,17 @@ export async function POST(req: NextRequest) {
       minQuantity,
       quantity,
     } = validationResult.data;
+
+    const foreign = await findForeignReference(orgId, {
+      consumableCategory: consumablecategorytypeid,
+      manufacturer: manufacturerid,
+      supplier: supplierid,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     const created = await prisma.consumable.create({
       data: {
@@ -228,6 +250,17 @@ export async function PUT(req: NextRequest) {
       existingConsumable.change_date,
     );
     if (conflict) return conflict;
+
+    const foreign = await findForeignReference(orgId, {
+      consumableCategory: consumablecategorytypeid,
+      manufacturer: manufacturerid,
+      supplier: supplierid,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     const updated = await prisma.consumable.update({
       where: { consumableid: existingConsumable.consumableid },

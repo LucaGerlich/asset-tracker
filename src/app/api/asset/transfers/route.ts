@@ -7,6 +7,7 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { validateBody, createTransferSchema } from "@/lib/validation";
 
 // Optional query: ?assetId=<uuid> to filter by asset
 export async function GET(req: Request) {
@@ -38,7 +39,8 @@ export async function GET(req: Request) {
 }
 
 // POST /api/asset/transfers
-// Body: { assetId, transferType, toUserId?, toLocationId?, toOrgId?, reason? }
+// Body: { assetId, transferType: "user", toUserId, reason? }
+//    or { assetId, transferType: "location", toLocationId, reason? }
 export async function POST(req: Request) {
   try {
     const demoBlock = requireNotDemoMode();
@@ -47,43 +49,9 @@ export async function POST(req: Request) {
     await requireWritableOrg(user);
 
     const transferredBy = user.id!;
-    const body = await req.json();
-    const { assetId, transferType, toUserId, toLocationId, toOrgId, reason } =
-      body || {};
-
-    if (!assetId || !transferType) {
-      return NextResponse.json(
-        { error: "assetId and transferType are required" },
-        { status: 400 },
-      );
-    }
-
-    if (!["user", "location", "organization"].includes(transferType)) {
-      return NextResponse.json(
-        { error: "transferType must be 'user', 'location', or 'organization'" },
-        { status: 400 },
-      );
-    }
-
-    // Validate that the target field is provided for the given type
-    if (transferType === "user" && !toUserId) {
-      return NextResponse.json(
-        { error: "toUserId is required for user transfers" },
-        { status: 400 },
-      );
-    }
-    if (transferType === "location" && !toLocationId) {
-      return NextResponse.json(
-        { error: "toLocationId is required for location transfers" },
-        { status: 400 },
-      );
-    }
-    if (transferType === "organization" && !toOrgId) {
-      return NextResponse.json(
-        { error: "toOrgId is required for organization transfers" },
-        { status: 400 },
-      );
-    }
+    const validated = validateBody(createTransferSchema, await req.json());
+    if (validated instanceof NextResponse) return validated;
+    const { assetId, reason } = validated;
 
     const orgId = user.organizationId ?? null;
 
@@ -96,9 +64,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Asset not found" }, { status: 404 });
     }
 
-    // Validate that user/location transfer targets also belong to the org.
-    // (Organization transfers intentionally move the asset to another org.)
-    if (transferType === "user") {
+    let transfer;
+
+    if (validated.transferType === "user") {
+      const { toUserId } = validated;
       const target = await prisma.user.findFirst({
         where: { userid: toUserId, organizationId: orgId },
         select: { userid: true },
@@ -109,30 +78,13 @@ export async function POST(req: Request) {
           { status: 404 },
         );
       }
-    } else if (transferType === "location") {
-      const target = await prisma.location.findFirst({
-        where: { locationid: toLocationId, organizationId: orgId },
-        select: { locationid: true },
-      });
-      if (!target) {
-        return NextResponse.json(
-          { error: "Target location not found" },
-          { status: 404 },
-        );
-      }
-    }
-
-    let transfer;
-
-    if (transferType === "user") {
-      // Find the current userAssets entry for this asset
-      const currentAssignment = await prisma.userAssets.findFirst({
-        where: { assetid: assetId },
-      });
-
-      const fromUserId = currentAssignment?.userid ?? null;
 
       transfer = await prisma.$transaction(async (tx) => {
+        // Read the current assignment inside the transaction it is replaced in.
+        const currentAssignment = await tx.userAssets.findFirst({
+          where: { assetid: assetId },
+        });
+
         if (currentAssignment) {
           await tx.userAssets.delete({
             where: { userassetsid: currentAssignment.userassetsid },
@@ -147,69 +99,51 @@ export async function POST(req: Request) {
           },
         });
 
-        const record = await tx.assetTransfer.create({
+        return tx.assetTransfer.create({
           data: {
             assetId,
-            transferType,
-            fromUserId,
+            transferType: "user",
+            fromUserId: currentAssignment?.userid ?? null,
             toUserId,
             reason: reason ?? null,
             transferredBy,
           },
         });
-
-        return record;
       });
-    } else if (transferType === "location") {
+    } else {
+      const { toLocationId } = validated;
+      const target = await prisma.location.findFirst({
+        where: { locationid: toLocationId, organizationId: orgId },
+        select: { locationid: true },
+      });
+      if (!target) {
+        return NextResponse.json(
+          { error: "Target location not found" },
+          { status: 404 },
+        );
+      }
+
       const fromLocationId = asset.locationid ?? null;
 
       transfer = await prisma.$transaction(async (tx) => {
         await tx.asset.update({
-          where: { assetid: assetId },
+          where: { assetid: assetId, organizationId: orgId },
           data: {
             locationid: toLocationId,
             change_date: new Date(),
           },
         });
 
-        const record = await tx.assetTransfer.create({
+        return tx.assetTransfer.create({
           data: {
             assetId,
-            transferType,
+            transferType: "location",
             fromLocationId,
             toLocationId,
             reason: reason ?? null,
             transferredBy,
           },
         });
-
-        return record;
-      });
-    } else {
-      // organization transfer
-      const fromOrgId = asset.organizationId ?? null;
-
-      transfer = await prisma.$transaction(async (tx) => {
-        await tx.asset.update({
-          where: { assetid: assetId },
-          data: {
-            organizationId: toOrgId,
-            change_date: new Date(),
-          },
-        });
-
-        const record = await tx.assetTransfer.create({
-          data: {
-            assetId,
-            transferType,
-            fromOrgId,
-            toOrgId,
-            reason: reason ?? null,
-            transferredBy,
-          },
-        });
-
-        return record;
       });
     }
 

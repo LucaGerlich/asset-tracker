@@ -121,6 +121,10 @@ describe("POST /api/kits", () => {
       items: undefined,
     } as any);
     mockPrisma.kit.findUnique.mockResolvedValue(mockKit as any);
+    // The item's asset category belongs to the caller's organization.
+    mockPrisma.assetCategoryType.findMany.mockResolvedValue([
+      { assetcategorytypeid: "550e8400-e29b-41d4-a716-446655440000" },
+    ] as any);
 
     const req = createMockRequest("/api/kits", {
       method: "POST",

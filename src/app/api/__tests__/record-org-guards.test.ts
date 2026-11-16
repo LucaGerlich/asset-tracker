@@ -68,6 +68,7 @@ const checkoutIn = (organizationId: string | null) => ({
   id: RECORD_ID,
   assetId: "asset-uuid-001",
   checkedOutToType: "user",
+  status: "checked_out",
   returnDate: null,
   asset: {
     assetid: "asset-uuid-001",

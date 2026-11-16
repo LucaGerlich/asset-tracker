@@ -36,6 +36,19 @@ export async function POST(req: Request) {
       );
     }
 
+    // A second subscription would be orphaned: the webhook stores only one
+    // subscription id per org. Plan changes go through the billing portal.
+    if (org.stripeSubscriptionId) {
+      return NextResponse.json(
+        {
+          error:
+            "This organization already has a subscription. Use the billing portal to change or manage it.",
+          code: "subscription_exists",
+        },
+        { status: 409 },
+      );
+    }
+
     let customerId = org.stripeCustomerId;
     if (!customerId) {
       const customer = await getStripe().customers.create({

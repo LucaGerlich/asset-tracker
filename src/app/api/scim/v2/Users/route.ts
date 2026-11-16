@@ -151,7 +151,8 @@ export async function POST(req: Request) {
       ? await assertEmailAssignable(rawEmail, { callerIsSuperAdmin: false })
       : null;
 
-    const limitCheck = await checkUserLimit();
+    // SCIM has no session: pass the token's organization explicitly.
+    const limitCheck = await checkUserLimit(organizationId ?? undefined);
     if (!limitCheck.allowed) {
       return NextResponse.json(
         scimError(

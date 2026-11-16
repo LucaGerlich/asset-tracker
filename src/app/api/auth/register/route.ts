@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { usernameSchema } from "@/lib/username";
 import prisma from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth-utils";
 import { randomBytes } from "crypto";
@@ -28,7 +29,7 @@ const registerSchema = z.object({
   lastname: z.string().min(1, "Last name is required").max(100),
   email: z.string().email("Invalid email address"),
   organization: z.string().min(1, "Organization name is required").max(100),
-  username: z.string().min(3, "Username must be at least 3 characters").max(50),
+  username: usernameSchema,
   password: z
     .string()
     .min(12, "Password must be at least 12 characters")

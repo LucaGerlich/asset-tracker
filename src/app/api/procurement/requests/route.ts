@@ -7,6 +7,10 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { createAuditLog, AUDIT_ACTIONS } from "@/lib/audit-log";
 import {
   getOrganizationContext,
@@ -134,6 +138,16 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const validated = createPurchaseRequestSchema.parse(body);
+
+    const foreign = await findForeignReference(orgId, {
+      department: validated.departmentId,
+      supplier: validated.items.flatMap((item) => item.supplierId ?? []),
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     // Calculate estimated total from items
     const estimatedTotal = validated.items.reduce((sum, item) => {

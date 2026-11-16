@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   requireApiAuth,
+  requirePermission,
   requireNotDemoMode,
   requireWritableOrg,
 } from "@/lib/api-auth";
@@ -8,6 +9,7 @@ import { apiErrorResponse } from "@/lib/errors";
 import prisma from "@/lib/prisma";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { getOrgStorage } from "@/lib/storage";
+import { ATTACHMENT_EDIT_PERMISSION } from "@/lib/attachment-permissions";
 import { deleteThumbnails } from "@/lib/storage/thumbnails";
 
 type EntityType = "accessory" | "consumable" | "component";
@@ -101,6 +103,7 @@ export async function DELETE(
         { status: 400 },
       );
     }
+    await requirePermission(ATTACHMENT_EDIT_PERMISSION[entityType]);
 
     if (!orgId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -173,6 +176,7 @@ export async function PATCH(
         { status: 400 },
       );
     }
+    await requirePermission(ATTACHMENT_EDIT_PERMISSION[entityType]);
 
     if (!orgId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

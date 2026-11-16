@@ -12,7 +12,9 @@ import { apiErrorResponse } from "@/lib/errors";
 import {
   createConsumableCategoryTypeSchema,
   updateConsumableCategoryTypeSchema,
+  deleteConsumableCategoryTypeSchema,
   uuidSchema,
+  validateBody,
 } from "@/lib/validation";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { getOrganizationContext } from "@/lib/organization-context";
@@ -216,6 +218,91 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(
       { error: "Failed to update consumable category" },
+      { status: 500 },
+    );
+  }
+}
+
+// DELETE /api/consumableCategory
+export async function DELETE(req: NextRequest) {
+  try {
+    const demoBlock = requireNotDemoMode();
+    if (demoBlock) return demoBlock;
+    // Only admins can delete consumable categories
+    const admin = await requireApiAdmin();
+    await requireWritableOrg(admin);
+
+    const body = await req.json();
+    const validated = validateBody(deleteConsumableCategoryTypeSchema, body);
+    if (validated instanceof NextResponse) return validated;
+    const { consumablecategorytypeid } = validated;
+
+    const orgCtx = await getOrganizationContext();
+    const orgId = orgCtx?.organization?.id;
+
+    // Scope the lookup so foreign-org categories read as "not found".
+    const category = await prisma.consumableCategoryType.findFirst({
+      where: { consumablecategorytypeid, organizationId: orgId ?? null },
+      select: { consumablecategorytypename: true },
+    });
+    if (!category) {
+      return NextResponse.json(
+        { error: "Consumable category not found" },
+        { status: 404 },
+      );
+    }
+
+    // Deliberately unscoped by organization: the FKs are NoAction, so a row
+    // from any tenant would block the delete. Only existence is reported, never
+    // a count, so nothing about other tenants leaks.
+    const inUse = await prisma.consumable.findFirst({
+      where: { consumablecategorytypeid },
+      select: { consumablecategorytypeid: true },
+    });
+    if (inUse) {
+      return NextResponse.json(
+        { error: "Category is still in use. Reassign its items first." },
+        { status: 409 },
+      );
+    }
+
+    await prisma.consumableCategoryType.delete({
+      where: { consumablecategorytypeid },
+    });
+
+    await createAuditLog({
+      userId: admin.id,
+      action: AUDIT_ACTIONS.DELETE,
+      entity: AUDIT_ENTITIES.CONSUMABLE_CATEGORY,
+      entityId: consumablecategorytypeid,
+      details: {
+        consumablecategorytypename: category.consumablecategorytypename,
+      },
+    });
+
+    await invalidateCacheByPrefix("consumable_categories").catch(() => {});
+
+    return NextResponse.json(
+      { message: "Consumable category deleted successfully" },
+      { status: 200 },
+    );
+  } catch (e) {
+    const denied = apiErrorResponse(e);
+    if (denied) return denied;
+    logger.error("DELETE /api/consumableCategory error", { error: e });
+
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2025"
+    ) {
+      return NextResponse.json(
+        { error: "Consumable category not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Failed to delete consumable category" },
       { status: 500 },
     );
   }

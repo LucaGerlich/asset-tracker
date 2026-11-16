@@ -8,6 +8,11 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import {
+  assetReferences,
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
+import {
   getOrganizationContext,
   scopeToOrganization,
 } from "@/lib/organization-context";
@@ -64,6 +69,13 @@ export async function POST(req: NextRequest) {
         { error: "Template name must be 200 characters or less" },
         { status: 400 },
       );
+    }
+
+    const foreign = await findForeignReference(orgId, assetReferences(body));
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
     }
 
     const created = await prisma.assetTemplate.create({
@@ -165,6 +177,16 @@ export async function PUT(req: NextRequest) {
       if (data[field] !== undefined) {
         updateData[field] = data[field];
       }
+    }
+
+    const foreign = await findForeignReference(
+      orgId,
+      assetReferences(updateData),
+    );
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
     }
 
     const updated = await prisma.assetTemplate.update({

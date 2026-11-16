@@ -12,6 +12,15 @@ import { triggerWebhook } from "@/lib/webhooks";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
+/**
+ * Allowed status moves: current status -> targets. Rejected, cancelled and
+ * completed reservations are final, so they cannot be re-booked.
+ */
+const RESERVATION_TRANSITIONS: Record<string, readonly string[]> = {
+  pending: ["approved", "rejected", "cancelled"],
+  approved: ["cancelled", "completed"],
+};
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -110,20 +119,59 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Only admin can approve/reject, but users can cancel their own
+    // Admins manage every reservation of the organization; a member may only
+    // touch their own, and the only status they can set is "cancelled".
     const isOwner = existingReservation.userId === user.id;
     const isAdmin = user.isAdmin;
 
-    if (validated.status === "approved" || validated.status === "rejected") {
-      if (!isAdmin) {
+    if (!isAdmin) {
+      if (!isOwner) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      if (validated.status !== undefined && validated.status !== "cancelled") {
         return NextResponse.json(
-          { error: "Only admins can approve or reject reservations" },
+          { error: "Only admins can change a reservation to this status" },
           { status: 403 },
         );
       }
-    } else if (validated.status === "cancelled") {
-      if (!isOwner && !isAdmin) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // A status equal to the current one is not a transition.
+    const nextStatus =
+      validated.status !== undefined &&
+      validated.status !== existingReservation.status
+        ? validated.status
+        : undefined;
+
+    if (
+      nextStatus !== undefined &&
+      !RESERVATION_TRANSITIONS[existingReservation.status]?.includes(nextStatus)
+    ) {
+      return NextResponse.json(
+        {
+          error: `A ${existingReservation.status} reservation cannot be set to ${nextStatus}`,
+        },
+        { status: 409 },
+      );
+    }
+
+    // Approving books the asset: another active reservation must not overlap.
+    if (nextStatus === "approved") {
+      const conflicting = await prisma.assetReservation.findFirst({
+        where: {
+          assetId: existingReservation.assetId,
+          id: { not: id },
+          status: { in: ["pending", "approved"] },
+          startDate: { lte: existingReservation.endDate },
+          endDate: { gte: existingReservation.startDate },
+        },
+        select: { id: true },
+      });
+      if (conflicting) {
+        return NextResponse.json(
+          { error: "Asset is already reserved for this time period" },
+          { status: 409 },
+        );
       }
     }
 
@@ -134,17 +182,33 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       approvedAt?: Date;
     } = {
       ...validated,
+      status: nextStatus,
     };
 
     // Set approval info if approving/rejecting
-    if (validated.status === "approved" || validated.status === "rejected") {
+    if (nextStatus === "approved" || nextStatus === "rejected") {
       updateData.approvedBy = user.id!;
       updateData.approvedAt = new Date();
     }
 
-    const reservation = await prisma.assetReservation.update({
-      where: { id },
+    // Compare-and-set on the status validated above so two concurrent
+    // decisions cannot both win.
+    const updated = await prisma.assetReservation.updateMany({
+      where: { id, status: existingReservation.status },
       data: updateData,
+    });
+    if (updated.count !== 1) {
+      return NextResponse.json(
+        {
+          error:
+            "This reservation was modified by another user. Please refresh and try again.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const reservation = await prisma.assetReservation.findUniqueOrThrow({
+      where: { id },
       include: {
         asset: { select: { assetname: true, assettag: true } },
         user: { select: { firstname: true, lastname: true } },
@@ -152,9 +216,9 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     });
 
     const action =
-      validated.status === "approved"
+      nextStatus === "approved"
         ? AUDIT_ACTIONS.APPROVE
-        : validated.status === "rejected"
+        : nextStatus === "rejected"
           ? AUDIT_ACTIONS.REJECT
           : AUDIT_ACTIONS.UPDATE;
 
@@ -167,7 +231,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     });
 
     // Trigger webhook for approvals
-    if (validated.status === "approved") {
+    if (nextStatus === "approved") {
       await triggerWebhook(
         "asset.reservation_approved",
         {

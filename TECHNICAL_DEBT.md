@@ -29,8 +29,8 @@ with a recommended fix. The audits so far:
 | Area                               | Status                                                                                                         |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | CI (lint, typecheck, unit, build)  | green since 2026-09-07 (v0.9.5 fixed the lockfile/typings; the DB suites and the Build job first passed today) |
-| Production dependency advisories   | 0 (was 1 critical, 53 high)                                                                                    |
-| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69 (see "Phase 0 follow-ups")  |
+| Production dependency advisories   | none reachable (2026-11-03: better-auth 1.6 and maplibre-gl listed, items 91–93)                               |
+| Cross-tenant data access           | closed for the Phase 0 scope in v0.14.0; known leftovers: items 53, 57, 63, 65, 69                             |
 | MFA login enforcement              | functional since v0.10.0 (enrolment on BetterAuth twoFactor)                                                   |
 | SSO (SAML/OIDC) login completion   | **NOT FUNCTIONAL** — decision required (D2)                                                                    |
 | TypeScript strict mode             | off; 830 errors to clear (D3)                                                                                  |
@@ -39,6 +39,44 @@ with a recommended fix. The audits so far:
 | Unit coverage of auth/tenant layer | partial (api-auth, url-validation, org-suspension now tested)                                                  |
 
 ---
+
+## FIXED in v0.16.1 (2026-11-03)
+
+Items 93 (partly), 95–97, 99–102, 104, 107, 108 and 110 (details in CHANGELOG 0.16.1).
+Still open from that list: 91, 92, 93 (rest), 94, 103, 105, 106, 109.
+
+## FIXED in v0.16.0 (2026-11-03)
+
+Full audit by six parallel reviews plus a dependency refresh; roughly 70 findings fixed
+(details in CHANGELOG 0.16.0). What the audit deliberately left open is listed as items
+91–110.
+
+## FIXED in v0.15.3 (2026-11-02)
+
+Closes the last items the 0.15.1 reviews left open: 83 (organization transfers removed),
+84, 89 and 90. Details in CHANGELOG 0.15.3. The reviews of this release also found that
+editing an audit campaign reset its scope to "all" (fixed) and a legacy `PUT /api/kits`
+that skipped the new kit-item check (fixed).
+
+## FIXED in v0.15.2 (2026-10-30)
+
+Released together with 0.15.1. Closes debt item 82 (referenced ids in write bodies, the
+sweep in PR #93) and items 85–88 found by that sweep: reservations, audit-log revert,
+default status reset, CSV-imported locations. Details in CHANGELOG 0.15.2; 89 and 90
+(low) remain open.
+
+## FIXED in v0.15.1 (2026-10-29)
+
+An external security report (received 2026-10-29, not disclosed) listed cross-tenant
+gaps in five route groups, a fail-open super-admin fallback and the OIDC flow. Checked
+against `development`: everything had been fixed in 0.9.4–0.14.0 except two routes.
+Those are closed here (details in CHANGELOG 0.15.1):
+
+- `/api/componentCategory` `GET`/`PUT`/`POST` scoped to the caller's organization.
+- Organization transfers in `POST /api/asset/transfers` are super-admin only, into an
+  existing, different organization; the body is validated with `createTransferSchema`.
+
+What the reviews of this fix left open is listed as items 82–84.
 
 ## FIXED in v0.10.0 (2026-09-08)
 
@@ -176,6 +214,10 @@ _Recommended:_ replace the custom flow with BetterAuth's `@better-auth/sso` plug
 (OIDC + SAML, per-organization). Cheaper interim: establish the session server-side in
 `/api/auth/sso-login` via BetterAuth's internal adapter and assign the org from the SSO
 settings. Either way, decide which org SSO users belong to.
+_Also (external report, 2026-10-29):_ the OIDC/SAML callbacks link an existing user
+by `externalId` or verified email across all organizations
+(`src/app/api/auth/callback/oidc/route.ts`, `.../saml/route.ts`). Scope that lookup to
+the SSO configuration's organization when the flow is finished.
 
 **D3. TypeScript strict mode (user standard: strict everywhere).** 830 errors as of
 2026-09-07, measured with
@@ -696,6 +738,113 @@ toStatusId])` is global. _Recommended:_ add a nullable `organizationId`, backfil
     full row, asserting the JSON keys; for (b) one dry run against a disposable local
     Postgres with an explicit-port URL (`postgres://...@localhost:5432/<db>`) before the
     production run, and keep `ALLOW_DESTRUCTIVE_DB_TESTS` unset there.
+
+### Left open by the 0.15.1 reviews (external security report)
+
+82. **FIXED in v0.15.2 (referenced-id sweep): referenced ids in write bodies were
+    not org-checked.** Every write route that stored one now resolves it in the caller's
+    organization through `findForeignReference()` (`src/lib/org-references.ts`); see the
+    section below and CHANGELOG 0.15.2.
+83. **FIXED in v0.15.3 by removal: organization transfers left cross-org references
+    behind.** Moving an asset into another organization is gone (API, schema, UI); past
+    transfer records stay readable. The references, assignment, checkouts, reservations,
+    custom field values and per-org attachments made a clean move impractical.
+
+84. **FIXED in v0.15.3: check-then-write races in the touched routes.** The
+    componentCategory and audit campaign updates and the transfer writes carry
+    `organizationId` on the write; the user transfer reads the assignment inside its
+    transaction. The asset page's super-admin lookup went away with item 83.
+
+### Referenced-id sweep (2026-10-29, CHANGELOG [Unreleased])
+
+Fixes item 82. The sweep covered every POST/PUT/PATCH under `src/app/api/`. The routes
+that stored a referenced id unchecked now go through `findForeignReference()`
+(`src/lib/org-references.ts`); the list is in the CHANGELOG. Everything else already
+checked its references inline. The sweep also found the gaps below, which are outside
+item 82 and still open:
+
+85. **FIXED in v0.15.2: reservations reached foreign assets.** `POST /api/reservations`
+    looks the asset up in the caller's organization (404 otherwise); `GET` lists only
+    reservations of the caller's organization's assets (the 0.15.2 security review
+    found the read side: it listed every tenant's reservations with user emails).
+86. **FIXED in v0.15.2: audit-log revert wrote by primary key only.** The target is
+    read and written with `organizationId` (`findFirst`/`updateMany`), and the
+    snapshot's reference columns go through `findForeignReference()`. The same change
+    fixed the `Component`/`Kit` delegate names (component and kit reverts answered 500).
+    _Left open (low):_ a `user` snapshot could restore privilege columns (`isadmin`,
+    `password`, …); nothing writes user before/after snapshots today, so no path
+    produces one. Allow-list writable columns per entity if one is ever added.
+87. **FIXED in v0.15.2: setting a default status cleared every tenant's default.**
+    Both `isDefault` resets in `src/app/api/statusType/route.ts` carry the organization.
+    (`label_templates` has the same reset but no `organizationId` column: item 57.)
+88. **FIXED in v0.15.2: CSV-imported locations had no organization.** The `location`
+    case stamps `organizationId` like every other case.
+89. **FIXED in v0.15.3: soft references stored unchecked.** Kit items (both kit PUT
+    routes and POST), audit campaign scopes and approval entities are checked against
+    the caller's organization before they are stored (`kitItemReferences`,
+    `auditScopeReferences` in `src/lib/org-references.ts`; `approvalEntityInOrg`).
+
+90. **FIXED in v0.15.3: smaller cross-tenant leftovers.** Global saved filters are
+    scoped through the author's organization (an org-less caller shares none); SCIM user
+    creation passes the token's organization to `checkUserLimit()`.
+
+### Left open by the 2026-11-03 audit (v0.16.0)
+
+91. **better-auth 1.7 migration (medium).** 1.6.x carries advisories GHSA-965c-763c-88jm
+    (critical), GHSA-r4xp-prcw-77qf and GHSA-q84f-53jg-9ppm; none reaches this app (they
+    need the Magic Link, OAuth Proxy or device-authorization plugins). 1.7 drops
+    `genericOAuthClient` (`signIn.oauth2` → `signIn.social`), moves the callback from
+    `/api/auth/oauth2/callback/:id` to `/api/auth/callback/:id` (the Entra app
+    registration needs the new redirect URI, and the `/oauth2/callback/` hook in
+    `auth-server.ts` must follow), keys Microsoft accounts on `oid` (data migration) and
+    types `mapProfileToUser` profiles as `unknown`. Plan it with a staging SSO test.
+92. **maplibre-gl 5 → 6 (low).** GHSA (DOM.sanitize bypass, critical) is fixed only in 6.x;
+    the app no longer calls `setHTML`, so it is unreachable. Upgrade is a major version.
+93. **FIXED in v0.16.1 (partly: stale `package-lock.json` removed, `Dockerfile.dev` on bun, `protocol-buffers-schema` overridden; glob, minimatch, uuid and ajv have no same-major patch):** **Moderate transitive advisories (low):** glob, minimatch, protocol-buffers-schema,
+    uuid, ajv. Also `package-lock.json` is stale (CI and Vercel use `bun.lock`), so
+    `npm audit` reports wrong versions; delete it or keep it in sync.
+94. **React Compiler lint findings (medium).** `eslint-plugin-react-hooks` 7.1 reports 64
+    errors in ~30 components (setState in effects, refs and impure calls during render);
+    pinned to 7.0.x in `package.json` overrides until they are cleaned up.
+95. **FIXED in v0.16.1 (16-char lookup prefix; legacy keys use a bounded fallback until rotated):** **API key lookup is a CPU DoS (medium)** (`src/lib/api-keys.ts:21,38`). The stored
+    prefix is always `at_live_`, so every request bcrypt-compares against every active key
+    on the platform. Needs a key-format change (a lookup id or a SHA-256 digest).
+96. **FIXED in v0.16.1 (SHA-256 digests; SCIM legacy rows rehashed on first use):** **Plaintext secrets at rest (medium):** password-reset and set-password tokens
+    (`verification.value`) and SCIM bearer tokens (`scim_tokens`, all loaded and compared
+    per request). Hash them; SCIM tokens then have to be re-issued.
+97. **FIXED in v0.16.1 (`@@unique([organizationId, …])`; org-less licences lose the duplicate check):** **Globally unique business keys (medium):** `PurchaseOrder.poNumber` is `@unique`
+    while the sequence is per org (a tenant's first PO of a month can collide and 500);
+    `licencekey @unique` is a cross-tenant existence oracle. Needs
+    `@@unique([organizationId, …])` migrations (same family as item 14).
+98. **FIXED in v0.16.0:** `PUT /api/user` with `isadmin:false` now goes through the
+    last-admin and self-demotion guard.
+99. **FIXED in v0.16.1 (kit form picks items from a list):** **Kit items need an entity picker (low)** (`KitCreateForm.tsx`): users paste UUIDs.
+100.  **FIXED in v0.16.1 (email links to the reports page):** **Scheduled reports embed the file as a `data:` URI (low)**; mail clients block it.
+      Use an attachment or a signed download link.
+101.  **FIXED in v0.16.1 (low-stock dedupe marker; 7-day expiry warning keyed by expiry date):** **Notification follow-ups (low):** low-stock alerts are not de-duplicated; the 30h
+      access-expiry window sends the 7-day warning about every other day.
+102.  **FIXED in v0.16.1 (assign/unassign bust `assets_all`):** **Cache:** the asset assign/unassign routes don't bust `assets_all` (low).
+103.  **Maintenance has no permission of its own (low);** writes use `asset:edit`.
+
+104.  **FIXED in v0.16.1 (Serializable transaction, P2034 → 409):** **Admin demotion race (low)** (`src/lib/admin-demotion.ts`): the last-admin check
+      counts, then updates, outside a transaction; two admins demoting each other at the
+      same moment can both pass. Use a Serializable transaction or row locks.
+105.  **Malformed-JSON mapping is broad (low)** (`src/lib/errors.ts`): any `SyntaxError`
+      mentioning JSON becomes a 400, including a `JSON.parse` of corrupt stored data.
+      Narrow it to request-body parsing.
+106.  **Org-less items notify nobody (low)** (`src/lib/notifications.ts`): the fail-closed
+      admin lookup returns no recipients when `organizationId` is null. Check that no
+      self-hosted install still has org-less assets before relying on reminders there.
+107.  **FIXED in v0.16.1 (responses carry `truncated: true` (not shown in the UI: no client list uses the search APIs)):** **Full-text search is capped at 1000 ids (low)** (`src/lib/fulltext-search.ts`); broad
+      searches are truncated silently.
+108.  **FIXED in v0.16.1 (`entityId` passed; button hidden without one):** **"Return item" from My Requests is broken (medium, pre-existing)**
+      (`src/components/ReturnItemButton.tsx`): `MyItemRequestsClient` passes `requestId`
+      but no `entityId`, so `POST /api/requests` answers 400.
+109.  **Per-request DNS lookup for org storage (low; kept on purpose in v0.16.1: caching a passed check turns the DNS-rebinding race of item 1 into a bypass that needs no race; fix item 1 first):** `getOrgStorage` validates the stored
+      endpoint (with DNS) on every call; cache the result per org for a few minutes. DNS
+      rebinding between validation and use remains item 1.
+110.  **FIXED in v0.16.1 (documented in the webhook settings, Help FAQ and SECURITY_GUIDE):** **Webhook endpoints that redirect fail permanently (low, by design):** deliveries use
+      `redirect: "manual"`; document that the URL must be the final one.
 
 ## Repository loose ends (2026-09-07)
 

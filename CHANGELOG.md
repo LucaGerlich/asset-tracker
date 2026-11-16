@@ -6,6 +6,241 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-11-03
+
+Follow-up to the 0.16.0 audit: most of the items it left open (TECHNICAL_DEBT 91–110).
+
+### Security
+
+- API keys: new keys store a 16-character lookup prefix, so a request costs one bcrypt
+  compare instead of one per active key on the platform (debt 95). Existing keys keep
+  working through a bounded legacy fallback; rotate them to drop it.
+- Password-reset and set-password tokens and SCIM bearer tokens are stored as SHA-256
+  digests (debt 96). Legacy plaintext SCIM rows are rehashed on first use.
+- Purchase-order numbers and licence keys are unique per organization instead of
+  globally (debt 97): no more PO-number collisions across tenants, and the licence key is
+  no longer a cross-tenant existence oracle. A duplicate key answers 409, not 500.
+- The last-admin check and the demotion run in one Serializable transaction (debt 104).
+- The full-text `truncated` flag is only reported to callers without a department scope.
+
+### Fixed
+
+- "Return item" from My Requests sends the entity id and works again (debt 108).
+- Scheduled report emails link to the reports page instead of a `data:` URI that mail
+  clients block (debt 100).
+- Low-stock alerts are de-duplicated; the 7-day access-expiry warning is sent once
+  (debt 101).
+- Asset assign/unassign invalidate the `assets_all` cache (debt 102).
+- Search responses carry `truncated: true` when the 1000-result cap was hit (debt 107).
+- Kit items are picked from a list instead of pasting UUIDs (debt 99).
+- Webhook docs say the URL must be final, because redirects aren't followed (debt 110).
+- `Dockerfile.dev` installs with bun from `bun.lock`; the stale `package-lock.json` is gone;
+  `protocol-buffers-schema` override (debt 93, partly).
+
+### Upgrade notes
+
+- Two migrations: `20261103_api_key_lookup_prefix` widens `api_keys."keyPrefix"` to 16;
+  `20261103b_org_scoped_business_keys` swaps the global unique indexes on
+  `purchase_orders."poNumber"` and `licence."licencekey"` for per-organization ones. Both
+  are non-destructive.
+- Reset and set-password links sent before the deploy stop working; users request new ones.
+- New `scim_tokens` rows must be inserted as `sha256:` + the SHA-256 hex of the token
+  (a plaintext insert still works and is upgraded on first use).
+- Org-less licences (self-hosted without organizations) no longer get a duplicate-key check.
+
+## [0.16.0] - 2026-11-03
+
+A full audit (six parallel reviews: auth, tenant isolation, billing and jobs, untrusted
+input, UI, business logic) plus a dependency refresh. 0.15.1–0.15.3 were not released on
+their own; they ship with this release.
+
+### Security
+
+- Dependencies: `next` 16.2.6 → 16.4.4 (unauthenticated RCE in image optimization,
+  `use cache` and `next/og`; proxy bypass; SSRF), `@sentry/nextjs` → 10.78 (tunnel-route
+  middleware bypass), `sharp` → 0.35.5 (libvips, libheif, librsvg), `zod` → 4.6.7, and
+  bounded overrides for the transitive `@xmldom/xmldom`, `brace-expansion`,
+  `browserslist`, `fast-uri` and `source-map-js`. No high advisory is left that reaches
+  the app (see the debt register for better-auth and maplibre-gl).
+- The asset map popup is built from DOM nodes; a location name was rendered through
+  maplibre's `setHTML`, whose sanitizer has a published bypass (stored XSS).
+- SSRF: webhook delivery no longer follows redirects; IPv6 addresses (including
+  IPv4-mapped, NAT64 and 6to4 forms) are classified with `node:net`; the per-org S3
+  endpoint is validated on save, on test and when the client is built; the integration
+  test route reuses the same validation.
+- Microsoft account linking is trusted only when `MICROSOFT_TENANT_ID` is a tenant GUID
+  (with `common`, any Entra tenant could assert an existing user's email).
+- `PUT /api/user` no longer changes the caller's own password or email (use Settings →
+  Change password); password reset and set-password revoke the user's sessions; the
+  session cookie cache is 60 seconds; usernames can't contain `@` and login prefers an
+  exact email match; admins can't demote themselves or the last admin; admin session
+  revocation is scoped to the organization; OIDC userinfo can't override the verified
+  ID-token `sub`, `email` or `email_verified`.
+- Permissions: data export requires the entity's view permission; report schedules need
+  `report:view` and their updates are validated; attachment upload, update and delete
+  need the entity's edit permission; maintenance schedule writes need `asset:edit`;
+  non-admins get only public user columns from `GET /api/user`.
+- Tenant isolation: the compliance export counted every tenant's audit log; the
+  asset-tag suggestion read foreign names by id; full-text search id lookups are scoped
+  and capped; org-less callers no longer list every organization; overdue-return mails
+  for an org-less user no longer go to every admin on the platform; invite accept and SSO
+  sign-up refuse locked organizations.
+- Limits: CSV import is capped at 5 MB and 5000 rows; label PDFs at 200 assets; thumbnail
+  generation at 40 megapixels.
+
+### Fixed
+
+- Billing: a checkout grants the plan only when paid (async payment methods are handled);
+  a second checkout for a subscribed org answers 409; `past_due`, `unpaid` and
+  `incomplete_expired` subscriptions start the suspension grace period; expired-trial
+  downgrades re-check their filter.
+- Notifications: expiry emails are de-duplicated per window and go to active admins
+  only; the email queue drains within a time budget each run instead of 10 per day;
+  overdue-return failures are isolated per item; scheduled reports stop for users who
+  left the schedule's organization.
+- Inventory: editing a component no longer resets its quantities (zod `.partial()` kept
+  the create defaults); concurrent checkouts can't oversell components or consumables;
+  double check-ins and double checkouts answer 409; released licence seats are reused and
+  seat numbers no longer collide; item requests and reservations follow a transition
+  table with owner checks; maintenance due dates advance from completion, once.
+- Malformed JSON bodies answer 400 instead of 500; duplicate asset tags or serial
+  numbers answer 409; cached lists refresh after assignments, requests, audits and kits.
+- UI: the depreciation settings, the four item-category deletes and the invitation role
+  list had no working API behind them; non-admin dashboards no longer switch to the admin
+  widgets; widgets and the billing tab no longer crash on an API error; admin breadcrumbs
+  pointed at a 404.
+
+**Upgrade notes**
+
+- No migration.
+- Microsoft SSO on a `common`/`organizations` tenant no longer links a sign-in to an
+  existing local account by email; set `MICROSOFT_TENANT_ID` to your tenant GUID.
+- API clients that changed their own password or email through `PUT /api/user`, or sent
+  usernames containing `@`, now get a 400.
+
+## [0.15.3] - 2026-11-02
+
+Closes the last open cross-tenant items from the 0.15.1 reviews (debt items 83, 84, 89
+and 90). 0.15.1 and 0.15.2 were not released on their own; they ship with this release.
+
+### Removed
+
+- Moving an asset into another organization (`POST /api/asset/transfers` with
+  `transferType: "organization"`, super-admin only since 0.15.1). A moved asset kept the
+  old organization's location, model, supplier, manufacturer, status and category
+  (which also blocked that organization from deleting them), its user assignment, open
+  checkouts, reservations, custom field values, and attachments in the old
+  organization's storage. The request now answers 400; past organization transfers stay
+  visible in the asset's transfer history.
+
+### Security
+
+- Kits (`POST`/`PUT /api/kits`, `PUT /api/kits/[id]`), audit campaigns (`POST /api/audits`,
+  `PUT /api/audits/[id]`) and approval requests (`POST /api/approvals`) refuse items,
+  scopes and entities of another organization before storing them (item 89).
+- "Global" saved filters are shared within the author's organization only; they were
+  returned to every tenant (item 90).
+- SCIM user provisioning checks the user limit of the token's organization; without a
+  session it found no organization and always allowed (item 90).
+- The component category and audit campaign updates and the asset transfer writes carry
+  the organization filter on the write itself, and a user transfer reads the current
+  assignment inside its transaction (item 84).
+
+### Fixed
+
+- Editing an audit campaign without sending `scopeType` (a rename, a new due date) reset
+  its scope to "all". The update schema no longer applies the create default.
+
+## [0.15.2] - 2026-10-30
+
+Closes the cross-tenant leftovers found by the 0.15.1 reviews (debt items 82 and 85–88).
+0.15.1 was not released on its own; it ships together with this release.
+
+### Security
+
+- `/api/reservations` is scoped to the caller's organization (item 85). `POST` reserved
+  any tenant's asset by id and echoed its name and tag; it now answers 404 for a foreign
+  asset. `GET` listed every tenant's reservations, including the requesters' names and
+  emails, to any admin or `reservation:approve` holder; it now lists only reservations
+  of the caller's organization's assets.
+- Reverting an audit-log entry (`POST /api/admin/audit-logs/[id]/revert`) reads and
+  writes the target only within the caller's organization, and refuses a snapshot whose
+  references (location, supplier, category, …) belong to another organization (item 86).
+- Setting a default status (`POST`/`PUT /api/statusType`) clears the previous default
+  only within the caller's organization; it cleared every tenant's default (item 87).
+- CSV-imported locations belong to the importing organization; they were created
+  without one and never showed on the tenant's pages (item 88).
+- Write routes check every referenced id in the request body against the caller's
+  organization before storing it (debt item 82, found by the 0.15.1 reviews). Until now
+  a tenant holding another tenant's id could attach records to that tenant's rows, read
+  them back through the response, and, for component categories (`onDelete: Cascade`),
+  lose its components when the other tenant deleted the category. A foreign id now
+  answers 400 `"<Thing> not found in your organization"`. Covered:
+  - accessories, assets (`/api/asset`, `/api/asset/addAsset`), asset templates,
+    components (`/api/components`, `/api/components/[id]`), consumables and licences:
+    manufacturer, supplier, location, model, status, category and licensed user;
+  - locations: parent location (a location can no longer be its own parent);
+  - consumable checkouts and licence seats: the target user (the seat response and its
+    webhook carried the foreign user's email);
+  - audit campaigns: auditors; audit scans: asset and location;
+  - `PUT /api/user`: department; purchase requests: department and item suppliers
+    (`generate-po` copied those suppliers onto the order);
+  - CSV import of accessories, consumables and licences: reference columns (the
+    defaults were already scoped).
+- New helper `findForeignReference()` in `src/lib/org-references.ts`: one `findMany`
+  per referenced model, scoped like `scopeToOrganization` (an org-less caller matches
+  only org-less rows).
+
+### Fixed
+
+- Reverting a component or kit change failed with 500, and `verifyEntityOrgOwnership`
+  never recognised a component (custom field values on components were refused): both
+  looked up the Prisma client as `Component`/`Kit` instead of `component`/`kit`.
+
+**Upgrade notes**
+
+- No migration. A record that still points at a legacy reference row without an
+  organization (for example a component category created through the API before
+  0.15.1) answers 400 when an edit re-sends that id. The read-only count query in the
+  0.15.1 upgrade notes finds those categories.
+
+## [0.15.1] - 2026-10-29
+
+Closes the cross-tenant gaps that were still open from an external security report
+received 2026-10-29. The report's other items (approvals, licence seats, user-asset
+assignment, the source-asset lookup in transfers, the super-admin fallback, the OIDC
+signature check) were already fixed in 0.9.4–0.14.0.
+
+### Security
+
+- `/api/componentCategory` is scoped to the caller's organization. `GET` listed every
+  tenant's categories, `PUT` renamed any category by id (a foreign id now answers 404),
+  and `POST` created categories without an organization, so they never showed on the
+  tenant's own pages.
+- `POST /api/asset/transfers` with `transferType: "organization"` is super-admin only
+  and requires an existing target organization that differs from the asset's current
+  one. Any tenant admin could push their own assets into a foreign or nonexistent
+  organization. The body is now validated with `createTransferSchema` (UUIDs, transfer
+  type); a malformed body answers 400 `Validation failed`.
+
+### Changed
+
+- The asset detail page offers the "Organization" transfer type to super-admins only.
+
+**Upgrade notes**
+
+- No migration. Component categories created through the API before this release have
+  `organizationId = NULL` and no longer appear in the API either (the pages never
+  showed them). Count them read-only before deciding on a backfill:
+  ```sql
+  SELECT cc.id, cc.name, count(c.id) AS components,
+         array_agg(DISTINCT c."organizationId") AS component_orgs
+  FROM component_categories cc
+  LEFT JOIN components c ON c."categoryId" = cc.id
+  WHERE cc."organizationId" IS NULL
+  GROUP BY cc.id, cc.name;
+  ```
+
 ## [0.15.0] - 2026-10-12
 
 Phase 1a of the SaaS boundary (`docs/superpowers/specs/2026-10-05-saas-boundary-design.md`):

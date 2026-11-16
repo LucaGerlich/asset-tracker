@@ -10,7 +10,7 @@ export interface TemplateVariables {
 /**
  * Escape a value for safe interpolation into an HTML document body/attribute.
  */
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -496,7 +496,7 @@ export const emailTemplates = {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Scheduled Report</h2>
         <p>Hello {{userName}},</p>
-        <p>Your <strong>{{reportType}}</strong> report is attached.</p>
+        <p>Your <strong>{{reportType}}</strong> report is ready. Sign in to Asset Tracker to view and export it.</p>
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
           <tr>
             <td style="padding: 10px; border: 1px solid #ddd; background: #f5f5f5; width: 30%;"><strong>Report Type</strong></td>

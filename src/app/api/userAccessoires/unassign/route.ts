@@ -7,6 +7,7 @@ import {
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 
 // Body: { userId, accessorieId }
 export async function DELETE(req: NextRequest) {
@@ -39,6 +40,8 @@ export async function DELETE(req: NextRequest) {
     const result = await prisma.userAccessoires.deleteMany({
       where: { userid: userId, accessorieid: accessorieId },
     });
+    await invalidateCacheByPrefix("user_accessoires_all").catch(() => {});
+
     return new Response(
       JSON.stringify({ message: "Accessory unassigned", result }),
       { status: 200 },

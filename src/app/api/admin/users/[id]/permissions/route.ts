@@ -11,6 +11,11 @@ import {
   getOrganizationContext,
   scopeToOrganization,
 } from "@/lib/organization-context";
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
+import {
+  demotionFailureResponse,
+  guardedAdminDemotion,
+} from "@/lib/admin-demotion";
 
 // PATCH /api/admin/users/[id]/permissions
 export async function PATCH(
@@ -84,17 +89,50 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { userid: id },
-      data: updateData,
-      select: {
-        userid: true,
-        username: true,
-        firstname: true,
-        lastname: true,
-        email: true,
-        isadmin: true,
-        canrequest: true,
+    const applyUpdate = (db: Pick<typeof prisma, "user">) =>
+      db.user.update({
+        where: { userid: id },
+        data: updateData,
+        select: {
+          userid: true,
+          username: true,
+          firstname: true,
+          lastname: true,
+          email: true,
+          isadmin: true,
+          canrequest: true,
+        },
+      });
+
+    let updatedUser: Awaited<ReturnType<typeof applyUpdate>>;
+    if (updateData.isadmin === false) {
+      // Check and write share one Serializable transaction, so two admins
+      // demoting each other at once cannot both pass the last-admin check.
+      const outcome = await guardedAdminDemotion(
+        { callerId: user.id, targetUserIds: [id], organizationId: orgId },
+        applyUpdate,
+      );
+      if (outcome.status !== "ok") return demotionFailureResponse(outcome);
+      updatedUser = outcome.result;
+    } else {
+      updatedUser = await applyUpdate(prisma);
+    }
+
+    await createAuditLog({
+      userId: user.id ?? null,
+      action: AUDIT_ACTIONS.UPDATE,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: id,
+      details: {
+        type: "permission_update",
+        changes: {
+          ...(updateData.isadmin !== undefined && {
+            isadmin: updateData.isadmin,
+          }),
+          ...(updateData.canrequest !== undefined && {
+            canrequest: updateData.canrequest,
+          }),
+        },
       },
     });
 

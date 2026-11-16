@@ -3,28 +3,9 @@ import prisma from "./prisma";
 import { cached } from "./cache";
 import { getOrganizationContext } from "./organization-context";
 
-/**
- * Columns of a user row that are safe to hand to a Server Component's props
- * (and therefore to the browser). Deliberately excludes the password hash and
- * the LDAP / SCIM / SSO bookkeeping columns (ldapDN, externalId,
- * scimProviderId, scimLastSync, lastSyncedAt, ...). Never spread a full user
- * row into a client component: add the column here when a page needs it.
- */
-export const publicUserSelect = {
-  userid: true,
-  username: true,
-  firstname: true,
-  lastname: true,
-  email: true,
-  isadmin: true,
-  canrequest: true,
-  lan: true,
-  organizationId: true,
-  departmentId: true,
-  accessExpiresAt: true,
-  creation_date: true,
-  change_date: true,
-} satisfies Prisma.userSelect;
+import { publicUserSelect } from "./user-select";
+
+export { publicUserSelect };
 
 /**
  * Strict org-scoped where clause — throws when org context is missing.

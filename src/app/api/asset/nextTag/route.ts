@@ -22,20 +22,26 @@ export async function GET(req: NextRequest) {
     // Look up names
     const [category, manufacturer, model] = await Promise.all([
       categoryId
-        ? prisma.assetCategoryType.findUnique({
-            where: { assetcategorytypeid: categoryId },
+        ? prisma.assetCategoryType.findFirst({
+            where: scopeToOrganization(
+              { assetcategorytypeid: categoryId },
+              orgId,
+            ),
             select: { assetcategorytypename: true },
           })
         : null,
       manufacturerId
-        ? prisma.manufacturer.findUnique({
-            where: { manufacturerid: manufacturerId },
+        ? prisma.manufacturer.findFirst({
+            where: scopeToOrganization(
+              { manufacturerid: manufacturerId },
+              orgId,
+            ),
             select: { manufacturername: true },
           })
         : null,
       modelId
-        ? prisma.model.findUnique({
-            where: { modelid: modelId },
+        ? prisma.model.findFirst({
+            where: scopeToOrganization({ modelid: modelId }, orgId),
             select: { modelname: true },
           })
         : null,

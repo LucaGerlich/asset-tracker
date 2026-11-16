@@ -50,6 +50,17 @@ describe("POST /api/auth/register", () => {
     password: "SecurePass123!",
   };
 
+  it("rejects a username containing @ so it cannot shadow an email", async () => {
+    const req = createMockRequest("/api/auth/register", {
+      method: "POST",
+      body: { ...validBody, username: "victim@example.com" },
+    });
+    const res = await POST(req);
+
+    expect(res.status).toBe(400);
+    expect(mockPrisma.user.findFirst).not.toHaveBeenCalled();
+  });
+
   it("returns 404 and skips rate limiting when public signup is closed", async () => {
     delete process.env.ALLOW_PUBLIC_SIGNUP;
 

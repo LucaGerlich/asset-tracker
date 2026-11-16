@@ -8,6 +8,11 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  assetReferences,
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { getOrganizationContext } from "@/lib/organization-context";
 import { createAssetSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
@@ -81,6 +86,16 @@ export async function POST(req: NextRequest) {
       validationResult.data;
 
     const orgContext = await getOrganizationContext();
+
+    const foreign = await findForeignReference(
+      orgContext?.organization?.id,
+      assetReferences(rest),
+    );
+    if (foreign) {
+      return new Response(JSON.stringify(foreignReferenceError(foreign)), {
+        status: 400,
+      });
+    }
 
     const created = await prisma.asset.create({
       data: {

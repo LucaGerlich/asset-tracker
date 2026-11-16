@@ -102,6 +102,19 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     // Use a transaction to atomically increment stock and set returnedAt
     const checkin = await prisma.$transaction(async (tx) => {
+      // Claim the checkout first. The read above can be stale, so only the
+      // request that flips returnedAt from null may restock; a concurrent
+      // second check-in matches nothing and must not increment again.
+      const claimed = await tx.componentCheckout.updateMany({
+        where: { id, returnedAt: null },
+        data: {
+          returnedAt: new Date(),
+        },
+      });
+      if (claimed.count !== 1) {
+        throw new Error("ALREADY_RETURNED");
+      }
+
       await tx.component.update({
         where: { id: existing.componentId },
         data: {
@@ -111,12 +124,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
         },
       });
 
-      // Mark the checkout as returned
-      const updated = await tx.componentCheckout.update({
+      const updated = await tx.componentCheckout.findUniqueOrThrow({
         where: { id },
-        data: {
-          returnedAt: new Date(),
-        },
         include: {
           component: {
             select: { id: true, name: true },
@@ -171,6 +180,13 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: "Component checkout not found" },
         { status: 404 },
+      );
+    }
+
+    if (e instanceof Error && e.message === "ALREADY_RETURNED") {
+      return NextResponse.json(
+        { error: "Component has already been returned" },
+        { status: 409 },
       );
     }
 

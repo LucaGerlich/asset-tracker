@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import prisma from "../../../lib/prisma";
+import { searchIdsByFullText } from "@/lib/fulltext-search";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import {
@@ -28,6 +29,10 @@ import {
   AUDIT_ENTITIES,
 } from "@/lib/audit-log";
 import { conflictResponse } from "@/lib/concurrency";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 
 const ACCESSORY_SORT_FIELDS = ["accessoriename", "creation_date"];
 
@@ -97,18 +102,19 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = scopeToOrganization({}, orgId);
 
+    let searchTruncated = false;
     // Full-text search using tsvector GIN index (falls back to ILIKE if needed)
     if (params.search) {
-      const tsQuery = params.search.trim().split(/\s+/).join(" & ");
-      const matchingIds = await prisma
-        .$queryRawUnsafe<Array<{ accessorieid: string }>>(
-          `SELECT "accessorieid" FROM "accessories" WHERE "search_vector" @@ websearch_to_tsquery('english', $1)`,
-          tsQuery,
-        )
-        .catch(() => null);
+      const fullText = await searchIdsByFullText(
+        "accessories",
+        orgId,
+        params.search,
+      );
+      const matchingIds = fullText?.ids ?? null;
+      searchTruncated = fullText?.truncated ?? false;
 
       if (matchingIds && matchingIds.length > 0) {
-        where.accessorieid = { in: matchingIds.map((r) => r.accessorieid) };
+        where.accessorieid = { in: matchingIds };
       } else if (matchingIds) {
         // tsvector returned no results — empty set
         where.accessorieid = { in: [] };
@@ -126,9 +132,14 @@ export async function GET(req: NextRequest) {
       prisma.accessories.count({ where }),
     ]);
 
-    return NextResponse.json(buildPaginatedResponse(items, total, params), {
-      status: 200,
-    });
+    return NextResponse.json(
+      buildPaginatedResponse(items, total, params, {
+        truncated: searchTruncated,
+      }),
+      {
+        status: 200,
+      },
+    );
   } catch (e) {
     const denied = apiErrorResponse(e);
     if (denied) return denied;
@@ -180,6 +191,20 @@ export async function POST(req: NextRequest) {
       purchasedate,
       requestable,
     } = validationResult.data;
+
+    const foreign = await findForeignReference(orgId, {
+      manufacturer: manufacturerid,
+      statusType: statustypeid,
+      accessoryCategory: accessoriecategorytypeid,
+      location: locationid,
+      supplier: supplierid,
+      model: modelid,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     const created = await prisma.accessories.create({
       data: {
@@ -271,6 +296,21 @@ export async function PUT(req: NextRequest) {
         },
         { status: 400 },
       );
+    }
+
+    const refs = validationResult.data;
+    const foreign = await findForeignReference(orgId, {
+      manufacturer: refs.manufacturerid,
+      statusType: refs.statustypeid,
+      accessoryCategory: refs.accessoriecategorytypeid,
+      location: refs.locationid,
+      supplier: refs.supplierid,
+      model: refs.modelid,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
     }
 
     const updateData = { ...validationResult.data } as Record<string, unknown>;

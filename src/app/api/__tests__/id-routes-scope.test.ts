@@ -86,12 +86,17 @@ describe("POST /api/maintenance/[id]/complete", () => {
     mockPrisma.maintenance_schedules.findUnique.mockResolvedValue(
       schedule as never,
     );
-    mockPrisma.$transaction.mockImplementation((async (ops: unknown[]) =>
-      Promise.all(ops)) as never);
+    mockPrisma.$transaction.mockImplementation((async (
+      arg: unknown[] | ((tx: unknown) => unknown),
+    ) =>
+      typeof arg === "function" ? arg(mockPrisma) : Promise.all(arg)) as never);
+    mockPrisma.maintenance_schedules.updateMany.mockResolvedValue({
+      count: 1,
+    } as never);
     mockPrisma.maintenance_logs.create.mockResolvedValue({
       id: "log-1",
     } as never);
-    mockPrisma.maintenance_schedules.update.mockResolvedValue({
+    mockPrisma.maintenance_schedules.findUniqueOrThrow.mockResolvedValue({
       ...schedule,
       assignedTo: "tech-1",
       user: {
@@ -116,7 +121,7 @@ describe("POST /api/maintenance/[id]/complete", () => {
   });
 
   it("does not email an assignee of another organization", async () => {
-    mockPrisma.maintenance_schedules.update.mockResolvedValue({
+    mockPrisma.maintenance_schedules.findUniqueOrThrow.mockResolvedValue({
       ...schedule,
       user: {
         firstname: "F",
@@ -140,7 +145,7 @@ describe("POST /api/maintenance/[id]/complete", () => {
 
     expect(res.status).toBe(404);
     expect(mockPrisma.maintenance_logs.create).not.toHaveBeenCalled();
-    expect(mockPrisma.maintenance_schedules.update).not.toHaveBeenCalled();
+    expect(mockPrisma.maintenance_schedules.updateMany).not.toHaveBeenCalled();
     expect(queueEmail).not.toHaveBeenCalled();
   });
 

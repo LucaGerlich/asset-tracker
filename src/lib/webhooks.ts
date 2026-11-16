@@ -170,9 +170,26 @@ async function deliverWebhook(
       headers,
       body: payloadString,
       signal: controller.signal,
+      // Never follow redirects: the target was validated, a redirect target was not
+      redirect: "manual",
     });
 
     clearTimeout(timeoutId);
+
+    if (response.status >= 300 && response.status < 400) {
+      await prisma.webhookDelivery.create({
+        data: {
+          webhookId: webhook.id,
+          event: payload.event,
+          payload: payload as object,
+          statusCode: response.status,
+          response: "Blocked: redirects are not followed",
+          attempt,
+          success: false,
+        },
+      });
+      return;
+    }
 
     const responseText = await response.text().catch(() => "");
 

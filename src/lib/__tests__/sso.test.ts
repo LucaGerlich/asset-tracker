@@ -304,4 +304,57 @@ describe("exchangeOidcCode", () => {
     await expect(exchangeOidcCode("auth-code")).rejects.toThrow(/jwks_uri/i);
     expect(vi.mocked(jwtVerify)).not.toHaveBeenCalled();
   });
+
+  describe("userinfo claims", () => {
+    const discoveryWithUserinfo = {
+      ...discoveryResponse,
+      userinfo_endpoint: "https://idp.example.com/userinfo",
+    };
+
+    const mockFlow = (userinfo: Record<string, unknown>) => {
+      mockSsoSettings(baseSettings);
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => discoveryWithUserinfo,
+        })
+        .mockResolvedValueOnce({ ok: true, json: async () => tokenResponse })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => userinfo,
+        }) as unknown as typeof fetch;
+      vi.mocked(jwtVerify).mockResolvedValue({
+        payload: {
+          sub: "user-123",
+          email: "jdoe@example.com",
+          email_verified: true,
+        },
+        protectedHeader: { alg: "RS256" },
+        key: undefined,
+      } as any);
+    };
+
+    it("does not let userinfo override verified sub, email or email_verified", async () => {
+      mockFlow({
+        sub: "user-123",
+        email: "victim@example.com",
+        email_verified: false,
+        given_name: "John",
+      });
+
+      const profile = await exchangeOidcCode("auth-code");
+
+      expect(profile.sub).toBe("user-123");
+      expect(profile.email).toBe("jdoe@example.com");
+      expect(profile.emailVerified).toBe(true);
+      expect(profile.firstName).toBe("John");
+    });
+
+    it("rejects userinfo whose sub differs from the ID token sub", async () => {
+      mockFlow({ sub: "someone-else", email: "victim@example.com" });
+
+      await expect(exchangeOidcCode("auth-code")).rejects.toThrow(/sub/i);
+    });
+  });
 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import {
   requireApiAuth,
+  requirePermission,
   requireNotDemoMode,
   requireWritableOrg,
 } from "@/lib/api-auth";
@@ -69,7 +70,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const user = await requireApiAuth();
+    const user = await requirePermission("asset:edit");
     await requireWritableOrg(user);
 
     const { id } = await params;
@@ -171,7 +172,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     const demoBlock = requireNotDemoMode();
     if (demoBlock) return demoBlock;
 
-    const user = await requireApiAuth();
+    const user = await requirePermission("asset:edit");
     await requireWritableOrg(user);
 
     const { id } = await params;

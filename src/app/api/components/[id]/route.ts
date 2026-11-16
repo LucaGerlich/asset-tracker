@@ -6,6 +6,10 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { invalidateCacheByPrefix } from "@/lib/cache";
 import { validateBody, updateComponentSchema } from "@/lib/validation";
@@ -92,6 +96,18 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const body = await req.json();
     const validated = validateBody(updateComponentSchema, body);
     if (validated instanceof NextResponse) return validated;
+
+    const foreign = await findForeignReference(orgId, {
+      componentCategory: validated.categoryId,
+      manufacturer: validated.manufacturerId,
+      supplier: validated.supplierId,
+      location: validated.locationId,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     const updateData: Record<string, unknown> = {};
 

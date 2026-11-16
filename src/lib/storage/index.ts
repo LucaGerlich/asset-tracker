@@ -53,6 +53,21 @@ export async function getOrgStorage(orgId: string): Promise<StorageProvider> {
 
   if (!config) return getStorage();
 
+  // Endpoints stored before save-time validation existed (or whose DNS changed
+  // since) may point at internal hosts. Fail closed: falling back to the
+  // default provider would put this org's files in the shared bucket.
+  const { validateStorageEndpoint } = await import("@/lib/url-validation");
+  const endpointCheck = await validateStorageEndpoint(config.endpoint);
+  if (!endpointCheck.valid) {
+    const { logger } = await import("@/lib/logger");
+    logger.error("Org storage endpoint rejected by SSRF validation", {
+      organizationId: orgId,
+      endpoint: config.endpoint,
+      reason: endpointCheck.error,
+    });
+    throw new Error("Organization storage endpoint failed validation");
+  }
+
   const { decrypt } = await import("@/lib/encryption");
   return new S3StorageProvider({
     bucket: config.bucket,

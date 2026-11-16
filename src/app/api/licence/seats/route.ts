@@ -7,11 +7,16 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, assignLicenceSeatSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { logger, logCatchError } from "@/lib/logger";
+import { assignLicenceSeat } from "@/lib/licence-seats";
 
 // GET /api/licence/seats?licenceId=...
 export async function GET(req: Request) {
@@ -104,6 +109,15 @@ export async function POST(req: Request) {
 
     const { licenceId, userId, notes } = data;
 
+    const foreign = await findForeignReference(admin.organizationId, {
+      user: userId,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
+
     // Serializable isolation prevents two concurrent assignments from both
     // passing the seat-count check (over-assignment) or computing the same
     // seatNumber. On conflict PostgreSQL aborts one tx (P2034) — surfaced as 409.
@@ -133,34 +147,19 @@ export async function POST(req: Request) {
           throw new Error("No available seats for this licence");
         }
 
-        const existingAssignment = await tx.licenceSeatAssignment.findFirst({
-          where: {
-            licenceId,
-            userId,
-            unassignedAt: null,
-          },
+        const seat = await assignLicenceSeat(tx, {
+          licenceId,
+          userId,
+          assignedBy: admin.id ?? null,
+          notes,
         });
 
-        if (existingAssignment) {
+        if (seat.outcome === "already_assigned") {
           throw new Error("User is already assigned to this licence");
         }
 
-        // Auto-assign next seat number
-        const maxSeat = await tx.licenceSeatAssignment.aggregate({
-          where: { licenceId },
-          _max: { seatNumber: true },
-        });
-
-        const nextSeatNumber = (maxSeat._max.seatNumber ?? 0) + 1;
-
-        return tx.licenceSeatAssignment.create({
-          data: {
-            licenceId,
-            userId,
-            seatNumber: nextSeatNumber,
-            assignedBy: admin.id ?? null,
-            notes: notes ?? null,
-          },
+        return tx.licenceSeatAssignment.findUniqueOrThrow({
+          where: { id: seat.id },
           include: {
             user: {
               select: {

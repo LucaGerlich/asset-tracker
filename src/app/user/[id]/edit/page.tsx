@@ -36,6 +36,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       <UserEditForm
         initial={user}
         isAdmin={!!session.user.isAdmin}
+        isSelf={session.user.id === params.id}
         initialRoles={allRoles}
         initialUserRoles={userRoles}
         initialDepartments={departments}

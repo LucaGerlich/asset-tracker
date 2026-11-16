@@ -80,8 +80,9 @@ export class RateLimitError extends AppError {
 }
 
 /**
- * Map guard errors to a JSON response. Returns null for anything else, so the
- * caller keeps its own 404/409/500 handling:
+ * Map guard errors and malformed JSON request bodies (the SyntaxError that
+ * `req.json()` throws) to a JSON response. Returns null for anything else, so
+ * the caller keeps its own 404/409/500 handling:
  *
  *   } catch (error) {
  *     const denied = apiErrorResponse(error);
@@ -94,6 +95,11 @@ export function apiErrorResponse(error: unknown): NextResponse | null {
       { error: error.message, code: error.code },
       { status: error.statusCode },
     );
+  }
+  // `req.json()` rejects with a SyntaxError for an empty or malformed body.
+  // That is a client error, not a server fault. All engines mention "JSON".
+  if (error instanceof SyntaxError && error.message.includes("JSON")) {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
   return null;
 }

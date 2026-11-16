@@ -1,8 +1,9 @@
 /**
  * Scheduled Reports Processing
  *
- * Processes due report schedules: generates reports, queues emails
- * with attachments, and updates the next run time.
+ * Processes due report schedules: queues an email that links to the
+ * reports page in the app (mail clients block data: URIs, and the page is
+ * login-gated so no report data leaves the app), and updates the next run time.
  */
 
 import prisma from "@/lib/prisma";
@@ -12,8 +13,8 @@ import {
   renderTextTemplate,
   emailTemplates,
 } from "@/lib/email/templates";
-import { generateReportBuffer, type ReportType } from "@/lib/report-generator";
 import { logger } from "@/lib/logger";
+import { getBaseUrl } from "@/lib/url";
 
 interface ProcessResult {
   processed: number;
@@ -37,6 +38,7 @@ export async function processScheduledReports(): Promise<ProcessResult> {
           lastname: true,
           email: true,
           isActive: true,
+          organizationId: true,
         },
       },
     },
@@ -55,13 +57,20 @@ export async function processScheduledReports(): Promise<ProcessResult> {
       continue;
     }
 
-    try {
-      const reportBuffer = await generateReportBuffer(
-        schedule.reportType as ReportType,
-        schedule.format as "csv" | "xlsx",
-        schedule.organizationId,
-      );
+    // The schedule was created for the user's organization at that time. If the
+    // user moved on, the report would leak the old tenant's data to them.
+    if (schedule.organizationId !== schedule.user.organizationId) {
+      logger.warn("Deactivating scheduled report: user left its organization", {
+        scheduleId: schedule.id,
+      });
+      await prisma.reportSchedule.update({
+        where: { id: schedule.id },
+        data: { isActive: false },
+      });
+      continue;
+    }
 
+    try {
       const reportTypeLabel =
         schedule.reportType.charAt(0).toUpperCase() +
         schedule.reportType.slice(1);
@@ -80,17 +89,15 @@ export async function processScheduledReports(): Promise<ProcessResult> {
         },
       );
 
-      // Embed the report as a base64 data URI link in the email body
-      const base64Data = reportBuffer.buffer.toString("base64");
-      const dataUri = `data:${reportBuffer.mimeType};base64,${base64Data}`;
-      const downloadHtml = `${html}<p style="margin-top: 20px;"><a href="${dataUri}" download="${reportBuffer.filename}" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px;">Download ${reportBuffer.filename}</a></p>`;
+      const reportsUrl = `${getBaseUrl()}/reports`;
+      const linkHtml = `${html}<p style="margin-top: 20px;"><a href="${reportsUrl}" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px;">Open ${reportTypeLabel} report</a></p>`;
 
       await queueEmail(
         schedule.user.userid,
         "scheduled_report",
         schedule.user.email,
         subject,
-        downloadHtml,
+        linkHtml,
       );
 
       await prisma.reportSchedule.update({

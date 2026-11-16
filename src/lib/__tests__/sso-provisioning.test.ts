@@ -72,6 +72,15 @@ describe("resolveSsoUserData", () => {
     expect(await resolveSsoUserData(ssoUser, "microsoft")).toBeNull();
   });
 
+  it("rejects when the org is suspended for billing", async () => {
+    mockPrisma.organization.findUnique.mockResolvedValue({
+      isActive: true,
+      suspendedAt: new Date(),
+      maxUsers: 10,
+    } as never);
+    expect(await resolveSsoUserData(ssoUser, "microsoft")).toBeNull();
+  });
+
   it("rejects when the org user quota is full", async () => {
     mockPrisma.user.count.mockResolvedValue(10 as never);
     expect(await resolveSsoUserData(ssoUser, "microsoft")).toBeNull();

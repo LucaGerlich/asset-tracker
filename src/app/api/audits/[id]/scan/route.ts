@@ -6,6 +6,10 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { validateBody, auditScanSchema } from "@/lib/validation";
 import { triggerWebhook } from "@/lib/webhooks";
 import { logger } from "@/lib/logger";
@@ -53,6 +57,16 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     if (validated instanceof NextResponse) return validated;
 
     const { assetId, locationId, status, notes } = validated;
+
+    const foreign = await findForeignReference(orgId, {
+      asset: assetId,
+      location: locationId,
+    });
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
 
     const entry = await prisma.auditEntry.upsert({
       where: { campaignId_assetId: { campaignId: id, assetId } },

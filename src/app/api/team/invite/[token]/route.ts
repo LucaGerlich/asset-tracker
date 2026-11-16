@@ -10,6 +10,7 @@ import {
 } from "@/lib/email-ownership";
 import { auth } from "@/lib/auth";
 import { checkUserLimit } from "@/lib/tenant-limits";
+import { resolveOrgStatus } from "@/lib/org-suspension";
 import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,9 @@ async function findAndValidateInvitation(token: string) {
   const invitation = await prisma.teamInvitation.findUnique({
     where: { token },
     include: {
-      organization: { select: { id: true, name: true } },
+      organization: {
+        select: { id: true, name: true, isActive: true, suspendedAt: true },
+      },
       role: { select: { id: true, name: true, organizationId: true } },
       inviter: { select: { firstname: true, lastname: true } },
     },
@@ -65,6 +68,16 @@ async function findAndValidateInvitation(token: string) {
     };
   }
 
+  // Nobody joins an organization that is locked or in its billing grace
+  // period; the invitation stays pending and works again after reactivation.
+  if (resolveOrgStatus(invitation.organization) !== "active") {
+    return {
+      error: "This organization is currently unavailable",
+      status: 403,
+      invitation: null,
+    };
+  }
+
   return { error: null, status: 200, invitation };
 }
 
@@ -84,7 +97,10 @@ export async function GET(
     return NextResponse.json({
       id: invitation.id,
       email: invitation.email,
-      organization: invitation.organization,
+      organization: {
+        id: invitation.organization.id,
+        name: invitation.organization.name,
+      },
       role: invitation.role
         ? { id: invitation.role.id, name: invitation.role.name }
         : null,

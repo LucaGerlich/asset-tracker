@@ -40,14 +40,20 @@ export async function GET() {
     const adminUsersList = users.filter((u) => u.isadmin);
     const regularUsersList = users.filter((u) => !u.isadmin);
 
+    // audit_logs has no organizationId; scope through the author, like the
+    // compliance dashboard route does.
+    const auditWhere = { user: { organizationId: orgId ?? null } };
+
     const [totalAuditLogs, lastAuditEntry, oldestAuditEntry] =
       await Promise.all([
-        prisma.audit_logs.count(),
+        prisma.audit_logs.count({ where: auditWhere }),
         prisma.audit_logs.findFirst({
+          where: auditWhere,
           orderBy: { createdAt: "desc" },
           select: { createdAt: true, action: true, entity: true },
         }),
         prisma.audit_logs.findFirst({
+          where: auditWhere,
           orderBy: { createdAt: "asc" },
           select: { createdAt: true },
         }),
@@ -56,12 +62,14 @@ export async function GET() {
     // Audit logs by action type
     const auditByAction = await prisma.audit_logs.groupBy({
       by: ["action"],
+      where: auditWhere,
       _count: { id: true },
     });
 
     // Audit logs by entity type
     const auditByEntity = await prisma.audit_logs.groupBy({
       by: ["entity"],
+      where: auditWhere,
       _count: { id: true },
     });
 

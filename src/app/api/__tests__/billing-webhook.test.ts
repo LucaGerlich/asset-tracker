@@ -15,6 +15,7 @@ vi.mock("@/lib/stripe", () => ({
 import { POST } from "@/app/api/billing/webhook/route";
 import prisma from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
+import { logger } from "@/lib/logger";
 
 const mockPrisma = vi.mocked(prisma, true);
 const mockGetStripe = vi.mocked(getStripe);
@@ -58,6 +59,7 @@ describe("POST /api/billing/webhook", () => {
   describe("checkout.session.completed", () => {
     it("activates the plan and clears the suspension without touching isActive", async () => {
       receiveEvent("checkout.session.completed", {
+        payment_status: "paid",
         subscription: "sub_1",
         metadata: { organizationId: "org-1", plan: "professional" },
       });
@@ -95,6 +97,7 @@ describe("POST /api/billing/webhook", () => {
 
     it("records unlimited enterprise entitlements", async () => {
       receiveEvent("checkout.session.completed", {
+        payment_status: "paid",
         subscription: "sub_1",
         metadata: { organizationId: "org-1", plan: "enterprise" },
       });
@@ -113,8 +116,34 @@ describe("POST /api/billing/webhook", () => {
       ).toContain("scim");
     });
 
+    it("grants the plan for a no_payment_required session", async () => {
+      receiveEvent("checkout.session.completed", {
+        payment_status: "no_payment_required",
+        subscription: "sub_1",
+        metadata: { organizationId: "org-1", plan: "professional" },
+      });
+
+      await POST(webhookRequest());
+
+      expect(mockPrisma.organization.update).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not grant the plan while the payment is unpaid", async () => {
+      receiveEvent("checkout.session.completed", {
+        payment_status: "unpaid",
+        subscription: "sub_1",
+        metadata: { organizationId: "org-1", plan: "professional" },
+      });
+
+      const response = await POST(webhookRequest());
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.organization.update).not.toHaveBeenCalled();
+    });
+
     it("ignores a session without organization or a known plan", async () => {
       receiveEvent("checkout.session.completed", {
+        payment_status: "paid",
         subscription: "sub_1",
         metadata: { organizationId: "org-1", plan: "platinum" },
       });
@@ -123,6 +152,45 @@ describe("POST /api/billing/webhook", () => {
 
       expect(response.status).toBe(200);
       expect(mockPrisma.organization.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("checkout.session.async_payment_succeeded", () => {
+    it("grants the plan once the delayed payment succeeds", async () => {
+      receiveEvent("checkout.session.async_payment_succeeded", {
+        payment_status: "paid",
+        subscription: "sub_1",
+        metadata: { organizationId: "org-1", plan: "professional" },
+      });
+
+      const response = await POST(webhookRequest());
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.organization.update).toHaveBeenCalledTimes(1);
+      const args = mockPrisma.organization.update.mock.calls[0][0];
+      expect(args.where).toEqual({ id: "org-1" });
+      expect(args.data).toMatchObject({
+        plan: "professional",
+        stripeSubscriptionId: "sub_1",
+        suspendedAt: null,
+      });
+    });
+  });
+
+  describe("checkout.session.async_payment_failed", () => {
+    it("logs the failure and grants nothing", async () => {
+      receiveEvent("checkout.session.async_payment_failed", {
+        id: "cs_1",
+        payment_status: "unpaid",
+        subscription: "sub_1",
+        metadata: { organizationId: "org-1", plan: "professional" },
+      });
+
+      const response = await POST(webhookRequest());
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.organization.update).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalled();
     });
   });
 
@@ -186,19 +254,46 @@ describe("POST /api/billing/webhook", () => {
       expect(args.data).not.toHaveProperty("isActive");
     });
 
-    it("leaves the org alone when the subscription is not active", async () => {
+    it.each(["past_due", "unpaid", "incomplete_expired"])(
+      "starts the read-only grace period for a %s subscription",
+      async (status) => {
+        mockPrisma.organization.findFirst.mockResolvedValue({
+          id: "org-1",
+        } as never);
+        receiveEvent("customer.subscription.updated", {
+          id: "sub_1",
+          status,
+          items: { data: [{ price: { id: "price_pro" } }] },
+        });
+
+        await POST(webhookRequest());
+
+        expect(mockPrisma.organization.update).not.toHaveBeenCalled();
+        expect(mockPrisma.organization.updateMany).toHaveBeenCalledTimes(1);
+        const args = mockPrisma.organization.updateMany.mock.calls[0][0];
+        // Never restarts a grace period that is already running.
+        expect(args?.where).toEqual({
+          stripeSubscriptionId: "sub_1",
+          suspendedAt: null,
+        });
+        expect(args?.data).toEqual({ suspendedAt: expect.any(Date) });
+      },
+    );
+
+    it("leaves the org alone for a trialing or incomplete subscription", async () => {
       mockPrisma.organization.findFirst.mockResolvedValue({
         id: "org-1",
       } as never);
       receiveEvent("customer.subscription.updated", {
         id: "sub_1",
-        status: "past_due",
+        status: "incomplete",
         items: { data: [{ price: { id: "price_pro" } }] },
       });
 
       await POST(webhookRequest());
 
       expect(mockPrisma.organization.update).not.toHaveBeenCalled();
+      expect(mockPrisma.organization.updateMany).not.toHaveBeenCalled();
     });
 
     it("leaves the org alone for an unknown price", async () => {

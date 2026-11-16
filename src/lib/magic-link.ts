@@ -7,6 +7,7 @@ import {
 } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { getBaseUrl } from "@/lib/url";
+import { hashToken } from "@/lib/token-hash";
 
 export async function sendSetPasswordLink(params: {
   userId: string;
@@ -24,7 +25,8 @@ export async function sendSetPasswordLink(params: {
   await prisma.verification.create({
     data: {
       identifier: `set-password:${userId}`,
-      value: token,
+      // Only the digest is stored; the plaintext goes out in the email.
+      value: hashToken(token),
       expiresAt,
     },
   });

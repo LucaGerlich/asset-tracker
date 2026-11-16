@@ -6,6 +6,11 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import {
+  auditScopeReferences,
+  findForeignReference,
+  foreignReferenceError,
+} from "@/lib/org-references";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { validateBody, updateAuditCampaignSchema } from "@/lib/validation";
 import { invalidateCacheByPrefix } from "@/lib/cache";
@@ -120,8 +125,22 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       updateData.scopeType = validated.scopeType;
     if (validated.scopeId !== undefined) updateData.scopeId = validated.scopeId;
 
+    // Check the scope the campaign ends up with, not only the fields sent.
+    const foreign = await findForeignReference(
+      orgId,
+      auditScopeReferences(
+        validated.scopeType ?? existing.scopeType,
+        validated.scopeId !== undefined ? validated.scopeId : existing.scopeId,
+      ),
+    );
+    if (foreign) {
+      return NextResponse.json(foreignReferenceError(foreign), {
+        status: 400,
+      });
+    }
+
     const updated = await prisma.auditCampaign.update({
-      where: { id },
+      where: { id, organizationId: orgId ?? null },
       data: updateData,
     });
 

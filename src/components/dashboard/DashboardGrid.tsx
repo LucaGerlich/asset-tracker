@@ -764,7 +764,7 @@ function HealthScoreWidget() {
 
   useEffect(() => {
     fetch("/api/dashboard/health-score")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => setData(d))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
@@ -869,7 +869,7 @@ function TCOWidget() {
 
   useEffect(() => {
     fetch("/api/dashboard/tco")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => setData(d))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
@@ -929,7 +929,7 @@ function DuplicateDetectionWidget() {
 
   useEffect(() => {
     fetch("/api/dashboard/duplicates")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => setData(d))
       .catch(() => setData(null))
       .finally(() => setLoading(false));

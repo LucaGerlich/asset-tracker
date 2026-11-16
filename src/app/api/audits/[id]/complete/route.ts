@@ -6,6 +6,7 @@ import {
   requireWritableOrg,
 } from "@/lib/api-auth";
 import { apiErrorResponse } from "@/lib/errors";
+import { invalidateCacheByPrefix } from "@/lib/cache";
 import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITIES } from "@/lib/audit-log";
 import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
@@ -54,6 +55,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       where: { id: campaign.id },
       data: { status: "completed", completedAt: new Date() },
     });
+
+    await invalidateCacheByPrefix("audit_campaigns_all").catch(() => {});
 
     // Summary stats
     const total = campaign.entries.length;

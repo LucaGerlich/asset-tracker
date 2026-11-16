@@ -165,3 +165,100 @@ describe("POST /api/import row errors", () => {
     expect(mockPrisma.accessories.create).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/import reference columns", () => {
+  const REF = "11111111-1111-4111-8111-111111111111";
+
+  function importRow(entityType: string, columns: Record<string, string>) {
+    const form = new FormData();
+    form.set(
+      "file",
+      new File(
+        [
+          Object.keys(columns).join(",") +
+            "\n" +
+            Object.values(columns).join(","),
+        ],
+        "rows.csv",
+        { type: "text/csv" },
+      ),
+    );
+    form.set("entityType", entityType);
+    return importCsv(
+      new NextRequest("http://localhost:3000/api/import", {
+        method: "POST",
+        body: form,
+      }),
+    );
+  }
+
+  it.each([
+    [
+      "accessory",
+      {
+        accessoriename: "Cable",
+        accessorietag: "ACC-1",
+        manufacturerid: REF,
+        statustypeid: REF,
+        accessoriecategorytypeid: REF,
+        locationid: REF,
+        supplierid: REF,
+        modelid: REF,
+      },
+      () => mockPrisma.accessories.create,
+    ],
+    [
+      "consumable",
+      {
+        consumablename: "Toner",
+        manufacturerid: REF,
+        consumablecategorytypeid: REF,
+        supplierid: REF,
+      },
+      () => mockPrisma.consumable.create,
+    ],
+    [
+      "licence",
+      {
+        licencekey: "KEY-1",
+        manufacturerid: REF,
+        licencecategorytypeid: REF,
+        supplierid: REF,
+      },
+      () => mockPrisma.licence.create,
+    ],
+  ])(
+    "rejects a %s row that names another organization's manufacturer",
+    async (entityType, columns, create) => {
+      // Every other reference resolves inside the importer's organization.
+      for (const model of [
+        "supplier",
+        "location",
+        "model",
+        "statusType",
+        "accessorieCategoryType",
+        "consumableCategoryType",
+        "licenceCategoryType",
+      ] as const) {
+        mockPrisma[model].findMany.mockResolvedValue([{}] as never);
+      }
+      mockPrisma.manufacturer.findMany.mockResolvedValue([]);
+
+      const res = await importRow(entityType, columns);
+      const job = (await res.json()) as { errors: RowError[] };
+
+      expect(job.errors).toEqual([
+        { row: 2, error: "Manufacturer not found in your organization" },
+      ]);
+      expect(create()).not.toHaveBeenCalled();
+      expect(mockPrisma.manufacturer.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            manufacturerid: { in: [REF] },
+            organizationId: "org-uuid-001",
+          },
+        }),
+      );
+    },
+  );
+});

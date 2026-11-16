@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/auth-utils";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { hashToken } from "@/lib/token-hash";
 
 const setPasswordSchema = z.object({
   token: z.string().uuid(),
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     const verification = await prisma.verification.findFirst({
       where: {
-        value: token,
+        value: hashToken(token),
         identifier: { startsWith: "set-password:" },
       },
     });
@@ -70,28 +71,33 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await hashPassword(password);
 
-    await prisma.user.update({
-      where: { userid: userId },
-      data: { password: hashedPassword },
-    });
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { userid: userId },
+        data: { password: hashedPassword },
+      });
 
-    await prisma.accounts.upsert({
-      where: {
-        providerId_accountId: {
+      await tx.accounts.upsert({
+        where: {
+          providerId_accountId: {
+            providerId: "credential",
+            accountId: userId,
+          },
+        },
+        update: { password: hashedPassword },
+        create: {
+          userId: userId,
           providerId: "credential",
           accountId: userId,
+          password: hashedPassword,
         },
-      },
-      update: { password: hashedPassword },
-      create: {
-        userId: userId,
-        providerId: "credential",
-        accountId: userId,
-        password: hashedPassword,
-      },
-    });
+      });
 
-    await prisma.verification.delete({ where: { id: verification.id } });
+      await tx.verification.delete({ where: { id: verification.id } });
+
+      // Revoke any session opened with the previous credentials.
+      await tx.sessions.deleteMany({ where: { userId } });
+    });
 
     logger.info("User set password via magic link", { userId });
 

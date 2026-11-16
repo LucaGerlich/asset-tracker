@@ -15,7 +15,13 @@ import { triggerWebhook } from "@/lib/webhooks";
 import { notifyIntegrations } from "@/lib/integrations/slack-teams";
 import { checkAssetLimit, checkUserLimit } from "@/lib/tenant-limits";
 import { logger, logCatchError } from "@/lib/logger";
+import {
+  findForeignReference,
+  foreignReferenceError,
+  type ReferenceKind,
+} from "@/lib/org-references";
 import { z } from "zod";
+import { isValidUsername, USERNAME_AT_SIGN_MESSAGE } from "@/lib/username";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -24,6 +30,28 @@ import crypto from "crypto";
  * Its message is written for the user and is stored on the import job as is.
  */
 class ImportRowError extends Error {}
+
+/**
+ * Reference ids a CSV row supplies must belong to the importing organization.
+ * The defaults the import falls back to are already looked up there.
+ */
+async function assertRowReferences(
+  organizationId: string | null,
+  refs: Partial<Record<ReferenceKind, string | undefined>>,
+): Promise<void> {
+  const foreign = await findForeignReference(organizationId, refs);
+  if (foreign) throw new ImportRowError(foreignReferenceError(foreign).error);
+}
+
+/** Upper bounds that keep a single import request from exhausting the server. */
+const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_IMPORT_ROWS = 5000;
+
+/** Field name → CSV column index; -1 marks a field the user left unmapped. */
+const columnMappingSchema = z.record(
+  z.string().min(1).max(100),
+  z.number().int().min(-1).max(1000),
+);
 
 const ROW_FAILED_MESSAGE = "Row could not be imported";
 
@@ -151,14 +179,32 @@ export async function POST(req: NextRequest) {
     // Parse column mapping if provided (field name → CSV column index)
     let columnMapping: Record<string, number> | null = null;
     if (columnMappingRaw) {
+      let parsedMapping: unknown;
       try {
-        columnMapping = JSON.parse(columnMappingRaw);
+        parsedMapping = JSON.parse(columnMappingRaw);
       } catch {
         return NextResponse.json(
           { error: "Invalid columnMapping JSON" },
           { status: 400 },
         );
       }
+      const mappingResult = columnMappingSchema.safeParse(parsedMapping);
+      if (!mappingResult.success) {
+        return NextResponse.json(
+          { error: "Invalid columnMapping" },
+          { status: 400 },
+        );
+      }
+      columnMapping = mappingResult.data;
+    }
+
+    if (file.size > MAX_IMPORT_FILE_BYTES) {
+      return NextResponse.json(
+        {
+          error: `File too large. Maximum size is ${MAX_IMPORT_FILE_BYTES / (1024 * 1024)} MB`,
+        },
+        { status: 400 },
+      );
     }
 
     const validatedInput = importJobSchema.parse({
@@ -174,6 +220,15 @@ export async function POST(req: NextRequest) {
     if (lines.length < 2) {
       return NextResponse.json(
         { error: "CSV must have a header row and at least one data row" },
+        { status: 400 },
+      );
+    }
+
+    if (lines.length - 1 > MAX_IMPORT_ROWS) {
+      return NextResponse.json(
+        {
+          error: `Too many rows. Maximum is ${MAX_IMPORT_ROWS} data rows per import`,
+        },
         { status: 400 },
       );
     }
@@ -580,6 +635,14 @@ async function createEntity(
           "Missing required reference data for accessory import. Ensure manufacturer, status type, accessory category, location, supplier, and model records exist.",
         );
       }
+      await assertRowReferences(organizationId, {
+        manufacturer: data.manufacturerid,
+        statusType: data.statustypeid,
+        accessoryCategory: data.accessoriecategorytypeid,
+        location: data.locationid,
+        supplier: data.supplierid,
+        model: data.modelid,
+      });
       await prisma.accessories.create({
         data: {
           accessoriename: data.accessoriename,
@@ -612,6 +675,11 @@ async function createEntity(
           "Missing required reference data for consumable import. Ensure manufacturer, consumable category, and supplier records exist.",
         );
       }
+      await assertRowReferences(organizationId, {
+        manufacturer: data.manufacturerid,
+        consumableCategory: data.consumablecategorytypeid,
+        supplier: data.supplierid,
+      });
       await prisma.consumable.create({
         data: {
           consumablename: data.consumablename,
@@ -641,6 +709,11 @@ async function createEntity(
           "Missing required reference data for licence import. Ensure manufacturer, licence category, and supplier records exist.",
         );
       }
+      await assertRowReferences(organizationId, {
+        manufacturer: data.manufacturerid,
+        licenceCategory: data.licencecategorytypeid,
+        supplier: data.supplierid,
+      });
       await prisma.licence.create({
         data: {
           licencekey: data.licencekey || null,
@@ -666,6 +739,9 @@ async function createEntity(
     }
 
     case "user": {
+      if (data.username && !isValidUsername(data.username)) {
+        throw new Error(USERNAME_AT_SIGN_MESSAGE);
+      }
       // A rejected address fails only this row; the import job records it.
       const email = data.email
         ? await assertEmailAssignable(data.email, { callerIsSuperAdmin })
@@ -714,6 +790,7 @@ async function createEntity(
           city: data.city || null,
           country: data.country || null,
           creation_date: now,
+          organizationId,
         },
       });
       break;

@@ -36,6 +36,17 @@ describe("GET /api/cron/check-trials", () => {
     });
   });
 
+  it("re-asserts the trial filter in the update so a concurrent checkout wins", async () => {
+    await GET();
+
+    expect(mockPrisma.organization.updateMany.mock.calls[0][0]?.where).toEqual({
+      id: { in: ["org-1"] },
+      plan: "professional",
+      stripeSubscriptionId: null,
+      trialEndsAt: { lt: expect.any(Date) },
+    });
+  });
+
   it("writes no entitlements without legacy billing", async () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "");
 

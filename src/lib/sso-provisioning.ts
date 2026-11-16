@@ -10,6 +10,7 @@
 import prisma from "@/lib/prisma";
 import { isSelfHosted } from "@/lib/deployment-mode";
 import { logger } from "@/lib/logger";
+import { getOrgStatus } from "@/lib/org-suspension";
 
 /** Microsoft multi-tenant authorities that accept accounts from any directory. */
 const OPEN_MICROSOFT_TENANTS = new Set([
@@ -48,9 +49,11 @@ export async function resolveSsoUserData<T extends Record<string, unknown>>(
 
   const org = await prisma.organization.findUnique({
     where: { id: organizationId },
-    select: { isActive: true, maxUsers: true },
+    select: { isActive: true, suspendedAt: true, maxUsers: true },
   });
-  if (!org?.isActive) return reject("default organization missing or inactive");
+  if (!org || getOrgStatus(org) !== "active") {
+    return reject("default organization missing, inactive or suspended");
+  }
 
   if (!isSelfHosted() && org.maxUsers !== -1) {
     const count = await prisma.user.count({ where: { organizationId } });

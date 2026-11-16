@@ -10,8 +10,20 @@ import { decrypt } from "@/lib/encryption";
 import { EmailConflictError } from "@/lib/email-ownership";
 import { ForbiddenError } from "@/lib/errors";
 import { getOrgSuspensionStatus } from "@/lib/org-suspension";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { hashToken } from "@/lib/token-hash";
+
+/**
+ * Hashed rows are tagged so the legacy plaintext comparison can never accept a
+ * leaked digest as a bearer token (a legacy token could itself be 64 hex chars).
+ */
+const HASHED_TOKEN_PREFIX = "sha256:";
+
+export function scimTokenDigest(token: string): string {
+  return `${HASHED_TOKEN_PREFIX}${hashToken(token)}`;
+}
 
 export interface ScimAuthResult {
   organizationId: string;
@@ -56,9 +68,19 @@ export async function authenticateScim(
 
   const token = authHeader.slice(7);
 
-  // Look up all SCIM tokens and compare with timing-safe equality
+  // Tokens are stored as a SHA-256 digest: hash the presented token and match it.
+  const hashedMatch = await prisma.scimToken.findFirst({
+    where: { token: scimTokenDigest(token) },
+    select: { id: true, organizationId: true },
+  });
+  if (hashedMatch) {
+    return rejectSuspendedOrg(hashedMatch.organizationId, req.method);
+  }
+
+  // Legacy rows hold the plaintext token: compare with timing-safe equality
+  // and rewrite the row to its digest on first use.
   const scimTokens = await prisma.scimToken.findMany({
-    select: { token: true, organizationId: true },
+    select: { id: true, token: true, organizationId: true },
   });
 
   if (scimTokens.length === 0) {
@@ -105,12 +127,20 @@ export async function authenticateScim(
 
   const tokenBuf = Buffer.from(token);
   for (const record of scimTokens) {
-    const storedToken = record.token;
-    const storedBuf = Buffer.from(storedToken);
+    if (record.token.startsWith(HASHED_TOKEN_PREFIX)) continue;
+    const storedBuf = Buffer.from(record.token);
     if (
       tokenBuf.length === storedBuf.length &&
       crypto.timingSafeEqual(tokenBuf, storedBuf)
     ) {
+      await prisma.scimToken
+        .update({
+          where: { id: record.id },
+          data: { token: scimTokenDigest(token) },
+        })
+        .catch((error: unknown) => {
+          logger.warn("Failed to hash legacy SCIM token", { error });
+        });
       return rejectSuspendedOrg(record.organizationId, req.method);
     }
   }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import {
   requireApiAuth,
@@ -16,6 +17,11 @@ import {
   scopeToOrganization,
 } from "@/lib/organization-context";
 import { logger, logCatchError } from "@/lib/logger";
+import {
+  ACTIVE_CHECKOUT_STATUSES,
+  ALREADY_CHECKED_OUT,
+  isCheckoutConflict,
+} from "@/lib/asset-checkout";
 
 // GET /api/asset/checkout?assetId=<uuid>
 export async function GET(req: Request) {
@@ -153,21 +159,34 @@ export async function POST(req: Request) {
       targetLabel = targetAsset.assetname || targetAsset.assettag;
     }
 
-    const checkout = await prisma.assetCheckout.create({
-      data: {
-        assetId,
-        checkedOutToType,
-        checkedOutTo: checkedOutToType === "user" ? checkedOutTo : null,
-        checkedOutToLocationId:
-          checkedOutToType === "location" ? checkedOutToLocationId : null,
-        checkedOutToAssetId:
-          checkedOutToType === "asset" ? checkedOutToAssetId : null,
-        checkedOutBy: user.id as string,
-        expectedReturn: expectedReturn ? new Date(expectedReturn) : null,
-        notes: notes || null,
-        status: "checked_out",
+    // The "already out?" check and the insert share one serializable
+    // transaction, so two concurrent checkouts cannot both succeed.
+    const checkout = await prisma.$transaction(
+      async (tx) => {
+        const active = await tx.assetCheckout.findFirst({
+          where: { assetId, status: { in: ACTIVE_CHECKOUT_STATUSES } },
+          select: { id: true },
+        });
+        if (active) throw new Error(ALREADY_CHECKED_OUT);
+
+        return tx.assetCheckout.create({
+          data: {
+            assetId,
+            checkedOutToType,
+            checkedOutTo: checkedOutToType === "user" ? checkedOutTo : null,
+            checkedOutToLocationId:
+              checkedOutToType === "location" ? checkedOutToLocationId : null,
+            checkedOutToAssetId:
+              checkedOutToType === "asset" ? checkedOutToAssetId : null,
+            checkedOutBy: user.id as string,
+            expectedReturn: expectedReturn ? new Date(expectedReturn) : null,
+            notes: notes || null,
+            status: "checked_out",
+          },
+        });
       },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
     createAuditLog({
       userId: user.id as string,
@@ -205,6 +224,12 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     const denied = apiErrorResponse(error);
     if (denied) return denied;
+    if (isCheckoutConflict(error)) {
+      return NextResponse.json(
+        { error: "Asset is already checked out" },
+        { status: 409 },
+      );
+    }
     const message = error instanceof Error ? error.message : "Unknown error";
     logger.error("POST /api/asset/checkout error", { error: message });
     return NextResponse.json(

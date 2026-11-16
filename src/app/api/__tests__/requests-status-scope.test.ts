@@ -57,6 +57,7 @@ beforeEach(() => {
     statustypeid: "status-own",
   } as never);
   mockPrisma.itemRequest.findFirst.mockResolvedValue(null);
+  mockPrisma.itemRequest.updateMany.mockResolvedValue({ count: 1 } as never);
   mockPrisma.itemRequest.create.mockResolvedValue({ id: "req-1" } as never);
   mockPrisma.asset.update.mockResolvedValue({} as never);
 });

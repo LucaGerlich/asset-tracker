@@ -40,8 +40,13 @@ export async function GET() {
 
     // Downgrade all expired trial orgs to starter
     const result = await prisma.organization.updateMany({
+      // Re-assert the selection filter: an org that subscribed (or whose trial
+      // was extended) between the read above and this write must not be downgraded.
       where: {
         id: { in: expiredTrialOrgs.map((o) => o.id) },
+        trialEndsAt: { lt: new Date() },
+        plan: "professional",
+        stripeSubscriptionId: null,
       },
       data: {
         plan: "starter",

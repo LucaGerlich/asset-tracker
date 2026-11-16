@@ -1,8 +1,17 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/prisma");
+vi.mock("@/lib/logger");
+vi.mock("@/lib/org-suspension", () => ({
+  getOrgSuspensionStatus: vi.fn().mockResolvedValue("active"),
+}));
 
-import { scimEmailRejection } from "@/lib/scim";
+import prisma from "@/lib/prisma";
+import {
+  authenticateScim,
+  scimEmailRejection,
+  scimTokenDigest,
+} from "@/lib/scim";
 import { EmailConflictError } from "@/lib/email-ownership";
 import { ForbiddenError, NotFoundError } from "@/lib/errors";
 
@@ -39,5 +48,73 @@ describe("scimEmailRejection", () => {
     ["a non-error value", "boom"],
   ])("returns null for %s so the caller keeps its own handling", (_, error) => {
     expect(scimEmailRejection(error)).toBeNull();
+  });
+});
+
+describe("authenticateScim token hashing", () => {
+  const mockPrisma = vi.mocked(prisma, true);
+  const bearer = (token: string) =>
+    new Request("http://localhost/api/scim/v2/Users", {
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.scimToken.findFirst.mockResolvedValue(null);
+    mockPrisma.scimToken.findMany.mockResolvedValue([]);
+  });
+
+  it("matches a stored digest by hashing the presented token", async () => {
+    mockPrisma.scimToken.findFirst.mockResolvedValue({
+      id: "t1",
+      token: scimTokenDigest("scim-secret"),
+      organizationId: "org-1",
+    } as never);
+
+    const result = await authenticateScim(bearer("scim-secret"));
+
+    expect(mockPrisma.scimToken.findFirst).toHaveBeenCalledWith({
+      where: { token: scimTokenDigest("scim-secret") },
+      select: { id: true, organizationId: true },
+    });
+    expect(result).toEqual({ organizationId: "org-1" });
+    expect(mockPrisma.scimToken.update).not.toHaveBeenCalled();
+  });
+
+  it("accepts a legacy plaintext row and rewrites it to its digest", async () => {
+    mockPrisma.scimToken.findMany.mockResolvedValue([
+      { id: "t2", token: "legacy-plain", organizationId: "org-2" },
+    ] as never);
+
+    const result = await authenticateScim(bearer("legacy-plain"));
+
+    expect(result).toEqual({ organizationId: "org-2" });
+    expect(mockPrisma.scimToken.update).toHaveBeenCalledWith({
+      where: { id: "t2" },
+      data: { token: scimTokenDigest("legacy-plain") },
+    });
+  });
+
+  it("rejects a token that matches neither a digest nor a legacy row", async () => {
+    mockPrisma.scimToken.findMany.mockResolvedValue([
+      { id: "t3", token: scimTokenDigest("other"), organizationId: "org-3" },
+    ] as never);
+
+    const result = await authenticateScim(bearer("wrong"));
+
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(401);
+    expect(mockPrisma.scimToken.update).not.toHaveBeenCalled();
+  });
+
+  it("does not accept the stored digest itself as a bearer token", async () => {
+    const digest = scimTokenDigest("scim-secret");
+    mockPrisma.scimToken.findMany.mockResolvedValue([
+      { id: "t1", token: digest, organizationId: "org-1" },
+    ] as never);
+
+    const result = await authenticateScim(bearer(digest));
+
+    expect((result as Response).status).toBe(401);
   });
 });

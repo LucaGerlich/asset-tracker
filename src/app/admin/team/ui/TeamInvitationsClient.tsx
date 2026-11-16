@@ -113,13 +113,16 @@ export default function TeamInvitationsClient() {
 
   const fetchRoles = useCallback(async () => {
     try {
-      const response = await fetch("/api/admin/roles");
+      const response = await fetch("/api/roles");
       if (response.ok) {
         const data = await response.json();
         setRoles(Array.isArray(data) ? data : data.roles || []);
+      } else {
+        toast.error("Failed to load roles");
       }
-    } catch {
-      // Roles are optional, fail silently
+    } catch (err) {
+      console.error("Failed to load roles", err);
+      toast.error("Failed to load roles");
     }
   }, []);
 
