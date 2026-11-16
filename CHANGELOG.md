@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.16.2] - 2026-11-16
+
+### Changed
+
+- `prisma/demo-seed.js` is rewritten as an additive, re-runnable multi-tenant seed. It
+  creates three demo tenants with their own users, roles, locations, catalog, assets,
+  accessories, consumables, components, licences with seats, maintenance, reservations,
+  requests, audits, procurement (Professional and Enterprise only), custom fields and six
+  months of audit logs:
+  - Northwind Logistics: Professional, 250 assets;
+  - Brightside Dental: Starter, 60 assets;
+  - Helios Engineering: Enterprise, 400 assets.
+- It only touches organizations whose slug starts with `demo-`, and re-runs replace their
+  data. Before, it wiped every table, left its data without an organization, and created
+  users that couldn't sign in.
+- Run it with `DEMO_SEED_CONFIRM=yes DATABASE_URL=… node prisma/demo-seed.js`; `.env` is
+  not read. Logins: `admin@northwind.demo` (also `brightside`, `helios`) with
+  `DemoPass-2026!`.
+
 ## [0.16.1] - 2026-11-03
 
 Follow-up to the 0.16.0 audit: most of the items it left open (TECHNICAL_DEBT 91–110).
