@@ -4,6 +4,7 @@ version: 1
 exclude:
   - "prisma/seed.js"
   - "prisma/demo-seed.js"
+  - "prisma/demo-seed/**"
   - "prisma/create-admin.ts"
   - "scripts/**"
   - "mobile/**"

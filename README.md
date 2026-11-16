@@ -288,6 +288,44 @@ All configuration is via environment variables. Copy `.env.example` for the full
 
 ---
 
+## Demo data
+
+`prisma/demo-seed.js` fills an instance with three demo tenants so it looks
+like a busy multi-tenant SaaS:
+
+| Tenant              | Slug              | Plan         | Assets |
+| ------------------- | ----------------- | ------------ | -----: |
+| Northwind Logistics | `demo-northwind`  | professional |   ~250 |
+| Brightside Dental   | `demo-brightside` | starter      |    ~60 |
+| Helios Engineering  | `demo-helios`     | enterprise   |   ~400 |
+
+```bash
+DATABASE_URL=postgresql://... DEMO_SEED_CONFIRM=yes node prisma/demo-seed.js
+```
+
+- It refuses to run without `DEMO_SEED_CONFIRM=yes` and prints the target
+  database (host and name, never the password) before writing.
+- It only touches organizations whose slug starts with `demo-`: their data is
+  deleted (children first) and recreated, so it is safe to re-run. All other
+  organizations and users are left alone. It aborts before deleting anything if
+  a demo email, username, asset tag or serial number is already used outside
+  the demo organizations.
+- Output is deterministic; dates are relative to today (UTC), or to
+  `DEMO_SEED_ANCHOR` (ISO date) when set.
+- Procurement and custom fields are only seeded for plans that include them.
+
+All demo users share the password `DemoPass-2026!`:
+
+| Login                                                                | Role          |
+| -------------------------------------------------------------------- | ------------- |
+| `admin@northwind.demo`, `admin@brightside.demo`, `admin@helios.demo` | Administrator |
+| `manager1@<domain>` to `manager3@<domain>`                           | Asset Manager |
+| `user01@<domain>` and up                                             | Standard User |
+
+with `<domain>` being `northwind.demo`, `brightside.demo` or `helios.demo`.
+
+---
+
 ## Project Structure
 
 ```
