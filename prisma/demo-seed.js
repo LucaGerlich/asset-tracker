@@ -22,7 +22,7 @@
 //   user01@<domain>       standard user (user02 ... user20 / user08 / user25)
 
 const bcrypt = require("bcryptjs");
-const { DEMO_ORGS, DEMO_SLUG_PREFIX } = require("./demo-seed/config");
+const { DEMO_ORGS } = require("./demo-seed/config");
 const { buildOrgDataset, INSERT_PLAN } = require("./demo-seed/dataset");
 const {
   cleanupDemoOrgs,
@@ -77,9 +77,7 @@ async function main() {
   const { prisma, pool } = createPrismaClient(connectionString);
   try {
     const existingIds = await findDemoOrgIds(prisma);
-    console.log(
-      `Found ${existingIds.length} existing "${DEMO_SLUG_PREFIX}*" organization(s).`,
-    );
+    console.log(`Found ${existingIds.length} existing demo organization(s).`);
 
     const conflicts = await findConflicts(prisma, datasets, existingIds);
     if (conflicts.length > 0) {

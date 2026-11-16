@@ -1,4 +1,6 @@
-// Removes the data of demo organizations (slug "demo-*") and nothing else.
+// Removes the data of the demo organizations (the exact slugs in DEMO_ORGS)
+// and nothing else. Never match by prefix: a real tenant named "Demo GmbH"
+// gets a slug like "demo-gmbh-3f9a1c".
 //
 // Every step below is a deleteMany whose `where` is anchored to the given
 // demo organization ids, either through the row's own organizationId or
@@ -7,7 +9,7 @@
 // demo row, the database rejects the delete (RESTRICT) instead of silently
 // removing it.
 
-const { DEMO_SLUG_PREFIX } = require("./config");
+const { DEMO_ORGS } = require("./config");
 
 const inOrgs = (orgIds) => ({ in: orgIds });
 /** The row itself carries organizationId. */
@@ -115,7 +117,7 @@ const CLEANUP_STEPS = [
 /** Ids of the existing demo organizations. */
 async function findDemoOrgIds(prisma) {
   const orgs = await prisma.organization.findMany({
-    where: { slug: { startsWith: DEMO_SLUG_PREFIX } },
+    where: { slug: { in: DEMO_ORGS.map((org) => org.slug) } },
     select: { id: true },
   });
   return orgs.map((org) => org.id);

@@ -207,14 +207,18 @@ describe("cleanupDemoOrgs", () => {
     expect(prisma.$queryRaw).not.toHaveBeenCalled();
   });
 
-  it("finds demo organizations by slug prefix only", async () => {
+  it("finds demo organizations by their exact slugs, not by prefix", async () => {
+    // A real tenant named "Demo GmbH" gets a slug like "demo-gmbh-3f9a1c";
+    // a prefix match would wipe it on the next seed or nightly reset.
     const findMany = vi.fn().mockResolvedValue([{ id: "a" }, { id: "b" }]);
     const ids = await cleanupModule.findDemoOrgIds({
       organization: { findMany },
     });
     expect(ids).toEqual(["a", "b"]);
     expect(findMany).toHaveBeenCalledWith({
-      where: { slug: { startsWith: "demo-" } },
+      where: {
+        slug: { in: ["demo-northwind", "demo-brightside", "demo-helios"] },
+      },
       select: { id: true },
     });
   });
