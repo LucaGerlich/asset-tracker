@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.16.3] - 2026-11-16
+
+### Changed
+
+- Dependencies: every minor and patch update was applied.
+  - `next`, `eslint-config-next` and `@next/bundle-analyzer`: 16.4.4 → 16.4.6.
+  - `react`, `react-dom` and `react-is`: 19.2.6 → 19.3.1; `@types/react` → 19.3.0.
+  - `prisma` and `@prisma/client` → 7.10.1.
+  - `better-auth` → 1.6.34, the latest 1.6.
+  - Also updated: Radix UI, `lucide-react`, Tailwind 4.3.5, `@node-saml/node-saml` 5.2,
+    `jose`, `pg`, `maplibre-gl` 5.24.1, `stripe` 22.6.2, the AWS and Azure storage SDKs,
+    Playwright, Vite, Vitest and Prettier.
+  - Production advisories: 13 → 9. The remaining critical and high ones are in
+    better-auth 1.6 and maplibre-gl 5 and are not reachable (TECHNICAL_DEBT 91–92).
+- Major upgrades are listed as TECHNICAL_DEBT 111–116.
+
 ## [0.16.2] - 2026-11-16
 
 ### Changed

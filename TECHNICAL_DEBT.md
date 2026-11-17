@@ -846,6 +846,26 @@ item 82 and still open:
 110.  **FIXED in v0.16.1 (documented in the webhook settings, Help FAQ and SECURITY_GUIDE):** **Webhook endpoints that redirect fail permanently (low, by design):** deliveries use
       `redirect: "manual"`; document that the URL must be the final one.
 
+### Major dependency upgrades pending (checked 2026-11-16, v0.16.3)
+
+All minor and patch updates were applied in v0.16.3. Each major below needs its own
+planned upgrade (`better-auth` 1.7 is item 91, `maplibre-gl` 6 is item 92):
+
+111. **`@sentry/nextjs` 10 → 11 (low).** The build already warns that importing
+     `withSentryConfig` from `@sentry/nextjs` stops working in v11; import it from
+     `@sentry/nextjs/config`.
+112. **`stripe` 22 → 23 (medium):** a new pinned API version; the checkout, portal and
+     webhook flows need a test against Stripe test mode.
+113. **`typescript` 6 → 7 and `eslint` 9 → 10 (low):** tooling majors; expect new type and
+     lint errors.
+114. **`vitest` 4 → 5 (with `@vitest/coverage-v8`, `vitest-mock-extended` 6, `happy-dom`
+     21, `@testing-library/jest-dom` 7) (low):** upgrade the test stack together.
+115. **`prisma` / `@prisma/client` 8 (medium, not yet stable):** 8.0.0 is a release
+     candidate. Wait for the stable release, then rehearse on a copy of both production
+     databases like the 0.16.1 migrations.
+116. **Smaller tooling majors (low):** `@commitlint/*` 21, `lint-staged` 17, `dotenv` 18,
+     `@types/node` 26, `@aejkatappaja/phantom-ui` 1.x.
+
 ## Repository loose ends (2026-09-07)
 
 - **GitHub issue #86** (quick start fails with P1014 on the baseline migration):
