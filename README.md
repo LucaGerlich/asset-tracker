@@ -203,6 +203,9 @@ Open **http://localhost:3000** and sign in.
 
 ## Deployment
 
+The hosted Dev, Demo and Production setup (branches, databases, release flow) is described
+in [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md).
+
 ### Docker
 
 ```bash
